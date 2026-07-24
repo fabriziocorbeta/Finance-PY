@@ -18,6 +18,16 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 
+  <%# Set --app-height synchronously (before layout) so the vertically-centered
+      auth/onboarding screens don't jump once viewport_controller's Stimulus
+      connect() callback runs post-paint with a different value than the
+      100dvh fallback. Must run after the viewport meta tag above so
+      window.innerHeight reflects the real mobile viewport, not the desktop
+      default used before that meta tag is applied. %>
+  <script nonce="<%= content_security_policy_nonce %>">
+    document.documentElement.style.setProperty("--app-height", window.innerHeight + "px");
+  </script>
+
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
