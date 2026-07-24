@@ -9,6 +9,23 @@
   font-display: swap;
 }
 
+/* Metric-matched fallback: sized/shifted to Geist's real font metrics
+   (unitsPerEm 1000, avgCharWidth 581, ascent 1005, descent 295 vs Arial's
+   2048/904/1854/434 — computed with fontTools, not guessed) so the page
+   doesn't reflow when Geist finishes loading and swaps in (CLS fix). */
+@font-face {
+  font-family: 'Geist Fallback';
+  src: local('Arial');
+  size-adjust: 131.62%;
+  ascent-override: 76.35%;
+  descent-override: 22.41%;
+  line-gap-override: 0%;
+}
+
+@theme {
+  --font-sans: 'Geist', 'Geist Fallback', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
 /* Static fonts (fallback) */
 @supports not (font-variation-settings: normal) {
   @font-face {
