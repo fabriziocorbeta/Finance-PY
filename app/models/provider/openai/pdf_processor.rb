@@ -217,9 +217,22 @@ class Provider::Openai::PdfProcessor
 
     def parse_response_generic(response)
       raw = response.dig("choices", 0, "message", "content")
-      parsed = parse_json_flexibly(raw)
+      parsed = normalize_keys(parse_json_flexibly(raw))
 
       build_result(parsed)
+    end
+
+    # Some smaller/quantized models occasionally prepend a stray character
+    # (e.g. a leading ".") to the first key of an otherwise well-formed JSON
+    # object when response_format: json_object is enforced -- the JSON is
+    # still syntactically valid, so it parses fine, but the key we look up
+    # (e.g. "document_type") silently misses and every field falls back to
+    # its default. Stripping non-alphanumeric leading characters from every
+    # key is a cheap, safe guard against that glitch.
+    def normalize_keys(hash)
+      return hash unless hash.is_a?(Hash)
+
+      hash.transform_keys { |k| k.to_s.sub(/\A[^a-zA-Z0-9]+/, "") }
     end
 
     def build_result(parsed)
