@@ -69,7 +69,7 @@ export default class extends Controller {
         await deletePendingSale(id);
       } else {
         const data = await response.json().catch(() => ({}));
-        const message = (data.errors && data.errors.join(", ")) || "Falló el reintento manual";
+        const message = data.errors?.join(", ") || "Falló el reintento manual";
         await markNeedsReview(id, message);
       }
     } catch (error) {
