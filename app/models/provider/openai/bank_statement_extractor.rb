@@ -97,6 +97,14 @@ class Provider::Openai::BankStatementExtractor
       chunks
     end
 
+    MAX_CHUNK_ATTEMPTS = 3
+
+    # Small/fast models occasionally return garbage (e.g. a hallucinated
+    # placeholder token instead of the requested JSON, or an empty
+    # transactions array despite the chunk clearly containing line items)
+    # under forced JSON mode. Since this is non-deterministic, retrying the
+    # exact same request a couple of times reliably recovers a valid
+    # response without needing a bigger/slower model just for this step.
     def process_chunk(text, is_first_chunk)
       params = {
         model: model,
@@ -107,12 +115,27 @@ class Provider::Openai::BankStatementExtractor
         response_format: { type: "json_object" }
       }
 
-      response = client.chat(parameters: params)
-      content = response.dig("choices", 0, "message", "content")
+      parsed = nil
+      MAX_CHUNK_ATTEMPTS.times do |attempt|
+        response = client.chat(parameters: params)
+        content = response.dig("choices", 0, "message", "content")
 
-      raise Provider::Openai::Error, "No response from AI" if content.blank?
+        if content.blank?
+          Rails.logger.warn("BankStatementExtractor: empty response on attempt #{attempt + 1}")
+          next
+        end
 
-      parsed = parse_json_response(content)
+        candidate = parse_json_response(content)
+
+        if candidate.key?("transactions") || candidate["account_holder"].present? || candidate["bank_name"].present?
+          parsed = candidate
+          break
+        end
+
+        Rails.logger.warn("BankStatementExtractor: unusable response on attempt #{attempt + 1}: #{content.to_s.truncate(200)}")
+      end
+
+      raise Provider::Openai::Error, "No usable response from AI after #{MAX_CHUNK_ATTEMPTS} attempts" if parsed.nil?
 
       {
         transactions: normalize_transactions(parsed["transactions"] || []),
@@ -130,10 +153,19 @@ class Provider::Openai::BankStatementExtractor
 
     def parse_json_response(content)
       cleaned = content.gsub(%r{^```json\s*}i, "").gsub(/```\s*$/, "").strip
-      JSON.parse(cleaned)
+      parsed = JSON.parse(cleaned)
+      normalize_keys(parsed)
     rescue JSON::ParserError => e
       Rails.logger.error("BankStatementExtractor JSON parse error: #{e.message} (content_length=#{content.to_s.bytesize})")
       { "transactions" => [] }
+    end
+
+    # See Provider::Openai::PdfProcessor#normalize_keys -- same fix for the
+    # same model glitch (a stray leading character on the first JSON key).
+    def normalize_keys(hash)
+      return hash unless hash.is_a?(Hash)
+
+      hash.transform_keys { |k| k.to_s.sub(/\A[^a-zA-Z0-9]+/, "") }
     end
 
     def deduplicate_transactions(transactions)
