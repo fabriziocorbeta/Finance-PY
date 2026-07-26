@@ -117,7 +117,13 @@ class Provider::Openai::BankStatementExtractor
 
       parsed = nil
       MAX_CHUNK_ATTEMPTS.times do |attempt|
-        response = client.chat(parameters: params)
+        begin
+          response = client.chat(parameters: params)
+        rescue Net::ReadTimeout, Net::OpenTimeout, Faraday::TimeoutError, Faraday::ConnectionFailed => e
+          Rails.logger.warn("BankStatementExtractor: #{e.class} on attempt #{attempt + 1}")
+          next
+        end
+
         content = response.dig("choices", 0, "message", "content")
 
         if content.blank?
