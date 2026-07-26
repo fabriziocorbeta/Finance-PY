@@ -133,12 +133,16 @@ class Provider::Openai::BankStatementExtractor
 
         candidate = parse_json_response(content)
 
-        if candidate.key?("transactions") || candidate["account_holder"].present? || candidate["bank_name"].present?
+        # An empty transactions array is just as useless as a missing key --
+        # every chunk of a real statement has line items, so treat "parsed
+        # fine but found nothing" the same as "garbage" and retry, up to the
+        # attempt limit (last attempt's result is used as-is either way).
+        if candidate["transactions"].present? || attempt == MAX_CHUNK_ATTEMPTS - 1
           parsed = candidate
           break
         end
 
-        Rails.logger.warn("BankStatementExtractor: unusable response on attempt #{attempt + 1}: #{content.to_s.truncate(200)}")
+        Rails.logger.warn("BankStatementExtractor: empty transactions on attempt #{attempt + 1}: #{content.to_s.truncate(200)}")
       end
 
       raise Provider::Openai::Error, "No usable response from AI after #{MAX_CHUNK_ATTEMPTS} attempts" if parsed.nil?
