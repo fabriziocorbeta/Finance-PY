@@ -14,7 +14,22 @@ class Provider::Openai < Provider
     ENV.fetch("OPENAI_MODEL") { Setting.openai_model }.presence || DEFAULT_MODEL
   end
 
+  # PDF bank statement extraction is a background Sidekiq job (ProcessPdfJob),
+  # not a live chat request, so it can tolerate a much longer HTTP timeout
+  # than the chat client -- the nano model routinely takes >60s per chunk
+  # under real load, well past the default chat timeout.
+  BANK_STATEMENT_REQUEST_TIMEOUT = ENV.fetch("OPENAI_BANK_STATEMENT_REQUEST_TIMEOUT", 180).to_i
+
+  # The chat model (nano, via OPENAI_MODEL) is tuned for fast conversational
+  # responses and cannot reliably extract a full transaction table -- it
+  # returns transactions: [] on real statements even with a long timeout and
+  # an explicit few-shot prompt (confirmed on a real AMEX/Itau statement).
+  # gpt-oss-20b was the fastest model confirmed to extract correctly on the
+  # same real statement (~21s/chunk vs nano's consistent empty result).
+  BANK_STATEMENT_MODEL = ENV.fetch("OPENAI_BANK_STATEMENT_MODEL", "openai/gpt-oss-20b")
+
   def initialize(access_token, uri_base: nil, model: nil)
+    @access_token = access_token
     client_options = { access_token: access_token }
     llm_uri_base = uri_base.presence
     llm_model = model.presence
@@ -234,7 +249,7 @@ class Provider::Openai < Provider
 
   def extract_bank_statement(pdf_content:, model: "", family: nil)
     with_provider_response do
-      effective_model = model.presence || @default_model
+      effective_model = model.presence || BANK_STATEMENT_MODEL
 
       trace = create_langfuse_trace(
         name: "openai.extract_bank_statement",
@@ -242,7 +257,7 @@ class Provider::Openai < Provider
       )
 
       result = BankStatementExtractor.new(
-        client: client,
+        client: bank_statement_client,
         pdf_content: pdf_content,
         model: effective_model
       ).extract
@@ -300,6 +315,12 @@ class Provider::Openai < Provider
 
   private
     attr_reader :client
+
+    def bank_statement_client
+      client_options = { access_token: @access_token, request_timeout: BANK_STATEMENT_REQUEST_TIMEOUT }
+      client_options[:uri_base] = @uri_base if @uri_base.present?
+      ::OpenAI::Client.new(**client_options)
+    end
 
     # Returns the first positive integer among env, setting, default. Treats
     # zero or negative values as "unset" and falls through — a 0-token budget

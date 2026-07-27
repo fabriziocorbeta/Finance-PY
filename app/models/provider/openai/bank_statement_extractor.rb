@@ -79,7 +79,7 @@ class Provider::Openai::BankStatementExtractor
           chunks << current_chunk.join("\n\n") if current_chunk.any?
           current_chunk = []
           current_size = 0
-          chunks << page_text
+          chunks.concat(split_oversized_page(page_text))
           next
         end
 
@@ -95,6 +95,33 @@ class Provider::Openai::BankStatementExtractor
 
       chunks << current_chunk.join("\n\n") if current_chunk.any?
       chunks
+    end
+
+    # A page longer than MAX_CHARS_PER_CHUNK used to be sent whole in a
+    # single oversized chunk, defeating the point of chunking: real bank
+    # statement pages (~4-6k chars) took long enough that the nano model
+    # would hit the client's read timeout on every retry attempt, so
+    # BankStatementExtractor#process_chunk consistently returned an empty
+    # transactions array (or garbage from a response cut mid-stream). Split
+    # on line boundaries so no chunk exceeds the limit.
+    def split_oversized_page(page_text)
+      lines = page_text.split("\n")
+      pieces = []
+      current = []
+      current_size = 0
+
+      lines.each do |line|
+        if current_size + line.length + 1 > MAX_CHARS_PER_CHUNK && current.any?
+          pieces << current.join("\n")
+          current = []
+          current_size = 0
+        end
+        current << line
+        current_size += line.length + 1
+      end
+
+      pieces << current.join("\n") if current.any?
+      pieces
     end
 
     MAX_CHUNK_ATTEMPTS = 3
@@ -235,21 +262,25 @@ class Provider::Openai::BankStatementExtractor
       txn["category"] || txn["type"]
     end
 
+    AMOUNT_FORMAT_RULE = <<~RULE.strip
+      Amounts use Paraguayan Guarani (PYG) format: "." is a THOUSANDS separator, not a decimal point -- PYG has no cents. "295.480" means 295480 (two hundred ninety-five thousand, four hundred eighty), NOT 295.48. Output amounts as plain integers with the dots removed (e.g. 295480), never as a value under 1000 unless the original text is genuinely that small.
+    RULE
+
     def instructions_with_metadata
       <<~INSTRUCTIONS.strip
         Extract bank statement data as JSON. Return:
-        {"bank_name":"...","account_holder":"...","account_number":"last 4 digits","statement_period":{"start_date":"YYYY-MM-DD","end_date":"YYYY-MM-DD"},"opening_balance":0.00,"closing_balance":0.00,"transactions":[{"date":"YYYY-MM-DD","description":"...","amount":-0.00}]}
+        {"bank_name":"...","account_holder":"...","account_number":"last 4 digits","statement_period":{"start_date":"YYYY-MM-DD","end_date":"YYYY-MM-DD"},"opening_balance":0,"closing_balance":0,"transactions":[{"date":"YYYY-MM-DD","description":"...","amount":-0}]}
 
-        Rules: Negative amounts for debits/expenses, positive for credits/deposits. Dates as YYYY-MM-DD. Extract ALL transactions. JSON only, no markdown.
+        Rules: Negative amounts for debits/expenses, positive for credits/deposits. Dates as YYYY-MM-DD. Extract ALL transactions. #{AMOUNT_FORMAT_RULE} JSON only, no markdown.
       INSTRUCTIONS
     end
 
     def instructions_transactions_only
       <<~INSTRUCTIONS.strip
         Extract transactions from bank statement text as JSON. Return:
-        {"transactions":[{"date":"YYYY-MM-DD","description":"...","amount":-0.00}]}
+        {"transactions":[{"date":"YYYY-MM-DD","description":"...","amount":-0}]}
 
-        Rules: Negative amounts for debits/expenses, positive for credits/deposits. Dates as YYYY-MM-DD. Extract ALL transactions. JSON only, no markdown.
+        Rules: Negative amounts for debits/expenses, positive for credits/deposits. Dates as YYYY-MM-DD. Extract ALL transactions. #{AMOUNT_FORMAT_RULE} JSON only, no markdown.
       INSTRUCTIONS
     end
 end
