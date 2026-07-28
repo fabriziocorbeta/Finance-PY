@@ -276,6 +276,28 @@ class Provider::Openai < Provider
     end
   end
 
+  def extract_receipt(image_content:, content_type:, model: "", family: nil)
+    with_provider_response do
+      effective_model = model.presence || VISION_MODEL
+
+      trace = create_langfuse_trace(
+        name: "openai.extract_receipt",
+        input: { image_size: image_content&.bytesize, content_type: content_type }
+      )
+
+      result = ReceiptExtractor.new(
+        client: bank_statement_client,
+        image_content: image_content,
+        content_type: content_type,
+        model: effective_model
+      ).extract
+
+      upsert_langfuse_trace(trace: trace, output: { transaction_count: result[:transactions].size })
+
+      result
+    end
+  end
+
   def chat_response(
     prompt,
     model:,

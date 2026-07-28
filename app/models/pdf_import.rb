@@ -74,10 +74,18 @@ class PdfImport < Import
     provider = Provider::Registry.get_provider(:openai)
     raise "AI provider not configured" unless provider
 
-    response = provider.extract_bank_statement(
-      pdf_content: pdf_file_content,
-      family: family
-    )
+    response = if document_type == "receipt"
+      provider.extract_receipt(
+        image_content: pdf_file_content,
+        content_type: pdf_file.content_type,
+        family: family
+      )
+    else
+      provider.extract_bank_statement(
+        pdf_content: pdf_file_content,
+        family: family
+      )
+    end
 
     unless response.success?
       error_message = response.error&.message || "Unknown extraction error"

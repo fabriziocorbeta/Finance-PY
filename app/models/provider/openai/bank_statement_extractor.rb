@@ -248,14 +248,25 @@ class Provider::Openai::BankStatementExtractor
       nil
     end
 
+    # PYG has no cents and uses "." as a thousands separator, so "295.480"
+    # is 295480, not 295.48. The previous implementation stripped everything
+    # but digits/dots/minus and called to_f, which turned "2.383.271" into
+    # 2.383 -- a ~1,000,000x error. It never fired in practice only because
+    # the text model returns real integers; the vision model used for
+    # receipts returns these as strings.
     def parse_amount(amount)
       return nil if amount.nil?
+      return amount.to_f if amount.is_a?(Numeric)
 
-      if amount.is_a?(Numeric)
-        amount.to_f
-      else
-        amount.to_s.gsub(/[^0-9.\-]/, "").to_f
-      end
+      cleaned = amount.to_s.gsub(/[^0-9.,\-]/, "")
+      return nil if cleaned.blank?
+
+      negative = cleaned.start_with?("-")
+      digits = cleaned.gsub(/[^0-9]/, "")
+      return nil if digits.blank?
+
+      value = digits.to_f
+      negative ? -value : value
     end
 
     def infer_category(txn)

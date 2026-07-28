@@ -138,6 +138,17 @@ class Provider::Openai::BankStatementExtractorTest < ActiveSupport::TestCase
     assert_includes names, "Gas Station"
   end
 
+  # NOTE: this test dates to the original "fork from Sure Finance" commit and
+  # originally asserted USD-style comma-thousands/dot-decimal parsing (e.g.
+  # "1,234.56" => 1234.56). That behavior directly contradicts
+  # AMOUNT_FORMAT_RULE (PYG uses "." as a thousands separator and has no
+  # cents) and is exactly the ~1,000,000x bug parse_amount was fixed for --
+  # see the "parses a PYG amount string with dot thousands separators" test
+  # below. The corrected parser treats "," and "." as separator noise to
+  # strip (not a decimal point) regardless of which one a model happens to
+  # emit, so a dollar-style string like "-$5.50" is read the same way PYG
+  # amounts are: digits-only, sign preserved. Expectations below reflect
+  # that corrected, intentional behavior.
   test "normalizes transaction amounts" do
     mock_response = {
       "choices" => [ {
@@ -165,8 +176,8 @@ class Provider::Openai::BankStatementExtractorTest < ActiveSupport::TestCase
 
     result = extractor.extract
 
-    assert_equal(-5.50, result[:transactions][0][:amount])
-    assert_equal 1234.56, result[:transactions][1][:amount]
+    assert_equal(-550.0, result[:transactions][0][:amount])
+    assert_equal 123456.0, result[:transactions][1][:amount]
     assert_equal(-100.0, result[:transactions][2][:amount])
   end
 
@@ -197,5 +208,17 @@ class Provider::Openai::BankStatementExtractorTest < ActiveSupport::TestCase
 
     # Should return empty transactions on parse error
     assert_equal [], result[:transactions]
+  end
+
+  test "parses a PYG amount string with dot thousands separators" do
+    extractor = Provider::Openai::BankStatementExtractor.new(
+      client: @client, pdf_content: "dummy", model: @model
+    )
+
+    assert_equal 295480.0, extractor.send(:parse_amount, "295.480")
+    assert_equal(-59096.0, extractor.send(:parse_amount, "-59.096"))
+    assert_equal 2383271.0, extractor.send(:parse_amount, "2.383.271")
+    assert_equal 1500.0, extractor.send(:parse_amount, 1500)
+    assert_equal(-1500.0, extractor.send(:parse_amount, -1500))
   end
 end
