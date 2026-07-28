@@ -102,7 +102,13 @@ services:
   # Usage:
   #   docker compose -f compose.prod.yml --profile test up -d test-db
   #   docker compose -f compose.prod.yml --profile test run --rm test-runner
-  #   docker compose -f compose.prod.yml --profile test down
+  #
+  # WARNING: to stop test-db afterward, name it explicitly:
+  #   docker compose -f compose.prod.yml stop test-db && docker compose -f compose.prod.yml rm -f test-db
+  # `docker compose --profile test down` (no service name) tears down the
+  # ENTIRE stack -- web/worker/redis/caddy included, not just the profile's
+  # own services -- and took production down for real on 2026-07-28 before
+  # this warning existed. Never run a bare `down` with this profile flag.
   test-db:
     image: postgres:17
     profiles: ["test"]
