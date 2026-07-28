@@ -125,7 +125,12 @@ services:
     profiles: ["test"]
     environment:
       RAILS_ENV: test
-      DATABASE_URL: postgresql://postgres:postgres@test-db:5432/postgres
+      # Must differ from test-db's bootstrap POSTGRES_DB (postgres) --
+      # db:test:purge drops and recreates this database on every run, and
+      # Postgres refuses to drop the database a connection is currently
+      # using. Rails creates financespy_test itself via the bootstrap
+      # "postgres" database the first time db:test:prepare runs.
+      DATABASE_URL: postgresql://postgres:postgres@test-db:5432/financespy_test
       REDIS_URL: redis://redis:6379/2
       SECRET_KEY_BASE: test-secret-key-base-not-used-for-anything-real
     depends_on:
