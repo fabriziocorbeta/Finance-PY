@@ -41,14 +41,20 @@ class Provider::Openai::PdfProcessorTest < ActiveSupport::TestCase
     # PDF::Reader must never see a JPEG either.
     processor.expects(:process_with_text_extraction).never
 
-    @client.stubs(:chat).returns(
+    captured = nil
+    @client.expects(:chat).with { |**kwargs| captured = kwargs[:parameters]; true }.returns(
       "choices" => [ { "message" => { "content" => '{"document_type":"receipt","summary":"a receipt"}' } } ]
     )
 
     result = processor.process
 
-    # Verify that an image was processed (result should be present)
     assert result.present?, "Expected processing to return a result"
     assert_equal "receipt", result.document_type, "Expected receipt document type"
+
+    image_part = captured[:messages].last[:content].find { |c| c[:type] == "image_url" }
+    assert image_part.present?, "expected an image_url part in the vision request"
+    assert image_part[:image_url][:url].start_with?("data:image/jpeg;base64,"),
+      "expected the real content type in the data URL, got: #{image_part[:image_url][:url][0..40]}"
+    assert_equal Provider::Openai::VISION_MODEL, captured[:model]
   end
 end

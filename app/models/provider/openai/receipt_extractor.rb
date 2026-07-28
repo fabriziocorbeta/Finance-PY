@@ -1,4 +1,6 @@
 class Provider::Openai::ReceiptExtractor
+  include Provider::Openai::Concerns::PygAmount
+
   attr_reader :client, :image_content, :content_type, :model
 
   def initialize(client:, image_content:, content_type:, model:)
@@ -73,17 +75,6 @@ class Provider::Openai::ReceiptExtractor
       {}
     end
 
-    # Reuses BankStatementExtractor's fixed PYG parsing logic (dot as
-    # thousands separator, no cents) instead of duplicating it. `.allocate`
-    # avoids needing a full instance (whose `initialize` requires
-    # `pdf_content`, which is meaningless here) -- parse_amount doesn't touch
-    # any instance state, so an unallocated-but-uninitialized receiver is safe.
-    def parse_amount(amount)
-      Provider::Openai::BankStatementExtractor
-        .allocate
-        .send(:parse_amount, amount)
-    end
-
     def parse_date(date_str)
       return Date.current.strftime("%Y-%m-%d") if date_str.blank?
 
@@ -102,7 +93,7 @@ class Provider::Openai::ReceiptExtractor
         - "merchant" is the business name printed on the receipt.
         - "date" is the purchase date, as YYYY-MM-DD.
         - "amount" is the FINAL TOTAL paid (not a subtotal, not a single line item).
-        - #{Provider::Openai::BankStatementExtractor::AMOUNT_FORMAT_RULE}
+        - #{AMOUNT_FORMAT_RULE}
         - JSON only, no markdown, no explanation.
       INSTRUCTIONS
     end
