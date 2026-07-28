@@ -179,7 +179,11 @@ class Provider::Openai::BankStatementExtractorTest < ActiveSupport::TestCase
       } ]
     }
 
-    @client.expects(:chat).returns(mock_response)
+    # Malformed content never satisfies "transactions present", so process_chunk
+    # retries every attempt up to MAX_CHUNK_ATTEMPTS (added in a later session to
+    # recover from occasional model garbage) before giving up and returning the
+    # empty-transactions result from the last attempt.
+    @client.expects(:chat).returns(mock_response).times(Provider::Openai::BankStatementExtractor::MAX_CHUNK_ATTEMPTS)
 
     extractor = Provider::Openai::BankStatementExtractor.new(
       client: @client,
