@@ -21,6 +21,9 @@ x-rails-env: &rails_env
   # AI Assistant vía NVIDIA API Catalog (endpoint OpenAI-compatible, modelos open-weight)
   OPENAI_ACCESS_TOKEN: ${OPENAI_ACCESS_TOKEN:-}
   OPENAI_URI_BASE: ${OPENAI_URI_BASE:-}
+  # Android purchase-notification webhook (POST /webhooks/android_purchase)
+  ANDROID_WEBHOOK_TOKEN: ${ANDROID_WEBHOOK_TOKEN:-}
+  ANDROID_WEBHOOK_FAMILY_ID: ${ANDROID_WEBHOOK_FAMILY_ID:-}
   OPENAI_MODEL: ${OPENAI_MODEL:-}
 
 services:
