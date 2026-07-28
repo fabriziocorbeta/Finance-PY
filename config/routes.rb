@@ -593,6 +593,7 @@ Rails.application.routes.draw do
     post "plaid"
     post "plaid_eu"
     post "stripe"
+    post "android_purchase"
   end
 
   get "redis-configuration-error", to: "pages#redis_configuration_error"
