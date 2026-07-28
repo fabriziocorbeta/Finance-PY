@@ -97,6 +97,20 @@ class ImportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal I18n.t("imports.create.pdf_processing"), flash[:notice]
   end
 
+  test "uploading a receipt photo creates a PdfImport" do
+    file = Rack::Test::UploadedFile.new(
+      Rails.root.join("test/fixtures/files/receipt.jpg"), "image/jpeg"
+    )
+
+    assert_difference -> { PdfImport.count }, 1 do
+      post imports_path, params: { import: { import_file: file } }
+    end
+
+    import = PdfImport.order(created_at: :desc).first
+    assert import.pdf_file.attached?
+    assert_equal "image/jpeg", import.pdf_file.content_type
+  end
+
   test "rejects unsupported document type for DocumentImport option" do
     adapter = mock("vector_store_adapter")
     adapter.stubs(:supported_extensions).returns(%w[.pdf .txt])

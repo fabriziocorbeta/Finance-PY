@@ -1,6 +1,8 @@
 class ImportsController < ApplicationController
   include SettingsHelper
 
+  IMAGE_IMPORT_EXTENSIONS = %w[.jpg .jpeg .png].freeze
+
   before_action :set_import, only: %i[show update publish destroy revert apply_template]
 
   def update
@@ -60,6 +62,12 @@ class ImportsController < ApplicationController
         redirect_to new_import_path, alert: t("imports.create.invalid_pdf")
         return
       end
+      create_pdf_import(file)
+      return
+    end
+
+    # Handle receipt photos - process with AI, same path as PDFs
+    if file.present? && %w[image/jpeg image/png].include?(file.content_type)
       create_pdf_import(file)
       return
     end
@@ -179,6 +187,15 @@ class ImportsController < ApplicationController
           return
         end
 
+        create_pdf_import(file)
+        return
+      end
+
+      # A photographed receipt takes the same path as a PDF: PdfImport holds
+      # the bytes, ProcessPdfJob classifies them, and a `receipt`
+      # classification triggers extraction. Skips valid_pdf_file?, which
+      # checks for a %PDF- magic header an image will never have.
+      if IMAGE_IMPORT_EXTENSIONS.include?(ext)
         create_pdf_import(file)
         return
       end
