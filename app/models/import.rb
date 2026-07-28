@@ -7,7 +7,7 @@ class Import < ApplicationRecord
   ALLOWED_CSV_MIME_TYPES = %w[text/csv text/plain application/vnd.ms-excel application/csv].freeze
   ALLOWED_PDF_MIME_TYPES = %w[application/pdf].freeze
 
-  DOCUMENT_TYPES = %w[bank_statement credit_card_statement investment_statement financial_document contract other].freeze
+  DOCUMENT_TYPES = %w[bank_statement credit_card_statement investment_statement receipt financial_document contract other].freeze
 
   TYPES = %w[TransactionImport TradeImport AccountImport MintImport CategoryImport RuleImport PdfImport QifImport SureImport].freeze
   SIGNAGE_CONVENTIONS = %w[inflows_positive inflows_negative]

@@ -92,7 +92,7 @@ class PdfImport < Import
   end
 
   def statement_with_transactions?
-    document_type.in?(%w[bank_statement credit_card_statement])
+    document_type.in?(%w[bank_statement credit_card_statement receipt])
   end
 
   def has_extracted_transactions?

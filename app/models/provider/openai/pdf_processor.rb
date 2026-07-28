@@ -46,7 +46,8 @@ class Provider::Openai::PdfProcessor
          - `bank_statement`: A bank account statement showing transactions, balances, and account activity. This includes mobile money statements (like M-PESA, Venmo, PayPal, Cash App), digital wallet statements, and any statement showing a list of financial transactions with dates and amounts.
          - `credit_card_statement`: A credit card statement showing charges, payments, and balances
          - `investment_statement`: An investment/brokerage statement showing holdings, trades, or portfolio performance
-         - `financial_document`: General financial documents like tax forms, receipts, invoices, or financial reports
+         - `receipt`: A single purchase receipt, factura, or invoice for one purchase — one merchant, one date, one total amount. Includes photographed paper receipts.
+         - `financial_document`: General financial paperwork that is not a single purchase and not a statement — tax forms, financial reports, payslips.
          - `contract`: Legal agreements, loan documents, terms of service, or policy documents
          - `other`: Any document that doesn't fit the above categories
 

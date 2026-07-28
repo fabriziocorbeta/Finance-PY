@@ -169,6 +169,7 @@ es:
       bank_statement: Extracto bancario
       credit_card_statement: Extracto de tarjeta de crédito
       investment_statement: Extracto de inversiones
+      receipt: Factura
       financial_document: Documento financiero
       contract: Contrato
       other: Otro documento

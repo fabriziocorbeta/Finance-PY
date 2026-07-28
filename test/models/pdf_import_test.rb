@@ -163,4 +163,13 @@ class PdfImportTest < ActiveSupport::TestCase
 
     assert_not ActiveStorage::Attachment.exists?(attachment_id)
   end
+
+  test "receipt document type is eligible for transaction extraction" do
+    import = PdfImport.new(document_type: "receipt")
+    assert import.statement_with_transactions?
+  end
+
+  test "receipt is an accepted document type" do
+    assert_includes Import::DOCUMENT_TYPES, "receipt"
+  end
 end

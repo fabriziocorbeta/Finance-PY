@@ -232,6 +232,7 @@ en:
       bank_statement: Bank Statement
       credit_card_statement: Credit Card Statement
       investment_statement: Investment Statement
+      receipt: Receipt
       financial_document: Financial Document
       contract: Contract
       other: Other Document
