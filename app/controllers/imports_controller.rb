@@ -66,12 +66,6 @@ class ImportsController < ApplicationController
       return
     end
 
-    # Handle receipt photos - process with AI, same path as PDFs
-    if file.present? && %w[image/jpeg image/png].include?(file.content_type)
-      create_pdf_import(file)
-      return
-    end
-
     type = params.dig(:import, :type).to_s
     type = "TransactionImport" unless Import::TYPES.include?(type)
 

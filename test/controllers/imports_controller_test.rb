@@ -98,12 +98,16 @@ class ImportsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "uploading a receipt photo creates a PdfImport" do
+    adapter = mock("vector_store_adapter")
+    adapter.stubs(:supported_extensions).returns(%w[.pdf .jpg .jpeg .png])
+    VectorStore::Registry.stubs(:adapter).returns(adapter)
+
     file = Rack::Test::UploadedFile.new(
       Rails.root.join("test/fixtures/files/receipt.jpg"), "image/jpeg"
     )
 
     assert_difference -> { PdfImport.count }, 1 do
-      post imports_path, params: { import: { import_file: file } }
+      post imports_path, params: { import: { type: "DocumentImport", import_file: file } }
     end
 
     import = PdfImport.order(created_at: :desc).first
