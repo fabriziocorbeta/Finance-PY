@@ -50,7 +50,8 @@ class PdfImport < Import
 
     response = provider.process_pdf(
       pdf_content: pdf_file_content,
-      family: family
+      family: family,
+      content_type: pdf_file.content_type
     )
 
     unless response.success?

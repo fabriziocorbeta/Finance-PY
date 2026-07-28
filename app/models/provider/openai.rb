@@ -28,6 +28,13 @@ class Provider::Openai < Provider
   # same real statement (~21s/chunk vs nano's consistent empty result).
   BANK_STATEMENT_MODEL = ENV.fetch("OPENAI_BANK_STATEMENT_MODEL", "openai/gpt-oss-20b")
 
+  # Image inputs (photographed receipts) need a genuinely vision-capable model:
+  # BANK_STATEMENT_MODEL (a text model) and the chat model both fail on images.
+  # Verified live against a real financial-document image -- the two other
+  # vision models on this endpoint (llama-3.2-90b-vision-instruct,
+  # gemma-3-12b-it) return 404 on this account, so do not substitute them.
+  VISION_MODEL = ENV.fetch("OPENAI_VISION_MODEL", "nvidia/nemotron-nano-12b-v2-vl")
+
   def initialize(access_token, uri_base: nil, model: nil)
     @access_token = access_token
     client_options = { access_token: access_token }
@@ -221,7 +228,7 @@ class Provider::Openai < Provider
     VISION_CAPABLE_MODEL_PREFIXES.any? { |prefix| model.start_with?(prefix) }
   end
 
-  def process_pdf(pdf_content:, model: "", family: nil)
+  def process_pdf(pdf_content:, model: "", family: nil, content_type: nil)
     with_provider_response do
       effective_model = model.presence || @default_model
       raise Error, "Model does not support PDF/vision processing: #{effective_model}" unless supports_pdf_processing?(model: effective_model)
@@ -238,7 +245,8 @@ class Provider::Openai < Provider
         custom_provider: custom_provider?,
         langfuse_trace: trace,
         family: family,
-        max_response_tokens: max_response_tokens
+        max_response_tokens: max_response_tokens,
+        content_type: content_type
       ).process
 
       upsert_langfuse_trace(trace: trace, output: result.to_h)

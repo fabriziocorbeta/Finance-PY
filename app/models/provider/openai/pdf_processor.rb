@@ -1,9 +1,9 @@
 class Provider::Openai::PdfProcessor
   include Provider::Openai::Concerns::UsageRecorder
 
-  attr_reader :client, :model, :pdf_content, :custom_provider, :langfuse_trace, :family, :max_response_tokens
+  attr_reader :client, :model, :pdf_content, :custom_provider, :langfuse_trace, :family, :max_response_tokens, :content_type
 
-  def initialize(client, model: "", pdf_content: nil, custom_provider: false, langfuse_trace: nil, family: nil, max_response_tokens:)
+  def initialize(client, model: "", pdf_content: nil, custom_provider: false, langfuse_trace: nil, family: nil, max_response_tokens:, content_type: nil)
     @client = client
     @model = model
     @pdf_content = pdf_content
@@ -11,6 +11,7 @@ class Provider::Openai::PdfProcessor
     @langfuse_trace = langfuse_trace
     @family = family
     @max_response_tokens = max_response_tokens
+    @content_type = content_type
   end
 
   def process
@@ -19,13 +20,15 @@ class Provider::Openai::PdfProcessor
       pdf_size: pdf_content&.bytesize
     })
 
-    # Try text extraction first (works with all models)
-    # Fall back to vision API with images if text extraction fails (for scanned PDFs)
-    response = begin
-      process_with_text_extraction
-    rescue Provider::Openai::Error => e
-      Rails.logger.warn("Text extraction failed: #{e.message}, trying vision API with images")
+    response = if image_input?
       process_with_vision
+    else
+      begin
+        process_with_text_extraction
+      rescue Provider::Openai::Error => e
+        Rails.logger.warn("Text extraction failed: #{e.message}, trying vision API with images")
+        process_with_vision
+      end
     end
 
     span&.end(output: response.to_h)
@@ -148,26 +151,31 @@ class Provider::Openai::PdfProcessor
     end
 
     def process_with_vision
-      effective_model = model.presence || Provider::Openai::DEFAULT_MODEL
+      effective_model = image_input? ? Provider::Openai::VISION_MODEL : (model.presence || Provider::Openai::DEFAULT_MODEL)
 
-      # Convert PDF to images using pdftoppm
-      images_base64 = convert_pdf_to_images
-      raise Provider::Openai::Error, "Could not convert PDF to images" if images_base64.blank?
+      if image_input?
+        images = [ [ Base64.strict_encode64(pdf_content), content_type ] ]
+      else
+        converted = convert_pdf_to_images
+        raise Provider::Openai::Error, "Could not convert PDF to images" if converted.blank?
 
-      # Build message content with images (max 5 pages to avoid token limits)
+        # pdftoppm always writes PNG (see convert_pdf_to_images' -png flag)
+        images = converted.map { |b64| [ b64, "image/png" ] }
+      end
+
       content = []
-      images_base64.first(5).each do |img_base64|
+      images.first(5).each do |img_base64, img_type|
         content << {
           type: "image_url",
           image_url: {
-            url: "data:image/png;base64,#{img_base64}",
+            url: "data:#{img_type};base64,#{img_base64}",
             detail: "low"
           }
         }
       end
       content << {
         type: "text",
-        text: "Please analyze this PDF document (#{images_base64.size} pages total, showing first #{[ images_base64.size, 5 ].min}) and respond with valid JSON only."
+        text: "Please analyze this document (#{images.size} page(s) total, showing first #{[ images.size, 5 ].min}) and respond with valid JSON only."
       }
 
       # Note: response_format is not compatible with vision, so we ask for JSON in the prompt
@@ -182,13 +190,13 @@ class Provider::Openai::PdfProcessor
 
       response = client.chat(parameters: params)
 
-      Rails.logger.info("Tokens used to process PDF via vision: #{response.dig("usage", "total_tokens")}")
+      Rails.logger.info("Tokens used to process document via vision: #{response.dig("usage", "total_tokens")}")
 
       record_usage(
         effective_model,
         response.dig("usage"),
         operation: "process_pdf_vision",
-        metadata: { pdf_size: pdf_content&.bytesize, pages: images_base64.size }
+        metadata: { pdf_size: pdf_content&.bytesize, pages: images.size }
       )
 
       parse_response_generic(response)
@@ -276,5 +284,9 @@ class Provider::Openai::PdfProcessor
       end
 
       raise Provider::Openai::Error, "Could not parse JSON from PDF processing response: #{raw.truncate(200)}"
+    end
+
+    def image_input?
+      content_type.to_s.start_with?("image/")
     end
 end
