@@ -88,6 +88,56 @@ services:
     networks:
       - financespy_net
 
+  # Ad hoc test verification on the VM, isolated from the real Supabase DB.
+  # DATABASE_URL is a single global env var Rails applies to every RAILS_ENV
+  # regardless of what config/database.yml says per-environment -- there was
+  # no TEST_DATABASE_URL, so `bin/rails test` run against the `web`/`worker`
+  # services hit the same production Supabase database as `production`
+  # (confirmed live: Family.pluck(:name) identical under RAILS_ENV=test and
+  # the default env). CI already runs the real suite safely against its own
+  # ephemeral postgres:17 service (see .github/workflows/ci.yml) -- this
+  # mirrors that setup for local/VM verification. Gated behind the "test"
+  # profile so neither service starts with a normal `docker compose up`.
+  #
+  # Usage:
+  #   docker compose -f compose.prod.yml --profile test up -d test-db
+  #   docker compose -f compose.prod.yml --profile test run --rm test-runner
+  #   docker compose -f compose.prod.yml --profile test down
+  test-db:
+    image: postgres:17
+    profiles: ["test"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - financespy_net
+
+  test-runner:
+    build: .
+    profiles: ["test"]
+    environment:
+      RAILS_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@test-db:5432/postgres
+      REDIS_URL: redis://redis:6379/2
+      SECRET_KEY_BASE: test-secret-key-base-not-used-for-anything-real
+    depends_on:
+      test-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    entrypoint: []
+    command: ["bash", "-c", "bin/rails db:test:prepare && bin/rails test"]
+    networks:
+      - financespy_net
+
 volumes:
   app-storage:
   redis-data:
