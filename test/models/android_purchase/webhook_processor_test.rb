@@ -100,4 +100,130 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
     entry = @account.entries.order(created_at: :desc).first
     assert_equal Date.current, entry.date
   end
+
+  test "raises Error for a missing amount instead of silently creating a zero-amount entry" do
+    error = assert_raises(AndroidPurchase::WebhookProcessor::Error) do
+      AndroidPurchase::WebhookProcessor.new(
+        account_id: @account.id,
+        amount: nil,
+        merchant: "x",
+        item: "x",
+        timestamp: "2026-07-28T09:00:00-04:00",
+        raw_text: "x"
+      ).process
+    end
+    assert_match(/amount/, error.message)
+  end
+
+  test "raises Error for a non-numeric amount" do
+    error = assert_raises(AndroidPurchase::WebhookProcessor::Error) do
+      AndroidPurchase::WebhookProcessor.new(
+        account_id: @account.id,
+        amount: "not-a-number",
+        merchant: "x",
+        item: "x",
+        timestamp: "2026-07-28T09:00:00-04:00",
+        raw_text: "x"
+      ).process
+    end
+    assert_match(/amount/, error.message)
+  end
+
+  test "accepts a numeric amount sent as a string" do
+    result = AndroidPurchase::WebhookProcessor.new(
+      account_id: @account.id,
+      amount: "7500",
+      merchant: "Google Play",
+      item: "String amount",
+      timestamp: "2026-07-28T09:00:00-04:00",
+      raw_text: "x"
+    ).process
+
+    assert_equal :created, result
+    entry = @account.entries.order(created_at: :desc).first
+    assert_equal(-7500.0, entry.amount.to_f)
+  end
+
+  test "treats a duplicate that hits the DB unique index (not just the app-level validation) as idempotent" do
+    params = {
+      account_id: @account.id,
+      amount: 33000,
+      merchant: "Google Play",
+      item: "Race condition test",
+      timestamp: "2026-07-28T09:30:00-04:00",
+      raw_text: "x"
+    }
+
+    AndroidPurchase::WebhookProcessor.new(params).process
+
+    # Simulate two near-simultaneous requests: the app-level uniqueness
+    # validation only sees committed rows, so stub it to report "not taken"
+    # (as it would for a request racing just ahead of the first one's
+    # commit), forcing the actual insert to hit the DB's unique index and
+    # raise ActiveRecord::RecordNotUnique instead of ActiveRecord::RecordInvalid.
+    Entry.any_instance.stubs(:valid?).returns(true)
+
+    assert_no_difference -> { Entry.count } do
+      result = AndroidPurchase::WebhookProcessor.new(params).process
+      assert_equal :duplicate, result
+    end
+  end
+
+  test "does not require ANDROID_WEBHOOK_FAMILY_ID and allows any account when unset" do
+    assert_nil ENV["ANDROID_WEBHOOK_FAMILY_ID"]
+
+    result = AndroidPurchase::WebhookProcessor.new(
+      account_id: @account.id,
+      amount: 1000,
+      merchant: "Google Play",
+      item: "x",
+      timestamp: "2026-07-28T09:00:00-04:00",
+      raw_text: "x"
+    ).process
+
+    assert_equal :created, result
+  end
+
+  test "rejects an account_id belonging to a different family than ANDROID_WEBHOOK_FAMILY_ID, with the same message as an unknown account" do
+    other_family = families(:inactive_trial)
+    other_account = Account.create!(
+      family: other_family, name: "Other Family Account", balance: 0, currency: "USD",
+      accountable: Depository.new
+    )
+
+    previous = ENV["ANDROID_WEBHOOK_FAMILY_ID"]
+    ENV["ANDROID_WEBHOOK_FAMILY_ID"] = @account.family_id
+
+    error = assert_raises(AndroidPurchase::WebhookProcessor::Error) do
+      AndroidPurchase::WebhookProcessor.new(
+        account_id: other_account.id,
+        amount: 1000,
+        merchant: "x",
+        item: "x",
+        timestamp: "2026-07-28T09:00:00-04:00",
+        raw_text: "x"
+      ).process
+    end
+    assert_match(/Unknown account_id/, error.message)
+  ensure
+    ENV["ANDROID_WEBHOOK_FAMILY_ID"] = previous
+  end
+
+  test "allows an account_id in the configured family when ANDROID_WEBHOOK_FAMILY_ID is set" do
+    previous = ENV["ANDROID_WEBHOOK_FAMILY_ID"]
+    ENV["ANDROID_WEBHOOK_FAMILY_ID"] = @account.family_id
+
+    result = AndroidPurchase::WebhookProcessor.new(
+      account_id: @account.id,
+      amount: 1000,
+      merchant: "Google Play",
+      item: "x",
+      timestamp: "2026-07-28T09:00:00-04:00",
+      raw_text: "x"
+    ).process
+
+    assert_equal :created, result
+  ensure
+    ENV["ANDROID_WEBHOOK_FAMILY_ID"] = previous
+  end
 end

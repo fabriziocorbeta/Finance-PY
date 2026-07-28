@@ -8,13 +8,20 @@ class AndroidPurchase::WebhookProcessor
     @item = params[:item].to_s
     @timestamp = params[:timestamp].to_s
     @raw_text = params[:raw_text].to_s
+    @expected_family_id = ENV["ANDROID_WEBHOOK_FAMILY_ID"]
   end
 
   def process
     raise Error, "account_id is required" if @account_id.blank?
+    raise Error, "amount is required and must be numeric" if numeric_amount.nil?
 
     account = Account.find_by(id: @account_id)
-    raise Error, "Unknown account_id: #{@account_id}" unless account
+    # Same "Unknown account_id" message for both "doesn't exist" and "wrong
+    # family" so a caller with a valid token can't use this to enumerate
+    # which account ids exist in other families.
+    if account.nil? || (@expected_family_id.present? && account.family_id != @expected_family_id)
+      raise Error, "Unknown account_id: #{@account_id}"
+    end
 
     # Built from Entry's side (not Transaction.new(entry: Entry.new(...)))
     # so that Entry -- the record whose uniqueness validation matters for
@@ -30,7 +37,7 @@ class AndroidPurchase::WebhookProcessor
       account: account,
       date: parsed_date,
       name: description,
-      amount: -@amount.to_f.abs,
+      amount: -numeric_amount.abs,
       currency: account.currency,
       source: "google_play",
       external_id: external_id,
@@ -43,9 +50,21 @@ class AndroidPurchase::WebhookProcessor
     raise unless entry.errors.of_kind?(:external_id, :taken)
 
     :duplicate
+  rescue ActiveRecord::RecordNotUnique
+    # Two near-simultaneous duplicate POSTs (a real Tasker retry-after-network-blip
+    # scenario) can both pass the app-level uniqueness validation before either
+    # commits; the second INSERT then hits the DB's unique index directly. Same
+    # idempotent outcome as the ActiveRecord::RecordInvalid case above.
+    :duplicate
   end
 
   private
+
+    def numeric_amount
+      Float(@amount.to_s)
+    rescue ArgumentError, TypeError
+      nil
+    end
 
     def external_id
       Digest::SHA256.hexdigest("#{@amount}|#{@timestamp}|#{@merchant}")
