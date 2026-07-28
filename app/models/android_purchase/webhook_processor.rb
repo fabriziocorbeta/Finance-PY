@@ -61,11 +61,16 @@ class AndroidPurchase::WebhookProcessor
   private
 
     def numeric_amount
-      Float(@amount.to_s)
+      BigDecimal(@amount.to_s)
     rescue ArgumentError, TypeError
       nil
     end
 
+    # Deliberately excludes account_id: the DB unique index
+    # (index_entries_on_account_source_and_external_id) already scopes by
+    # account_id, so the same amount/timestamp/merchant hitting two
+    # different accounts (not currently possible -- one account per Tasker
+    # profile) would not collide across accounts.
     def external_id
       Digest::SHA256.hexdigest("#{@amount}|#{@timestamp}|#{@merchant}")
     end
