@@ -206,11 +206,22 @@ class ImportsController < ApplicationController
       end
     end
 
+    # Android's native file picker sometimes only offers "Files" (not
+    # "Photos"/gallery) when the <input accept> list is extension-only --
+    # adding the actual image MIME types alongside the extensions makes the
+    # picker reliably surface the photo gallery too. Extensions stay for
+    # everything else (mixing MIME types and extensions in one accept list
+    # is valid HTML).
+    IMAGE_MIME_TYPES_BY_EXTENSION = { ".jpg" => "image/jpeg", ".jpeg" => "image/jpeg", ".png" => "image/png" }.freeze
+
     def document_upload_supported_extensions
       adapter = VectorStore.adapter
       return [] unless adapter
 
-      adapter.supported_extensions.map(&:downcase).uniq.sort
+      extensions = adapter.supported_extensions.map(&:downcase).uniq
+      mime_types = extensions.filter_map { |ext| IMAGE_MIME_TYPES_BY_EXTENSION[ext] }.uniq
+
+      (extensions + mime_types).sort
     end
 
     def document_upload_request?
