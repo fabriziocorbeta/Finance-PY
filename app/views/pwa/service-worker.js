@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const RUNTIME_CACHE = 'runtime-v1';
 const OFFLINE_ASSETS = [
   '/offline.html',
