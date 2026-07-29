@@ -218,7 +218,7 @@ class ImportsController < ApplicationController
       adapter = VectorStore.adapter
       return [] unless adapter
 
-      extensions = adapter.supported_extensions.map(&:downcase).uniq
+      extensions = (adapter.supported_extensions.map(&:downcase) + IMAGE_IMPORT_EXTENSIONS).uniq
       mime_types = extensions.filter_map { |ext| IMAGE_MIME_TYPES_BY_EXTENSION[ext] }.uniq
 
       (extensions + mime_types).sort
