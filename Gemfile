@@ -12,6 +12,7 @@ gem "redis", "~> 5.4"
 # Deployment
 gem "puma", ">= 5.0"
 gem "bootsnap", require: false
+gem "foreman"
 
 # Assets
 gem "importmap-rails"
@@ -131,7 +132,6 @@ group :development do
   gem "benchmark-ips"
   gem "stackprof"
   gem "derailed_benchmarks"
-  gem "foreman"
 end
 
 group :development, :test do
