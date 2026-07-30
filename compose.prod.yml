@@ -27,9 +27,16 @@ x-rails-env: &rails_env
   OPENAI_MODEL: ${OPENAI_MODEL:-}
 
 services:
+  # Resource limits below (mem_limit/cpus) exist because this stack shares a
+  # machine other people use normally (a household PC, not a dedicated VM) --
+  # without a cap, Puma/Sidekiq/Redis have no reason not to grow into all
+  # available RAM/CPU. Budget: ~2.7GB total, well under the ~4-5GB ceiling
+  # agreed for the whole app so the rest of the machine stays responsive.
   caddy:
     image: caddy:2
     restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.25
     ports:
       - "80:80"
       - "443:443"
@@ -44,11 +51,14 @@ services:
 
   web:
     build: .
+    mem_limit: 1536m
+    cpus: 1.0
     volumes:
       - app-storage:/rails/storage
     restart: unless-stopped
     environment:
       <<: *rails_env
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
     depends_on:
       redis:
         condition: service_healthy
@@ -60,7 +70,9 @@ services:
 
   worker:
     build: .
-    command: bundle exec sidekiq
+    command: bundle exec sidekiq -c 5
+    mem_limit: 768m
+    cpus: 0.5
     volumes:
       - app-storage:/rails/storage
     restart: unless-stopped
@@ -78,6 +90,9 @@ services:
   redis:
     image: redis:8.8
     restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.25
+    command: redis-server --maxmemory 200mb --maxmemory-policy allkeys-lru
     volumes:
       - redis-data:/data
     healthcheck:
