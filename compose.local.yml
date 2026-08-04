@@ -10,9 +10,13 @@
 # Ver docs/cloudflared-config.yml.example
 #
 # Límites de recursos (para no afectar a otras personas usando esta PC):
-# Total: ~3.1GB RAM (bajo el techo de 4GB) / ~1.6 cores de 4 disponibles.
-# cpu_shares bajo en todos los servicios: en contención, el uso normal de la
-# PC gana prioridad sobre estos contenedores.
+# Total: ~2.7GB RAM / ~2 cores. Números sincronizados 2026-08-04 con los
+# mismos límites ya aplicados a compose.prod.yml (commit 5656158,
+# 2026-07-30) para el mismo escenario de PC compartida -- incluye el fix de
+# WEB_CONCURRENCY=1 que evita el OOM real encontrado durante el intento de
+# Render (Puma en cluster mode con 2 workers no entra en una instancia
+# chica). cpu_shares bajo en todos los servicios: en contención, el uso
+# normal de la PC gana prioridad sobre estos contenedores.
 
 x-rails-env: &rails_env
   SECRET_KEY_BASE: ${SECRET_KEY_BASE:?SECRET_KEY_BASE requerido en .env.local}
@@ -46,7 +50,7 @@ services:
     networks:
       - financespy_net
     mem_limit: 128m
-    cpus: 0.1
+    cpus: 0.25
     cpu_shares: 256
 
   web:
@@ -56,6 +60,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *rails_env
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
     depends_on:
       redis:
         condition: service_healthy
@@ -64,13 +69,13 @@ services:
       - 1.1.1.1
     networks:
       - financespy_net
-    mem_limit: 2g
+    mem_limit: 1536m
     cpus: 1.0
     cpu_shares: 512
 
   worker:
     build: .
-    command: bundle exec sidekiq
+    command: bundle exec sidekiq -c 5
     volumes:
       - app-storage:/rails/storage
     restart: unless-stopped
@@ -85,12 +90,13 @@ services:
     networks:
       - financespy_net
     mem_limit: 768m
-    cpus: 0.4
+    cpus: 0.5
     cpu_shares: 512
 
   redis:
-    image: redis:latest
+    image: redis:8.8
     restart: unless-stopped
+    command: redis-server --maxmemory 200mb --maxmemory-policy allkeys-lru
     volumes:
       - redis-data:/data
     healthcheck:
@@ -101,7 +107,7 @@ services:
     networks:
       - financespy_net
     mem_limit: 256m
-    cpus: 0.1
+    cpus: 0.25
     cpu_shares: 256
 
 volumes:
