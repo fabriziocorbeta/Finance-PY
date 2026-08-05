@@ -1,6 +1,11 @@
 {
 	"devDependencies": {
-		"@biomejs/biome": "^1.9.3"
+		"@biomejs/biome": "^1.9.3",
+		"@capacitor/cli": "^8.5.0"
+	},
+	"dependencies": {
+		"@capacitor/android": "^8.5.0",
+		"@capacitor/core": "^8.5.0"
 	},
 	"name": "sure",
 	"version": "1.0.0",
@@ -13,7 +18,10 @@
 		"format:check": "biome format",
 		"format": "biome format --write",
 		"tokens:build": "node bin/tokens.mjs",
-		"tokens:check": "node bin/tokens.mjs && git diff --quiet -- app/assets/tailwind/sure-design-system/_generated.css"
+		"tokens:check": "node bin/tokens.mjs && git diff --quiet -- app/assets/tailwind/sure-design-system/_generated.css",
+		"android:add": "cap add android",
+		"android:sync": "cap sync android",
+		"android:open": "cap open android"
 	},
 	"author": "",
 	"license": "ISC"

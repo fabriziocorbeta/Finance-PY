@@ -127,3 +127,17 @@ logs/security/
 
 # Added by codex
 .codex
+
+# Capacitor / Android
+# El proyecto nativo lo genera `npx cap add android` y se puede regenerar en
+# cualquier momento desde capacitor.config.json, asi que no se versiona.
+# OJO: no confundir con mobile/android/, que es el scaffold Flutter heredado
+# del fork de Sure y no se usa.
+/android/
+node_modules/
+
+# Keystores de firma: NUNCA commitear. Perder el keystore de release significa
+# no poder volver a firmar actualizaciones de la misma app en Play Store.
+*.keystore
+*.jks
+keystore.properties

@@ -1,0 +1,12 @@
+{
+  "appId": "py.com.cdco.financespy",
+  "appName": "FinancePY",
+  "webDir": "public",
+  "server": {
+    "url": "https://finance.cd-co.com.py",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
