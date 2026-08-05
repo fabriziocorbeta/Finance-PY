@@ -107,9 +107,11 @@ Rails.application.configure do
   config.active_record.dump_schema_after_migration = false
 
   # Enable DNS rebinding protection and other `Host` header attacks.
-  config.hosts = [
-    "finance.cd-co.com.py"
-  ]
+  # APP_DOMAIN ya es configurable y se usa en el resto de la app; antes esta
+  # lista lo ignoraba y hardcodeaba el dominio, lo que rompia cualquier
+  # despliegue en otro host (incluido correr el stack en local para desarrollo).
+  # El fallback mantiene el valor historico si la variable viniera vacia.
+  config.hosts = [ ENV["APP_DOMAIN"].presence || "finance.cd-co.com.py" ]
   # Skip DNS rebinding protection for the default health check endpoint.
   config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 
