@@ -1,0 +1,119 @@
+# Stack de desarrollo aislado para la rama feature/android-offline-phase1.
+# NO toca los containers de produccion (financespy-web-1/worker-1/redis-1/caddy-1).
+# Puerto 3001 en loopback, red propia.
+# Levantar SIEMPRE con: docker compose -p financespy-wt -f compose.worktree.yml
+
+x-rails-env: &rails_env
+  SECRET_KEY_BASE: ${SECRET_KEY_BASE:?requerido}
+  DATABASE_URL: ${DATABASE_URL:?requerido}
+  SELF_HOSTED: "true"
+  RAILS_FORCE_SSL: "false"
+  RAILS_ASSUME_SSL: "false"
+  APP_DOMAIN: localhost
+  PRODUCT_NAME: ${PRODUCT_NAME:-FinancePY}
+  BRAND_NAME: ${BRAND_NAME:-CD & Co.}
+  REDIS_URL: redis://redis:6379/1
+  ONBOARDING_STATE: ${ONBOARDING_STATE:-closed}
+  EXCHANGE_RATE_PROVIDER: ${EXCHANGE_RATE_PROVIDER:-yahoo_finance}
+  CORS_ALLOWED_ORIGINS: http://localhost:3001
+  CSP_REPORT_ONLY: "false"
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  OPENAI_ACCESS_TOKEN: ${OPENAI_ACCESS_TOKEN:-}
+  OPENAI_URI_BASE: ${OPENAI_URI_BASE:-}
+  OPENAI_MODEL: ${OPENAI_MODEL:-}
+
+services:
+  web:
+    build: .
+    command: bin/rails server -b 0.0.0.0 -p 3000
+    ports:
+      - "127.0.0.1:3001:3000"
+    restart: "no"
+    environment:
+      <<: *rails_env
+      WEB_CONCURRENCY: "1"
+    volumes:
+      # Codigo montado en vivo: los cambios en app/config/test no requieren
+      # rebuild de la imagen, solo un restart del container (Rails cachea
+      # clases en production). public/assets queda el de la imagen.
+      - ./app:/rails/app
+      - ./config:/rails/config
+      - ./test:/rails/test
+    depends_on:
+      redis:
+        condition: service_healthy
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    networks:
+      - wt_net
+    mem_limit: 1g
+    cpus: 0.75
+
+  redis:
+    image: redis:8.8
+    restart: "no"
+    command: redis-server --maxmemory 100mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wt_net
+    mem_limit: 128m
+    cpus: 0.25
+
+  # PELIGRO documentado: DATABASE_URL es una sola var global que Rails aplica a
+  # TODOS los RAILS_ENV. Sin estos servicios, "bin/rails test" corre contra la
+  # base de PRODUCCION en Supabase y db:test:prepare la borra. Nunca correr
+  # tests en el servicio "web".
+  #
+  # Uso:
+  #   docker compose -p financespy-wt -f compose.worktree.yml --profile test up -d test-db
+  #   docker compose -p financespy-wt -f compose.worktree.yml --profile test run --rm test-runner
+  test-db:
+    image: postgres:17
+    profiles: ["test"]
+    restart: "no"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - wt_net
+    mem_limit: 256m
+
+  test-runner:
+    build: .
+    profiles: ["test"]
+    restart: "no"
+    volumes:
+      - ./app:/rails/app
+      - ./config:/rails/config
+      - ./test:/rails/test
+    environment:
+      RAILS_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@test-db:5432/financespy_test
+      REDIS_URL: redis://redis:6379/2
+      SECRET_KEY_BASE: test-secret-key-base-not-used-for-anything-real
+    depends_on:
+      test-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    entrypoint: []
+    networks:
+      - wt_net
+    mem_limit: 1g
+
+networks:
+  wt_net:
+    driver: bridge
