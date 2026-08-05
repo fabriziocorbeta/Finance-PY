@@ -1,72 +1,124 @@
-<div class="space-y-4 pb-6 lg:pb-12 flex flex-col">
-  <header class="flex justify-between items-center text-primary font-medium">
-    <h1 class="text-xl">Transactions</h1>
-    <div class="flex items-center gap-5">
-      <div class="flex items-center gap-2">
-        <%= render DS::Menu.new do |menu| %>
-          <% menu.with_item(variant: "link", text: "New rule", href: new_rule_path(resource_type: "transaction"), icon: "plus", data: { turbo_frame: :modal }) %>
-          <% menu.with_item(variant: "link", text: "Edit rules", href: rules_path, icon: "git-branch", data: { turbo_frame: :_top }) %>
-          <% menu.with_item(variant: "link", text: "Edit categories", href: categories_path, icon: "shapes", data: { turbo_frame: :_top }) %>
-          <% menu.with_item(variant: "link", text: "Edit tags", href: tags_path, icon: "tags", data: { turbo_frame: :_top }) %>
-          <% menu.with_item(variant: "link", text: "Edit merchants", href: family_merchants_path, icon: "store", data: { turbo_frame: :_top }) %>
-          <% menu.with_item(variant: "link", text: "Edit imports", href: imports_path, icon: "hard-drive-upload", data: { turbo_frame: :_top }) %>
-          <% menu.with_item(variant: "link", text: "Import", href: new_import_path, icon: "download", data: { turbo_frame: "modal", class_name: "md:!hidden" }) %>
-          <% if @uncategorized_count > 0 %>
-            <% menu.with_item(variant: "link", text: t(".categorize_button", count: @uncategorized_count), href: transactions_categorize_path, icon: "tag", data: { turbo_frame: :_top }) %>
+<div data-controller="offline-transactions">
+  <div data-offline-transactions-target="onlineContent">
+    <div class="space-y-4 pb-6 lg:pb-12 flex flex-col">
+      <header class="flex justify-between items-center text-primary font-medium">
+        <h1 class="text-xl">Transactions</h1>
+        <div class="flex items-center gap-5">
+          <div class="flex items-center gap-2">
+            <%= render DS::Menu.new do |menu| %>
+              <% menu.with_item(variant: "link", text: "New rule", href: new_rule_path(resource_type: "transaction"), icon: "plus", data: { turbo_frame: :modal }) %>
+              <% menu.with_item(variant: "link", text: "Edit rules", href: rules_path, icon: "git-branch", data: { turbo_frame: :_top }) %>
+              <% menu.with_item(variant: "link", text: "Edit categories", href: categories_path, icon: "shapes", data: { turbo_frame: :_top }) %>
+              <% menu.with_item(variant: "link", text: "Edit tags", href: tags_path, icon: "tags", data: { turbo_frame: :_top }) %>
+              <% menu.with_item(variant: "link", text: "Edit merchants", href: family_merchants_path, icon: "store", data: { turbo_frame: :_top }) %>
+              <% menu.with_item(variant: "link", text: "Edit imports", href: imports_path, icon: "hard-drive-upload", data: { turbo_frame: :_top }) %>
+              <% menu.with_item(variant: "link", text: "Import", href: new_import_path, icon: "download", data: { turbo_frame: "modal", class_name: "md:!hidden" }) %>
+              <% if @uncategorized_count > 0 %>
+                <% menu.with_item(variant: "link", text: t(".categorize_button", count: @uncategorized_count), href: transactions_categorize_path, icon: "tag", data: { turbo_frame: :_top }) %>
+              <% end %>
+            <% end %>
+
+            <div class="hidden md:flex">
+              <%= render DS::Link.new(
+                text: t(".import"),
+                icon: "download",
+                variant: "outline",
+                href: new_import_path,
+                frame: :modal,
+              ) %>
+            </div>
+
+            <%= render DS::Link.new(
+                text: "New transaction",
+                icon: "plus",
+                variant: "primary",
+                href: new_transaction_path,
+                frame: :modal,
+                class: "hidden md:inline-flex"
+              ) %>
+
+            <%= render DS::Link.new(
+                icon: "plus",
+                variant: "icon-inverse",
+                href: new_transaction_path,
+                frame: :modal,
+                class: "rounded-full md:hidden"
+              ) %>
+          </div>
+        </div>
+      </header>
+
+      <%= render "summary", totals: @search.totals %>
+      <% if Current.family.recurring_transactions_disabled? %>
+        <%= render "transactions/list", transactions: @transactions, projected_recurring: @projected_recurring, q: params[:q], pagy: @pagy %>
+      <% else %>
+        <%= render DS::Tabs.new(active_tab: params[:tab].presence || "transactions") do |tabs| %>
+          <% tabs.with_nav(classes: "max-w-fit") do |nav| %>
+            <% nav.with_btn(id: "transactions", label: t("transactions.show.tab_transactions"), classes: "px-6") %>
+            <% nav.with_btn(id: "upcoming", label: t("transactions.show.tab_upcoming"), classes: "px-6") %>
+          <% end %>
+
+          <% tabs.with_panel(tab_id: "transactions") do %>
+            <div class="bg-container rounded-xl shadow-border-xs">
+              <%= render "transactions/list", transactions: @transactions, projected_recurring: @projected_recurring, q: params[:q], pagy: @pagy %>
+            </div>
+          <% end %>
+
+          <% tabs.with_panel(tab_id: "upcoming") do %>
+            <div class="bg-container rounded-xl shadow-border-xs">
+              <%= render "transactions/upcoming" %>
+            </div>
           <% end %>
         <% end %>
-
-        <div class="hidden md:flex">
-          <%= render DS::Link.new(
-            text: t(".import"),
-            icon: "download",
-            variant: "outline",
-            href: new_import_path,
-            frame: :modal,
-          ) %>
-        </div>
-
-        <%= render DS::Link.new(
-            text: "New transaction",
-            icon: "plus",
-            variant: "primary",
-            href: new_transaction_path,
-            frame: :modal,
-            class: "hidden md:inline-flex"
-          ) %>
-
-        <%= render DS::Link.new(
-            icon: "plus",
-            variant: "icon-inverse",
-            href: new_transaction_path,
-            frame: :modal,
-            class: "rounded-full md:hidden"
-          ) %>
-      </div>
+      <% end %>
     </div>
-  </header>
+  </div>
 
-  <%= render "summary", totals: @search.totals %>
-  <% if Current.family.recurring_transactions_disabled? %>
-    <%= render "transactions/list", transactions: @transactions, projected_recurring: @projected_recurring, q: params[:q], pagy: @pagy %>
-  <% else %>
-    <%= render DS::Tabs.new(active_tab: params[:tab].presence || "transactions") do |tabs| %>
-      <% tabs.with_nav(classes: "max-w-fit") do |nav| %>
-        <% nav.with_btn(id: "transactions", label: t("transactions.show.tab_transactions"), classes: "px-6") %>
-        <% nav.with_btn(id: "upcoming", label: t("transactions.show.tab_upcoming"), classes: "px-6") %>
-      <% end %>
+  <%# Solo visible sin conexión: lista cacheada localmente + alta offline.
+      El submit va por data-action de Stimulus (no onsubmit inline), que es lo
+      único que funciona bajo el CSP enforce de este proyecto. %>
+  <div data-offline-transactions-target="offlineContent" class="hidden space-y-4 pb-6 lg:pb-12">
+    <header class="flex justify-between items-center text-primary font-medium">
+      <h1 class="text-xl"><%= t("transactions.index.offline.title", default: "Transacciones") %></h1>
+    </header>
 
-      <% tabs.with_panel(tab_id: "transactions") do %>
-        <div class="bg-container rounded-xl shadow-border-xs">
-          <%= render "transactions/list", transactions: @transactions, projected_recurring: @projected_recurring, q: params[:q], pagy: @pagy %>
-        </div>
-      <% end %>
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+      <%= t("transactions.index.offline.notice", default: "Sin conexión — mostrando los movimientos guardados en este dispositivo. Lo que cargues ahora se sincronizará al volver la señal.") %>
+    </div>
 
-      <% tabs.with_panel(tab_id: "upcoming") do %>
-        <div class="bg-container rounded-xl shadow-border-xs">
-          <%= render "transactions/upcoming" %>
-        </div>
-      <% end %>
-    <% end %>
-  <% end %>
+    <form data-offline-transactions-target="form"
+          data-action="submit->offline-transactions#submitOffline"
+          class="bg-container rounded-xl shadow-border-xs p-4 space-y-3">
+      <select name="account_id"
+              data-offline-transactions-target="accountSelect"
+              required
+              class="w-full border border-secondary rounded-lg p-2 bg-container text-primary"></select>
+
+      <input type="text" name="name" required
+             placeholder="<%= t("transactions.index.offline.name_placeholder", default: "Descripción") %>"
+             class="w-full border border-secondary rounded-lg p-2 bg-container text-primary">
+
+      <input type="date" name="date" required
+             value="<%= Date.current.iso8601 %>"
+             class="w-full border border-secondary rounded-lg p-2 bg-container text-primary">
+
+      <input type="number" step="0.01" min="0" name="amount" required
+             placeholder="<%= t("transactions.index.offline.amount_placeholder", default: "Monto") %>"
+             class="w-full border border-secondary rounded-lg p-2 bg-container text-primary">
+
+      <select name="nature" required
+              class="w-full border border-secondary rounded-lg p-2 bg-container text-primary">
+        <option value="outflow"><%= t("transactions.index.offline.outflow", default: "Gasto") %></option>
+        <option value="inflow"><%= t("transactions.index.offline.inflow", default: "Ingreso") %></option>
+      </select>
+
+      <button type="submit" class="w-full bg-inverse text-inverse rounded-lg p-2 font-medium">
+        <%= t("transactions.index.offline.submit", default: "Guardar sin conexión") %>
+      </button>
+    </form>
+
+    <div class="bg-container rounded-xl shadow-border-xs p-4">
+      <div data-offline-transactions-target="list"></div>
+    </div>
+  </div>
 </div>

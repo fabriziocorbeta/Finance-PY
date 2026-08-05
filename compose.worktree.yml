@@ -36,7 +36,14 @@ services:
       # Codigo montado en vivo: los cambios en app/config/test no requieren
       # rebuild de la imagen, solo un restart del container (Rails cachea
       # clases en production). public/assets queda el de la imagen.
-      - ./app:/rails/app
+      # Mounts dirigidos, NO ./app entero: el host es uid 1001 y el container
+      # corre como uid 1000, asi que montar app/ completo deja
+      # app/assets/builds/ de solo lectura y assets:precompile muere con
+      # EACCES al escribir tailwind.css. Estos tres son los unicos que se
+      # editan en esta fase; app/assets y app/models quedan los de la imagen.
+      - ./app/controllers:/rails/app/controllers
+      - ./app/javascript:/rails/app/javascript
+      - ./app/views:/rails/app/views
       - ./config:/rails/config
       - ./test:/rails/test
     depends_on:
@@ -96,7 +103,14 @@ services:
     profiles: ["test"]
     restart: "no"
     volumes:
-      - ./app:/rails/app
+      # Mounts dirigidos, NO ./app entero: el host es uid 1001 y el container
+      # corre como uid 1000, asi que montar app/ completo deja
+      # app/assets/builds/ de solo lectura y assets:precompile muere con
+      # EACCES al escribir tailwind.css. Estos tres son los unicos que se
+      # editan en esta fase; app/assets y app/models quedan los de la imagen.
+      - ./app/controllers:/rails/app/controllers
+      - ./app/javascript:/rails/app/javascript
+      - ./app/views:/rails/app/views
       - ./config:/rails/config
       - ./test:/rails/test
     environment:
