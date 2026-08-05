@@ -347,6 +347,15 @@ Rails.application.routes.draw do
     end
   end
 
+  # Endpoints de replicacion para el cliente offline (app Android).
+  # pull: GET  /sync/transactions       -> ventana de 90 dias, paginada por checkpoint
+  # push: POST /sync/transactions/push  -> solo creates, idempotente por UUID de cliente
+  namespace :sync do
+    resources :transactions, only: [ :index ] do
+      post :push, on: :collection
+    end
+  end
+
   resources :transactions, only: %i[index new create show update destroy] do
     resource :split, only: %i[new create edit update destroy]
     resource :transfer_match, only: %i[new create]
