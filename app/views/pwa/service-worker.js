@@ -50,6 +50,26 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Serve the last cached copy of this page, or the generic offline page if this
+// URL was never visited.
+function serveFromCache(request) {
+  return caches.match(request).then((cached) => {
+    return cached || caches.match('/offline.html');
+  });
+}
+
+// Status codes that mean "the origin is unreachable", not "the app answered with
+// an error". Cloudflare sits in front of this app and answers on its own when the
+// tunnel is down (530/1033), as do the other 52x codes; 502/503/504 cover a proxy
+// that is up but cannot reach the app behind it. A `fetch()` for any of these
+// RESOLVES normally - it is a real HTTP response - so the `.catch()` below never
+// runs and the user gets the CDN's error page instead of the offline experience.
+// They have to be treated as network failures explicitly.
+function isOriginUnreachable(response) {
+  const s = response.status;
+  return s === 502 || s === 503 || s === 504 || (s >= 520 && s <= 530);
+}
+
 // Fetch event - serve offline page when network fails
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
@@ -66,14 +86,16 @@ self.addEventListener('fetch', (event) => {
           if (response.ok) {
             const clone = response.clone();
             caches.open(RUNTIME_CACHE).then((cache) => cache.put(event.request, clone));
+            return response;
           }
+          if (isOriginUnreachable(response)) {
+            return serveFromCache(event.request);
+          }
+          // Genuine application responses (404, 422, 500...) are shown as-is:
+          // hiding them behind the offline page would mask real bugs.
           return response;
         })
-        .catch(() => {
-          return caches.match(event.request).then((cached) => {
-            return cached || caches.match('/offline.html');
-          });
-        })
+        .catch(() => serveFromCache(event.request))
     );
     return;
   }
