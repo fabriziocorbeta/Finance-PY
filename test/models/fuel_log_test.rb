@@ -84,4 +84,18 @@ class FuelLogTest < ActiveSupport::TestCase
     end
     assert_equal @fuel_log.entry.amount, @fuel_log.cost
   end
+
+  test "associated entry is categorized as Combustible" do
+    @fuel_log.save!
+    assert_equal "Combustible", @fuel_log.entry.transaction.category.name
+  end
+
+  test "reuses the existing Combustible category instead of duplicating it" do
+    existing = @family.categories.create!(name: "Combustible", color: "#f59e0b", lucide_icon: "fuel")
+
+    assert_no_difference "Category.count" do
+      @fuel_log.save!
+    end
+    assert_equal existing, @fuel_log.entry.transaction.category
+  end
 end

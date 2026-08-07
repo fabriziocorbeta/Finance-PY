@@ -23,7 +23,7 @@ class FuelLog < ApplicationRecord
     end
 
     def create_associated_entry
-      transaction = Transaction.new
+      transaction = Transaction.new(category: fuel_category)
       entry = account.entries.create!(
         entryable: transaction,
         name: "Combustible - #{fleet_vehicle.plate}",
@@ -34,6 +34,16 @@ class FuelLog < ApplicationRecord
       update_column(:entry_id, entry.id)
 
       entry.sync_account_later
+    end
+
+    # Cargas de combustible de Flota siempre van a esta categoría fija: no tiene
+    # sentido pasar por auto-categorización (por regla o IA) para algo que ya
+    # sabemos qué es en el momento de crearlo.
+    def fuel_category
+      account.family.categories.find_or_create_by!(name: "Combustible") do |category|
+        category.color = "#f59e0b"
+        category.lucide_icon = "fuel"
+      end
     end
 
     def update_associated_entry
