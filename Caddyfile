@@ -9,19 +9,13 @@ finance.cd-co.com.py {
 	# corriendo la versión vieja hasta que expire y no reciben los arreglos. Rails lo sirve
 	# como acción dinámica (fresh_when/ETag) y ya manda su propio Cache-Control.
 	#
-	# `defer` es obligatorio acá: sin él, Caddy aplica el bloque `header` ANTES de que
-	# reverse_proxy traiga la respuesta real de Rails, así que nuestro -Cache-Control/set
-	# corre primero y el Cache-Control de Rails llega después y se cuela igual (duplicado o,
-	# según la corrida, terminó pisando el nuestro por completo — se vio en vivo un curl con
-	# CERO Cache-Control). `defer` pospone nuestras directivas hasta después de que
-	# reverse_proxy ya escribió la respuesta del backend, así el orden es el que importa:
-	# Rails primero, nosotros pisándolo después.
+	# `>` es el atajo documentado de Caddy para "set + defer": pisa el valor que traiga
+	# el backend, aplicado recién cuando ya volvió la respuesta de reverse_proxy. El intento
+	# anterior combinaba defer + -Cache-Control + Cache-Control a mano y en vivo terminó sin
+	# ningún Cache-Control en la respuesta — con el atajo no hay ambigüedad de orden posible,
+	# es un solo set diferido.
 	@sw path /service-worker.js
-	header @sw {
-		defer
-		-Cache-Control
-		Cache-Control "no-cache"
-	}
+	header @sw >Cache-Control "no-cache"
 
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
