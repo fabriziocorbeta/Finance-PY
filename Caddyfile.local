@@ -1,7 +1,19 @@
 # FinancePY — Caddy local (sin ACME/TLS propio, Cloudflare Tunnel maneja HTTPS público)
 :8080 {
 	reverse_proxy web:3000
-	encode gzip
+	encode zstd gzip
+
+	# Los assets llevan digest en el nombre (Propshaft), así que la URL cambia cuando
+	# cambia el contenido y se pueden cachear indefinidamente. Sin este header el origen
+	# no manda Cache-Control y Cloudflare aplica su default (4h, sin `immutable`), lo que
+	# obliga al navegador a revalidar en cada navegación: barato en desktop, caro en móvil.
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	# El service worker nunca debe cachearse: si se sirve con TTL, los clientes siguen
+	# corriendo la versión vieja hasta que expire y no reciben los arreglos.
+	@sw path /service-worker.js
+	header @sw Cache-Control "no-cache"
 
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
