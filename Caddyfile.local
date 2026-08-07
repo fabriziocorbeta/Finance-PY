@@ -12,12 +12,18 @@
 
 	# El service worker nunca debe cachearse: si se sirve con TTL, los clientes siguen
 	# corriendo la versión vieja hasta que expire y no reciben los arreglos. Rails lo sirve
-	# como acción dinámica (fresh_when/ETag) y ya manda su propio Cache-Control — hay que
-	# borrarlo antes de fijar el nuestro, si no quedan dos headers Cache-Control duplicados
-	# en la misma respuesta (inválido) y Cloudflare cae a su default de 4h al no poder
-	# interpretarlo.
+	# como acción dinámica (fresh_when/ETag) y ya manda su propio Cache-Control.
+	#
+	# `defer` es obligatorio acá: sin él, Caddy aplica el bloque `header` ANTES de que
+	# reverse_proxy traiga la respuesta real de Rails, así que nuestro -Cache-Control/set
+	# corre primero y el Cache-Control de Rails llega después y se cuela igual (duplicado o,
+	# según la corrida, terminó pisando el nuestro por completo — se vio en vivo un curl con
+	# CERO Cache-Control). `defer` pospone nuestras directivas hasta después de que
+	# reverse_proxy ya escribió la respuesta del backend, así el orden es el que importa:
+	# Rails primero, nosotros pisándolo después.
 	@sw path /service-worker.js
 	header @sw {
+		defer
 		-Cache-Control
 		Cache-Control "no-cache"
 	}
