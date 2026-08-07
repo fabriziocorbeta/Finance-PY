@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "py.com.cd_co.finance.twa",
+    "sha256_cert_fingerprints": ["DD:BF:1F:55:E6:CD:0F:4F:6A:F9:18:40:DB:FA:EE:68:B7:4E:FE:7C:DD:6F:ED:F3:45:6B:CB:FA:55:76:BD:0A"]
+  }
+}]
