@@ -129,6 +129,66 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
     assert_match(/amount/, error.message)
   end
 
+  test "treats a PYG thousands-separated string amount as whole guaranies, not a 1000x-smaller decimal" do
+    result = AndroidPurchase::WebhookProcessor.new(
+      account_id: @account.id,
+      amount: "150.000",
+      merchant: "Google Play",
+      item: "PYG thousands format",
+      timestamp: "2026-07-28T09:00:00-04:00",
+      raw_text: "x"
+    ).process
+
+    assert_equal :created, result
+    entry = @account.entries.order(created_at: :desc).first
+    assert_equal(-150000.0, entry.amount.to_f)
+  end
+
+  test "treats a multi-group PYG thousands-separated string amount correctly" do
+    result = AndroidPurchase::WebhookProcessor.new(
+      account_id: @account.id,
+      amount: "1.250.000",
+      merchant: "Google Play",
+      item: "Large PYG amount",
+      timestamp: "2026-07-28T09:00:00-04:00",
+      raw_text: "x"
+    ).process
+
+    assert_equal :created, result
+    entry = @account.entries.order(created_at: :desc).first
+    assert_equal(-1250000.0, entry.amount.to_f)
+  end
+
+  test "still treats a plain decimal string amount as a decimal, not thousands-separated" do
+    result = AndroidPurchase::WebhookProcessor.new(
+      account_id: @account.id,
+      amount: "12.50",
+      merchant: "Google Play",
+      item: "USD-style decimal",
+      timestamp: "2026-07-28T09:00:00-04:00",
+      raw_text: "x"
+    ).process
+
+    assert_equal :created, result
+    entry = @account.entries.order(created_at: :desc).first
+    assert_equal(-12.5, entry.amount.to_f)
+  end
+
+  test "treats a comma-decimal string amount (LatAm format) correctly" do
+    result = AndroidPurchase::WebhookProcessor.new(
+      account_id: @account.id,
+      amount: "1.250.000,50",
+      merchant: "Google Play",
+      item: "Comma decimal format",
+      timestamp: "2026-07-28T09:00:00-04:00",
+      raw_text: "x"
+    ).process
+
+    assert_equal :created, result
+    entry = @account.entries.order(created_at: :desc).first
+    assert_equal(-1250000.50, entry.amount.to_f)
+  end
+
   test "accepts a numeric amount sent as a string" do
     result = AndroidPurchase::WebhookProcessor.new(
       account_id: @account.id,

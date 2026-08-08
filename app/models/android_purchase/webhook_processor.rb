@@ -61,9 +61,30 @@ class AndroidPurchase::WebhookProcessor
   private
 
     def numeric_amount
-      BigDecimal(@amount.to_s)
+      BigDecimal(normalized_amount_string)
     rescue ArgumentError, TypeError
       nil
+    end
+
+    # Tasker sends the amount as whatever string it scraped from the
+    # notification. PYG notifications render thousands with a dot
+    # ("Gs. 150.000"), which BigDecimal would otherwise silently misread
+    # as a decimal (150.000 -> 150.0) -- a 1000x-smaller amount saved with
+    # no error, since PYG amounts round-trip fine as a smaller-but-valid
+    # number. Disambiguate the three formats we can actually see:
+    #   "1.250.000,50"  -> comma-decimal, dot-thousands (es-PY/es-AR style)
+    #   "150.000"       -> dot-thousands, no decimal part
+    #   "12.50"         -> plain decimal (single dot, 1-2 trailing digits)
+    def normalized_amount_string
+      str = @amount.to_s.strip
+
+      if str.match?(/\A-?\d{1,3}(\.\d{3})*,\d+\z/)
+        str.delete(".").sub(",", ".")
+      elsif str.match?(/\A-?\d{1,3}(\.\d{3})+\z/)
+        str.delete(".")
+      else
+        str
+      end
     end
 
     # Deliberately excludes account_id: the DB unique index
