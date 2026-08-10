@@ -8,6 +8,7 @@ export interface PurchasePayload {
   merchant: string;
   item: string;
   rawText: string;
+  capturedAt: string;
 }
 
 export type WebhookResult = 'created' | 'duplicate' | { error: string };
@@ -31,6 +32,7 @@ export async function postPurchaseToWebhook(payload: PurchasePayload): Promise<W
         merchant: payload.merchant,
         item: payload.item,
         raw_text: payload.rawText,
+        timestamp: payload.capturedAt,
       }),
     });
 

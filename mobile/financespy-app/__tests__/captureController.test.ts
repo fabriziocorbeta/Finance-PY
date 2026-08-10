@@ -26,13 +26,15 @@ describe('handleWalletNotification', () => {
     expect(postPurchaseToWebhook).toHaveBeenCalledWith({
       accountId: '43d84b14-b3be-44a9-be37-7ec1ae4661f2',
       amount: '112,000',
-      merchant: 'GNB GOOGLE ••6536',
-      item: '#A EUSTAQUI-PLAZA MADE',
+      merchant: '#A EUSTAQUI-PLAZA MADE',
+      item: 'GNB GOOGLE ••6536',
       rawText: 'PYG112,000 con GNB GOOGLE ••6536',
+      capturedAt: expect.any(String),
     });
     expect(notifee.displayNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         title: expect.stringContaining('registrado'),
+        android: { channelId: 'wallet-capture' },
       })
     );
   });
@@ -43,7 +45,10 @@ describe('handleWalletNotification', () => {
     await handleWalletNotification(realNotification);
 
     expect(notifee.displayNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ title: expect.stringContaining('ya estaba registrad') })
+      expect.objectContaining({
+        title: expect.stringContaining('ya estaba registrad'),
+        android: { channelId: 'wallet-capture' },
+      })
     );
   });
 
@@ -55,7 +60,10 @@ describe('handleWalletNotification', () => {
 
     expect(postPurchaseToWebhook).not.toHaveBeenCalled();
     expect(notifee.displayNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ title: expect.stringContaining('no reconocida') })
+      expect.objectContaining({
+        title: expect.stringContaining('no reconocida'),
+        android: { channelId: 'wallet-capture' },
+      })
     );
   });
 
@@ -75,10 +83,16 @@ describe('handleWalletNotification', () => {
       expect.objectContaining({
         rawText: 'PYG112,000 con GNB GOOGLE ••6536',
         accountId: '43d84b14-b3be-44a9-be37-7ec1ae4661f2',
+        merchant: '#A EUSTAQUI-PLAZA MADE',
+        item: 'GNB GOOGLE ••6536',
+        capturedAt: expect.any(String),
       })
     );
     expect(notifee.displayNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ title: expect.stringContaining('pudo registrar') })
+      expect.objectContaining({
+        title: expect.stringContaining('pudo registrar'),
+        android: { channelId: 'wallet-capture' },
+      })
     );
   });
 });

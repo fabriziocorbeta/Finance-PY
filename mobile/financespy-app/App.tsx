@@ -16,7 +16,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { handleWalletNotification } from './src/capture/captureController';
+import notifee from '@notifee/react-native';
+import { handleWalletNotification, WALLET_CAPTURE_CHANNEL_ID } from './src/capture/captureController';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import { TransactionsScreen } from './src/screens/TransactionsScreen';
 import { DebugScreen } from './src/screens/DebugScreen';
@@ -26,6 +27,9 @@ function App() {
   const isDarkMode = useColorScheme() === 'dark';
 
   useEffect(() => {
+    notifee.createChannel({ id: WALLET_CAPTURE_CHANNEL_ID, name: 'Captura de gastos' });
+    notifee.requestPermission();
+
     const subscription = DeviceEventEmitter.addListener(
       'WalletNotificationReceived',
       handleWalletNotification

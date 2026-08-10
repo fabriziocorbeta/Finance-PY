@@ -15,6 +15,7 @@ describe('postPurchaseToWebhook', () => {
     merchant: 'GNB GOOGLE ••6536',
     item: 'Google Wallet',
     rawText: 'PYG112,000 con GNB GOOGLE ••6536',
+    capturedAt: '2026-08-10T12:00:00.000Z',
   };
 
   beforeEach(() => {
@@ -36,8 +37,27 @@ describe('postPurchaseToWebhook', () => {
           Authorization: 'Bearer secret-token',
           'Content-Type': 'application/json',
         }),
+        body: JSON.stringify({
+          account_id: payload.accountId,
+          amount: payload.amount,
+          merchant: payload.merchant,
+          item: payload.item,
+          raw_text: payload.rawText,
+          timestamp: payload.capturedAt,
+        }),
       })
     );
+  });
+
+  it('sends the timestamp field in the POST body so the server can dedupe by amount+timestamp+merchant', async () => {
+    mockFetch.mockResolvedValue({ status: 201, json: async () => ({ received: true, duplicate: false }) });
+
+    await postPurchaseToWebhook(payload);
+
+    const [, options] = mockFetch.mock.calls[0];
+    const sentBody = JSON.parse(options.body);
+    expect(sentBody.timestamp).toBe(payload.capturedAt);
+    expect(sentBody.timestamp).toBeTruthy();
   });
 
   it('returns "duplicate" when the server reports a duplicate', async () => {
