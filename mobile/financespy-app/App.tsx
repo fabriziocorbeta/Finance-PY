@@ -6,19 +6,19 @@
  */
 
 import { useEffect } from 'react';
-import { NewAppScreen } from '@react-native/new-app-screen';
 import {
+  Button,
   DeviceEventEmitter,
   StatusBar,
   StyleSheet,
+  Text,
   useColorScheme,
   View,
 } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { handleWalletNotification } from './src/capture/captureController';
+import { AuthProvider, useAuth } from './src/auth/AuthContext';
+import { TransactionsScreen } from './src/screens/TransactionsScreen';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
@@ -34,20 +34,26 @@ function App() {
   return (
     <SafeAreaProvider>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }
 
 function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
+  const { isAuthenticated, login } = useAuth();
 
   return (
     <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
+      {isAuthenticated ? (
+        <TransactionsScreen />
+      ) : (
+        <View style={styles.loginContainer}>
+          <Text style={styles.title}>FinancePY</Text>
+          <Button title="Iniciar sesión" onPress={login} />
+        </View>
+      )}
     </View>
   );
 }
@@ -55,6 +61,16 @@ function AppContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loginContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 16,
   },
 });
 
