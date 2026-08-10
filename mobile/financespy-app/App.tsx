@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import type { EmitterSubscription } from 'react-native';
 import {
   Button,
   DeviceEventEmitter,
@@ -27,14 +28,18 @@ function App() {
   const isDarkMode = useColorScheme() === 'dark';
 
   useEffect(() => {
-    notifee.createChannel({ id: WALLET_CAPTURE_CHANNEL_ID, name: 'Captura de gastos' });
-    notifee.requestPermission();
+    let subscription: EmitterSubscription | undefined;
 
-    const subscription = DeviceEventEmitter.addListener(
-      'WalletNotificationReceived',
-      handleWalletNotification
-    );
-    return () => subscription.remove();
+    (async () => {
+      await notifee.createChannel({ id: WALLET_CAPTURE_CHANNEL_ID, name: 'Captura de gastos' });
+      await notifee.requestPermission();
+      subscription = DeviceEventEmitter.addListener(
+        'WalletNotificationReceived',
+        handleWalletNotification
+      );
+    })();
+
+    return () => subscription?.remove();
   }, []);
 
   return (
