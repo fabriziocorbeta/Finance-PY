@@ -1,9 +1,9 @@
-# Create OAuth applications for Sure's first-party apps
+# Create OAuth applications for FinancePY's first-party apps
 # These are the only OAuth apps that will exist - external developers use API keys
 
-# Sure Mobile App (shared across iOS and Android)
-mobile_app = Doorkeeper::Application.find_or_create_by(name: "Sure Mobile") do |app|
-  app.redirect_uri = "sureapp://oauth/callback"
+# FinancePY Mobile App (shared across iOS and Android)
+mobile_app = Doorkeeper::Application.find_or_create_by(name: "FinancePY Mobile") do |app|
+  app.redirect_uri = "financespy://oauth/callback"
   app.scopes = "read_write"
   app.confidential = false # Public client (mobile app)
 end
