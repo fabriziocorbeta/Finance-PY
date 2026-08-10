@@ -129,7 +129,38 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
     assert_match(/amount/, error.message)
   end
 
-  test "treats a PYG thousands-separated string amount as whole guaranies, not a 1000x-smaller decimal" do
+  test "treats a real Google Wallet PYG comma-thousands amount as whole guaranies, not a 1000x-smaller decimal" do
+    # Confirmed against a real notification: "PYG112,000 con GNB GOOGLE ••6536"
+    result = AndroidPurchase::WebhookProcessor.new(
+      account_id: @account.id,
+      amount: "112,000",
+      merchant: "Google Play",
+      item: "Real Wallet notification format",
+      timestamp: "2026-07-28T09:00:00-04:00",
+      raw_text: "PYG112,000 con GNB GOOGLE ••6536"
+    ).process
+
+    assert_equal :created, result
+    entry = @account.entries.order(created_at: :desc).first
+    assert_equal(-112000.0, entry.amount.to_f)
+  end
+
+  test "treats a multi-group comma-thousands amount correctly" do
+    result = AndroidPurchase::WebhookProcessor.new(
+      account_id: @account.id,
+      amount: "1,250,000",
+      merchant: "Google Play",
+      item: "Large comma-thousands amount",
+      timestamp: "2026-07-28T09:00:00-04:00",
+      raw_text: "x"
+    ).process
+
+    assert_equal :created, result
+    entry = @account.entries.order(created_at: :desc).first
+    assert_equal(-1250000.0, entry.amount.to_f)
+  end
+
+  test "treats an unconfirmed dot-thousands string amount as whole guaranies, not a 1000x-smaller decimal" do
     result = AndroidPurchase::WebhookProcessor.new(
       account_id: @account.id,
       amount: "150.000",
@@ -144,7 +175,7 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
     assert_equal(-150000.0, entry.amount.to_f)
   end
 
-  test "treats a multi-group PYG thousands-separated string amount correctly" do
+  test "treats a multi-group dot-thousands string amount correctly" do
     result = AndroidPurchase::WebhookProcessor.new(
       account_id: @account.id,
       amount: "1.250.000",

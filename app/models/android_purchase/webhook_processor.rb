@@ -67,19 +67,23 @@ class AndroidPurchase::WebhookProcessor
     end
 
     # Tasker sends the amount as whatever string it scraped from the
-    # notification. PYG notifications render thousands with a dot
-    # ("Gs. 150.000"), which BigDecimal would otherwise silently misread
-    # as a decimal (150.000 -> 150.0) -- a 1000x-smaller amount saved with
-    # no error, since PYG amounts round-trip fine as a smaller-but-valid
-    # number. Disambiguate the three formats we can actually see:
+    # notification. Confirmed against a real Google Wallet PYG notification
+    # ("PYG112,000 con GNB GOOGLE ••6536"): thousands are comma-separated
+    # with no decimal part, which BigDecimal would otherwise silently
+    # misread as a comma-decimal (112,000 -> 112.0) -- a 1000x-smaller
+    # amount saved with no error, since PYG amounts round-trip fine as a
+    # smaller-but-valid number. Disambiguate the formats we can see:
     #   "1.250.000,50"  -> comma-decimal, dot-thousands (es-PY/es-AR style)
-    #   "150.000"       -> dot-thousands, no decimal part
+    #   "112,000"       -> comma-thousands, no decimal part (CONFIRMED real format)
+    #   "150.000"       -> dot-thousands, no decimal part (unconfirmed, kept defensively)
     #   "12.50"         -> plain decimal (single dot, 1-2 trailing digits)
     def normalized_amount_string
       str = @amount.to_s.strip
 
-      if str.match?(/\A-?\d{1,3}(\.\d{3})*,\d+\z/)
+      if str.match?(/\A-?\d{1,3}(\.\d{3})+,\d+\z/)
         str.delete(".").sub(",", ".")
+      elsif str.match?(/\A-?\d{1,3}(,\d{3})+\z/)
+        str.delete(",")
       elsif str.match?(/\A-?\d{1,3}(\.\d{3})+\z/)
         str.delete(".")
       else
