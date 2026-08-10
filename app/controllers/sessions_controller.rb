@@ -309,7 +309,7 @@ class SessionsController < ApplicationController
     end
 
     def mobile_sso_redirect(params = {})
-      redirect_to "sureapp://oauth/callback?#{params.to_query}", allow_other_host: true
+      redirect_to "financespy://oauth/callback?#{params.to_query}", allow_other_host: true
     end
 
     def set_session

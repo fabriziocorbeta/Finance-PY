@@ -13,8 +13,8 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
     }
 
     # Ensure the shared OAuth application exists
-    @shared_app = Doorkeeper::Application.find_or_create_by!(name: "Sure Mobile") do |app|
-      app.redirect_uri = "sureapp://oauth/callback"
+    @shared_app = Doorkeeper::Application.find_or_create_by!(name: "FinancePY Mobile") do |app|
+      app.redirect_uri = "financespy://oauth/callback"
       app.scopes = "read read_write"
       app.confidential = false
     end
@@ -380,7 +380,7 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
     password = user_password_test
 
     # Simulate a fresh instance where seeds were never run
-    Doorkeeper::Application.where(name: "Sure Mobile").destroy_all
+    Doorkeeper::Application.where(name: "FinancePY Mobile").destroy_all
     MobileDevice.instance_variable_set(:@shared_oauth_application, nil)
 
     assert_difference("Doorkeeper::Application.count", 1) do

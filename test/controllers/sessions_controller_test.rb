@@ -5,8 +5,8 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     @user = users(:family_admin)
 
     # Ensure the shared OAuth application exists
-    Doorkeeper::Application.find_or_create_by!(name: "Sure Mobile") do |app|
-      app.redirect_uri = "sureapp://oauth/callback"
+    Doorkeeper::Application.find_or_create_by!(name: "FinancePY Mobile") do |app|
+      app.redirect_uri = "financespy://oauth/callback"
       app.scopes = "read_write"
       app.confidential = false
     end
@@ -272,7 +272,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
       device_type: "android"
     }
 
-    assert_redirected_to %r{\Asureapp://oauth/callback\?error=invalid_provider}
+    assert_redirected_to %r{\Afinancespy://oauth/callback\?error=invalid_provider}
   end
 
   test "mobile_sso_start redirects with error when device_id is missing" do
@@ -285,7 +285,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
       device_type: "android"
     }
 
-    assert_redirected_to %r{\Asureapp://oauth/callback\?error=missing_device_info}
+    assert_redirected_to %r{\Afinancespy://oauth/callback\?error=missing_device_info}
   end
 
   test "mobile_sso_start redirects with error when device_name is missing" do
@@ -298,7 +298,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
       device_type: "android"
     }
 
-    assert_redirected_to %r{\Asureapp://oauth/callback\?error=missing_device_info}
+    assert_redirected_to %r{\Afinancespy://oauth/callback\?error=missing_device_info}
   end
 
   test "mobile_sso_start redirects with error when device_type is missing" do
@@ -311,7 +311,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
       device_name: "Pixel 8"
     }
 
-    assert_redirected_to %r{\Asureapp://oauth/callback\?error=missing_device_info}
+    assert_redirected_to %r{\Afinancespy://oauth/callback\?error=missing_device_info}
   end
 
   # ── Mobile SSO: openid_connect callback with mobile_sso session ──
@@ -359,7 +359,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :redirect
     redirect_url = @response.redirect_url
 
-    assert redirect_url.start_with?("sureapp://oauth/callback?"), "Expected redirect to sureapp:// but got #{redirect_url}"
+    assert redirect_url.start_with?("financespy://oauth/callback?"), "Expected redirect to financespy:// but got #{redirect_url}"
 
     uri = URI.parse(redirect_url)
     callback_params = Rack::Utils.parse_query(uri.query)
@@ -523,7 +523,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :redirect
     redirect_url = @response.redirect_url
 
-    assert redirect_url.start_with?("sureapp://oauth/callback?"), "Expected redirect to sureapp://"
+    assert redirect_url.start_with?("financespy://oauth/callback?"), "Expected redirect to financespy://"
     params = Rack::Utils.parse_query(URI.parse(redirect_url).query)
     assert_equal "mfa_not_supported", params["error"]
     assert_nil session[:mobile_sso], "Expected mobile_sso session to be cleared"
@@ -558,7 +558,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
       assert_response :redirect
       redirect_url = @response.redirect_url
 
-      assert redirect_url.start_with?("sureapp://oauth/callback?"), "Expected redirect to sureapp://"
+      assert redirect_url.start_with?("financespy://oauth/callback?"), "Expected redirect to financespy://"
       params = Rack::Utils.parse_query(URI.parse(redirect_url).query)
       assert_equal "account_not_linked", params["status"]
       assert params["linking_code"].present?, "Expected linking_code in redirect params"
@@ -624,7 +624,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :redirect
     redirect_url = @response.redirect_url
-    assert redirect_url.start_with?("sureapp://oauth/callback?"), "Expected redirect to sureapp://"
+    assert redirect_url.start_with?("financespy://oauth/callback?"), "Expected redirect to financespy://"
     params = Rack::Utils.parse_query(URI.parse(redirect_url).query)
     assert_equal "sso_failed", params["error"]
     assert_nil session[:mobile_sso], "Expected mobile_sso session to be cleared"
