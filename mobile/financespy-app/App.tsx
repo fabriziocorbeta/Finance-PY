@@ -5,15 +5,31 @@
  * @format
  */
 
+import { useEffect } from 'react';
 import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
+import {
+  DeviceEventEmitter,
+  StatusBar,
+  StyleSheet,
+  useColorScheme,
+  View,
+} from 'react-native';
 import {
   SafeAreaProvider,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
+import { handleWalletNotification } from './src/capture/captureController';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
+
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener(
+      'WalletNotificationReceived',
+      handleWalletNotification
+    );
+    return () => subscription.remove();
+  }, []);
 
   return (
     <SafeAreaProvider>
