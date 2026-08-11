@@ -8,7 +8,7 @@ describe('AUTH_CONFIG', () => {
         authorizationEndpoint: 'https://finance.cd-co.com.py/oauth/authorize',
         tokenEndpoint: 'https://finance.cd-co.com.py/oauth/token',
       },
-      clientId: 'financespy-mobile-app',
+      clientId: 'Ti8y1yGMsJVyNv35wsWE2taV7NR4B3zdKduf7E5IZEM',
       redirectUrl: 'financespy://oauth/callback',
       scopes: ['read_write'],
       usePKCE: true,

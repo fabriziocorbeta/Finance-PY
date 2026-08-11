@@ -6,15 +6,14 @@ export const AUTH_CONFIG: AuthConfiguration = {
     authorizationEndpoint: 'https://finance.cd-co.com.py/oauth/authorize',
     tokenEndpoint: 'https://finance.cd-co.com.py/oauth/token',
   },
-  clientId: 'financespy-mobile-app',
+  clientId: 'Ti8y1yGMsJVyNv35wsWE2taV7NR4B3zdKduf7E5IZEM',
   redirectUrl: 'financespy://oauth/callback',
   scopes: ['read_write'],
   usePKCE: true,
 };
 
-// Note: `clientId` here (`financespy-mobile-app`) is a placeholder value that must be replaced
-// with the real `uid` Doorkeeper generated for the `"FinancePY Mobile"` application created in
-// Task 7 — retrieve it with `Doorkeeper::Application.find_by(name: "FinancePY Mobile").uid` in a
-// Rails console against the same environment this app will authenticate against, and hardcode the
-// real value here before this is usable end-to-end. This is not a "TBD" left for later — it is a
-// concrete, mechanical value substitution documented so the implementer doesn't skip it silently.
+// Real Doorkeeper uid for the "FinancePY Mobile" application, retrieved from production
+// (finance.cd-co.com.py, seeded via db/seeds/oauth_applications.rb) on 2026-08-10.
+// If this app is ever re-seeded against a different environment (a fresh DB, a different
+// deploy), re-fetch with:
+//   Doorkeeper::Application.find_by(name: "FinancePY Mobile").uid
