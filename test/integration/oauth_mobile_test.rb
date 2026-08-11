@@ -44,7 +44,7 @@ class OauthMobileTest < ActionDispatch::IntegrationTest
     assert_match(/data-turbo="false"/, response.body)
   end
 
-  test "mobile oauth authorization flow completes successfully" do
+  test "mobile oauth authorization flow renders a native-redirect interstitial instead of a raw redirect" do
     post "/oauth/authorize", params: {
       client_id: @oauth_app.uid,
       redirect_uri: @oauth_app.redirect_uri,
@@ -53,9 +53,34 @@ class OauthMobileTest < ActionDispatch::IntegrationTest
       display: "mobile"
     }
 
-    # Should redirect to the custom scheme
+    # Custom Tabs providers (confirmed live on real Android devices: both
+    # Chrome and Samsung Internet) silently ignore a raw HTTP 302 whose
+    # Location header points at a non-http(s) scheme -- so for custom-scheme
+    # redirect_uris this renders a 200 page that navigates there via JS/
+    # meta-refresh instead, rather than issuing a redirect response.
+    assert_response :success
+    assert_match(/window\.location\.href\s*=\s*"financespy:\/\/oauth\/callback\?code=/, response.body)
+    assert_match(/<meta http-equiv="refresh" content="0;url=financespy:\/\/oauth\/callback\?code=/, response.body)
+  end
+
+  test "mobile oauth authorization still issues a raw redirect for standard https redirect_uris" do
+    https_app = Doorkeeper::Application.create!(
+      name: "FinancePY Web Test App",
+      redirect_uri: "https://finance.cd-co.com.py/callback",
+      scopes: "read"
+    )
+
+    post "/oauth/authorize", params: {
+      client_id: https_app.uid,
+      redirect_uri: https_app.redirect_uri,
+      response_type: "code",
+      scope: "read"
+    }
+
+    # The native-redirect interstitial is scoped to non-http(s) schemes only
+    # -- normal web OAuth clients keep the standard raw redirect behavior.
     assert_response :redirect
-    assert response.location.start_with?("financespy://oauth/callback")
+    assert response.location.start_with?("https://finance.cd-co.com.py/callback")
   end
 
   test "mobile oauth preserves display parameter through forms" do
