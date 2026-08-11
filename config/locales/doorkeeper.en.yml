@@ -76,8 +76,8 @@ en:
         title: 'Submit this form'
       native_redirect:
         title: 'Redirecting…'
-        body: "Taking you back to the app. If nothing happens,"
-        link_text: 'tap here'
+        body: 'Taking you back to the app.'
+        link_text: 'Continue'
 
     authorized_applications:
       confirmations:

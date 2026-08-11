@@ -3,13 +3,22 @@
     <%= icon("loader-circle", class: "w-6 h-6 text-primary animate-spin") %>
   </div>
   <h1 class="text-2xl font-medium text-primary"><%= t(".title") %></h1>
-  <p class="text-sm text-secondary">
-    <%= t(".body") %>
-    <%= link_to t(".link_text"), redirect_uri, id: "native-redirect-link" %>.
-  </p>
+  <p class="text-sm text-secondary"><%= t(".body") %></p>
+
+  <%# Automatic navigation (meta-refresh + JS below) fails silently on some
+      browsers for non-http(s) redirect targets -- a real tap on this button
+      is a user-gesture navigation, which every browser allows regardless. %>
+  <%= render DS::Button.new(
+    text: t(".link_text"),
+    variant: :primary,
+    size: :lg,
+    full_width: true,
+    href: redirect_uri,
+    id: "native-redirect-link"
+  ) %>
 </div>
 
 <meta http-equiv="refresh" content="0;url=<%= redirect_uri %>">
-<script>
+<script nonce="<%= content_security_policy_nonce %>">
   window.location.href = <%= raw redirect_uri.to_json %>;
 </script>
