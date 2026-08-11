@@ -23,13 +23,17 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
-        <intent-filter>
-            <action android:name="android.intent.action.VIEW" />
-            <category android:name="android.intent.category.DEFAULT" />
-            <category android:name="android.intent.category.BROWSABLE" />
-            <data android:scheme="financespy" />
-        </intent-filter>
       </activity>
+      <!--
+        No manual intent-filter for the "financespy" scheme here: react-native-app-auth
+        registers its own net.openid.appauth.RedirectUriReceiverActivity for that scheme,
+        driven by the manifestPlaceholders.appAuthRedirectScheme value in build.gradle.
+        A second matching intent-filter on MainActivity previously collided with it:
+        Android had two activities claiming the same financespy://oauth/callback intent,
+        and the OAuth redirect could be captured by MainActivity instead of AppAuth's own
+        receiver, leaving react-native-app-auth's authorize() promise never resolving
+        (confirmed live: login hung on the browser screen after tapping Authorize).
+      -->
       <service
           android:name=".WalletNotificationListenerService"
           android:label="FinancePY Wallet Listener"
