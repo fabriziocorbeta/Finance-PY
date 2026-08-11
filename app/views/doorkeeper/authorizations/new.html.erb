@@ -42,7 +42,7 @@
         variant: :primary,
         size: :lg,
         full_width: true,
-        data: { disable_with: "Authorizing..." }
+        data: { disable_with: "Authorizing...", turbo: !turbo_disabled }
       ) %>
     <% end %>
 
@@ -63,7 +63,7 @@
         variant: :outline,
         size: :lg,
         full_width: true,
-        data: { disable_with: "Denying..." }
+        data: { disable_with: "Denying...", turbo: !turbo_disabled }
       ) %>
     <% end %>
   </div>
