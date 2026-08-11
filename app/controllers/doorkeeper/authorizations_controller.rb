@@ -23,6 +23,7 @@
 module Doorkeeper
   class AuthorizationsController < Doorkeeper::ApplicationController
     before_action :authenticate_resource_owner!
+    before_action :set_no_store_headers
 
     def new
       if pre_auth.authorizable?
@@ -49,6 +50,19 @@ module Doorkeeper
     end
 
     private
+
+      # This page is personalized (CSRF token, resource owner session) and its
+      # POST issues a one-time authorization code, so it must never be cached.
+      # Found live: Cloudflare was caching the GET response regardless of
+      # query string, serving a stale copy of this page (old branding, old
+      # button markup) to every login attempt, unrelated to whatever the
+      # origin actually deployed. Standard Cache-Control should stop Cloudflare
+      # from caching it at all; belt-and-suspenders since a dashboard-level
+      # "Cache Everything" rule can still override origin headers.
+      def set_no_store_headers
+        response.headers["Cache-Control"] = "no-store, no-cache, private"
+        response.headers["Pragma"] = "no-cache"
+      end
 
       def render_success
         if skip_authorization? || can_authorize_response?
