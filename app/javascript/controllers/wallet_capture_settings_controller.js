@@ -5,6 +5,7 @@ import {
   requestWalletListenerPermission,
   getPendingWalletCaptureCount,
   retryPendingWalletCaptures,
+  onWalletCapture,
 } from "services/wallet_listener";
 
 // Connects to data-controller="wallet-capture-settings"
@@ -17,11 +18,19 @@ export default class extends Controller {
   async connect() {
     this.boundOnline = () => this.retryPending();
     window.addEventListener("online", this.boundOnline);
+
+    // Cada captura nativa (creada, duplicada, encolada, token_missing,
+    // tarjeta no reconocida) dispara este evento — sin esto quedaba
+    // silenciosamente descartado y una captura real durante testing en
+    // dispositivo no se veía sin reabrir Settings a mano.
+    this.unsubscribeWalletCapture = onWalletCapture(() => this.refresh());
+
     await this.refresh();
   }
 
   disconnect() {
     window.removeEventListener("online", this.boundOnline);
+    this.unsubscribeWalletCapture?.();
   }
 
   async refresh() {
