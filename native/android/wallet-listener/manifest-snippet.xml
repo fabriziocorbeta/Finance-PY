@@ -1,0 +1,10 @@
+<!-- native/android/wallet-listener/manifest-snippet.xml -->
+<!-- Pegar dentro de <application> en android/app/src/main/AndroidManifest.xml -->
+<service
+    android:name="py.com.cdco.financespy.wallet.WalletNotificationListenerService"
+    android:exported="false"
+    android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+    <intent-filter>
+        <action android:name="android.service.notification.NotificationListenerService" />
+    </intent-filter>
+</service>
