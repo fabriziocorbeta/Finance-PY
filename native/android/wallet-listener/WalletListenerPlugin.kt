@@ -8,12 +8,10 @@ import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
-import java.util.concurrent.Executors
 
 @CapacitorPlugin(name = "WalletListener")
 class WalletListenerPlugin : Plugin() {
     private lateinit var store: PendingCaptureStore
-    private val notificationExecutor = Executors.newSingleThreadExecutor()
 
     override fun load() {
         store = PendingCaptureStore(context)
@@ -26,6 +24,17 @@ class WalletListenerPlugin : Plugin() {
         WalletCaptureHandler.onResult = { data ->
             notifyListeners("walletCapture", data)
         }
+    }
+
+    override fun handleOnDestroy() {
+        super.handleOnDestroy()
+        // WalletCaptureHandler.onResult es un var de vida de proceso: si no
+        // lo limpiamos acá, sigue apuntando a este plugin (y por lo tanto a
+        // la Bridge/Activity/WebView) después de que la Activity se destruye,
+        // filtrándola y arriesgando invocar notifyListeners contra una
+        // WebView desmontada si llega una captura tardía desde un hilo de
+        // background.
+        WalletCaptureHandler.onResult = null
     }
 
     @PluginMethod
@@ -52,31 +61,13 @@ class WalletListenerPlugin : Plugin() {
 
     @PluginMethod
     fun retryPending(call: PluginCall) {
-        notificationExecutor.execute {
+        // Delegado a WalletCaptureHandler para que el remove() del reintento
+        // corra en el MISMO executor que el add() de capturas nuevas — así
+        // las mutaciones de PendingCaptureStore quedan serializadas en un
+        // solo hilo y no hay carrera de lectura-modificación-escritura entre
+        // el executor del plugin y el del handler.
+        WalletCaptureHandler.retryPending(context) { applied ->
             val ret = JSObject()
-
-            val tokenResId = context.resources.getIdentifier("wallet_webhook_token", "string", context.packageName)
-            if (tokenResId == 0) {
-                ret.put("applied", 0)
-                call.resolve(ret)
-                return@execute
-            }
-            val token = context.getString(tokenResId)
-            val client = WebhookClient(token)
-            var applied = 0
-
-            store.readAll().forEach { capture ->
-                when (client.post(capture)) {
-                    is WebhookResult.Success -> {
-                        store.remove(capture.id)
-                        applied++
-                    }
-                    is WebhookResult.Failure -> {
-                        // se queda en la cola, se reintenta en la próxima llamada
-                    }
-                }
-            }
-
             ret.put("applied", applied)
             call.resolve(ret)
         }

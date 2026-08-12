@@ -76,4 +76,38 @@ object WalletCaptureHandler {
         }
         onResult?.invoke(data)
     }
+
+    // Reintenta las capturas encoladas. Corre en el mismo executor que add()
+    // (arriba) para que las mutaciones de PendingCaptureStore (add/remove)
+    // queden serializadas en un solo hilo — antes del refactor esto ya
+    // corría en el único executor del plugin; ahora que el plugin tiene su
+    // propio executor para otras cosas, el store solo es seguro si todos
+    // los remove()/add() pasan por acá.
+    fun retryPending(context: Context, callback: (applied: Int) -> Unit) {
+        executor.execute {
+            val store = PendingCaptureStore(context)
+            val tokenResId = context.resources.getIdentifier("wallet_webhook_token", "string", context.packageName)
+            if (tokenResId == 0) {
+                callback(0)
+                return@execute
+            }
+            val token = context.getString(tokenResId)
+            val client = WebhookClient(token)
+            var applied = 0
+
+            store.readAll().forEach { capture ->
+                when (client.post(capture)) {
+                    is WebhookResult.Success -> {
+                        store.remove(capture.id)
+                        applied++
+                    }
+                    is WebhookResult.Failure -> {
+                        // se queda en la cola, se reintenta en la próxima llamada
+                    }
+                }
+            }
+
+            callback(applied)
+        }
+    }
 }
