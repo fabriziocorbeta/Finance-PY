@@ -100,4 +100,36 @@ class WalletListenerPlugin : Plugin() {
         ret.put("count", store.readAll().size)
         call.resolve(ret)
     }
+
+    @PluginMethod
+    fun retryPending(call: PluginCall) {
+        notificationExecutor.execute {
+            val ret = JSObject()
+
+            val tokenResId = context.resources.getIdentifier("wallet_webhook_token", "string", context.packageName)
+            if (tokenResId == 0) {
+                ret.put("applied", 0)
+                call.resolve(ret)
+                return@execute
+            }
+            val token = context.getString(tokenResId)
+            val client = WebhookClient(token)
+            var applied = 0
+
+            store.readAll().forEach { capture ->
+                when (client.post(capture)) {
+                    is WebhookResult.Success -> {
+                        store.remove(capture.id)
+                        applied++
+                    }
+                    is WebhookResult.Failure -> {
+                        // se queda en la cola, se reintenta en la próxima llamada
+                    }
+                }
+            }
+
+            ret.put("applied", applied)
+            call.resolve(ret)
+        }
+    }
 }
