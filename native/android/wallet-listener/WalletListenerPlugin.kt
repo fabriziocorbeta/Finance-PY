@@ -9,10 +9,12 @@ import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import java.util.UUID
+import java.util.concurrent.Executors
 
 @CapacitorPlugin(name = "WalletListener")
 class WalletListenerPlugin : Plugin() {
     private lateinit var store: PendingCaptureStore
+    private val notificationExecutor = Executors.newSingleThreadExecutor()
 
     override fun load() {
         store = PendingCaptureStore(context)
@@ -23,6 +25,12 @@ class WalletListenerPlugin : Plugin() {
     }
 
     private fun handleNotification(title: String, text: String) {
+        notificationExecutor.execute {
+            handleNotificationBlocking(title, text)
+        }
+    }
+
+    private fun handleNotificationBlocking(title: String, text: String) {
         val purchase = PurchaseExtractor.extract(text) ?: return
         val accountId = AccountMapping.accountIdFor(purchase.cardText)
         val capturedAt = java.time.Instant.now().toString()
