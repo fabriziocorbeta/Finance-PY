@@ -30,12 +30,26 @@ export default class extends Controller {
       return;
     }
 
-    const enabled = await isWalletListenerEnabled();
-    const pending = await getPendingWalletCaptureCount();
+    try {
+      const enabled = await isWalletListenerEnabled();
 
-    this.statusTarget.textContent = enabled
-      ? `Activado. ${pending} captura(s) pendiente(s) de sincronizar.`
-      : "Desactivado — activá el acceso a notificaciones para capturar compras de Wallet automáticamente.";
+      // Flushea capturas pendientes acá también (no solo en el evento "online"
+      // en vivo), para cubrir el caso común de "se abrió la app ya reconectada
+      // con backlog pendiente" — en connect() y en cada refresh subsiguiente.
+      if (enabled && navigator.onLine) {
+        await retryPendingWalletCaptures();
+      }
+
+      const pending = await getPendingWalletCaptureCount();
+
+      this.statusTarget.textContent = enabled
+        ? `Activado. ${pending} captura(s) pendiente(s) de sincronizar.`
+        : "Desactivado — activá el acceso a notificaciones para capturar compras de Wallet automáticamente.";
+    } catch (error) {
+      // Falla del plugin nativo: no dejar el UI colgado en "Verificando estado...".
+      console.warn("[wallet] refresh failed", error);
+      this.statusTarget.textContent = "No se pudo verificar el estado. Intentá de nuevo más tarde.";
+    }
   }
 
   async requestPermission() {
