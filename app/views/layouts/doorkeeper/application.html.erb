@@ -10,7 +10,8 @@
     <%= render "layouts/shared/head" %>
   </head>
 
-  <body class="h-full overflow-hidden lg:overflow-auto antialiased">
+  <% doorkeeper_turbo_disabled = params[:redirect_uri]&.start_with?("financespy://") || params[:display] == "mobile" %>
+  <body class="h-full overflow-hidden lg:overflow-auto antialiased" data-turbo="<%= !doorkeeper_turbo_disabled %>">
     <div class="flex flex-col h-full">
       <div class="flex flex-col h-full px-6 py-12 bg-surface">
         <div class="grow flex flex-col justify-center">
