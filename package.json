@@ -21,7 +21,8 @@
 		"tokens:check": "node bin/tokens.mjs && git diff --quiet -- app/assets/tailwind/sure-design-system/_generated.css",
 		"android:add": "cap add android",
 		"android:sync": "cap sync android",
-		"android:open": "cap open android"
+		"android:open": "cap open android",
+		"android:link-native": "bash bin/android_link_native.sh"
 	},
 	"author": "",
 	"license": "ISC"

@@ -47,6 +47,21 @@ pierde, no se pueden firmar actualizaciones futuras de esa misma app en Play
 Store — hay que publicar una app nueva desde cero. El `.gitignore` ya bloquea
 `*.keystore` / `*.jks` para que no se suban por accidente.
 
+## Código nativo custom (plugin Wallet Listener)
+
+El plugin de captura de notificaciones Wallet vive versionado en
+`native/android/wallet-listener/` (NO dentro de `android/`, que se regenera).
+Después de `npm run android:add` o `npm run android:sync`, correr:
+
+```bash
+npm run android:link-native
+```
+
+Copia los `.kt` al proyecto generado y avisa si falta registrar el plugin en
+`MainActivity.kt` o mergear `manifest-snippet.xml` en el `AndroidManifest.xml`
+(esos dos pasos son manuales a propósito — automatizar un merge de XML/Kotlin
+existente es más frágil que dejarlo explícito).
+
 ## Después de cambiar `capacitor.config.json`
 
 ```bash
