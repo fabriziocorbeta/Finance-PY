@@ -6,10 +6,6 @@ import android.service.notification.StatusBarNotification
 class WalletNotificationListenerService : NotificationListenerService() {
     companion object {
         const val WALLET_PACKAGE = "com.google.android.apps.walletnfcrel"
-        // Enganchado por WalletListenerPlugin.load() — reemplaza el bridge de
-        // React Native del original por un callback estático simple, porque
-        // acá no hay ReactContext: es un plugin de Capacitor.
-        var listener: ((title: String, text: String) -> Unit)? = null
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -20,6 +16,11 @@ class WalletNotificationListenerService : NotificationListenerService() {
         val text = extras.getCharSequence("android.text")?.toString() ?: ""
         if (title.isEmpty() && text.isEmpty()) return
 
-        listener?.invoke(title, text)
+        // Se llama directo acá (no via un callback que dependa del plugin de
+        // Capacitor) porque el OS puede bindear/arrancar este Service con el
+        // proceso en frío, sin que la Activity de Capacitor ni
+        // WalletListenerPlugin.load() lleguen a correr nunca. Service extiende
+        // ContextWrapper, así que applicationContext siempre está disponible acá.
+        WalletCaptureHandler.handle(applicationContext, title, text)
     }
 }

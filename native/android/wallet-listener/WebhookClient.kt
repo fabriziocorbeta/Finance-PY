@@ -26,7 +26,14 @@ class WebhookClient(private val token: String) {
 
             val body = JSONObject().apply {
                 put("account_id", capture.accountId)
-                put("amount", capture.amount)
+                // El monto llega de PurchaseExtractor con separador de miles
+                // (ej. "150,000") porque así viene en el texto de la
+                // notificación de Wallet. El backend Rails hace
+                // BigDecimal(amount) y explota con una coma adentro, así que
+                // se normaliza acá, justo antes de armar el body — esto
+                // también sana los items que ya están en la cola local con
+                // el monto sin normalizar cuando retryPending() los reenvía.
+                put("amount", capture.amount.replace(",", ""))
                 put("merchant", capture.merchant)
                 put("item", capture.item)
                 put("raw_text", capture.rawText)
@@ -40,7 +47,17 @@ class WebhookClient(private val token: String) {
                 val duplicate = JSONObject(respBody).optBoolean("duplicate", false)
                 WebhookResult.Success(duplicate)
             } else {
-                WebhookResult.Failure("Unexpected status $status")
+                val errorBody = connection.errorStream?.bufferedReader()?.use { it.readText() }
+                val detail = errorBody?.takeIf { it.isNotBlank() }?.let { raw ->
+                    try {
+                        JSONObject(raw).optString("error", raw)
+                    } catch (e: Exception) {
+                        raw
+                    }
+                }
+                WebhookResult.Failure(
+                    if (detail.isNullOrBlank()) "Unexpected status $status" else "Unexpected status $status: $detail"
+                )
             }
         } catch (e: Exception) {
             WebhookResult.Failure(e.message ?: "Unknown network error")
