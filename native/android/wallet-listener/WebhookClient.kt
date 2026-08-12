@@ -13,14 +13,16 @@ class WebhookClient(private val token: String) {
     private val url = "https://finance.cd-co.com.py/webhooks/android_purchase"
 
     fun post(capture: PendingCapture): WebhookResult {
+        var conn: HttpURLConnection? = null
         return try {
-            val conn = URL(url).openConnection() as HttpURLConnection
-            conn.requestMethod = "POST"
-            conn.setRequestProperty("Authorization", "Bearer $token")
-            conn.setRequestProperty("Content-Type", "application/json")
-            conn.doOutput = true
-            conn.connectTimeout = 10_000
-            conn.readTimeout = 10_000
+            val connection = URL(url).openConnection() as HttpURLConnection
+            conn = connection
+            connection.requestMethod = "POST"
+            connection.setRequestProperty("Authorization", "Bearer $token")
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.doOutput = true
+            connection.connectTimeout = 10_000
+            connection.readTimeout = 10_000
 
             val body = JSONObject().apply {
                 put("account_id", capture.accountId)
@@ -30,11 +32,11 @@ class WebhookClient(private val token: String) {
                 put("raw_text", capture.rawText)
                 put("timestamp", capture.capturedAt)
             }
-            conn.outputStream.use { it.write(body.toString().toByteArray()) }
+            connection.outputStream.use { it.write(body.toString().toByteArray()) }
 
-            val status = conn.responseCode
+            val status = connection.responseCode
             if (status == 200 || status == 201) {
-                val respBody = conn.inputStream.bufferedReader().use { it.readText() }
+                val respBody = connection.inputStream.bufferedReader().use { it.readText() }
                 val duplicate = JSONObject(respBody).optBoolean("duplicate", false)
                 WebhookResult.Success(duplicate)
             } else {
@@ -42,6 +44,8 @@ class WebhookClient(private val token: String) {
             }
         } catch (e: Exception) {
             WebhookResult.Failure(e.message ?: "Unknown network error")
+        } finally {
+            conn?.disconnect()
         }
     }
 }

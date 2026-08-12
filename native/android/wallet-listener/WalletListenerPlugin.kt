@@ -48,9 +48,14 @@ class WalletListenerPlugin : Plugin() {
             item = purchase.cardText
         )
 
-        val token = context.getString(
-            context.resources.getIdentifier("wallet_webhook_token", "string", context.packageName)
-        )
+        val tokenResId = context.resources.getIdentifier("wallet_webhook_token", "string", context.packageName)
+        if (tokenResId == 0) {
+            store.add(capture)
+            data.put("status", "token_missing")
+            notifyListeners("walletCapture", data)
+            return
+        }
+        val token = context.getString(tokenResId)
         val result = WebhookClient(token).post(capture)
 
         when (result) {
