@@ -222,9 +222,9 @@
     {
       "warning_type": "Unmaintained Dependency",
       "warning_code": 122,
-      "fingerprint": "98b26f60d776fd41ee6f088c833725145be9aac2d7c5b33780241c273622db42",
+      "fingerprint": "d84924377155b41e094acae7404ec2e521629d86f97b0ff628e3d1b263f8101c",
       "check_name": "EOLRails",
-      "message": "Support for Rails 7.2.3.1 ends on 2026-08-09",
+      "message": "Support for Rails 7.2.3.1 ended on 2026-08-09",
       "file": "Gemfile.lock",
       "line": 561,
       "link": "https://brakemanscanner.org/docs/warning_types/unmaintained_dependency/",
@@ -237,6 +237,29 @@
         1104
       ],
       "note": "Rails 7.2 EOL 2026-08-09 - version upgrade tracked separately"
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 105,
+      "fingerprint": "fd2ef41db0444018141c24b6b997964fabea64245b5da076cb3eddca53d1f44e",
+      "check_name": "PermitAttributes",
+      "message": "Potentially dangerous key allowed for mass assignment",
+      "file": "app/controllers/webhooks_controller.rb",
+      "line": 94,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.permit(:account_id, :amount, :merchant, :item, :timestamp, :raw_text)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "WebhooksController",
+        "method": "android_purchase_params"
+      },
+      "user_input": ":account_id",
+      "confidence": "High",
+      "cwe_id": [
+        915
+      ],
+      "note": "account_id is scoped in AndroidPurchase::WebhookProcessor#process: Account.find_by(id:) then rejected unless account.family_id == ENV[\"ANDROID_WEBHOOK_FAMILY_ID\"] (same error message for \"not found\" and \"wrong family\" to prevent id enumeration by a caller holding a valid ANDROID_WEBHOOK_TOKEN). Confirmed both env vars actually reach the running container (2026-08-13, prior incidents of vars silently missing from compose.local.yml's x-rails-env whitelist)."
     }
   ],
   "brakeman_version": "7.1.0"
