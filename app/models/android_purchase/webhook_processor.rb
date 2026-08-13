@@ -61,7 +61,7 @@ class AndroidPurchase::WebhookProcessor
   private
 
     def numeric_amount
-      BigDecimal(@amount.to_s)
+      BigDecimal(@amount.to_s.delete(","))
     rescue ArgumentError, TypeError
       nil
     end
