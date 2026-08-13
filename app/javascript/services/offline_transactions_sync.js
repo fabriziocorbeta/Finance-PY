@@ -32,7 +32,7 @@ export async function pullTransactions() {
     const url = new URL("/sync/transactions", window.location.origin);
     url.searchParams.set("limit", String(PULL_BATCH_SIZE));
 
-    if (checkpoint && checkpoint.updated_at && checkpoint.id) {
+    if (checkpoint?.updated_at && checkpoint.id) {
       url.searchParams.set("checkpoint[updated_at]", checkpoint.updated_at);
       url.searchParams.set("checkpoint[id]", checkpoint.id);
     }
@@ -50,7 +50,7 @@ export async function pullTransactions() {
     if (body.accounts) await saveAccounts(body.accounts);
 
     const nextCheckpoint = body.checkpoint;
-    const advanced = nextCheckpoint && nextCheckpoint.id && (!checkpoint || nextCheckpoint.id !== checkpoint.id);
+    const advanced = nextCheckpoint?.id && (!checkpoint || nextCheckpoint.id !== checkpoint.id);
 
     if (advanced) {
       checkpoint = nextCheckpoint;

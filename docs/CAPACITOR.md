@@ -47,6 +47,48 @@ pierde, no se pueden firmar actualizaciones futuras de esa misma app en Play
 Store — hay que publicar una app nueva desde cero. El `.gitignore` ya bloquea
 `*.keystore` / `*.jks` para que no se suban por accidente.
 
+## Código nativo custom (plugin Wallet Listener)
+
+El plugin de captura de notificaciones Wallet vive versionado en
+`native/android/wallet-listener/` (NO dentro de `android/`, que se regenera).
+Después de `npm run android:add` o `npm run android:sync`, correr:
+
+```bash
+npm run android:link-native
+```
+
+Copia los `.kt` al proyecto generado y avisa si falta registrar el plugin en
+`MainActivity.kt` o mergear `manifest-snippet.xml` en el `AndroidManifest.xml`
+(esos dos pasos son manuales a propósito — automatizar un merge de XML/Kotlin
+existente es más frágil que dejarlo explícito).
+
+### `secrets.xml` (token del webhook)
+
+El código nativo lee el token del webhook vía
+`context.resources.getIdentifier("wallet_webhook_token", "string", ...)`, es
+decir que espera un string resource llamado `wallet_webhook_token`. Ese
+resource **no está versionado** (no vive en `native/android/wallet-listener/`
+ni se genera solo) — hay que crearlo a mano en
+`android/app/src/main/res/values/secrets.xml`:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wallet_webhook_token" translatable="false">TU_TOKEN_ACA</string>
+</resources>
+```
+
+Su valor tiene que coincidir exactamente con el token que el webhook
+`android_purchase` del backend Rails espera (header `Authorization: Bearer
+<token>`, ver `AndroidPurchase::WebhookProcessor`). Si el resource no existe,
+`WalletCaptureHandler` encola la captura localmente y reporta status
+`token_missing` en vez de mandar el POST — no rompe la app, pero nada llega
+al backend hasta que se cree el archivo.
+
+`android/` está gitignoreado y se regenera con `npm run android:add`, así que
+`secrets.xml` se pierde en cada regeneración — hay que recrearlo (o
+respaldarlo fuera del repo) cada vez, igual que el keystore de firma.
+
 ## Después de cambiar `capacitor.config.json`
 
 ```bash

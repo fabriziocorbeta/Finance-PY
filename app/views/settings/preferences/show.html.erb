@@ -38,6 +38,18 @@
     <% end %>
   </div>
 <% end %>
+<%= settings_section title: t(".wallet_capture_title"), subtitle: t(".wallet_capture_subtitle") do %>
+  <div data-controller="wallet-capture-settings">
+    <div data-wallet-capture-settings-target="status" class="text-sm text-secondary">
+      <%= t(".wallet_capture_checking") %>
+    </div>
+    <%= render DS::Button.new(
+      text: t(".wallet_capture_enable"),
+      type: :button,
+      data: { action: "wallet-capture-settings#requestPermission" }
+    ) %>
+  </div>
+<% end %>
 <% if Current.user.admin? %>
   <%= settings_section title: t(".currencies_title", moniker: family_moniker), subtitle: t(".currencies_subtitle", moniker: family_moniker_downcase) do %>
     <% selected_count_translations = t(".selected_currencies_count") %>
