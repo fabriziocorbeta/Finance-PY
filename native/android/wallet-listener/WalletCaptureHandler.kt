@@ -16,6 +16,25 @@ import java.util.concurrent.Executors
 object WalletCaptureHandler {
     private val executor = Executors.newSingleThreadExecutor()
 
+    // Google Wallet postea la notificación y después la actualiza con el mismo
+    // contenido (mismo título+texto) poco despues -- onNotificationPosted se
+    // dispara de nuevo para esa actualizacion, y sin este chequeo cada disparo
+    // generaba una compra nueva (confirmado en produccion: 2 Entries reales
+    // idénticas, creadas con 2 segundos de diferencia). Dedup por contenido
+    // exacto en una ventana corta -- corre serializado en el mismo executor
+    // que el resto, no necesita lock aparte.
+    private val recentCaptures = mutableMapOf<String, Long>()
+    private const val DEDUP_WINDOW_MS = 60_000L
+
+    private fun isDuplicateNotification(title: String, text: String): Boolean {
+        val key = "$title|$text"
+        val now = System.currentTimeMillis()
+        recentCaptures.entries.removeAll { now - it.value > DEDUP_WINDOW_MS }
+        val lastSeen = recentCaptures[key]
+        recentCaptures[key] = now
+        return lastSeen != null
+    }
+
     // Enganchado por WalletListenerPlugin.load() cuando el plugin/Activity
     // están vivos, para que la UI reciba el evento "walletCapture". La
     // captura/POST/cola funcionan igual aunque nadie se suscriba acá.
@@ -28,6 +47,7 @@ object WalletCaptureHandler {
     }
 
     private fun handleBlocking(context: Context, title: String, text: String) {
+        if (isDuplicateNotification(title, text)) return
         val purchase = PurchaseExtractor.extract(text) ?: return
         val accountId = AccountMapping.accountIdFor(purchase.cardText)
         val capturedAt = Instant.now().toString()
