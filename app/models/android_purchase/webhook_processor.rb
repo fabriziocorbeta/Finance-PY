@@ -37,7 +37,7 @@ class AndroidPurchase::WebhookProcessor
       account: account,
       date: parsed_date,
       name: description,
-      amount: -numeric_amount.abs,
+      amount: numeric_amount.abs, # positivo = egreso (Entry#classification), toda compra Wallet es un gasto
       currency: account.currency,
       source: "google_play",
       external_id: external_id,
