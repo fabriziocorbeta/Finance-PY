@@ -1,6 +1,7 @@
 package py.com.cdco.financespy.wallet
 
 import android.content.Context
+import android.util.Log
 import com.getcapacitor.JSObject
 import java.time.Instant
 import java.util.UUID
@@ -14,6 +15,7 @@ import java.util.concurrent.Executors
 // WalletNotificationListenerService, que llama acá directamente con
 // applicationContext.
 object WalletCaptureHandler {
+    private const val TAG = "WalletDebug"
     private val executor = Executors.newSingleThreadExecutor()
 
     // Google Wallet postea la notificación y después la actualiza con el mismo
@@ -47,8 +49,19 @@ object WalletCaptureHandler {
     }
 
     private fun handleBlocking(context: Context, title: String, text: String) {
-        if (isDuplicateNotification(title, text)) return
-        val purchase = PurchaseExtractor.extract(text) ?: return
+        if (isDuplicateNotification(title, text)) {
+            Log.i(TAG, "dropped: duplicate_notification text=\"$text\"")
+            return
+        }
+        val purchase = PurchaseExtractor.extract(text)
+        if (purchase == null) {
+            // Antes esto cortaba en silencio -- sin este log, una compra real
+            // no reconocida (ej. formato de texto distinto por tarjeta/banco)
+            // desaparece sin dejar ningún rastro, ni servidor ni local.
+            // Confirmado en producción con compras GNB perdidas sin evidencia.
+            Log.w(TAG, "dropped: regex_no_match text=\"$text\"")
+            return
+        }
         val accountId = AccountMapping.accountIdFor(purchase.cardText)
         val capturedAt = Instant.now().toString()
 
@@ -58,6 +71,7 @@ object WalletCaptureHandler {
         data.put("cardText", purchase.cardText)
 
         if (accountId == null) {
+            Log.w(TAG, "dropped: unrecognized_card cardText=\"${purchase.cardText}\"")
             data.put("status", "unrecognized_card")
             onResult?.invoke(data)
             return
@@ -76,6 +90,7 @@ object WalletCaptureHandler {
         val store = PendingCaptureStore(context)
         val tokenResId = context.resources.getIdentifier("wallet_webhook_token", "string", context.packageName)
         if (tokenResId == 0) {
+            Log.e(TAG, "queued: token_missing merchant=\"$title\" amount=${purchase.amount}")
             store.add(capture)
             data.put("status", "token_missing")
             onResult?.invoke(data)
@@ -86,9 +101,11 @@ object WalletCaptureHandler {
 
         when (result) {
             is WebhookResult.Success -> {
+                Log.i(TAG, "webhook_success duplicate=${result.duplicate} merchant=\"$title\" amount=${purchase.amount}")
                 data.put("status", if (result.duplicate) "duplicate" else "created")
             }
             is WebhookResult.Failure -> {
+                Log.e(TAG, "queued: webhook_failure error=\"${result.error}\" merchant=\"$title\" amount=${purchase.amount}")
                 store.add(capture)
                 data.put("status", "queued")
                 data.put("error", result.error)
