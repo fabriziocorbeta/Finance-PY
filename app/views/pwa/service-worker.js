@@ -127,6 +127,31 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Stale-while-revalidate para navegaciones Turbo Drive (cambiar de
+  // pantalla con la app ya abierta). Sirve la ultima version cacheada al
+  // toque -- sin distincion visual entre stale y fresco, decision
+  // confirmada en el spec -- mientras revalida en background siempre,
+  // dejando el cache listo para la PROXIMA visita a esa misma pantalla
+  // (la visita actual nunca espera a la revalidacion).
+  if (event.request.method === 'GET' &&
+      url.origin === self.location.origin &&
+      event.request.mode !== 'navigate' &&
+      !isCacheableAsset(url.pathname) &&
+      isTurboVisit(event.request)) {
+    event.respondWith(
+      caches.open(SWR_CACHE).then((cache) =>
+        cache.match(event.request).then((cached) => {
+          const revalidate = fetch(event.request).then((response) => {
+            if (response.ok) cache.put(event.request, response.clone());
+            return response;
+          });
+          return cached || revalidate;
+        })
+      )
+    );
+    return;
+  }
+
   // Handle offline assets (logo, etc.)
   if (OFFLINE_ASSETS.some(asset => url.pathname === asset)) {
     event.respondWith(
