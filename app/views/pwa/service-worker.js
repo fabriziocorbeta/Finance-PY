@@ -1,5 +1,6 @@
 const CACHE_VERSION = 'v5';
 const RUNTIME_CACHE = 'runtime-v1';
+const SWR_CACHE = 'swr-v1';
 const OFFLINE_ASSETS = [
   '/offline.html',
   '/logo-offline.svg'
@@ -21,6 +22,15 @@ function isCacheableAsset(pathname) {
   return CACHEABLE_ASSET_PATTERNS.some((pattern) => pattern.test(pathname));
 }
 
+// Turbo Drive navega entre pantallas con fetch() normal, no con una
+// navegacion de browser real -- event.request.mode nunca es 'navigate'
+// para estos requests, asi que el branch de cold-open no los ve. Se
+// identifican por el Accept header que Turbo manda en sus visitas.
+function isTurboVisit(request) {
+  const accept = request.headers.get('Accept') || '';
+  return accept.includes('text/html') || accept.includes('text/vnd.turbo-stream.html');
+}
+
 // Install event - cache the offline page and assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -38,7 +48,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_VERSION && cacheName !== RUNTIME_CACHE) {
+          if (cacheName !== CACHE_VERSION && cacheName !== RUNTIME_CACHE && cacheName !== SWR_CACHE) {
             return caches.delete(cacheName);
           }
         })
