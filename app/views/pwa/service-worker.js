@@ -84,6 +84,22 @@ function isOriginUnreachable(response) {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // Invalida el cache SWR despues de cualquier escritura exitosa, para que
+  // la proxima pantalla de lectura visitada por Turbo refleje el cambio de
+  // inmediato en vez de esperar su propia revalidacion en background. El
+  // submit en si nunca se toca -- siempre va a red igual que antes, solo
+  // se inspecciona la respuesta para decidir si limpiar el cache.
+  if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(event.request.method) &&
+      url.origin === self.location.origin) {
+    event.respondWith(
+      fetch(event.request).then((response) => {
+        if (response.ok) caches.delete(SWR_CACHE);
+        return response;
+      })
+    );
+    return;
+  }
+
   // Handle navigation requests (page loads) - network-first: try the live
   // page (financial data changes, freshness matters more than instant load
   // here), cache the successful response so the same page can be reopened
