@@ -112,6 +112,7 @@ es:
       credit_card: Tarjeta de crédito
       loan: Préstamo
       other_liability: Otra deuda
+      receivable: Cuenta por cobrar
     tax_treatments:
       taxable: Sujeto a impuestos
       tax_deferred: Impuestos diferidos

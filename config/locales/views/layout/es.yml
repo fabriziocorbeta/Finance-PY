@@ -8,6 +8,7 @@ es:
         budgets: Presupuestos
         goals: Metas
         home: Inicio
+        receivables: Cuentas a Cobrar
         reports: Informes
         transactions: Transacciones
     auth:

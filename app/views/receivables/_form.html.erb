@@ -1,0 +1,24 @@
+<%# locals: (account:, url:) %>
+
+<%= render "accounts/form", account: account, url: url do |form| %>
+  <%= render "shared/ruler", classes: "my-4" %>
+
+  <div class="space-y-2">
+    <%= form.fields_for :accountable do |receivable_form| %>
+      <%= receivable_form.money_field :total_amount,
+                               label: t("receivables.form.total_amount"),
+                               default_currency: Current.family.currency,
+                               required: true %>
+
+      <div class="flex items-center gap-2">
+        <%= receivable_form.number_field :installment_count,
+                               label: t("receivables.form.installment_count"),
+                               placeholder: t("receivables.form.installment_count_placeholder") %>
+        <%= receivable_form.number_field :due_day,
+                               label: t("receivables.form.due_day"),
+                               placeholder: t("receivables.form.due_day_placeholder"),
+                               min: 1, max: 31 %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

@@ -1,0 +1,17 @@
+es:
+  receivables:
+    form:
+      total_amount: Monto total
+      installment_count: Cantidad de cuotas (opcional)
+      installment_count_placeholder: '6'
+      due_day: Día de vencimiento (opcional)
+      due_day_placeholder: '13'
+    new:
+      title: Ingresá los datos de la cuenta a cobrar
+    edit:
+      edit: Editar %{account}
+    dashboard:
+      title: Cuentas a Cobrar
+      register_payment: Registrar Pago
+      completed: Completadas (%{count})
+      due_day: Vence el día

@@ -1,0 +1,24 @@
+<% content_for :page_title, t("receivables.dashboard.title") %>
+
+<div class="space-y-6">
+  <h1 class="text-xl font-medium text-primary"><%= t("receivables.dashboard.title") %></h1>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <% @active.each do |account| %>
+      <%= render "receivables/card", account: account %>
+    <% end %>
+  </div>
+
+  <% if @completed.any? %>
+    <details class="mt-6">
+      <summary class="text-sm text-subdued cursor-pointer">
+        <%= t("receivables.dashboard.completed", count: @completed.size) %>
+      </summary>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+        <% @completed.each do |account| %>
+          <%= render "receivables/card", account: account %>
+        <% end %>
+      </div>
+    </details>
+  <% end %>
+</div>

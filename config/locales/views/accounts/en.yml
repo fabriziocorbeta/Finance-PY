@@ -122,6 +122,7 @@ en:
       credit_card: Credit Card
       loan: Loan
       other_liability: Other Liability
+      receivable: Receivable
     tax_treatments:
       taxable: Taxable
       tax_deferred: Tax-Deferred

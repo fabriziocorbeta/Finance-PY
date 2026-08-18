@@ -70,6 +70,26 @@ loan:
   accountable: one
   status: active
 
+receivable:
+  family: dylan_family
+  owner: family_admin
+  name: GYM Schatzi
+  balance: 855000
+  currency: USD
+  accountable_type: Receivable
+  accountable: one
+  status: active
+
+receivable_completed:
+  family: dylan_family
+  owner: family_admin
+  name: Cena Javier
+  balance: 0
+  currency: USD
+  accountable_type: Receivable
+  accountable: two
+  status: active
+
 property:
   family: dylan_family
   owner: family_admin

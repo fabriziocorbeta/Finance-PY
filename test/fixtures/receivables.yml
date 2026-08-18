@@ -1,0 +1,9 @@
+one:
+  total_amount: 1282500
+  installment_count: 6
+  due_day: 13
+
+two:
+  total_amount: 90000
+  installment_count: 1
+  due_day: null

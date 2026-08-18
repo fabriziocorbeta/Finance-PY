@@ -7,6 +7,7 @@ en:
         assistant: Assistant
         budgets: Budgets
         home: Home
+        receivables: Receivables
         reports: Reports
         transactions: Transactions
     auth:

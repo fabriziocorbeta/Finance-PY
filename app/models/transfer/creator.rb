@@ -88,6 +88,11 @@ class Transfer::Creator
         "cc_payment"
       elsif destination_is_investment? && !source_is_investment?
         "investment_contribution"
+      elsif source_account.receivable?
+        # The one case keyed off the SOURCE rather than the destination -- a
+        # receivable collection is defined by what you're paying FROM, not
+        # what ordinary account the money lands in.
+        "receivable_collection"
       else
         "funds_movement"
       end
