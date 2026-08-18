@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_07_22_040000) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_18_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -1272,6 +1272,14 @@ ActiveRecord::Schema[7.2].define(version: 2026_07_22_040000) do
     t.datetime "updated_at", null: false
     t.index ["family_id", "order_number"], name: "index_purchase_orders_on_family_id_and_order_number", unique: true
     t.index ["family_id"], name: "index_purchase_orders_on_family_id"
+  end
+
+  create_table "receivables", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.decimal "total_amount", precision: 19, scale: 4
+    t.integer "installment_count"
+    t.integer "due_day"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "recurring_transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
