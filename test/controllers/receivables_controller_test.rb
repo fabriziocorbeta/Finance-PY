@@ -8,6 +8,13 @@ class ReceivablesControllerTest < ActionDispatch::IntegrationTest
     @account = accounts(:receivable)
   end
 
+  test "index shows active and completed receivables separately" do
+    get receivables_path
+    assert_response :success
+    assert_match "GYM Schatzi", response.body
+    assert_match "Cena Javier", response.body
+  end
+
   test "creates with receivable details" do
     assert_difference -> { Account.count } => 1,
       -> { Receivable.count } => 1,

@@ -1,0 +1,34 @@
+<%# locals: (account:) %>
+<% receivable = account.receivable %>
+<% total = receivable.total_amount ? Money.new(receivable.total_amount, account.currency) : account.balance_money %>
+<% pending = account.balance_money %>
+<% progress_percent = total.amount.zero? ? 100 : (((total.amount - pending.amount) / total.amount) * 100).round %>
+
+<div class="bg-container rounded-xl shadow-border-xs p-6">
+  <div class="flex items-start gap-3">
+    <div class="min-w-0 flex-1">
+      <p class="text-base font-medium text-primary truncate"><%= account.name %></p>
+      <% if receivable.due_day.present? %>
+        <p class="text-xs text-subdued mt-0.5"><%= t("receivables.form.due_day") %>: <%= receivable.due_day %></p>
+      <% end %>
+    </div>
+    <div class="shrink-0">
+      <%= render DS::ProgressRing.new(percent: progress_percent, tone: pending.amount.zero? ? :success : :neutral) %>
+    </div>
+  </div>
+
+  <div class="mt-5">
+    <div class="flex items-baseline gap-1.5">
+      <span class="text-xl font-medium text-primary tabular-nums privacy-sensitive"><%= pending.format(precision: 0) %></span>
+      <span class="text-xs text-subdued tabular-nums privacy-sensitive">/ <%= total.format(precision: 0) %></span>
+    </div>
+  </div>
+
+  <% if pending.amount.positive? %>
+    <div class="mt-4">
+      <%= link_to t("receivables.dashboard.register_payment"),
+          new_transfer_path(from_account_id: account.id),
+          class: "w-full inline-flex justify-center items-center rounded-lg bg-primary text-white text-sm font-medium py-2 px-4 hover:bg-primary/90 transition-colors" %>
+    </div>
+  <% end %>
+</div>
