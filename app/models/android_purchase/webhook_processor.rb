@@ -45,6 +45,7 @@ class AndroidPurchase::WebhookProcessor
     )
 
     entry.save!
+    apply_family_rules(account.family)
     :created
   rescue ActiveRecord::RecordInvalid
     raise unless entry.errors.of_kind?(:external_id, :taken)
@@ -59,6 +60,20 @@ class AndroidPurchase::WebhookProcessor
   end
 
   private
+
+    # Best-effort: reuses the same Rules engine the rest of the app uses for
+    # merchant-name-based categorization (Settings > Rules), so a Wallet
+    # capture ends up categorized exactly like any other transaction would
+    # once a matching rule exists -- no separate categorization logic here.
+    # Never raises: a rules bug must not turn a successful purchase capture
+    # into a 500 for the Android client.
+    def apply_family_rules(family)
+      family.rules.where(active: true, resource_type: "transaction").find_each do |rule|
+        RuleJob.perform_later(rule)
+      end
+    rescue => e
+      Rails.logger.error("AndroidPurchase::WebhookProcessor rule application error: #{e.message}")
+    end
 
     def numeric_amount
       BigDecimal(normalized_amount_string)
