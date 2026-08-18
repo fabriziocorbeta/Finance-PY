@@ -1,0 +1,16 @@
+en:
+  receivables:
+    form:
+      total_amount: Total amount
+      installment_count: Number of installments (optional)
+      installment_count_placeholder: '6'
+      due_day: Due day (optional)
+      due_day_placeholder: '13'
+    new:
+      title: Enter receivable details
+    edit:
+      edit: Edit %{account}
+    dashboard:
+      title: Cuentas a Cobrar
+      register_payment: Register Payment
+      completed: Completed (%{count})
