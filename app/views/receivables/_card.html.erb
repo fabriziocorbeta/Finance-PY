@@ -2,6 +2,7 @@
 <% receivable = account.receivable %>
 <% total = receivable.total_amount ? Money.new(receivable.total_amount, account.currency) : account.balance_money %>
 <% pending = account.balance_money %>
+<% paid = Money.new(total.amount - pending.amount, account.currency) %>
 <% progress_percent = total.amount.zero? ? 100 : (((total.amount - pending.amount) / total.amount) * 100).round %>
 
 <div class="bg-container rounded-xl shadow-border-xs p-6">
@@ -9,7 +10,7 @@
     <div class="min-w-0 flex-1">
       <p class="text-base font-medium text-primary truncate"><%= account.name %></p>
       <% if receivable.due_day.present? %>
-        <p class="text-xs text-subdued mt-0.5"><%= t("receivables.form.due_day") %>: <%= receivable.due_day %></p>
+        <p class="text-xs text-subdued mt-0.5"><%= t("receivables.dashboard.due_day") %>: <%= receivable.due_day %></p>
       <% end %>
     </div>
     <div class="shrink-0">
@@ -19,7 +20,7 @@
 
   <div class="mt-5">
     <div class="flex items-baseline gap-1.5">
-      <span class="text-xl font-medium text-primary tabular-nums privacy-sensitive"><%= pending.format(precision: 0) %></span>
+      <span class="text-xl font-medium text-primary tabular-nums privacy-sensitive"><%= paid.format(precision: 0) %></span>
       <span class="text-xs text-subdued tabular-nums privacy-sensitive">/ <%= total.format(precision: 0) %></span>
     </div>
   </div>

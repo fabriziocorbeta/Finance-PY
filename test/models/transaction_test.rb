@@ -44,6 +44,15 @@ class TransactionTest < ActiveSupport::TestCase
     assert transaction.investment_contribution?
   end
 
+  test "receivable_collection is a valid kind" do
+    transaction = Transaction.new(kind: "receivable_collection")
+
+    assert_equal "receivable_collection", transaction.kind
+    assert transaction.receivable_collection?
+    assert Transaction::TRANSFER_KINDS.include?("receivable_collection")
+    assert Transaction::BUDGET_EXCLUDED_KINDS.include?("receivable_collection")
+  end
+
   test "TRANSFER_KINDS constant matches transfer? method" do
     Transaction::TRANSFER_KINDS.each do |kind|
       assert Transaction.new(kind: kind).transfer?, "#{kind} should be a transfer kind"
@@ -56,7 +65,7 @@ class TransactionTest < ActiveSupport::TestCase
   end
 
   test "all transaction kinds are valid" do
-    valid_kinds = %w[standard funds_movement cc_payment loan_payment one_time investment_contribution]
+    valid_kinds = %w[standard funds_movement cc_payment loan_payment one_time investment_contribution receivable_collection]
 
     valid_kinds.each do |kind|
       transaction = Transaction.new(kind: kind)

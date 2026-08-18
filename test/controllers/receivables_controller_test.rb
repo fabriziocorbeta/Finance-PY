@@ -15,6 +15,17 @@ class ReceivablesControllerTest < ActionDispatch::IntegrationTest
     assert_match "Cena Javier", response.body
   end
 
+  test "index does not show receivables the signed-in user has no access to" do
+    # @account (accounts(:receivable), "GYM Schatzi") is owned by family_admin and
+    # is NOT shared with family_member via any AccountShare fixture, so a family
+    # member without a share should not see it on the index page.
+    sign_in users(:family_member)
+
+    get receivables_path
+    assert_response :success
+    assert_no_match "GYM Schatzi", response.body
+  end
+
   test "creates with receivable details" do
     assert_difference -> { Account.count } => 1,
       -> { Receivable.count } => 1,

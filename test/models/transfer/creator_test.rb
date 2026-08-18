@@ -153,6 +153,32 @@ class Transfer::CreatorTest < ActiveSupport::TestCase
     assert_equal "Payment from #{@source_account.name}", inflow.entry.name
   end
 
+  test "creates receivable collection when source account is a receivable" do
+    receivable_account = accounts(:receivable)
+
+    creator = Transfer::Creator.new(
+      family: @family,
+      source_account_id: receivable_account.id,
+      destination_account_id: @source_account.id, # normal depository as destination
+      date: @date,
+      amount: @amount
+    )
+
+    transfer = creator.create
+
+    assert transfer.persisted?
+
+    # Verify outflow transaction is marked as receivable_collection
+    outflow = transfer.outflow_transaction
+    assert_equal "receivable_collection", outflow.kind
+    assert outflow.transfer?, "receivable_collection should be recognized as a transfer"
+    assert_equal "Transfer to #{@source_account.name}", outflow.entry.name
+
+    # Verify inflow transaction (always funds_movement)
+    inflow = transfer.inflow_transaction
+    assert_equal "funds_movement", inflow.kind
+  end
+
   test "creates credit card payment" do
     credit_card_account = accounts(:credit_card)
 

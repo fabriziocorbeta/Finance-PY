@@ -14,3 +14,4 @@ es:
       title: Cuentas a Cobrar
       register_payment: Registrar Pago
       completed: Completadas (%{count})
+      due_day: Vence el día

@@ -14,3 +14,4 @@ en:
       title: Cuentas a Cobrar
       register_payment: Register Payment
       completed: Completed (%{count})
+      due_day: Due day
