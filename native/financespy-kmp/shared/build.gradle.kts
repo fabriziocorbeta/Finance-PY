@@ -36,6 +36,10 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.androidx.activity.compose)
+            implementation("androidx.security:security-crypto:1.1.0-alpha06")
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
         }
     }
 }
