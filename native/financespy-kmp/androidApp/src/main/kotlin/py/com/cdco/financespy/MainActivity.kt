@@ -15,6 +15,7 @@ import py.com.cdco.financespy.db.buildDatabase
 import py.com.cdco.financespy.db.initDatabaseBuilder
 import py.com.cdco.financespy.network.ApiClient
 import py.com.cdco.financespy.screens.DashboardViewModel
+import py.com.cdco.financespy.screens.TransactionsViewModel
 import py.com.cdco.financespy.sync.SyncEngine
 import py.com.cdco.financespy.sync.currentIsoDate
 
@@ -22,6 +23,7 @@ class MainActivity : ComponentActivity() {
     private val isLoggedIn = mutableStateOf<Boolean?>(null)
     private lateinit var authRepository: AuthRepository
     private lateinit var dashboardViewModel: DashboardViewModel
+    private lateinit var transactionsViewModel: TransactionsViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,6 +48,10 @@ class MainActivity : ComponentActivity() {
             accountDao = database.accountDao(),
             entryDao = database.entryDao()
         )
+        transactionsViewModel = TransactionsViewModel(
+            scope = lifecycleScope,
+            entryDao = database.entryDao()
+        )
 
         lifecycleScope.launch {
             isLoggedIn.value = authRepository.isLoggedIn()
@@ -60,7 +66,8 @@ class MainActivity : ComponentActivity() {
                     val url = authRepository.buildAuthorizationUrl()
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                 },
-                dashboardViewModelFactory = { dashboardViewModel }
+                dashboardViewModelFactory = { dashboardViewModel },
+                transactionsViewModelFactory = { transactionsViewModel }
             )
         }
     }
