@@ -1,18 +1,23 @@
 package py.com.cdco.financespy
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.remember
+import py.com.cdco.financespy.screens.DashboardScreen
+import py.com.cdco.financespy.screens.DashboardViewModel
+import py.com.cdco.financespy.screens.LoginScreen
 
 @Composable
-fun App() {
+fun App(
+    isLoggedIn: Boolean?,
+    onLoginClick: () -> Unit,
+    dashboardViewModelFactory: () -> DashboardViewModel
+) {
     MaterialTheme {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("FinancePY nativo — wave 1a scaffold")
+        when (isLoggedIn) {
+            null -> {}
+            false -> LoginScreen(onLoginClick = onLoginClick)
+            true -> DashboardScreen(viewModel = remember { dashboardViewModelFactory() })
         }
     }
 }
