@@ -7,6 +7,8 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.room)
+    id("com.google.devtools.ksp")
 }
 
 kotlin {
@@ -41,6 +43,11 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
         }
+        androidUnitTest.dependencies {
+            implementation("androidx.test:core:1.6.1")
+            implementation("org.robolectric:robolectric:4.14.1")
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+        }
     }
 }
 
@@ -52,4 +59,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
+dependencies {
+    add("kspAndroid", "androidx.room:room-compiler:2.7.0-alpha11")
 }
