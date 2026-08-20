@@ -18,12 +18,16 @@ class Api::V1::GoalsControllerTest < ActionDispatch::IntegrationTest
 
     Redis.new.del("api_rate_limit:#{@api_key.id}")
 
-    @goal = @family.goals.create!(
+    # Goal valida must_have_at_least_one_linked_account: sin un goal_account
+    # asociado, create! falla con :at_least_one_linked_account_required.
+    @goal = @family.goals.new(
       name: "New Car",
       target_amount: 10000,
       currency: "USD",
       state: "active"
     )
+    @goal.goal_accounts.build(account: accounts(:depository))
+    @goal.save!
   end
 
   test "should list goals" do
@@ -37,11 +41,21 @@ class Api::V1::GoalsControllerTest < ActionDispatch::IntegrationTest
 
   test "should not list another family's goals" do
     other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
-    other_goal = other_family.goals.create!(
+    # Goal exige >=1 cuenta vinculada (must_have_at_least_one_linked_account),
+    # asi que la familia ajena tambien necesita una cuenta propia.
+    other_account = other_family.accounts.create!(
+      name: "Other Checking",
+      balance: 0,
+      currency: "USD",
+      accountable: Depository.new
+    )
+    other_goal = other_family.goals.new(
       name: "Other Car",
       target_amount: 15000,
       currency: "USD"
     )
+    other_goal.goal_accounts.build(account: other_account)
+    other_goal.save!
 
     get api_v1_goals_url, headers: api_headers(@api_key)
     assert_response :success
@@ -99,11 +113,21 @@ class Api::V1::GoalsControllerTest < ActionDispatch::IntegrationTest
 
   test "should not show another family's goal" do
     other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
-    other_goal = other_family.goals.create!(
+    # Goal exige >=1 cuenta vinculada (must_have_at_least_one_linked_account),
+    # asi que la familia ajena tambien necesita una cuenta propia.
+    other_account = other_family.accounts.create!(
+      name: "Other Checking",
+      balance: 0,
+      currency: "USD",
+      accountable: Depository.new
+    )
+    other_goal = other_family.goals.new(
       name: "Other Car",
       target_amount: 15000,
       currency: "USD"
     )
+    other_goal.goal_accounts.build(account: other_account)
+    other_goal.save!
 
     get api_v1_goal_url(other_goal), headers: api_headers(@api_key)
     assert_response :not_found

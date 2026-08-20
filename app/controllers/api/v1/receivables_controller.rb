@@ -51,7 +51,16 @@ class Api::V1::ReceivablesController < Api::V1::BaseController
     end
 
     def receivables_scope
-      account_ids = current_resource_owner.family.accounts.where(accountable_type: "Receivable").select(:accountable_id)
+      # .accessible_by acota a las cuentas que el usuario posee o que le
+      # compartieron via AccountShare. El scope por familia solo NO alcanza:
+      # dentro de una misma familia una cuenta puede ser privada de otro
+      # usuario. Mismo criterio que ya aplica el controller web equivalente
+      # (app/controllers/receivables_controller.rb) y que accounts_controller.
+      account_ids = current_resource_owner.family.accounts
+                                          .visible
+                                          .accessible_by(current_resource_owner)
+                                          .where(accountable_type: "Receivable")
+                                          .select(:accountable_id)
       Receivable.where(id: account_ids)
     end
 

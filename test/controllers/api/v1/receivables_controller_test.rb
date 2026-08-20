@@ -35,6 +35,30 @@ class Api::V1::ReceivablesControllerTest < ActionDispatch::IntegrationTest
     assert json_response["data"].any? { |r| r["id"] == @receivable.id }
   end
 
+  # Regresion: el scope por familia solo NO alcanza. Dentro de una misma
+  # familia, una cuenta pertenece a un usuario (accounts.owner_id) y solo es
+  # visible para otros si hay un AccountShare. Sin .accessible_by en
+  # receivables_scope, family_admin veia las cuentas a cobrar privadas de
+  # family_member. Mismo bug que se corrigio antes en el controller web.
+  test "should not list receivables of an account owned by another user in the same family" do
+    other_user = users(:family_member)
+    private_receivable = Receivable.create!(total_amount: 999, due_day: 10)
+    @family.accounts.create!(
+      name: "Privada de family_member",
+      balance: 999,
+      currency: "USD",
+      owner: other_user,
+      accountable: private_receivable
+    )
+
+    get api_v1_receivables_url, headers: api_headers(@api_key)
+    assert_response :success
+
+    ids = JSON.parse(response.body)["data"].map { |r| r["id"] }
+    assert_includes ids, @receivable.id
+    assert_not_includes ids, private_receivable.id
+  end
+
   test "should not list another family's receivables" do
     other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
     other_receivable = Receivable.create!(total_amount: 1000)

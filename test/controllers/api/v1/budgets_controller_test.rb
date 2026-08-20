@@ -18,11 +18,11 @@ class Api::V1::BudgetsControllerTest < ActionDispatch::IntegrationTest
 
     Redis.new.del("api_rate_limit:#{@api_key.id}")
 
-    @budget = @family.budgets.create!(
-      start_date: Date.current.beginning_of_month,
-      end_date: Date.current.end_of_month,
-      currency: @family.currency
-    )
+    # budgets(:one) ya existe para dylan_family (la familia de family_admin)
+    # con exactamente este mes. Budget valida unicidad de start_date/end_date
+    # por familia, asi que crear otro aca explotaba con
+    # "Start date has already been taken". Se reusa el fixture.
+    @budget = budgets(:one)
   end
 
   test "should list budgets" do
@@ -69,7 +69,7 @@ class Api::V1::BudgetsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should show budget" do
-    get api_v1_budget_url(@budget), headers: api_headers(@api_key)
+    get api_v1_budget_url(id: @budget.id), headers: api_headers(@api_key)
     assert_response :success
 
     budget = JSON.parse(response.body)["data"]
@@ -79,7 +79,7 @@ class Api::V1::BudgetsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should require authentication when showing a budget" do
-    get api_v1_budget_url(@budget)
+    get api_v1_budget_url(id: @budget.id)
 
     assert_response :unauthorized
   end
@@ -87,7 +87,7 @@ class Api::V1::BudgetsControllerTest < ActionDispatch::IntegrationTest
   test "should require read scope when showing a budget" do
     api_key_without_read = api_key_without_read_scope
 
-    get api_v1_budget_url(@budget), headers: api_headers(api_key_without_read)
+    get api_v1_budget_url(id: @budget.id), headers: api_headers(api_key_without_read)
 
     assert_response :forbidden
     json_response = JSON.parse(response.body)
@@ -104,7 +104,7 @@ class Api::V1::BudgetsControllerTest < ActionDispatch::IntegrationTest
       currency: other_family.currency
     )
 
-    get api_v1_budget_url(other_budget), headers: api_headers(@api_key)
+    get api_v1_budget_url(id: other_budget.id), headers: api_headers(@api_key)
     assert_response :not_found
     json_response = JSON.parse(response.body)
     assert_equal "not_found", json_response["error"]
