@@ -2,6 +2,7 @@ package py.com.cdco.financespy.screens
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -19,7 +20,7 @@ import androidx.compose.ui.unit.dp
 fun RuleFormScreen(viewModel: RuleFormViewModel, onSaved: () -> Unit) {
     val state by viewModel.state.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
         Text(if (state.isEditing) "Editar regla" else "Nueva regla")
 
         TextField(value = state.name, onValueChange = viewModel::updateName, label = { Text("Nombre (opcional)") })

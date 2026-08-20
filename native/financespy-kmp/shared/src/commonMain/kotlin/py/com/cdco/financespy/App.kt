@@ -1,6 +1,7 @@
 package py.com.cdco.financespy
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +50,7 @@ fun App(
                 val backStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = backStackEntry?.destination?.route
 
-                Column(modifier = Modifier.statusBarsPadding()) {
+                Column(modifier = Modifier.statusBarsPadding().navigationBarsPadding()) {
                     if (currentRoute == Routes.DASHBOARD || currentRoute == Routes.TRANSACTIONS || currentRoute == Routes.RULES) {
                         TabRow(
                             selectedTabIndex = when (currentRoute) {

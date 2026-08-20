@@ -1,5 +1,7 @@
 package py.com.cdco.financespy.api.dto
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -63,11 +65,12 @@ data class CreateRuleRequest(
     val rule: CreateRuleBody
 )
 
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class CreateRuleBody(
     val name: String?,
-    val resource_type: String = "transaction",
-    val active: Boolean = true,
+    @EncodeDefault val resource_type: String = "transaction",
+    @EncodeDefault val active: Boolean = true,
     val conditions_attributes: List<ConditionAttributes>,
     val actions_attributes: List<ActionAttributes>
 )
