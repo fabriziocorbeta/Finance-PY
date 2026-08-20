@@ -11,8 +11,9 @@ class Api::V1::RulesController < Api::V1::BaseController
   }.freeze
   RESOURCE_TYPES = %w[transaction].freeze
 
-  before_action :ensure_read_scope
-  before_action :set_rule, only: :show
+  before_action :ensure_read_scope, only: %i[index show]
+  before_action :ensure_write_scope, only: %i[create update destroy]
+  before_action :set_rule, only: %i[show update destroy]
 
   def index
     return render_invalid_resource_type_filter if invalid_resource_type_filter?
@@ -43,6 +44,61 @@ class Api::V1::RulesController < Api::V1::BaseController
     render :show
   end
 
+  def create
+    @rule = current_resource_owner.family.rules.new(rule_params)
+
+    if @rule.save
+      render :show, status: :created
+    else
+      render json: {
+        error: "validation_failed",
+        message: "Rule could not be created",
+        errors: @rule.errors.full_messages
+      }, status: :unprocessable_entity
+    end
+  rescue => e
+    Rails.logger.error "RulesController#create error: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
+
+    render json: {
+      error: "internal_server_error",
+      message: "An unexpected error occurred"
+    }, status: :internal_server_error
+  end
+
+  def update
+    if @rule.update(rule_params)
+      render :show
+    else
+      render json: {
+        error: "validation_failed",
+        message: "Rule could not be updated",
+        errors: @rule.errors.full_messages
+      }, status: :unprocessable_entity
+    end
+  rescue => e
+    Rails.logger.error "RulesController#update error: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
+
+    render json: {
+      error: "internal_server_error",
+      message: "An unexpected error occurred"
+    }, status: :internal_server_error
+  end
+
+  def destroy
+    @rule.destroy!
+    head :no_content
+  rescue => e
+    Rails.logger.error "RulesController#destroy error: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
+
+    render json: {
+      error: "internal_server_error",
+      message: "An unexpected error occurred"
+    }, status: :internal_server_error
+  end
+
   private
 
     def set_rule
@@ -53,6 +109,18 @@ class Api::V1::RulesController < Api::V1::BaseController
 
     def ensure_read_scope
       authorize_scope!(:read)
+    end
+
+    def ensure_write_scope
+      authorize_scope!(:read_write)
+    end
+
+    def rule_params
+      params.require(:rule).permit(
+        :name, :resource_type, :active,
+        conditions_attributes: [ :id, :condition_type, :operator, :value, :_destroy ],
+        actions_attributes: [ :id, :action_type, :value, :_destroy ]
+      )
     end
 
     def parse_boolean_filter(value)

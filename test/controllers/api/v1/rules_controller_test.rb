@@ -154,6 +154,89 @@ class Api::V1::RulesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "record_not_found", json_response["error"]
   end
 
+
+  test "should create a rule with write scope" do
+    write_key = ApiKey.create!(
+      user: @user,
+      name: "Test Write Key",
+      scopes: [ "read_write" ],
+      source: "mobile",
+      display_key: "test_write_#{SecureRandom.hex(8)}"
+    )
+    Redis.new.del("api_rate_limit:#{write_key.id}")
+
+    assert_difference -> { @family.rules.count }, 1 do
+      post api_v1_rules_url,
+        params: {
+          rule: {
+            name: "Uber cleanup",
+            resource_type: "transaction",
+            active: true,
+            conditions_attributes: [ { condition_type: "transaction_name", operator: "like", value: "uber" } ],
+            actions_attributes: [ { action_type: "set_transaction_category", value: categories(:food_and_drink).id } ]
+          }
+        },
+        headers: api_headers(write_key)
+    end
+
+    assert_response :created
+    json_response = JSON.parse(response.body)
+    assert_equal "Uber cleanup", json_response["data"]["name"]
+    assert_equal 1, json_response["data"]["conditions"].length
+    assert_equal 1, json_response["data"]["actions"].length
+  end
+
+  test "should reject rule creation with read-only scope" do
+    post api_v1_rules_url,
+      params: {
+        rule: {
+          name: "Should fail",
+          resource_type: "transaction",
+          active: true,
+          conditions_attributes: [ { condition_type: "transaction_name", operator: "like", value: "x" } ],
+          actions_attributes: [ { action_type: "set_transaction_category", value: categories(:food_and_drink).id } ]
+        }
+      },
+      headers: api_headers(@api_key)
+
+    assert_response :forbidden
+  end
+
+  test "should update a rule" do
+    write_key = ApiKey.create!(
+      user: @user,
+      name: "Test Write Key 2",
+      scopes: [ "read_write" ],
+      source: "mobile",
+      display_key: "test_write2_#{SecureRandom.hex(8)}"
+    )
+    Redis.new.del("api_rate_limit:#{write_key.id}")
+
+    patch api_v1_rule_url(@rule),
+      params: { rule: { active: false } },
+      headers: api_headers(write_key)
+
+    assert_response :success
+    assert_equal false, JSON.parse(response.body)["data"]["active"]
+  end
+
+  test "should destroy a rule" do
+    write_key = ApiKey.create!(
+      user: @user,
+      name: "Test Write Key 3",
+      scopes: [ "read_write" ],
+      source: "mobile",
+      display_key: "test_write3_#{SecureRandom.hex(8)}"
+    )
+    Redis.new.del("api_rate_limit:#{write_key.id}")
+
+    assert_difference -> { @family.rules.count }, -1 do
+      delete api_v1_rule_url(@rule), headers: api_headers(write_key)
+    end
+
+    assert_response :no_content
+  end
+
   private
 
     def api_key_without_read_scope
