@@ -34,6 +34,7 @@ kotlin {
             implementation(libs.sqlite.bundled)
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
+            implementation(libs.navigation.compose)
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
