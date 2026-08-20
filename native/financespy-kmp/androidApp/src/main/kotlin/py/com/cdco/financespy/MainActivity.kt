@@ -1,6 +1,7 @@
 package py.com.cdco.financespy
 
 import android.content.Intent
+import android.util.Log
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -83,9 +84,9 @@ class MainActivity : ComponentActivity() {
         if (uri.scheme != "financespy" || uri.host != "oauth") return
         val code = uri.getQueryParameter("code") ?: return
         lifecycleScope.launch {
-            authRepository.exchangeCode(code).onSuccess {
-                isLoggedIn.value = true
-            }
+            authRepository.exchangeCode(code)
+                .onSuccess { isLoggedIn.value = true }
+                .onFailure { e -> Log.e("FinancePYAuth", "exchangeCode failed", e) }
         }
     }
 }

@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.androidApplication)
+    id("org.jetbrains.kotlin.android")
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
@@ -19,8 +20,22 @@ android {
     buildTypes {
         release { isMinifyEnabled = false }
     }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = "11"
+    }
 }
 
 dependencies {
     implementation(project(":shared"))
+    implementation(compose.runtime)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.ktor.client.core)
+    implementation(libs.room.runtime)
+    implementation(libs.kotlinx.coroutines.core)
 }

@@ -10,7 +10,9 @@ fun initDatabaseBuilder(context: Context) {
     appContext = context.applicationContext
 }
 
-actual fun buildDatabase(): FinancePyDatabase =
-    Room.databaseBuilder(appContext, FinancePyDatabase::class.java, "financespy.db")
+actual fun buildDatabase(): FinancePyDatabase {
+    val dbPath = appContext.getDatabasePath("financespy.db").absolutePath
+    return Room.databaseBuilder(appContext, FinancePyDatabase::class.java, dbPath)
         .setDriver(BundledSQLiteDriver())
         .build()
+}
