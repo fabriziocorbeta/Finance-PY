@@ -40,6 +40,8 @@ class MainActivity : ComponentActivity() {
             accountDao = database.accountDao(),
             entryDao = database.entryDao(),
             transactionDao = database.transactionDao(),
+            ruleDao = database.ruleDao(),
+            ruleRunDao = database.ruleRunDao(),
             currentDateProvider = { currentIsoDate() }
         )
         dashboardViewModel = DashboardViewModel(
