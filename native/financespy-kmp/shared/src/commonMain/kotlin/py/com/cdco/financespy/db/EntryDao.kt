@@ -19,4 +19,7 @@ interface EntryDao {
 
     @Query("SELECT * FROM entries ORDER BY date DESC")
     fun observeAll(): Flow<List<EntryEntity>>
+
+    @Query("SELECT * FROM entries WHERE accountId = :accountId ORDER BY date DESC")
+    fun observeByAccountId(accountId: String): Flow<List<EntryEntity>>
 }

@@ -15,7 +15,11 @@ import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.db.buildDatabase
 import py.com.cdco.financespy.db.initDatabaseBuilder
 import py.com.cdco.financespy.network.ApiClient
+import py.com.cdco.financespy.screens.AccountDetailViewModel
 import py.com.cdco.financespy.screens.DashboardViewModel
+import py.com.cdco.financespy.screens.RuleDetailViewModel
+import py.com.cdco.financespy.screens.RuleFormViewModel
+import py.com.cdco.financespy.screens.RulesListViewModel
 import py.com.cdco.financespy.screens.TransactionsViewModel
 import py.com.cdco.financespy.sync.SyncEngine
 import py.com.cdco.financespy.sync.currentIsoDate
@@ -25,6 +29,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var authRepository: AuthRepository
     private lateinit var dashboardViewModel: DashboardViewModel
     private lateinit var transactionsViewModel: TransactionsViewModel
+    private lateinit var rulesListViewModel: RulesListViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,6 +60,10 @@ class MainActivity : ComponentActivity() {
             scope = lifecycleScope,
             entryDao = database.entryDao()
         )
+        rulesListViewModel = RulesListViewModel(
+            scope = lifecycleScope,
+            ruleDao = database.ruleDao()
+        )
 
         lifecycleScope.launch {
             isLoggedIn.value = authRepository.isLoggedIn()
@@ -70,7 +79,25 @@ class MainActivity : ComponentActivity() {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                 },
                 dashboardViewModelFactory = { dashboardViewModel },
-                transactionsViewModelFactory = { transactionsViewModel }
+                transactionsViewModelFactory = { transactionsViewModel },
+                rulesListViewModelFactory = { rulesListViewModel },
+                ruleDetailViewModelFactory = { ruleId ->
+                    RuleDetailViewModel(
+                        scope = lifecycleScope, ruleId = ruleId, api = api,
+                        ruleDao = database.ruleDao(), ruleRunDao = database.ruleRunDao()
+                    )
+                },
+                ruleFormViewModelFactory = { ruleId ->
+                    RuleFormViewModel(scope = lifecycleScope, ruleId = ruleId, api = api, ruleDao = database.ruleDao())
+                },
+                accountDetailViewModelFactory = { accountId ->
+                    AccountDetailViewModel(
+                        scope = lifecycleScope,
+                        accountId = accountId,
+                        accountDao = database.accountDao(),
+                        entryDao = database.entryDao()
+                    )
+                }
             )
         }
     }
