@@ -14,5 +14,6 @@ actual fun buildDatabase(): FinancePyDatabase {
     val dbPath = appContext.getDatabasePath("financespy.db").absolutePath
     return Room.databaseBuilder(appContext, FinancePyDatabase::class.java, dbPath)
         .setDriver(BundledSQLiteDriver())
+        .fallbackToDestructiveMigration(dropAllTables = true)
         .build()
 }
