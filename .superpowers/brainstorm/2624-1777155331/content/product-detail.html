@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CD & Co — Producto</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: #f5f5f5; color: #111; }
+
+  nav { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 0 32px; display: flex; align-items: center; height: 60px; }
+  .logo { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo span { font-weight: 300; }
+  .nav-right { margin-left: auto; }
+  .cart-btn { background: #111; color: #fff; border: none; border-radius: 20px; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; position: relative; }
+  .cart-badge { position: absolute; top: -4px; right: -4px; background: #e05050; color: #fff; border-radius: 50%; width: 16px; height: 16px; font-size: 9px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+
+  .breadcrumb { padding: 12px 32px; font-size: 12px; color: #888; background: #fff; border-bottom: 1px solid #eee; }
+  .breadcrumb a { color: #888; text-decoration: none; }
+  .breadcrumb span { color: #111; font-weight: 500; }
+
+  .product-layout {
+    max-width: 1100px;
+    margin: 32px auto;
+    padding: 0 32px;
+    display: grid;
+    grid-template-columns: 1fr 440px;
+    gap: 48px;
+    align-items: start;
+  }
+
+  /* GALLERY */
+  .gallery { display: flex; gap: 12px; }
+  .thumbnails {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 72px;
+    flex-shrink: 0;
+  }
+  .thumb {
+    width: 72px;
+    height: 72px;
+    border-radius: 6px;
+    background: #e8e8e8;
+    cursor: pointer;
+    border: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .thumb.active { border-color: #111; }
+  .thumb svg { width: 36px; height: 36px; opacity: 0.4; }
+
+  /* Watch thumb illustrations */
+  .watch-thumb { display: flex; flex-direction: column; align-items: center; transform: scale(0.55); }
+  .wt-strap { width: 18px; height: 22px; border-radius: 3px 3px 0 0; }
+  .wt-strap-b { width: 18px; height: 22px; border-radius: 0 0 3px 3px; }
+  .wt-face { width: 36px; height: 36px; border-radius: 50%; border: 4px solid; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 700; }
+
+  .main-image {
+    flex: 1;
+    aspect-ratio: 1;
+    background: #fff;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .main-watch { display: flex; flex-direction: column; align-items: center; }
+  .mw-strap { width: 52px; height: 110px; border-radius: 8px 8px 0 0; }
+  .mw-strap-b { width: 52px; height: 110px; border-radius: 0 0 8px 8px; }
+  .mw-face { width: 160px; height: 160px; border-radius: 50%; border: 12px solid; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: #fff; }
+  .orig-badge {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    background: #111;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 5px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  /* INFO PANEL */
+  .info-panel { background: #fff; border-radius: 10px; padding: 28px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+  .info-ref { font-size: 12px; color: #aaa; margin-bottom: 4px; }
+  .info-name { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
+  .info-stock { font-size: 13px; color: #4caf50; font-weight: 600; margin-bottom: 16px; }
+  .info-stock.low { color: #ff9800; }
+  .info-stock.out { color: #e05050; }
+
+  .pricing-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #f0f0f0; }
+  .price-main { font-size: 28px; font-weight: 900; }
+  .price-old { font-size: 16px; color: #bbb; text-decoration: line-through; }
+  .price-savings { font-size: 12px; background: #111; color: #fff; padding: 3px 8px; border-radius: 3px; font-weight: 700; }
+
+  .variant-section { margin-bottom: 20px; }
+  .variant-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #888; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .variant-label strong { color: #111; font-size: 13px; letter-spacing: 0; text-transform: none; }
+
+  .variant-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .variant-card {
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 10px 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.15s;
+    position: relative;
+  }
+  .variant-card.selected { border-color: #111; }
+  .variant-card.out { opacity: 0.4; cursor: not-allowed; }
+  .variant-thumb { width: 48px; height: 48px; border-radius: 50%; margin: 0 auto 6px; display: flex; align-items: center; justify-content: center; }
+  .variant-name { font-size: 11px; font-weight: 600; color: #333; margin-bottom: 2px; }
+  .variant-ref { font-size: 10px; color: #aaa; }
+  .variant-stock { font-size: 10px; color: #4caf50; }
+  .variant-stock.low { color: #ff9800; }
+  .selected-check { position: absolute; top: 6px; right: 6px; width: 16px; height: 16px; background: #111; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 9px; }
+
+  .qty-section { margin-bottom: 20px; }
+  .qty-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #888; margin-bottom: 10px; }
+  .qty-control { display: flex; align-items: center; gap: 0; border: 1.5px solid #e0e0e0; border-radius: 6px; width: fit-content; overflow: hidden; }
+  .qty-btn { width: 40px; height: 40px; background: #f5f5f5; border: none; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 300; }
+  .qty-val { width: 48px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; border-left: 1.5px solid #e0e0e0; border-right: 1.5px solid #e0e0e0; }
+
+  .cta-btn {
+    width: 100%;
+    background: #111;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 10px;
+    letter-spacing: 0.3px;
+  }
+  .wa-btn {
+    width: 100%;
+    background: #fff;
+    color: #25D366;
+    border: 2px solid #25D366;
+    border-radius: 8px;
+    padding: 13px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 20px;
+  }
+  .trust-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .trust-item { font-size: 11px; color: #888; display: flex; align-items: center; gap: 4px; }
+
+  .desc-section { max-width: 1100px; margin: 0 auto 48px; padding: 0 32px; }
+  .desc-card { background: #fff; border-radius: 10px; padding: 28px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+  .desc-title { font-size: 16px; font-weight: 800; margin-bottom: 12px; }
+  .desc-text { font-size: 14px; color: #555; line-height: 1.7; }
+  .spec-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px; }
+  .spec-item { background: #f9f9f9; border-radius: 6px; padding: 14px; }
+  .spec-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #aaa; margin-bottom: 4px; }
+  .spec-val { font-size: 13px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">CD <span>&</span> Co.</span>
+  <div class="nav-right">
+    <button class="cart-btn">
+      🛒 Carrito
+      <span class="cart-badge">1</span>
+    </button>
+  </div>
+</nav>
+
+<div class="breadcrumb">
+  <a href="#">Inicio</a> › <a href="#">Relojes</a> › <span>Casio LTP-1169</span>
+</div>
+
+<div class="product-layout">
+
+  <!-- GALLERY -->
+  <div class="gallery">
+    <div class="thumbnails">
+      <!-- Thumb 1: dorado - active -->
+      <div class="thumb active">
+        <div class="watch-thumb">
+          <div class="wt-strap" style="background:#c8a96e;border-radius:3px 3px 0 0;"></div>
+          <div class="wt-face" style="background:#d4b87a;border-color:#b8984e;color:#fff;">12</div>
+          <div class="wt-strap-b" style="background:#c8a96e;border-radius:0 0 3px 3px;"></div>
+        </div>
+      </div>
+      <!-- Thumb 2: plateado -->
+      <div class="thumb">
+        <div class="watch-thumb">
+          <div class="wt-strap" style="background:#c0c0c0;border-radius:3px 3px 0 0;"></div>
+          <div class="wt-face" style="background:#d0d0d0;border-color:#a0a0a0;color:#fff;">12</div>
+          <div class="wt-strap-b" style="background:#c0c0c0;border-radius:0 0 3px 3px;"></div>
+        </div>
+      </div>
+      <!-- Thumb 3: rosado -->
+      <div class="thumb">
+        <div class="watch-thumb">
+          <div class="wt-strap" style="background:#e8a0a0;border-radius:3px 3px 0 0;"></div>
+          <div class="wt-face" style="background:#f0b0b0;border-color:#d08080;color:#fff;">12</div>
+          <div class="wt-strap-b" style="background:#e8a0a0;border-radius:0 0 3px 3px;"></div>
+        </div>
+      </div>
+      <!-- Thumb 4: detail shot -->
+      <div class="thumb" style="background:#f0f0f0;">
+        <span style="font-size:20px;">🔍</span>
+      </div>
+    </div>
+
+    <div class="main-image">
+      <div class="main-watch">
+        <div class="mw-strap" style="background:#c8a96e;"></div>
+        <div class="mw-face" style="background:#d4b87a;border-color:#b8984e;">12</div>
+        <div class="mw-strap-b" style="background:#c8a96e;"></div>
+      </div>
+      <div class="orig-badge">✓ 100% Original</div>
+    </div>
+  </div>
+
+  <!-- INFO -->
+  <div class="info-panel">
+    <div class="info-ref">Casio · LTP-1169</div>
+    <div class="info-name">Casio Mujer LTP-1169</div>
+    <div class="info-stock">✓ Stock disponible</div>
+
+    <div class="pricing-row">
+      <span class="price-main">₲ 280.000</span>
+      <span class="price-old">₲ 350.000</span>
+      <span class="price-savings">-20%</span>
+    </div>
+
+    <div class="variant-section">
+      <div class="variant-label">CORREA / MALLA &nbsp;<strong>Dorada (9A)</strong></div>
+      <div class="variant-cards">
+        <!-- Variant 1: selected -->
+        <div class="variant-card selected">
+          <div class="selected-check">✓</div>
+          <div class="variant-thumb" style="background:#f0e8d0;">
+            <span style="font-size:20px;">⌚</span>
+          </div>
+          <div class="variant-name">Dorada</div>
+          <div class="variant-ref">Ref. 9A</div>
+          <div class="variant-stock">5 en stock</div>
+        </div>
+        <!-- Variant 2 -->
+        <div class="variant-card">
+          <div class="variant-thumb" style="background:#f0f0f0;">
+            <span style="font-size:20px;">⌚</span>
+          </div>
+          <div class="variant-name">Plateada</div>
+          <div class="variant-ref">Ref. 1C</div>
+          <div class="variant-stock">3 en stock</div>
+        </div>
+        <!-- Variant 3 -->
+        <div class="variant-card">
+          <div class="variant-thumb" style="background:#fce8e8;">
+            <span style="font-size:20px;">⌚</span>
+          </div>
+          <div class="variant-name">Rosada</div>
+          <div class="variant-ref">Ref. 7A</div>
+          <div class="variant-stock low">1 en stock</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="qty-section">
+      <div class="qty-label">Cantidad</div>
+      <div class="qty-control">
+        <button class="qty-btn">−</button>
+        <div class="qty-val">1</div>
+        <button class="qty-btn">+</button>
+      </div>
+    </div>
+
+    <button class="cta-btn">🛒 Agregar al carrito</button>
+    <button class="wa-btn">💬 Consultar por WhatsApp</button>
+
+    <div class="trust-row">
+      <span class="trust-item">✅ 100% Original</span>
+      <span class="trust-item">🚚 Envío a todo Paraguay</span>
+      <span class="trust-item">🏦 Pago por transferencia</span>
+    </div>
+  </div>
+</div>
+
+<!-- DESCRIPTION -->
+<div class="desc-section">
+  <div class="desc-card">
+    <div class="desc-title">Descripción del producto</div>
+    <div class="desc-text">El Casio LTP-1169 es un reloj femenino de diseño elegante con acabado dorado. Ideal para el uso diario o para ocasiones especiales. Mecanismo de cuarzo japonés de alta precisión. Resistente al agua hasta 30m.</div>
+    <div class="spec-grid">
+      <div class="spec-item">
+        <div class="spec-label">Marca</div>
+        <div class="spec-val">Casio</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Referencia</div>
+        <div class="spec-val">LTP-1169</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Resistencia</div>
+        <div class="spec-val">30m agua</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Movimiento</div>
+        <div class="spec-val">Cuarzo</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Garantía</div>
+        <div class="spec-val">Fábrica Casio</div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-label">Origen</div>
+        <div class="spec-val">100% Original</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

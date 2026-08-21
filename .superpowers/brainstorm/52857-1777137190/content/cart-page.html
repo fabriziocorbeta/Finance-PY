@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CD & Co — Carrito</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: #f5f5f5; color: #111; }
+  nav { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 0 32px; display: flex; align-items: center; height: 60px; }
+  .logo { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo span { font-weight: 300; }
+  .nav-right { margin-left: auto; }
+  .back-link { font-size: 13px; color: #888; text-decoration: none; display: flex; align-items: center; gap: 6px; }
+
+  .page-header { background: #fff; border-bottom: 1px solid #eee; padding: 20px 32px; }
+  .page-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .page-subtitle { font-size: 13px; color: #888; margin-top: 2px; }
+
+  .cart-layout {
+    max-width: 1000px;
+    margin: 32px auto;
+    padding: 0 32px;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* ITEMS */
+  .items-col { display: flex; flex-direction: column; gap: 12px; }
+  .cart-item {
+    background: #fff;
+    border-radius: 10px;
+    padding: 18px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .item-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .watch-mini { display: flex; flex-direction: column; align-items: center; transform: scale(0.6); }
+  .wm-strap { width: 22px; height: 32px; border-radius: 3px 3px 0 0; }
+  .wm-strap-b { width: 22px; height: 32px; border-radius: 0 0 3px 3px; }
+  .wm-face { width: 52px; height: 52px; border-radius: 50%; border: 5px solid; font-size: 8px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+
+  .item-info { flex: 1; }
+  .item-brand { font-size: 11px; color: #aaa; margin-bottom: 2px; }
+  .item-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .item-variant { font-size: 12px; color: #888; background: #f5f5f5; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 8px; }
+
+  .item-controls { display: flex; align-items: center; gap: 12px; }
+  .qty-control { display: flex; align-items: center; border: 1.5px solid #e0e0e0; border-radius: 6px; overflow: hidden; }
+  .qty-btn { width: 32px; height: 32px; background: #f5f5f5; border: none; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .qty-val { width: 36px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; border-left: 1.5px solid #e0e0e0; border-right: 1.5px solid #e0e0e0; }
+  .remove-btn { font-size: 12px; color: #bbb; background: none; border: none; cursor: pointer; padding: 4px; }
+  .remove-btn:hover { color: #e05050; }
+
+  .item-price { text-align: right; min-width: 90px; }
+  .item-price-main { font-size: 16px; font-weight: 800; }
+  .item-price-unit { font-size: 11px; color: #aaa; }
+
+  .empty-state { background: #fff; border-radius: 10px; padding: 48px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+  .empty-sub { font-size: 13px; color: #888; }
+
+  /* SUMMARY */
+  .summary-col { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .summary-card { background: #fff; border-radius: 10px; padding: 22px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .summary-title { font-size: 14px; font-weight: 800; margin-bottom: 16px; letter-spacing: -0.2px; }
+
+  .summary-row { display: flex; justify-content: space-between; font-size: 13px; color: #555; margin-bottom: 10px; }
+  .summary-row.total { font-size: 16px; font-weight: 800; color: #111; padding-top: 12px; border-top: 1.5px solid #f0f0f0; margin-top: 4px; }
+  .summary-row.shipping { color: #888; font-size: 12px; }
+
+  .checkout-btn {
+    width: 100%;
+    background: #111;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 15px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 10px;
+    letter-spacing: 0.3px;
+  }
+  .continue-btn {
+    width: 100%;
+    background: #fff;
+    color: #111;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .flow-card { background: #f9f9f9; border-radius: 10px; padding: 16px; border: 1px solid #e8e8e8; }
+  .flow-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #888; margin-bottom: 12px; }
+  .flow-step { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+  .flow-num { width: 20px; height: 20px; border-radius: 50%; background: #111; color: #fff; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .flow-text { font-size: 12px; color: #555; line-height: 1.4; }
+  .flow-text strong { color: #111; font-weight: 700; }
+
+  .trust-strip { display: flex; flex-direction: column; gap: 8px; }
+  .trust-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #555; }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">CD <span>&</span> Co.</span>
+  <div class="nav-right">
+    <a href="#" class="back-link">← Seguir comprando</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-title">Mi Carrito</div>
+  <div class="page-subtitle">2 productos seleccionados</div>
+</div>
+
+<div class="cart-layout">
+
+  <!-- ITEMS -->
+  <div class="items-col">
+
+    <div class="cart-item">
+      <div class="item-img" style="background:#e8e4de;">
+        <div class="watch-mini">
+          <div class="wm-strap" style="background:#c8a96e;border-radius:3px 3px 0 0;"></div>
+          <div class="wm-face" style="background:#d4b87a;border-color:#b8984e;color:#fff;">12</div>
+          <div class="wm-strap-b" style="background:#c8a96e;border-radius:0 0 3px 3px;"></div>
+        </div>
+      </div>
+      <div class="item-info">
+        <div class="item-brand">Casio · LTP-1169</div>
+        <div class="item-name">Casio Mujer LTP-1169</div>
+        <div class="item-variant">Correa Dorada · Ref. 9A</div>
+        <div class="item-controls">
+          <div class="qty-control">
+            <button class="qty-btn">−</button>
+            <div class="qty-val">1</div>
+            <button class="qty-btn">+</button>
+          </div>
+          <button class="remove-btn">🗑 Eliminar</button>
+        </div>
+      </div>
+      <div class="item-price">
+        <div class="item-price-main">₲ 280.000</div>
+        <div class="item-price-unit">c/u</div>
+      </div>
+    </div>
+
+    <div class="cart-item">
+      <div class="item-img" style="background:#f0f0f0;">
+        <div class="watch-mini">
+          <div class="wm-strap" style="background:#222;border-radius:3px 3px 0 0;"></div>
+          <div class="wm-face" style="background:#333;border-color:#111;color:#aaa;">12</div>
+          <div class="wm-strap-b" style="background:#222;border-radius:0 0 3px 3px;"></div>
+        </div>
+      </div>
+      <div class="item-info">
+        <div class="item-brand">Casio · MTP-1183</div>
+        <div class="item-name">Casio Hombre Negro</div>
+        <div class="item-variant">Correa Negra · Ref. 1A</div>
+        <div class="item-controls">
+          <div class="qty-control">
+            <button class="qty-btn">−</button>
+            <div class="qty-val">2</div>
+            <button class="qty-btn">+</button>
+          </div>
+          <button class="remove-btn">🗑 Eliminar</button>
+        </div>
+      </div>
+      <div class="item-price">
+        <div class="item-price-main">₲ 700.000</div>
+        <div class="item-price-unit">2 × ₲ 350.000</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="summary-col">
+
+    <div class="summary-card">
+      <div class="summary-title">Resumen del pedido</div>
+      <div class="summary-row"><span>Casio LTP-1169 (×1)</span><span>₲ 280.000</span></div>
+      <div class="summary-row"><span>Casio MTP-1183 (×2)</span><span>₲ 700.000</span></div>
+      <div class="summary-row shipping"><span>Envío</span><span>A coordinar</span></div>
+      <div class="summary-row total"><span>Total</span><span>₲ 980.000</span></div>
+
+      <button class="checkout-btn" style="margin-top:16px;">Continuar con mis datos →</button>
+      <button class="continue-btn">← Seguir comprando</button>
+    </div>
+
+    <div class="flow-card">
+      <div class="flow-title">¿Cómo funciona?</div>
+      <div class="flow-step">
+        <div class="flow-num">1</div>
+        <div class="flow-text">Completás tus <strong>datos de entrega</strong></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">2</div>
+        <div class="flow-text">Tu pedido se <strong>guarda en nuestro sistema</strong> con número único</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">3</div>
+        <div class="flow-text">Te redirigimos a <strong>WhatsApp</strong> con el resumen para coordinar el pago por transferencia</div>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div class="trust-strip">
+        <div class="trust-item">✅ Relojes 100% Originales</div>
+        <div class="trust-item">🏦 Pago por transferencia bancaria</div>
+        <div class="trust-item">🚚 Envíos a todo Paraguay</div>
+        <div class="trust-item">💬 Atención directa por WhatsApp</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

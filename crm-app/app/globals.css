@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 248 250 252;
+  --surface: 255 255 255;
+  --surface-2: 241 245 249;
+  --border: 226 232 240;
+  --text-1: 15 23 42;
+  --text-2: 71 85 105;
+  --text-3: 148 163 184;
+}
+.dark {
+  --bg: 5 6 6;
+  --surface: 17 24 39;
+  --surface-2: 30 41 59;
+  --border: 51 65 85;
+  --text-1: 241 245 249;
+  --text-2: 148 163 184;
+  --text-3: 100 116 139;
+}
+
+html, body { background: rgb(var(--bg)); color: rgb(var(--text-1)); }
+body { font-feature-settings: 'cv11', 'ss01'; }
+
+/* sparkline + count-up base */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* scrollbar discreto */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: rgb(var(--border)); border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CD & Co — Vitrina</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: #f5f5f5; color: #111; }
+
+  /* NAV */
+  nav {
+    background: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo span { font-weight: 300; }
+  .nav-links { display: flex; gap: 24px; margin-left: 32px; }
+  .nav-links a { font-size: 13px; color: #555; text-decoration: none; }
+  .nav-links a.active { color: #111; font-weight: 600; border-bottom: 2px solid #111; padding-bottom: 2px; }
+  .nav-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .search-box { display: flex; align-items: center; background: #f5f5f5; border-radius: 20px; padding: 6px 14px; gap: 6px; font-size: 13px; color: #888; }
+  .cart-btn { position: relative; background: #111; color: #fff; border: none; border-radius: 20px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .cart-badge { position: absolute; top: -4px; right: -4px; background: #e05050; color: #fff; border-radius: 50%; width: 16px; height: 16px; font-size: 9px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+
+  /* PROMO BANNER */
+  .promo-banner {
+    background: #111;
+    color: #fff;
+    text-align: center;
+    padding: 8px;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+
+  /* HERO */
+  .hero {
+    background: #fff;
+    padding: 48px 24px;
+    text-align: center;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .hero-label { font-size: 11px; letter-spacing: 2px; color: #888; text-transform: uppercase; margin-bottom: 8px; }
+  .hero-title { font-size: 36px; font-weight: 800; letter-spacing: -1px; margin-bottom: 8px; }
+  .hero-sub { font-size: 14px; color: #666; }
+
+  /* FILTERS */
+  .filters {
+    padding: 16px 24px;
+    background: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+  }
+  .filter-label { font-size: 12px; color: #888; margin-right: 4px; white-space: nowrap; }
+  .pill {
+    border: 1px solid #e0e0e0;
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    background: #fff;
+  }
+  .pill.active { background: #111; color: #fff; border-color: #111; font-weight: 600; }
+
+  /* GRID */
+  .products-section { padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .section-title { font-size: 14px; font-weight: 700; }
+  .section-count { font-size: 12px; color: #888; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+  /* PRODUCT CARD */
+  .product-card {
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+  }
+  .product-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+  .card-img {
+    aspect-ratio: 1;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-img svg { width: 80px; height: 80px; opacity: 0.2; }
+  .badge-discount {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #111;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 3px;
+  }
+  .badge-new {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #fff;
+    color: #111;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 3px;
+    border: 1px solid #111;
+  }
+  .badge-soldout {
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #888;
+    letter-spacing: 1px;
+  }
+  .card-body { padding: 12px; }
+  .card-ref { font-size: 10px; color: #aaa; margin-bottom: 2px; }
+  .card-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .card-variants { font-size: 11px; color: #888; margin-bottom: 8px; }
+  .card-pricing { display: flex; align-items: center; gap: 8px; }
+  .price-current { font-size: 14px; font-weight: 800; }
+  .price-original { font-size: 12px; color: #bbb; text-decoration: line-through; }
+
+  /* WATCH SVG PLACEHOLDER */
+  .watch-icon {
+    width: 70px;
+    height: 90px;
+    background: #ddd;
+    border-radius: 8px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .watch-face {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #bbb;
+    border: 4px solid #999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    color: #777;
+    font-weight: 700;
+  }
+  .watch-strap-top {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 18px;
+    background: #ccc;
+    border-radius: 3px 3px 0 0;
+  }
+  .watch-strap-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 18px;
+    background: #ccc;
+    border-radius: 0 0 3px 3px;
+  }
+
+  .annotation {
+    background: #fffbeb;
+    border: 1px solid #f59e0b;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #92400e;
+    margin: 16px 24px 0;
+  }
+  .annotation strong { font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="promo-banner">ENVÍOS A TODO PARAGUAY · COORDINÁ TU PAGO POR WHATSAPP</div>
+
+<nav>
+  <span class="logo">CD <span>&</span> Co.</span>
+  <div class="nav-links">
+    <a href="#" class="active">Relojes</a>
+    <a href="#">Novedades</a>
+    <a href="#">Ofertas</a>
+  </div>
+  <div class="nav-right">
+    <div class="search-box">🔍 Buscar...</div>
+    <button class="cart-btn">
+      🛒 Carrito
+      <span class="cart-badge">2</span>
+    </button>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-label">Colección 2025</div>
+  <div class="hero-title">Relojes CD & Co.</div>
+  <div class="hero-sub">Elegí tu estilo · Pagá por transferencia bancaria</div>
+</div>
+
+<div class="filters">
+  <span class="filter-label">Filtrar:</span>
+  <span class="pill active">Todos</span>
+  <span class="pill">Casio</span>
+  <span class="pill">Clásicos</span>
+  <span class="pill">Deportivos</span>
+  <span class="pill">Ofertas</span>
+  <span class="pill">Disponibles</span>
+</div>
+
+<div class="products-section">
+  <div class="section-header">
+    <span class="section-title">Relojes</span>
+    <span class="section-count">6 productos</span>
+  </div>
+  <div class="grid">
+
+    <!-- Product 1 - with discount -->
+    <div class="product-card">
+      <div class="card-img" style="background:#e8e8e8;">
+        <div class="watch-icon">
+          <div class="watch-strap-top" style="background:#888;"></div>
+          <div class="watch-face">12</div>
+          <div class="watch-strap-bottom" style="background:#888;"></div>
+        </div>
+        <span class="badge-discount">-20%</span>
+      </div>
+      <div class="card-body">
+        <div class="card-ref">Casio LTP-1169</div>
+        <div class="card-name">Casio Mujer LTP-1169</div>
+        <div class="card-variants">3 variantes de correa</div>
+        <div class="card-pricing">
+          <span class="price-current">₲ 280.000</span>
+          <span class="price-original">₲ 350.000</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product 2 - normal -->
+    <div class="product-card">
+      <div class="card-img" style="background:#f0ece6;">
+        <div class="watch-icon">
+          <div class="watch-strap-top" style="background:#c8a96e;"></div>
+          <div class="watch-face" style="background:#d4c090;border-color:#b8a060;">Au</div>
+          <div class="watch-strap-bottom" style="background:#c8a96e;"></div>
+        </div>
+        <span class="badge-new">NUEVO</span>
+      </div>
+      <div class="card-body">
+        <div class="card-ref">Casio MTP-1169</div>
+        <div class="card-name">Casio Hombre Dorado</div>
+        <div class="card-variants">2 variantes de malla</div>
+        <div class="card-pricing">
+          <span class="price-current">₲ 320.000</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product 3 - sold out -->
+    <div class="product-card">
+      <div class="card-img" style="background:#f0f0f0;">
+        <div class="watch-icon" style="opacity:0.5;">
+          <div class="watch-strap-top" style="background:#555;"></div>
+          <div class="watch-face" style="background:#666;border-color:#444;color:#333;">12</div>
+          <div class="watch-strap-bottom" style="background:#555;"></div>
+        </div>
+        <div class="badge-soldout">SIN STOCK</div>
+      </div>
+      <div class="card-body">
+        <div class="card-ref">Casio LTP-1183</div>
+        <div class="card-name">Casio Clásico Negro</div>
+        <div class="card-variants" style="color:#ddd;">—</div>
+        <div class="card-pricing">
+          <span class="price-current" style="color:#bbb;">₲ 195.000</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product 4 -->
+    <div class="product-card">
+      <div class="card-img" style="background:#e6edf0;">
+        <div class="watch-icon">
+          <div class="watch-strap-top" style="background:#4a7a9b;"></div>
+          <div class="watch-face" style="background:#5a8aab;border-color:#3a6a8b;color:#cde;">12</div>
+          <div class="watch-strap-bottom" style="background:#4a7a9b;"></div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-ref">Casio MTP-VD01</div>
+        <div class="card-name">Casio Deportivo Azul</div>
+        <div class="card-variants">4 variantes de correa</div>
+        <div class="card-pricing">
+          <span class="price-current">₲ 415.000</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product 5 - discount -->
+    <div class="product-card">
+      <div class="card-img" style="background:#f0ede8;">
+        <div class="watch-icon">
+          <div class="watch-strap-top" style="background:#a0887a;"></div>
+          <div class="watch-face" style="background:#b09888;border-color:#907868;color:#fff;">12</div>
+          <div class="watch-strap-bottom" style="background:#a0887a;"></div>
+        </div>
+        <span class="badge-discount">-15%</span>
+      </div>
+      <div class="card-body">
+        <div class="card-ref">Casio LTP-1095</div>
+        <div class="card-name">Casio Rose Gold</div>
+        <div class="card-variants">2 variantes de malla</div>
+        <div class="card-pricing">
+          <span class="price-current">₲ 255.000</span>
+          <span class="price-original">₲ 300.000</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product 6 -->
+    <div class="product-card">
+      <div class="card-img" style="background:#f5f5f5;">
+        <div class="watch-icon">
+          <div class="watch-strap-top" style="background:#222;"></div>
+          <div class="watch-face" style="background:#333;border-color:#111;color:#aaa;">12</div>
+          <div class="watch-strap-bottom" style="background:#222;"></div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-ref">Casio MTP-1183</div>
+        <div class="card-name">Casio Hombre Negro</div>
+        <div class="card-variants">3 variantes de correa</div>
+        <div class="card-pricing">
+          <span class="price-current">₲ 350.000</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="annotation">
+  <strong>Nota de diseño:</strong> Cada card muestra referencia del modelo, cantidad de variantes disponibles y badge de estado (nuevo / descuento / sin stock). Filtros en pills por colección. Paleta CD & Co.: negro + blanco.
+</div>
+
+</body>
+</html>

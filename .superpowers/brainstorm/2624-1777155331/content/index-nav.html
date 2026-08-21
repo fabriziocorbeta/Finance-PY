@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>CD & Co — Mockups</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: #111; color: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px; padding: 40px; }
+  h1 { font-size: 28px; font-weight: 900; letter-spacing: -1px; }
+  .sub { font-size: 14px; color: #666; margin-top: -24px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; max-width: 700px; }
+  a {
+    display: block;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 22px 20px;
+    text-decoration: none;
+    color: #fff;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  a:hover { background: #222; border-color: #555; }
+  .page-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #555; margin-bottom: 6px; }
+  .page-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .page-route { font-size: 11px; color: #444; font-family: monospace; }
+  .status { display: inline-block; margin-top: 8px; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #1a3a1a; color: #4caf50; }
+</style>
+</head>
+<body>
+  <h1>CD & Co. — Mockups</h1>
+  <p class="sub">Diseños aprobados · Click para ver</p>
+  <div class="grid">
+    <a href="homepage-v2.html" target="_blank">
+      <div class="page-label">Pantalla 1</div>
+      <div class="page-name">Homepage</div>
+      <div class="page-route">/</div>
+      <span class="status">✓ Aprobado</span>
+    </a>
+    <a href="product-detail.html" target="_blank">
+      <div class="page-label">Pantalla 2</div>
+      <div class="page-name">Página Producto</div>
+      <div class="page-route">/relojes/[slug]</div>
+      <span class="status">✓ Aprobado</span>
+    </a>
+    <a href="cart-page.html" target="_blank">
+      <div class="page-label">Pantalla 3</div>
+      <div class="page-name">Carrito</div>
+      <div class="page-route">/carrito</div>
+      <span class="status">✓ Aprobado</span>
+    </a>
+  </div>
+</body>
+</html>

@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>CD & Co — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Inter:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/app.css"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/api/config"></script>
+<style>
+  /* ── Admin-specific — tokens from css/app.css ── */
+  * { box-sizing: border-box; margin: 0; padding: 0 }
+  body { background: var(--bg); color: var(--cr); font-family: var(--fb); min-height: 100vh }
+
+  /* ── AUTH GATE ── */
+  #gate {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; background: var(--bg);
+  }
+  #gate-box {
+    width: 380px; background: var(--bg2); border: 1px solid var(--bg5);
+    border-radius: 20px; padding: 40px 36px; text-align: center;
+  }
+  #gate-box h1 { font-family: var(--fd); font-size: 1.6rem; font-weight: 300; color: var(--g); margin-bottom: 8px }
+  #gate-box p  { color: var(--mu); font-size: .82rem; margin-bottom: 28px }
+  #gate-email, #gate-pass {
+    width: 100%; padding: 12px 14px; background: var(--bg3); border: 1px solid var(--bg5);
+    border-radius: 10px; color: var(--cr); font-size: .88rem; margin-bottom: 10px;
+    outline: none; font-family: var(--fb); transition: border-color .2s;
+  }
+  #gate-pass { margin-bottom: 18px }
+  #gate-email:focus, #gate-pass:focus { border-color: var(--g2) }
+  .gate-btn {
+    width: 100%; padding: 13px;
+    background: linear-gradient(135deg, var(--g), var(--g2));
+    border: none; border-radius: 12px; color: #0b1326; font-weight: 600;
+    font-size: .9rem; cursor: pointer; transition: opacity .2s;
+  }
+  .gate-btn:hover { opacity: .85 }
+  #gate-err { color: var(--neg); font-size: .8rem; margin-top: 14px; min-height: 20px }
+
+  /* ── PANEL ── */
+  #panel { display: none }
+
+  /* ── HEADER — matches ERP main nav ── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 40px; border-bottom: 1px solid var(--bg5);
+    background: var(--bg2); backdrop-filter: blur(16px);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .header-brand { display: flex; align-items: center; gap: 14px }
+  .header-brand h1 {
+    font-family: var(--fd); font-size: 1.25rem; font-weight: 400; color: var(--g);
+    letter-spacing: .02em;
+  }
+  .header-badge {
+    font-family: var(--fm); font-size: .6rem; letter-spacing: .14em;
+    background: rgba(212,175,55,.12); color: var(--g); border: 1px solid rgba(212,175,55,.25);
+    padding: 3px 10px; border-radius: 20px; text-transform: uppercase;
+  }
+  .header-meta { font-family: var(--fm); font-size: .65rem; color: var(--mu); letter-spacing: .08em; margin-top: 3px }
+  .header-actions { display: flex; gap: 8px; align-items: center }
+
+  /* ── ICON BUTTONS ── */
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 10px;
+    border: 1px solid var(--bg5); background: transparent;
+    color: var(--mu); cursor: pointer; font-size: .9rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .2s;
+  }
+  .icon-btn:hover { border-color: var(--g2); color: var(--g2) }
+
+  /* ── ACTION BUTTONS ── */
+  .refresh-btn {
+    padding: 8px 16px; background: rgba(212,175,55,.08); border: 1px solid rgba(212,175,55,.2);
+    border-radius: var(--rs); color: var(--g); cursor: pointer; font-size: .8rem;
+    font-family: var(--fb); transition: all .2s;
+  }
+  .refresh-btn:hover { background: rgba(212,175,55,.18) }
+  .logout-btn {
+    padding: 8px 16px; background: transparent; border: 1px solid var(--bg5);
+    border-radius: var(--rs); color: var(--mu); cursor: pointer; font-size: .8rem;
+    font-family: var(--fb); transition: all .2s;
+  }
+  .logout-btn:hover { border-color: var(--neg); color: var(--neg) }
+
+  main { padding: 36px 40px; max-width: 1440px }
+
+  /* ── STAT CARDS ── */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 32px }
+  .stat {
+    background: var(--bg2); border: 1px solid var(--bg5); border-radius: var(--r);
+    padding: 22px 26px; position: relative; overflow: hidden;
+  }
+  .stat::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--g2), transparent);
+  }
+  .stat-label { font-family: var(--fm); font-size: .56rem; letter-spacing: .22em; color: var(--g); text-transform: uppercase; margin-bottom: 10px }
+  .stat-val   { font-family: var(--fd); font-size: 1.8rem; font-weight: 300; color: var(--cr) }
+  .stat-sub   { font-size: .73rem; color: var(--mu); margin-top: 6px }
+  .pos { color: var(--pos) } .neg-c { color: var(--neg) }
+
+  /* ── SECTION ── */
+  .section { background: var(--bg2); border: 1px solid var(--bg5); border-radius: var(--r); margin-bottom: 24px; overflow: hidden }
+  .section-head {
+    padding: 16px 24px; border-bottom: 1px solid var(--bg5);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .section-title { font-family: var(--fd); font-size: 1rem; font-weight: 400; color: var(--cr) }
+  .section-count { font-family: var(--fm); font-size: .68rem; color: var(--g2); background: rgba(193,193,255,.08); padding: 3px 10px; border-radius: 20px }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse }
+  th { padding: 11px 20px; text-align: left; font-family: var(--fm); font-size: .58rem; letter-spacing: .14em; color: var(--mu); text-transform: uppercase; border-bottom: 1px solid var(--bg5) }
+  td { padding: 13px 20px; font-size: .82rem; border-bottom: 1px solid var(--bg5); border-bottom-color: rgba(45,52,73,.6) }
+  tr:last-child td { border-bottom: none }
+  tr:hover td { background: var(--bg3) }
+
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .66rem; font-family: var(--fm) }
+  .badge-admin { background: rgba(212,175,55,.15); color: var(--g) }
+  .badge-user  { background: rgba(193,193,255,.08); color: var(--mu) }
+  .badge-pro   { background: rgba(78,222,163,.12); color: var(--pos) }
+  .badge-free  { background: rgba(255,255,255,.04); color: var(--mu) }
+  .badge-socio { background: rgba(139,92,246,.15); color: var(--pur, #8b5cf6) }
+  .badge-familiar { background: rgba(59,130,246,.15); color: var(--blue, #3b82f6) }
+
+  /* ── PLAN CONTROLS ── */
+  .plan-select {
+    background: var(--bg3); color: var(--cr); border: 1px solid var(--bg5);
+    border-radius: 6px; padding: 5px 9px; font-size: .75rem; cursor: pointer;
+    font-family: var(--fb); outline: none; transition: border-color .2s;
+  }
+  .plan-select:focus { border-color: var(--g2) }
+  .plan-btn {
+    padding: 5px 12px; border-radius: var(--rs);
+    border: 1px solid var(--g2); background: rgba(193,193,255,.1);
+    color: var(--g2); cursor: pointer; font-size: .75rem; font-family: var(--fb);
+    transition: all .2s; font-weight: 500;
+  }
+  .plan-btn:hover { background: rgba(193,193,255,.22) }
+  .role-btn {
+    padding: 5px 12px; border-radius: var(--rs); border: 1px solid var(--bg5);
+    background: transparent; color: var(--mu); cursor: pointer; font-size: .75rem;
+    font-family: var(--fb); transition: all .2s;
+  }
+  .role-btn:hover { border-color: var(--g); color: var(--g) }
+
+  /* ── INVENTORY ── */
+  .stock-low { color: var(--neg); font-weight: 500 }
+  .stock-ok  { color: var(--pos) }
+
+  /* ── LOADER ── */
+  #loader { display: flex; align-items: center; justify-content: center; min-height: 300px; color: var(--mu); font-size: .85rem; gap: 10px }
+  .spin { animation: spin .8s linear infinite; display: inline-block }
+  @keyframes spin { to { transform: rotate(360deg) } }
+</style>
+</head>
+<body>
+
+<!-- ── AUTH GATE ── -->
+<div id="gate">
+  <div id="gate-box">
+    <h1>◆ Admin</h1>
+    <p>CD & Co. — Panel de Administración<br>Acceso exclusivo para administradores</p>
+    <input id="gate-email" type="email" placeholder="Email" autocomplete="email"/>
+    <input id="gate-pass" type="password" placeholder="Contraseña" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')adminLogin()"/>
+    <button class="gate-btn" onclick="adminLogin()">Ingresar al Panel</button>
+    <div id="gate-err"></div>
+  </div>
+</div>
+
+<!-- ── PANEL ── -->
+<div id="panel">
+  <header>
+    <div class="header-brand">
+      <div>
+        <h1>◆ CD & Co.</h1>
+        <div class="header-meta" id="admin-email-label">cargando...</div>
+      </div>
+      <span class="header-badge">Admin</span>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="Cambiar tema">☀</button>
+      <button class="refresh-btn" onclick="loadAdminData()">↻ Actualizar</button>
+      <button class="logout-btn" onclick="adminLogout()">Salir</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="loader"><span class="spin">◆</span> Cargando datos del sistema...</div>
+    <div id="content" style="display:none">
+
+      <!-- Stat cards -->
+      <div class="stats" id="stats-grid"></div>
+
+      <!-- Usuarios -->
+      <div class="section">
+        <div class="section-head">
+          <span class="section-title">Usuarios del Sistema</span>
+          <span class="section-count" id="users-count">—</span>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Email</th><th>Plan</th><th>Rol</th><th>Registrado</th><th>Acción</th>
+          </tr></thead>
+          <tbody id="users-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Inventario -->
+      <div class="section">
+        <div class="section-head">
+          <span class="section-title">Inventario de Productos</span>
+          <span class="section-count" id="inv-count">—</span>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Producto</th><th>Categoría</th><th>Stock</th><th>Precio Venta</th>
+          </tr></thead>
+          <tbody id="inv-body"></tbody>
+        </table>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// ADMIN PANEL — CD & Co. ERP
+// ══════════════════════════════════════════
+
+const ADMIN_EMAIL = 'fabriziocorbeta@gmail.com';
+let sb, currentSession;
+
+// ── Theme toggle (shared key with main ERP) ──────────────────────────
+function applyTheme() {
+  const saved = localStorage.getItem('cdco_theme');
+  const isLight = saved === 'light';
+  document.body.classList.toggle('light-mode', isLight);
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = isLight ? '☾' : '☀';
+}
+
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-mode');
+  localStorage.setItem('cdco_theme', isLight ? 'light' : 'dark');
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = isLight ? '☾' : '☀';
+}
+
+// Apply immediately (before paint)
+applyTheme();
+
+// ── Supabase init ────────────────────────────────────────────────────
+function initSB() {
+  const url = window.__ENV__?.SUPABASE_URL;
+  const key = window.__ENV__?.SUPABASE_ANON_KEY;
+  if (!url || !key) return false;
+  sb = window.supabase.createClient(url, key);
+  return true;
+}
+
+async function adminLogin() {
+  if (!initSB()) { showErr('Error: configuración no cargada. Recargá la página.'); return; }
+
+  const email = document.getElementById('gate-email').value.trim();
+  const pass  = document.getElementById('gate-pass').value;
+
+  if (!email || !pass) { showErr('Completá email y contraseña'); return; }
+
+  if (email !== ADMIN_EMAIL) {
+    showErr('⚠ Acceso denegado. Solo el administrador puede ingresar.');
+    return;
+  }
+
+  showErr('Verificando...');
+  const btn = document.querySelector('.gate-btn');
+  btn.disabled = true;
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+
+  if (error) {
+    showErr(error.message === 'Invalid login credentials' ? '⚠ Contraseña incorrecta' : error.message);
+    btn.disabled = false;
+    return;
+  }
+
+  currentSession = data.session;
+}
+
+async function adminLogout() {
+  await sb?.auth.signOut();
+  location.reload();
+}
+
+function showErr(msg) {
+  document.getElementById('gate-err').textContent = msg;
+}
+
+function enterPanel(session) {
+  currentSession = session;
+  document.getElementById('gate').style.display  = 'none';
+  document.getElementById('panel').style.display = 'block';
+  document.getElementById('admin-email-label').textContent = session.user.email + ' · ADMIN';
+  loadAdminData();
+}
+
+// ── Session bootstrap ──────────────────────────────────────────────
+window.addEventListener('load', async () => {
+  await new Promise(r => setTimeout(r, 400));
+  if (!initSB()) { showErr('Error cargando configuración. Recargá la página.'); return; }
+
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      if (session.user.email !== ADMIN_EMAIL) {
+        showErr('⚠ Acceso denegado.');
+        await sb.auth.signOut();
+        document.querySelector('.gate-btn').disabled = false;
+        return;
+      }
+      enterPanel(session);
+    }
+    if (event === 'SIGNED_OUT') {
+      document.getElementById('gate').style.display  = 'flex';
+      document.getElementById('panel').style.display = 'none';
+      document.getElementById('gate-pass').value = '';
+      showErr('');
+    }
+  });
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+  if (session.user.email !== ADMIN_EMAIL) {
+    showErr('⚠ Acceso denegado.');
+    await sb.auth.signOut();
+    return;
+  }
+  enterPanel(session);
+});
+
+// ── Load data ─────────────────────────────────────────────────────
+async function loadAdminData() {
+  document.getElementById('loader').style.display  = 'flex';
+  document.getElementById('content').style.display = 'none';
+
+  try {
+    const res = await fetch('/api/admin', {
+      headers: { 'Authorization': `Bearer ${currentSession.access_token}` }
+    });
+
+    if (res.status === 403) {
+      showErr('⚠ Acceso denegado por el servidor.');
+      document.getElementById('gate').style.display  = 'flex';
+      document.getElementById('panel').style.display = 'none';
+      return;
+    }
+
+    if (!res.ok) throw new Error(`Error ${res.status}`);
+    const data = await res.json();
+    renderDashboard(data);
+  } catch (err) {
+    console.error('[Admin]', err);
+    document.getElementById('loader').innerHTML =
+      `<span style="color:var(--neg)">⚠ Error al cargar datos: ${err.message}</span>`;
+  }
+}
+
+// ── Render dashboard ───────────────────────────────────────────────
+function renderDashboard(data) {
+  const { patrimonio, inventario, productos = [], usuarios } = data;
+  const usdFmt = v => '$'  + Math.abs(v).toLocaleString('es-PY', { maximumFractionDigits: 0 });
+  const pygFmt = v => '₲' + Math.abs(v).toLocaleString('es-PY', { maximumFractionDigits: 0 });
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat">
+      <div class="stat-label">Patrimonio Global USD</div>
+      <div class="stat-val ${patrimonio.USD >= 0 ? 'pos' : 'neg-c'}">${usdFmt(patrimonio.USD)}</div>
+      <div class="stat-sub">Suma neta de todos los usuarios</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Patrimonio Global PYG</div>
+      <div class="stat-val ${patrimonio.PYG >= 0 ? 'pos' : 'neg-c'}">${pygFmt(patrimonio.PYG)}</div>
+      <div class="stat-sub">Suma neta de todos los usuarios</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Usuarios Activos</div>
+      <div class="stat-val">${usuarios.length}</div>
+      <div class="stat-sub">${usuarios.filter(u => u.plan === 'pro').length} en plan Pro</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Unidades en Stock</div>
+      <div class="stat-val">${inventario.totalUnidades}</div>
+      <div class="stat-sub">${inventario.totalProductos} productos · ${usdFmt(inventario.valorTotal)} valor</div>
+    </div>
+  `;
+
+  // Usuarios
+  document.getElementById('users-count').textContent = `${usuarios.length} usuarios`;
+  document.getElementById('users-body').innerHTML = usuarios.map(u => `
+    <tr id="user-row-${u.id}">
+      <td style="font-family:var(--fm);font-size:.78rem">${u.email}</td>
+      <td><span class="badge badge-${u.plan}" id="badge-plan-${u.id}">${u.plan}</span></td>
+      <td><span class="badge badge-${u.role}">${u.role}</span></td>
+      <td style="color:var(--mu);font-size:.75rem;font-family:var(--fm)">${u.created_at ? new Date(u.created_at).toLocaleDateString('es-PY') : '—'}</td>
+      <td style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <select class="plan-select" id="plan-sel-${u.id}">
+          <option value="free"     ${u.plan==='free'     ?'selected':''}>Free</option>
+          <option value="pro"      ${u.plan==='pro'      ?'selected':''}>Pro</option>
+          <option value="socio"    ${u.plan==='socio'    ?'selected':''}>Socio</option>
+          <option value="familiar" ${u.plan==='familiar' ?'selected':''}>Familiar</option>
+        </select>
+        <button class="plan-btn" onclick="updateUserPlan('${u.id}')">Actualizar</button>
+        ${u.email !== ADMIN_EMAIL
+          ? `<button class="role-btn" onclick="toggleRole('${u.id}','${u.role}')">${u.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}</button>`
+          : '<span style="color:var(--g);font-size:.72rem;font-family:var(--fm)">◆ vos</span>'}
+      </td>
+    </tr>
+  `).join('');
+
+  // Inventario
+  document.getElementById('inv-count').textContent = `${inventario.totalProductos} productos · ${inventario.totalUnidades} u.`;
+  document.getElementById('inv-body').innerHTML = productos.length
+    ? productos.map(p => `
+      <tr>
+        <td>${p.name}</td>
+        <td style="color:var(--mu);font-size:.76rem">${p.cat}</td>
+        <td class="${p.stock <= p.minStock ? 'stock-low' : 'stock-ok'}" style="font-family:var(--fm)">${p.stock}</td>
+        <td style="font-family:var(--fm)">$${p.sellPrice.toLocaleString('es-PY', {maximumFractionDigits:0})}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="4" style="color:var(--mu);font-size:.82rem;padding:20px">Sin productos</td></tr>`;
+
+  document.getElementById('loader').style.display  = 'none';
+  document.getElementById('content').style.display = 'block';
+}
+
+// ── Actualizar plan ────────────────────────────────────────────────
+async function updateUserPlan(userId) {
+  const sel  = document.getElementById(`plan-sel-${userId}`);
+  const plan = sel?.value;
+  if (!plan || !userId) return;
+
+  // Encontrar el botón "Actualizar" de esta fila (es el nextElementSibling del select)
+  const btn = document.getElementById(`plan-sel-${userId}`)?.nextElementSibling;
+  const origText = btn?.textContent || 'Actualizar';
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+
+  const payload = { userId, plan };
+  console.log('[Admin] updateUserPlan payload:', payload);
+
+  try {
+    const res = await fetch('/api/update-user-plan', {
+      method:  'POST',
+      headers: {
+        'Authorization': `Bearer ${currentSession.access_token}`,
+        'Content-Type':  'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const responseText = await res.text();
+    let responseData;
+    try { responseData = JSON.parse(responseText); }
+    catch { responseData = { error: responseText }; }
+
+    console.log('[Admin] updateUserPlan response:', res.status, responseData);
+
+    if (res.ok && responseData.ok) {
+      const badge = document.getElementById(`badge-plan-${userId}`);
+      if (badge) { badge.textContent = plan; badge.className = `badge badge-${plan}`; }
+      if (btn) { btn.textContent = '✓'; setTimeout(() => { btn.textContent = origText; btn.disabled = false; }, 1500); }
+    } else {
+      const detail = responseData.detail ? `\n\nDetalle Supabase: ${responseData.detail}` : '';
+      alert(`Error: ${responseData.error || 'No se pudo actualizar el plan'}${detail}`);
+      if (btn) { btn.textContent = origText; btn.disabled = false; }
+    }
+  } catch (e) {
+    console.error('[updateUserPlan]', e);
+    alert('Error de conexión al actualizar el plan');
+    if (btn) { btn.textContent = origText; btn.disabled = false; }
+  }
+}
+
+// ── Cambiar role ──────────────────────────────────────────────────
+async function toggleRole(userId, currentRole) {
+  const newRole = currentRole === 'admin' ? 'user' : 'admin';
+  if (!confirm(`¿Cambiar rol de este usuario a "${newRole}"?`)) return;
+
+  const res = await fetch(`/api/admin?action=set_role&user_id=${userId}&role=${newRole}`, {
+    headers: { 'Authorization': `Bearer ${currentSession.access_token}` }
+  });
+
+  if (res.ok) { await loadAdminData(); }
+  else { alert('Error al cambiar el rol. Verificá en Supabase manualmente.'); }
+}
+</script>
+</body>
+</html>

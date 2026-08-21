@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CRM + Redes Sociales — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+/* ─── TOKENS ─────────────────────────────────────────── */
+:root {
+  --bg:          #F8FAFC;
+  --surface:     #FFFFFF;
+  --surface-2:   #F1F5F9;
+  --border:      #E2E8F0;
+  --text-1:      #0F172A;
+  --text-2:      #475569;
+  --text-3:      #94A3B8;
+  --primary:     #2563EB;
+  --primary-10:  #EFF6FF;
+  --primary-20:  #DBEAFE;
+  --accent:      #7C3AED;
+  --success:     #16A34A;
+  --success-10:  #F0FDF4;
+  --warning:     #D97706;
+  --warning-10:  #FFFBEB;
+  --danger:      #DC2626;
+  --danger-10:   #FEF2F2;
+  --sidebar-bg:  #0F172A;
+  --sidebar-t1:  #F8FAFC;
+  --sidebar-t2:  #94A3B8;
+  --sidebar-act: rgba(37,99,235,.15);
+  --radius:      8px;
+  --radius-lg:   12px;
+  --shadow-sm:   0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:   0 4px 16px rgba(0,0,0,.1);
+  /* social brand */
+  --ig:  #E1306C; --fb:  #1877F2; --tw:  #1DA1F2;
+  --li:  #0A66C2; --tk:  #010101; --yt:  #FF0000;
+}
+html.dark {
+  --bg:        #0F172A; --surface:   #1E293B; --surface-2: #293548;
+  --border:    #334155; --text-1:    #F1F5F9; --text-2:    #94A3B8;
+  --text-3:    #475569; --primary-10:#1E3A8A; --primary-20:#1D4ED8;
+  --success-10:#14532D; --warning-10:#451A03; --danger-10: #450A0A;
+  --sidebar-bg:#020617; --sidebar-t1:#F8FAFC; --sidebar-t2:#64748B;
+}
+
+/* ─── RESET ──────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;font-size:14px;line-height:1.5;
+  background:var(--bg);color:var(--text-1);display:flex;min-height:100vh;
+  transition:background .2s,color .2s}
+
+/* ─── SIDEBAR ─────────────────────────────────────────── */
+.sidebar{width:240px;min-height:100vh;background:var(--sidebar-bg);
+  display:flex;flex-direction:column;flex-shrink:0;position:fixed;
+  top:0;left:0;bottom:0;z-index:100;transition:width .2s}
+.sidebar.collapsed{width:64px}
+.sidebar-logo{display:flex;align-items:center;gap:10px;padding:20px 16px 16px;
+  border-bottom:1px solid rgba(255,255,255,.06)}
+.logo-mark{width:32px;height:32px;background:var(--primary);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-mark svg{width:18px;height:18px;fill:#fff}
+.logo-text{color:var(--sidebar-t1);font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden}
+.sidebar-nav{flex:1;padding:12px 8px;overflow-y:auto;overflow-x:hidden}
+.nav-section{margin-bottom:20px}
+.nav-label{font-size:10px;font-weight:600;letter-spacing:.08em;
+  color:var(--sidebar-t2);padding:0 8px 6px;text-transform:uppercase;
+  white-space:nowrap;overflow:hidden}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;
+  color:var(--sidebar-t2);cursor:pointer;transition:.15s;white-space:nowrap;overflow:hidden;
+  text-decoration:none;font-size:13.5px}
+.nav-item:hover{background:rgba(255,255,255,.06);color:var(--sidebar-t1)}
+.nav-item.active{background:var(--sidebar-act);color:#60A5FA;font-weight:500}
+.nav-item svg{width:18px;height:18px;flex-shrink:0;stroke:currentColor;fill:none;
+  stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.nav-badge{margin-left:auto;background:#E11D48;color:#fff;border-radius:20px;
+  font-size:10px;font-weight:700;padding:1px 6px;line-height:16px}
+.sidebar-footer{padding:12px 8px;border-top:1px solid rgba(255,255,255,.06)}
+.avatar-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;
+  cursor:pointer;transition:.15s}
+.avatar-row:hover{background:rgba(255,255,255,.06)}
+.avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;
+  background:linear-gradient(135deg,#2563EB,#7C3AED);display:flex;
+  align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:13px}
+.avatar-info{overflow:hidden}
+.avatar-name{color:var(--sidebar-t1);font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.avatar-role{color:var(--sidebar-t2);font-size:11px;white-space:nowrap}
+
+/* ─── MAIN ────────────────────────────────────────────── */
+.main{margin-left:240px;flex:1;min-height:100vh;transition:margin-left .2s}
+.sidebar.collapsed ~ .main{margin-left:64px}
+
+/* ─── TOPBAR ──────────────────────────────────────────── */
+.topbar{height:56px;background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 24px;gap:12px;position:sticky;top:0;z-index:50}
+.topbar-title{font-weight:600;font-size:16px;flex:1}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--surface-2);
+  border:1px solid var(--border);border-radius:8px;padding:6px 12px;width:240px}
+.search-box svg{width:15px;height:15px;stroke:var(--text-3);fill:none;stroke-width:2;flex-shrink:0}
+.search-box input{border:none;background:transparent;outline:none;font-size:13px;
+  color:var(--text-1);width:100%}
+.search-box input::placeholder{color:var(--text-3)}
+.icon-btn{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;
+  justify-content:center;background:transparent;border:1px solid var(--border);
+  cursor:pointer;transition:.15s;color:var(--text-2)}
+.icon-btn:hover{background:var(--surface-2);color:var(--text-1)}
+.icon-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round}
+.notif-dot{position:relative}
+.notif-dot::after{content:'';position:absolute;top:7px;right:7px;width:6px;height:6px;
+  background:#E11D48;border-radius:50%;border:1.5px solid var(--surface)}
+
+/* ─── PAGE CONTENT ────────────────────────────────────── */
+.page{padding:24px;display:none}
+.page.active{display:block}
+
+/* ─── SECTION HEADER ──────────────────────────────────── */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.section-title{font-size:15px;font-weight:600}
+.section-meta{font-size:12px;color:var(--text-3)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;
+  font-size:13px;font-weight:500;cursor:pointer;transition:.15s;border:none;outline:none}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:#1D4ED8}
+.btn-outline{background:transparent;color:var(--text-2);border:1px solid var(--border)}
+.btn-outline:hover{background:var(--surface-2);color:var(--text-1)}
+.btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round}
+
+/* ─── KPI CARDS ───────────────────────────────────────── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:16px 18px;position:relative;overflow:hidden}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--primary)}
+.kpi-card.green::before{background:var(--success)}
+.kpi-card.purple::before{background:var(--accent)}
+.kpi-card.amber::before{background:var(--warning)}
+.kpi-label{font-size:11.5px;color:var(--text-2);font-weight:500;margin-bottom:6px;letter-spacing:.02em}
+.kpi-value{font-size:26px;font-weight:700;line-height:1;margin-bottom:8px;font-variant-numeric:tabular-nums}
+.kpi-delta{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:600;
+  padding:2px 7px;border-radius:20px}
+.kpi-delta.up{background:var(--success-10);color:var(--success)}
+.kpi-delta.down{background:var(--danger-10);color:var(--danger)}
+.kpi-sub{font-size:11px;color:var(--text-3);margin-top:4px}
+
+/* ─── GRID LAYOUT ─────────────────────────────────────── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.grid-3{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px}
+
+/* ─── CHART SVG ───────────────────────────────────────── */
+.chart-wrap{position:relative;width:100%;overflow:hidden}
+
+/* ─── PIPELINE FUNNEL ──────────────────────────────────── */
+.funnel-wrap{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.funnel-stage{display:flex;align-items:center;gap:10px}
+.funnel-bar-bg{flex:1;height:28px;background:var(--surface-2);border-radius:5px;overflow:hidden;position:relative}
+.funnel-bar{height:100%;border-radius:5px;display:flex;align-items:center;padding:0 10px;
+  font-size:11.5px;font-weight:600;color:#fff;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.funnel-label{width:90px;font-size:12px;color:var(--text-2);flex-shrink:0;text-align:right}
+.funnel-pct{width:38px;font-size:11.5px;color:var(--text-3);flex-shrink:0;font-variant-numeric:tabular-nums}
+.funnel-count{width:44px;font-size:12px;font-weight:600;color:var(--text-1);text-align:right;
+  flex-shrink:0;font-variant-numeric:tabular-nums}
+
+/* ─── LINE CHART ──────────────────────────────────────── */
+.chart-x-labels{display:flex;justify-content:space-between;margin-top:4px;padding:0 4px}
+.chart-x-labels span{font-size:10.5px;color:var(--text-3)}
+.chart-legend{display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2)}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.legend-line{width:18px;height:3px;border-radius:2px;flex-shrink:0}
+
+/* ─── TABLE ───────────────────────────────────────────── */
+.table-wrap{overflow-x:auto;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text-3);padding:8px 12px;
+  border-bottom:1px solid var(--border);background:var(--surface-2)}
+tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:.12s}
+tbody tr:hover{background:var(--primary-10)}
+tbody tr:last-child{border-bottom:none}
+td{padding:11px 12px;color:var(--text-1)}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;
+  font-size:11px;font-weight:600}
+.badge-green{background:var(--success-10);color:var(--success)}
+.badge-blue{background:var(--primary-20);color:var(--primary)}
+.badge-amber{background:var(--warning-10);color:var(--warning)}
+.badge-gray{background:var(--surface-2);color:var(--text-2)}
+.badge-red{background:var(--danger-10);color:var(--danger)}
+.contact-row{display:flex;align-items:center;gap:8px}
+.mini-avatar{width:28px;height:28px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-weight:600;font-size:11px;color:#fff}
+
+/* ─── SOCIAL PLATFORM CARDS ───────────────────────────── */
+.social-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px}
+.social-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:16px;position:relative;overflow:hidden;cursor:pointer;transition:.15s}
+.social-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.social-card.active-card{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-20)}
+.sc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sc-brand{display:flex;align-items:center;gap:8px}
+.sc-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0}
+.sc-icon svg{width:17px;height:17px;fill:#fff}
+.sc-name{font-weight:600;font-size:13.5px}
+.sc-handle{font-size:11.5px;color:var(--text-3)}
+.sc-status{width:8px;height:8px;border-radius:50%;background:var(--success)}
+.sc-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sc-metric{background:var(--surface-2);border-radius:7px;padding:8px 10px}
+.sc-m-label{font-size:10.5px;color:var(--text-3);margin-bottom:2px}
+.sc-m-value{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.sc-m-delta{font-size:10px;font-weight:600}
+.sc-m-delta.up{color:var(--success)}
+.sc-m-delta.down{color:var(--danger)}
+
+/* ─── ACTIVITY FEED ───────────────────────────────────── */
+.activity-list{display:flex;flex-direction:column;gap:0}
+.activity-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.activity-item:last-child{border-bottom:none}
+.act-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;margin-top:1px}
+.act-icon svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round}
+.act-body{flex:1;min-width:0}
+.act-title{font-size:13px;font-weight:500;margin-bottom:2px}
+.act-title strong{color:var(--primary)}
+.act-meta{font-size:11.5px;color:var(--text-3)}
+
+/* ─── ENGAGEMENT TABLE MINI-BARS ──────────────────────── */
+.mini-bar-bg{width:72px;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle}
+.mini-bar-fill{height:100%;border-radius:3px}
+
+/* ─── TASKS ───────────────────────────────────────────── */
+.task-list{display:flex;flex-direction:column;gap:2px;margin-top:8px}
+.task-item{display:flex;align-items:flex-start;gap:10px;padding:9px 10px;border-radius:8px;
+  cursor:pointer;transition:.12s}
+.task-item:hover{background:var(--surface-2)}
+.task-cb{width:16px;height:16px;border:1.5px solid var(--border);border-radius:4px;
+  flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.task-cb.checked{background:var(--primary);border-color:var(--primary)}
+.task-cb.checked::after{content:'✓';color:#fff;font-size:9px;line-height:1}
+.task-text{font-size:13px;color:var(--text-1);line-height:1.4}
+.task-text.done{text-decoration:line-through;color:var(--text-3)}
+.task-due{font-size:11px;color:var(--text-3);margin-top:1px}
+
+/* ─── DARK MODE TOGGLE ────────────────────────────────── */
+.toggle-theme{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sidebar-t2);
+  background:none;border:none;cursor:pointer;padding:8px 10px;border-radius:7px;width:100%;
+  transition:.15s;white-space:nowrap;overflow:hidden}
+.toggle-theme:hover{background:rgba(255,255,255,.06);color:var(--sidebar-t1)}
+.toggle-theme svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+
+/* ─── PERIOD TABS ─────────────────────────────────────── */
+.period-tabs{display:flex;background:var(--surface-2);border-radius:7px;padding:3px;gap:2px}
+.period-tab{padding:4px 12px;border-radius:5px;font-size:12px;font-weight:500;
+  color:var(--text-2);cursor:pointer;transition:.12s;border:none;background:none}
+.period-tab.active{background:var(--surface);color:var(--text-1);box-shadow:var(--shadow-sm)}
+
+/* ─── SCROLLBAR ───────────────────────────────────────── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+/* ─── TOOLTIP ─────────────────────────────────────────── */
+.chart-tooltip{position:absolute;background:var(--text-1);color:var(--bg);padding:6px 10px;
+  border-radius:6px;font-size:11.5px;pointer-events:none;opacity:0;transition:opacity .15s;
+  white-space:nowrap;z-index:200}
+
+/* ─── RESPONSIVE ──────────────────────────────────────── */
+@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.social-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:860px){.grid-2,.grid-3{grid-template-columns:1fr}.social-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ SIDEBAR ══════════════ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </div>
+    <span class="logo-text">NexusCRM</span>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-label">Principal</div>
+      <a class="nav-item active" onclick="showPage('dashboard',this)">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a class="nav-item" onclick="showPage('social',this)">
+        <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        <span>Redes Sociales</span>
+      </a>
+      <a class="nav-item" onclick="showPage('crm',this)">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        <span>Contactos</span>
+        <span class="nav-badge">12</span>
+      </a>
+      <a class="nav-item" onclick="showPage('pipeline',this)">
+        <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        <span>Pipeline</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Marketing</div>
+      <a class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <span>Campañas</span>
+      </a>
+      <a class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        <span>Email</span>
+        <span class="nav-badge">3</span>
+      </a>
+      <a class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <span>Contenido</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Configuración</div>
+      <a class="nav-item">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+        <span>Integraciones</span>
+      </a>
+      <a class="nav-item">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <span>Ajustes</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <button class="toggle-theme" onclick="toggleDark()">
+      <svg id="theme-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <span id="theme-label">Modo oscuro</span>
+    </button>
+    <div class="avatar-row">
+      <div class="avatar">FC</div>
+      <div class="avatar-info">
+        <div class="avatar-name">Fabrizio C.</div>
+        <div class="avatar-role">Admin</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ══════════════ MAIN ══════════════ -->
+<main class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <button class="icon-btn" onclick="toggleSidebar()" aria-label="Menú">
+      <svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <span class="topbar-title" id="topbar-title">Dashboard General</span>
+    <div class="search-box">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" placeholder="Buscar contactos, deals…" aria-label="Buscar" />
+    </div>
+    <button class="icon-btn notif-dot" aria-label="Notificaciones">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+    </button>
+    <button class="btn btn-primary" style="font-size:12.5px;padding:6px 12px">
+      <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nuevo
+    </button>
+  </div>
+
+  <!-- ════ PAGE: DASHBOARD ════ -->
+  <div class="page active" id="page-dashboard">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <h1 style="font-size:20px;font-weight:700">Dashboard General</h1>
+        <p style="color:var(--text-3);font-size:13px;margin-top:2px">Mayo 2026 · Actualizado hace 3 min</p>
+      </div>
+      <div class="period-tabs">
+        <button class="period-tab">7D</button>
+        <button class="period-tab active">30D</button>
+        <button class="period-tab">90D</button>
+        <button class="period-tab">12M</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Contactos Totales</div>
+        <div class="kpi-value">2,847</div>
+        <span class="kpi-delta up">↑ 12.4%</span>
+        <div class="kpi-sub">vs mes anterior</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">Deals Cerrados</div>
+        <div class="kpi-value">$124K</div>
+        <span class="kpi-delta up">↑ 8.1%</span>
+        <div class="kpi-sub">68 deals este mes</div>
+      </div>
+      <div class="kpi-card purple">
+        <div class="kpi-label">Seguidores Totales</div>
+        <div class="kpi-value">48.2K</div>
+        <span class="kpi-delta up">↑ 6.7%</span>
+        <div class="kpi-sub">Todas las redes</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">Engagement Rate</div>
+        <div class="kpi-value">4.8%</div>
+        <span class="kpi-delta down">↓ 0.3%</span>
+        <div class="kpi-sub">Promedio semana</div>
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <!-- LINE CHART: Leads + Conversiones -->
+      <div class="card">
+        <div class="section-header">
+          <span class="section-title">Leads & Conversiones</span>
+          <span class="section-meta">Últimos 6 meses</span>
+        </div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-line" style="background:#2563EB"></div> Leads</div>
+          <div class="legend-item"><div class="legend-line" style="background:#16A34A"></div> Conversiones</div>
+          <div class="legend-item"><div class="legend-line" style="background:#7C3AED"></div> Alcance Social</div>
+        </div>
+        <div class="chart-wrap">
+          <svg viewBox="0 0 560 180" width="100%" preserveAspectRatio="none" style="display:block;overflow:visible" role="img" aria-label="Gráfico de tendencias de leads y conversiones">
+            <!-- grid lines -->
+            <line x1="0" y1="30" x2="560" y2="30" stroke="var(--border)" stroke-width="1"/>
+            <line x1="0" y1="75" x2="560" y2="75" stroke="var(--border)" stroke-width="1"/>
+            <line x1="0" y1="120" x2="560" y2="120" stroke="var(--border)" stroke-width="1"/>
+            <line x1="0" y1="165" x2="560" y2="165" stroke="var(--border)" stroke-width="1"/>
+            <!-- y-axis labels -->
+            <text x="0" y="33" font-size="9" fill="var(--text-3)">120</text>
+            <text x="0" y="78" font-size="9" fill="var(--text-3)">90</text>
+            <text x="0" y="123" font-size="9" fill="var(--text-3)">60</text>
+            <text x="0" y="168" font-size="9" fill="var(--text-3)">30</text>
+            <!-- area fill: leads -->
+            <path d="M28,120 L140,90 L252,60 L364,45 L476,30 L560,40 L560,165 L28,165Z"
+              fill="rgba(37,99,235,.08)" />
+            <!-- line: leads -->
+            <polyline points="28,120 140,90 252,60 364,45 476,30 560,40"
+              fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- line: conversiones -->
+            <polyline points="28,148 140,138 252,120 364,105 476,88 560,92"
+              fill="none" stroke="#16A34A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="0"/>
+            <!-- line: social reach -->
+            <polyline points="28,135 140,128 252,110 364,95 476,72 560,65"
+              fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5,3"/>
+            <!-- dots: leads -->
+            <circle cx="28"  cy="120" r="4" fill="#2563EB"/>
+            <circle cx="140" cy="90"  r="4" fill="#2563EB"/>
+            <circle cx="252" cy="60"  r="4" fill="#2563EB"/>
+            <circle cx="364" cy="45"  r="4" fill="#2563EB"/>
+            <circle cx="476" cy="30"  r="4" fill="#2563EB"/>
+            <circle cx="560" cy="40"  r="4" fill="#2563EB"/>
+          </svg>
+          <div class="chart-x-labels">
+            <span>Nov</span><span>Dic</span><span>Ene</span><span>Feb</span><span>Mar</span><span>Abr</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- TASKS -->
+      <div class="card">
+        <div class="section-header">
+          <span class="section-title">Tareas Pendientes</span>
+          <button class="btn btn-outline" style="font-size:11.5px;padding:5px 10px">Ver todas</button>
+        </div>
+        <div class="task-list">
+          <div class="task-item">
+            <div class="task-cb"></div>
+            <div>
+              <div class="task-text">Llamar a María García — follow-up propuesta</div>
+              <div class="task-due">Hoy · 14:00</div>
+            </div>
+          </div>
+          <div class="task-item">
+            <div class="task-cb"></div>
+            <div>
+              <div class="task-text">Enviar contrato revisado a Empresa XYZ</div>
+              <div class="task-due">Hoy · 17:00</div>
+            </div>
+          </div>
+          <div class="task-item">
+            <div class="task-cb checked"></div>
+            <div>
+              <div class="task-text done">Publicar contenido Instagram miércoles</div>
+              <div class="task-due">Completado · 09:30</div>
+            </div>
+          </div>
+          <div class="task-item">
+            <div class="task-cb"></div>
+            <div>
+              <div class="task-text">Revisar analytics campaña Meta Ads</div>
+              <div class="task-due">Mañana · 10:00</div>
+            </div>
+          </div>
+          <div class="task-item">
+            <div class="task-cb"></div>
+            <div>
+              <div class="task-text">Onboarding nuevo cliente — Logística Sur</div>
+              <div class="task-due">Vie 06 May · 11:00</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FUNNEL + ACTIVITY -->
+    <div class="grid-2">
+      <!-- PIPELINE FUNNEL -->
+      <div class="card">
+        <div class="section-header">
+          <span class="section-title">Pipeline de Ventas</span>
+          <span class="section-meta">186 deals activos</span>
+        </div>
+        <div class="funnel-wrap">
+          <div class="funnel-stage">
+            <div class="funnel-label">Prospecto</div>
+            <div class="funnel-bar-bg">
+              <div class="funnel-bar" style="width:100%;background:#2563EB">186</div>
+            </div>
+            <div class="funnel-pct">100%</div>
+          </div>
+          <div class="funnel-stage">
+            <div class="funnel-label">Calificado</div>
+            <div class="funnel-bar-bg">
+              <div class="funnel-bar" style="width:72%;background:#3B82F6">134</div>
+            </div>
+            <div class="funnel-pct">72%</div>
+          </div>
+          <div class="funnel-stage">
+            <div class="funnel-label">Propuesta</div>
+            <div class="funnel-bar-bg">
+              <div class="funnel-bar" style="width:48%;background:#60A5FA">90</div>
+            </div>
+            <div class="funnel-pct">48%</div>
+          </div>
+          <div class="funnel-stage">
+            <div class="funnel-label">Negociación</div>
+            <div class="funnel-bar-bg">
+              <div class="funnel-bar" style="width:29%;background:#93C5FD">54</div>
+            </div>
+            <div class="funnel-pct">29%</div>
+          </div>
+          <div class="funnel-stage">
+            <div class="funnel-label">Ganado ✓</div>
+            <div class="funnel-bar-bg">
+              <div class="funnel-bar" style="width:17%;background:#16A34A">32</div>
+            </div>
+            <div class="funnel-pct">17%</div>
+          </div>
+        </div>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:16px">
+          <div><div style="font-size:11px;color:var(--text-3)">Valor Total Pipeline</div><div style="font-weight:700;font-size:17px;font-variant-numeric:tabular-nums">$248,500</div></div>
+          <div><div style="font-size:11px;color:var(--text-3)">Ticket Promedio</div><div style="font-weight:700;font-size:17px;font-variant-numeric:tabular-nums">$1,335</div></div>
+          <div><div style="font-size:11px;color:var(--text-3)">Tasa Cierre</div><div style="font-weight:700;font-size:17px;color:var(--success)">17.2%</div></div>
+        </div>
+      </div>
+
+      <!-- ACTIVITY FEED -->
+      <div class="card">
+        <div class="section-header">
+          <span class="section-title">Actividad Reciente</span>
+          <button class="btn btn-outline" style="font-size:11.5px;padding:5px 10px">Ver todo</button>
+        </div>
+        <div class="activity-list">
+          <div class="activity-item">
+            <div class="act-icon" style="background:var(--primary-10);color:var(--primary)">
+              <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            </div>
+            <div class="act-body">
+              <div class="act-title"><strong>María García</strong> avanzó a Negociación</div>
+              <div class="act-meta">Hace 14 min · Deal $3,200</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="act-icon" style="background:#FEF3C7;color:#D97706">
+              <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+            <div class="act-body">
+              <div class="act-title">Post <strong>Instagram</strong> alcanzó 4.2K impresiones</div>
+              <div class="act-meta">Hace 1 hora · Engagement 6.1%</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="act-icon" style="background:var(--success-10);color:var(--success)">
+              <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <div class="act-body">
+              <div class="act-title">Deal <strong>Empresa XYZ</strong> cerrado — Ganado</div>
+              <div class="act-meta">Hace 2 horas · $8,400</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="act-icon" style="background:#F3E8FF;color:#7C3AED">
+              <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </div>
+            <div class="act-body">
+              <div class="act-title">Campaña email enviada a <strong>320 contactos</strong></div>
+              <div class="act-meta">Hace 3 horas · Apertura 41%</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="act-icon" style="background:var(--primary-10);color:var(--primary)">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="act-body">
+              <div class="act-title"><strong>Carlos Rivas</strong> agendó reunión demo</div>
+              <div class="act-meta">Hace 4 horas · Mañana 10:00 AM</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ PAGE: REDES SOCIALES ════ -->
+  <div class="page" id="page-social">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <h1 style="font-size:20px;font-weight:700">Redes Sociales</h1>
+        <p style="color:var(--text-3);font-size:13px;margin-top:2px">Seguimiento multi-plataforma · Mayo 2026</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div class="period-tabs">
+          <button class="period-tab">7D</button>
+          <button class="period-tab active">30D</button>
+          <button class="period-tab">90D</button>
+        </div>
+        <button class="btn btn-primary">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar
+        </button>
+      </div>
+    </div>
+
+    <!-- Platform Cards -->
+    <div class="social-grid">
+      <!-- Instagram -->
+      <div class="social-card active-card">
+        <div class="sc-header">
+          <div class="sc-brand">
+            <div class="sc-icon" style="background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)">
+              <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+            </div>
+            <div><div class="sc-name">Instagram</div><div class="sc-handle">@tu_empresa</div></div>
+          </div>
+          <div class="sc-status"></div>
+        </div>
+        <div class="sc-metrics">
+          <div class="sc-metric">
+            <div class="sc-m-label">Seguidores</div>
+            <div class="sc-m-value">18.4K</div>
+            <div class="sc-m-delta up">↑ 312 este mes</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Engagement</div>
+            <div class="sc-m-value">5.2%</div>
+            <div class="sc-m-delta up">↑ 0.4%</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Alcance</div>
+            <div class="sc-m-value">42.1K</div>
+            <div class="sc-m-delta up">↑ 18%</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Publicaciones</div>
+            <div class="sc-m-value">14</div>
+            <div class="sc-m-delta" style="color:var(--text-3)">este mes</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Facebook -->
+      <div class="social-card">
+        <div class="sc-header">
+          <div class="sc-brand">
+            <div class="sc-icon" style="background:#1877F2">
+              <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+            </div>
+            <div><div class="sc-name">Facebook</div><div class="sc-handle">Empresa Oficial</div></div>
+          </div>
+          <div class="sc-status"></div>
+        </div>
+        <div class="sc-metrics">
+          <div class="sc-metric">
+            <div class="sc-m-label">Fans</div>
+            <div class="sc-m-value">9.7K</div>
+            <div class="sc-m-delta up">↑ 87</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Engagement</div>
+            <div class="sc-m-value">2.1%</div>
+            <div class="sc-m-delta down">↓ 0.2%</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Alcance</div>
+            <div class="sc-m-value">21.3K</div>
+            <div class="sc-m-delta up">↑ 6%</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Publicaciones</div>
+            <div class="sc-m-value">11</div>
+            <div class="sc-m-delta" style="color:var(--text-3)">este mes</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LinkedIn -->
+      <div class="social-card">
+        <div class="sc-header">
+          <div class="sc-brand">
+            <div class="sc-icon" style="background:#0A66C2">
+              <svg viewBox="0 0 24 24"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
+            </div>
+            <div><div class="sc-name">LinkedIn</div><div class="sc-handle">Empresa S.A.</div></div>
+          </div>
+          <div class="sc-status"></div>
+        </div>
+        <div class="sc-metrics">
+          <div class="sc-metric">
+            <div class="sc-m-label">Seguidores</div>
+            <div class="sc-m-value">6.2K</div>
+            <div class="sc-m-delta up">↑ 143</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Eng. Rate</div>
+            <div class="sc-m-value">4.8%</div>
+            <div class="sc-m-delta up">↑ 0.9%</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Impresiones</div>
+            <div class="sc-m-value">38.7K</div>
+            <div class="sc-m-delta up">↑ 22%</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Publicaciones</div>
+            <div class="sc-m-value">8</div>
+            <div class="sc-m-delta" style="color:var(--text-3)">este mes</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TikTok -->
+      <div class="social-card">
+        <div class="sc-header">
+          <div class="sc-brand">
+            <div class="sc-icon" style="background:#010101">
+              <svg viewBox="0 0 24 24" fill="white"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V9.17a8.16 8.16 0 004.77 1.52V7.25a4.85 4.85 0 01-1-.56z"/></svg>
+            </div>
+            <div><div class="sc-name">TikTok</div><div class="sc-handle">@tuempresa</div></div>
+          </div>
+          <div class="sc-status"></div>
+        </div>
+        <div class="sc-metrics">
+          <div class="sc-metric">
+            <div class="sc-m-label">Seguidores</div>
+            <div class="sc-m-value">11.8K</div>
+            <div class="sc-m-delta up">↑ 1.2K</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Likes</div>
+            <div class="sc-m-value">82.4K</div>
+            <div class="sc-m-delta up">↑ 34%</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Vistas</div>
+            <div class="sc-m-value">218K</div>
+            <div class="sc-m-delta up">↑ 41%</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Videos</div>
+            <div class="sc-m-value">6</div>
+            <div class="sc-m-delta" style="color:var(--text-3)">este mes</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- X / Twitter -->
+      <div class="social-card">
+        <div class="sc-header">
+          <div class="sc-brand">
+            <div class="sc-icon" style="background:#000">
+              <svg viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </div>
+            <div><div class="sc-name">X (Twitter)</div><div class="sc-handle">@empresa_mx</div></div>
+          </div>
+          <div class="sc-status"></div>
+        </div>
+        <div class="sc-metrics">
+          <div class="sc-metric">
+            <div class="sc-m-label">Seguidores</div>
+            <div class="sc-m-value">2.1K</div>
+            <div class="sc-m-delta up">↑ 48</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Impresiones</div>
+            <div class="sc-m-value">14.2K</div>
+            <div class="sc-m-delta down">↓ 3%</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Retweets</div>
+            <div class="sc-m-value">186</div>
+            <div class="sc-m-delta up">↑ 12%</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Tweets</div>
+            <div class="sc-m-value">22</div>
+            <div class="sc-m-delta" style="color:var(--text-3)">este mes</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- YouTube -->
+      <div class="social-card">
+        <div class="sc-header">
+          <div class="sc-brand">
+            <div class="sc-icon" style="background:#FF0000">
+              <svg viewBox="0 0 24 24" fill="white"><path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 00-1.95 1.96A29 29 0 001 12a29 29 0 00.46 5.58A2.78 2.78 0 003.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.95A29 29 0 0023 12a29 29 0 00-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="#FF0000"/></svg>
+            </div>
+            <div><div class="sc-name">YouTube</div><div class="sc-handle">Empresa Channel</div></div>
+          </div>
+          <div class="sc-status"></div>
+        </div>
+        <div class="sc-metrics">
+          <div class="sc-metric">
+            <div class="sc-m-label">Suscriptores</div>
+            <div class="sc-m-value">892</div>
+            <div class="sc-m-delta up">↑ 67</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Vistas</div>
+            <div class="sc-m-value">8.3K</div>
+            <div class="sc-m-delta up">↑ 29%</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Watch Time</div>
+            <div class="sc-m-value">412h</div>
+            <div class="sc-m-delta up">↑ 18%</div>
+          </div>
+          <div class="sc-metric">
+            <div class="sc-m-label">Videos</div>
+            <div class="sc-m-value">3</div>
+            <div class="sc-m-delta" style="color:var(--text-3)">este mes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Engagement comparison bar chart -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="section-header">
+          <span class="section-title">Engagement por Plataforma</span>
+          <span class="section-meta">Últimos 30 días</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:90px;font-size:12px;color:var(--text-2);text-align:right">Instagram</div>
+            <div style="flex:1;height:22px;background:var(--surface-2);border-radius:5px;overflow:hidden">
+              <div style="width:87%;height:100%;background:linear-gradient(90deg,#f09433,#e6683c,#dc2743);display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:700;color:#fff">5.2%</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:90px;font-size:12px;color:var(--text-2);text-align:right">LinkedIn</div>
+            <div style="flex:1;height:22px;background:var(--surface-2);border-radius:5px;overflow:hidden">
+              <div style="width:80%;height:100%;background:#0A66C2;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:700;color:#fff">4.8%</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:90px;font-size:12px;color:var(--text-2);text-align:right">TikTok</div>
+            <div style="flex:1;height:22px;background:var(--surface-2);border-radius:5px;overflow:hidden">
+              <div style="width:73%;height:100%;background:#010101;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:700;color:#fff">4.4%</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:90px;font-size:12px;color:var(--text-2);text-align:right">Facebook</div>
+            <div style="flex:1;height:22px;background:var(--surface-2);border-radius:5px;overflow:hidden">
+              <div style="width:35%;height:100%;background:#1877F2;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:700;color:#fff">2.1%</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:90px;font-size:12px;color:var(--text-2);text-align:right">X (Twitter)</div>
+            <div style="flex:1;height:22px;background:var(--surface-2);border-radius:5px;overflow:hidden">
+              <div style="width:22%;height:100%;background:#000;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:700;color:#fff">1.3%</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:90px;font-size:12px;color:var(--text-2);text-align:right">YouTube</div>
+            <div style="flex:1;height:22px;background:var(--surface-2);border-radius:5px;overflow:hidden">
+              <div style="width:18%;height:100%;background:#FF0000;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:700;color:#fff">1.1%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Posts table -->
+      <div class="card">
+        <div class="section-header">
+          <span class="section-title">Top Posts del Mes</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Plataforma</th><th>Tipo</th><th>Alcance</th><th>Eng.</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge" style="background:#FEE2E2;color:#E1306C">IG</span></td>
+                <td style="color:var(--text-2)">Reel</td>
+                <td style="font-variant-numeric:tabular-nums;font-weight:600">18.4K</td>
+                <td><span class="badge badge-green">7.8%</span></td>
+              </tr>
+              <tr>
+                <td><span class="badge" style="background:#FEE2E2;color:#E1306C">IG</span></td>
+                <td style="color:var(--text-2)">Carrusel</td>
+                <td style="font-variant-numeric:tabular-nums;font-weight:600">11.2K</td>
+                <td><span class="badge badge-green">6.2%</span></td>
+              </tr>
+              <tr>
+                <td><span class="badge" style="background:#000;color:#fff">TK</span></td>
+                <td style="color:var(--text-2)">Video</td>
+                <td style="font-variant-numeric:tabular-nums;font-weight:600">84.3K</td>
+                <td><span class="badge badge-green">5.9%</span></td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-blue">LI</span></td>
+                <td style="color:var(--text-2)">Artículo</td>
+                <td style="font-variant-numeric:tabular-nums;font-weight:600">9.8K</td>
+                <td><span class="badge badge-green">5.1%</span></td>
+              </tr>
+              <tr>
+                <td><span class="badge" style="background:#DBEAFE;color:#1877F2">FB</span></td>
+                <td style="color:var(--text-2)">Video</td>
+                <td style="font-variant-numeric:tabular-nums;font-weight:600">7.1K</td>
+                <td><span class="badge badge-amber">2.9%</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ PAGE: CONTACTOS CRM ════ -->
+  <div class="page" id="page-crm">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <h1 style="font-size:20px;font-weight:700">Contactos</h1>
+        <p style="color:var(--text-3);font-size:13px;margin-top:2px">2,847 contactos · 12 nuevos hoy</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline">
+          <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          Filtrar
+        </button>
+        <button class="btn btn-primary">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nuevo Contacto
+        </button>
+      </div>
+    </div>
+
+    <!-- filter bar -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn btn-primary" style="font-size:12px;padding:5px 12px">Todos</button>
+      <button class="btn btn-outline" style="font-size:12px;padding:5px 12px">Clientes</button>
+      <button class="btn btn-outline" style="font-size:12px;padding:5px 12px">Prospectos</button>
+      <button class="btn btn-outline" style="font-size:12px;padding:5px 12px">Inactivos</button>
+      <button class="btn btn-outline" style="font-size:12px;padding:5px 12px">Leads nuevos</button>
+      <div style="flex:1"></div>
+      <div class="search-box" style="width:200px">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="search" placeholder="Buscar contacto…" />
+      </div>
+    </div>
+
+    <div class="card" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th><input type="checkbox" aria-label="Seleccionar todos" /></th>
+              <th>Contacto</th>
+              <th>Empresa</th>
+              <th>Estado</th>
+              <th>Fuente</th>
+              <th>Valor Deal</th>
+              <th>Último contacto</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>
+                <div class="contact-row">
+                  <div class="mini-avatar" style="background:linear-gradient(135deg,#2563EB,#7C3AED)">MG</div>
+                  <div><div style="font-weight:500">María García</div><div style="font-size:11px;color:var(--text-3)">maria@empresa.com</div></div>
+                </div>
+              </td>
+              <td style="color:var(--text-2)">Tech Solutions SA</td>
+              <td><span class="badge badge-amber">Negociación</span></td>
+              <td><span class="badge badge-gray">Instagram</span></td>
+              <td style="font-weight:600;font-variant-numeric:tabular-nums">$8,400</td>
+              <td style="color:var(--text-3);font-size:12px">Hace 14 min</td>
+              <td>
+                <div style="display:flex;gap:4px">
+                  <button class="icon-btn" style="width:28px;height:28px;border-radius:6px" aria-label="Llamar"><svg viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></button>
+                  <button class="icon-btn" style="width:28px;height:28px;border-radius:6px" aria-label="Email"><svg viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>
+                <div class="contact-row">
+                  <div class="mini-avatar" style="background:linear-gradient(135deg,#16A34A,#0D9488)">CR</div>
+                  <div><div style="font-weight:500">Carlos Rivas</div><div style="font-size:11px;color:var(--text-3)">carlos@logistica.mx</div></div>
+                </div>
+              </td>
+              <td style="color:var(--text-2)">Logística Sur</td>
+              <td><span class="badge badge-blue">Propuesta</span></td>
+              <td><span class="badge badge-gray">LinkedIn</span></td>
+              <td style="font-weight:600;font-variant-numeric:tabular-nums">$12,000</td>
+              <td style="color:var(--text-3);font-size:12px">Hace 4 horas</td>
+              <td>
+                <div style="display:flex;gap:4px">
+                  <button class="icon-btn" style="width:28px;height:28px;border-radius:6px" aria-label="Llamar"><svg viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></button>
+                  <button class="icon-btn" style="width:28px;height:28px;border-radius:6px" aria-label="Email"><svg viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>
+                <div class="contact-row">
+                  <div class="mini-avatar" style="background:linear-gradient(135deg,#D97706,#DC2626)">AL</div>
+                  <div><div style="font-weight:500">Ana López</div><div style="font-size:11px;color:var(--text-3)">ana@retail.com</div></div>
+                </div>
+              </td>
+              <td style="color:var(--text-2)">Retail Group MX</td>
+              <td><span class="badge badge-green">Cliente</span></td>
+              <td><span class="badge badge-gray">Facebook</span></td>
+              <td style="font-weight:600;font-variant-numeric:tabular-nums">$24,800</td>
+              <td style="color:var(--text-3);font-size:12px">Ayer</td>
+              <td>
+                <div style="display:flex;gap:4px">
+                  <button class="icon-btn" style="width:28px;height:28px;border-radius:6px" aria-label="Llamar"><svg viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></button>
+                  <button class="icon-btn" style="width:28px;height:28px;border-radius:6px" aria-label="Email"><svg viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>
+                <div class="contact-row">
+                  <div class="mini-avatar" style="background:linear-gradient(135deg,#7C3AED,#DB2777)">JM</div>
+                  <div><div style="font-weight:500">Jorge Mendoza</div><div style="font-size:11px;color:var(--text-3)">jorge@startup.io</div></div>
+                </div>
+              </td>
+              <td style="color:var(--text-2)">InnovaStart</td>
+              <td><span class="badge badge-gray">Prospecto</span></td>
+              <td><span class="badge badge-gray">TikTok</span></td>
+              <td style="font-weight:600;font-variant-numeric:tabular-nums">—</td>
+              <td style="color:var(--text-3);font-size:12px">Hace 2 días</td>
+              <td>
+                <div style="display:flex;gap:4px">
+                  <button class="icon-btn" style="width:28px;height:28px;border-radius:6px" aria-label="Llamar"><svg viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></button>
+                  <button class="icon-btn" style="width:28px;height:28px;border-radius:6px" aria-label="Email"><svg viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>
+                <div class="contact-row">
+                  <div class="mini-avatar" style="background:linear-gradient(135deg,#0D9488,#2563EB)">PS</div>
+                  <div><div style="font-weight:500">Patricia Solís</div><div style="font-size:11px;color:var(--text-3)">patricia@health.mx</div></div>
+                </div>
+              </td>
+              <td style="color:var(--text-2)">HealthCare Pro</td>
+              <td><span class="badge badge-green">Cliente</span></td>
+              <td><span class="badge badge-gray">Instagram</span></td>
+              <td style="font-weight:600;font-variant-numeric:tabular-nums">$18,250</td>
+              <td style="color:var(--text-3);font-size:12px">Hace 3 días</td>
+              <td>
+                <div style="display:flex;gap:4px">
+                  <button class="icon-btn" style="width:28px;height:28px;border-radius:6px" aria-label="Llamar"><svg viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></button>
+                  <button class="icon-btn" style="width:28px;height:28px;border-radius:6px" aria-label="Email"><svg viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12px;color:var(--text-3)">Mostrando 5 de 2,847 contactos</span>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-outline" style="font-size:12px;padding:4px 10px">← Ant.</button>
+          <button class="btn btn-primary" style="font-size:12px;padding:4px 10px">1</button>
+          <button class="btn btn-outline" style="font-size:12px;padding:4px 10px">2</button>
+          <button class="btn btn-outline" style="font-size:12px;padding:4px 10px">3</button>
+          <button class="btn btn-outline" style="font-size:12px;padding:4px 10px">Sig. →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ PAGE: PIPELINE ════ -->
+  <div class="page" id="page-pipeline">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <h1 style="font-size:20px;font-weight:700">Pipeline de Ventas</h1>
+        <p style="color:var(--text-3);font-size:13px;margin-top:2px">186 deals · $248,500 en pipeline</p>
+      </div>
+      <button class="btn btn-primary">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nuevo Deal
+      </button>
+    </div>
+
+    <!-- Kanban board -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;overflow-x:auto">
+
+      <!-- Stage: Prospecto -->
+      <div style="background:var(--surface-2);border-radius:var(--radius-lg);padding:12px;min-height:400px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-weight:600;font-size:13px">Prospecto</div>
+          <span style="background:#DBEAFE;color:#2563EB;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">186</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="card" style="padding:12px;cursor:grab">
+            <div style="font-weight:500;font-size:13px;margin-bottom:4px">Empresa Alpha</div>
+            <div style="font-size:11.5px;color:var(--text-3);margin-bottom:8px">Juan Torres · CEO</div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;color:var(--primary)">$4,200</span>
+              <span class="badge badge-gray" style="font-size:10px">LinkedIn</span>
+            </div>
+          </div>
+          <div class="card" style="padding:12px;cursor:grab">
+            <div style="font-weight:500;font-size:13px;margin-bottom:4px">Beta Soluciones</div>
+            <div style="font-size:11.5px;color:var(--text-3);margin-bottom:8px">Laura Ramos · Dir.</div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;color:var(--primary)">$2,800</span>
+              <span class="badge badge-gray" style="font-size:10px">IG</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage: Calificado -->
+      <div style="background:var(--surface-2);border-radius:var(--radius-lg);padding:12px;min-height:400px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-weight:600;font-size:13px">Calificado</div>
+          <span style="background:#DBEAFE;color:#2563EB;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">134</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="card" style="padding:12px;cursor:grab;border-left:3px solid var(--primary)">
+            <div style="font-weight:500;font-size:13px;margin-bottom:4px">Logística Sur</div>
+            <div style="font-size:11.5px;color:var(--text-3);margin-bottom:8px">Carlos Rivas · CEO</div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;color:var(--primary)">$12,000</span>
+              <span class="badge badge-gray" style="font-size:10px">LI</span>
+            </div>
+          </div>
+          <div class="card" style="padding:12px;cursor:grab">
+            <div style="font-weight:500;font-size:13px;margin-bottom:4px">Gamma Tech</div>
+            <div style="font-size:11.5px;color:var(--text-3);margin-bottom:8px">Pedro Villa · CTO</div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;color:var(--primary)">$7,600</span>
+              <span class="badge badge-gray" style="font-size:10px">FB</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage: Propuesta -->
+      <div style="background:var(--surface-2);border-radius:var(--radius-lg);padding:12px;min-height:400px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-weight:600;font-size:13px">Propuesta</div>
+          <span style="background:#DBEAFE;color:#2563EB;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">90</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="card" style="padding:12px;cursor:grab">
+            <div style="font-weight:500;font-size:13px;margin-bottom:4px">RetailGroup MX</div>
+            <div style="font-size:11.5px;color:var(--text-3);margin-bottom:8px">Ana López · Dir.</div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;color:var(--primary)">$24,800</span>
+              <span class="badge badge-green" style="font-size:10px">Alta</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage: Negociación -->
+      <div style="background:var(--surface-2);border-radius:var(--radius-lg);padding:12px;min-height:400px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-weight:600;font-size:13px">Negociación</div>
+          <span style="background:#DBEAFE;color:#2563EB;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">54</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="card" style="padding:12px;cursor:grab;border-left:3px solid var(--warning)">
+            <div style="font-weight:500;font-size:13px;margin-bottom:4px">Tech Solutions</div>
+            <div style="font-size:11.5px;color:var(--text-3);margin-bottom:8px">María García · VP</div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;color:var(--warning)">$8,400</span>
+              <span class="badge badge-amber" style="font-size:10px">Media</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage: Ganado -->
+      <div style="background:var(--success-10);border-radius:var(--radius-lg);padding:12px;min-height:400px;border:1px solid #BBF7D0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-weight:600;font-size:13px;color:var(--success)">Ganado ✓</div>
+          <span style="background:var(--success);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">32</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="card" style="padding:12px;border-left:3px solid var(--success)">
+            <div style="font-weight:500;font-size:13px;margin-bottom:4px">Empresa XYZ</div>
+            <div style="font-size:11.5px;color:var(--text-3);margin-bottom:8px">Cerrado hoy · 10:32</div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;color:var(--success)">$8,400</span>
+              <span class="badge badge-green" style="font-size:10px">Cerrado</span>
+            </div>
+          </div>
+          <div class="card" style="padding:12px;border-left:3px solid var(--success)">
+            <div style="font-weight:500;font-size:13px;margin-bottom:4px">HealthCare Pro</div>
+            <div style="font-size:11.5px;color:var(--text-3);margin-bottom:8px">Cerrado Abr 30</div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;color:var(--success)">$18,250</span>
+              <span class="badge badge-green" style="font-size:10px">Cerrado</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ─── NAVIGATION ─────────────────────────────────────────
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const titles = {dashboard:'Dashboard General',social:'Redes Sociales',crm:'Contactos CRM',pipeline:'Pipeline de Ventas'};
+  document.getElementById('page-' + id).classList.add('active');
+  if (el) el.classList.add('active');
+  document.getElementById('topbar-title').textContent = titles[id] || id;
+}
+
+// ─── SIDEBAR TOGGLE ──────────────────────────────────────
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
+
+// ─── DARK MODE ────────────────────────────────────────────
+function toggleDark() {
+  const html = document.documentElement;
+  const isDark = html.classList.toggle('dark');
+  html.classList.toggle('light', !isDark);
+  document.getElementById('theme-label').textContent = isDark ? 'Modo claro' : 'Modo oscuro';
+  const icon = document.getElementById('theme-icon');
+  icon.innerHTML = isDark
+    ? '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>'
+    : '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+}
+
+// ─── PERIOD TABS ──────────────────────────────────────────
+document.querySelectorAll('.period-tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    this.closest('.period-tabs').querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// ─── TASK CHECKBOXES ─────────────────────────────────────
+document.querySelectorAll('.task-cb').forEach(cb => {
+  cb.addEventListener('click', function() {
+    this.classList.toggle('checked');
+    const txt = this.nextElementSibling?.querySelector('.task-text');
+    if (txt) txt.classList.toggle('done', this.classList.contains('checked'));
+  });
+});
+</script>
+</body>
+</html>

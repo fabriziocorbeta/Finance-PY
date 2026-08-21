@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CD & Co — Home</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: #fff; color: #111; }
+
+  nav {
+    background: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo span { font-weight: 300; }
+  .nav-links { display: flex; gap: 28px; margin-left: 36px; }
+  .nav-links a { font-size: 13px; color: #555; text-decoration: none; letter-spacing: 0.3px; }
+  .nav-links a:hover { color: #111; }
+  .nav-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .cart-btn { background: #111; color: #fff; border: none; border-radius: 20px; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+  /* HERO FULL */
+  .hero {
+    height: 86vh;
+    background: #111;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-bg-text {
+    position: absolute;
+    font-size: 200px;
+    font-weight: 900;
+    color: rgba(255,255,255,0.03);
+    letter-spacing: -10px;
+    user-select: none;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .hero-eyebrow { font-size: 11px; letter-spacing: 4px; color: #888; text-transform: uppercase; margin-bottom: 20px; }
+  .hero-title { font-size: 64px; font-weight: 900; color: #fff; letter-spacing: -3px; line-height: 1; margin-bottom: 16px; }
+  .hero-title em { font-style: normal; color: #888; }
+  .hero-sub { font-size: 16px; color: #666; margin-bottom: 40px; max-width: 400px; }
+  .hero-cta { display: flex; gap: 12px; }
+  .btn-primary { background: #fff; color: #111; border: none; border-radius: 4px; padding: 14px 32px; font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: 0.5px; }
+  .btn-secondary { background: transparent; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 14px 32px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .hero-scroll { position: absolute; bottom: 28px; color: #555; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; }
+
+  /* WATCH SILHOUETTE */
+  .watch-silhouette {
+    position: absolute;
+    right: 12%;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    opacity: 0.15;
+  }
+  .strap-top { width: 40px; height: 80px; background: #fff; border-radius: 6px 6px 0 0; }
+  .watch-body { width: 110px; height: 110px; border-radius: 50%; background: #fff; border: 8px solid #888; display: flex; align-items: center; justify-content: center; }
+  .watch-body-inner { width: 70px; height: 70px; border-radius: 50%; border: 2px solid #666; }
+  .strap-bottom { width: 40px; height: 80px; background: #fff; border-radius: 0 0 6px 6px; }
+
+  /* FEATURES STRIP */
+  .features {
+    background: #f5f5f5;
+    padding: 20px 32px;
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .feature { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #555; }
+  .feature-icon { font-size: 16px; }
+
+  /* FEATURED PRODUCTS */
+  .section { padding: 64px 32px; max-width: 1100px; margin: 0 auto; }
+  .section-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 32px; }
+  .section-label { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #888; display: block; margin-bottom: 6px; }
+  .section-title { font-size: 28px; font-weight: 800; letter-spacing: -1px; }
+  .section-link { font-size: 13px; color: #111; text-decoration: underline; }
+
+  .product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .product-card { cursor: pointer; }
+  .card-img {
+    aspect-ratio: 1;
+    background: #f0f0f0;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s;
+  }
+  .product-card:hover .card-img { transform: scale(1.01); }
+  .card-img .watch-mock {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .wmstrap { width: 28px; height: 55px; border-radius: 4px 4px 0 0; }
+  .wmface { width: 80px; height: 80px; border-radius: 50%; border: 6px solid; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; }
+  .wmstrap-bot { width: 28px; height: 55px; border-radius: 0 0 4px 4px; }
+  .discount-tag {
+    position: absolute; top: 12px; left: 12px;
+    background: #111; color: #fff;
+    font-size: 10px; font-weight: 700;
+    padding: 4px 8px; border-radius: 3px;
+  }
+  .card-ref { font-size: 11px; color: #aaa; margin-bottom: 2px; }
+  .card-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .card-variants { font-size: 12px; color: #888; margin-bottom: 6px; }
+  .card-price { font-size: 15px; font-weight: 800; }
+  .card-price-old { font-size: 12px; color: #bbb; text-decoration: line-through; margin-left: 6px; font-weight: 400; }
+
+  /* BRAND SECTION */
+  .brand-section {
+    background: #111;
+    color: #fff;
+    padding: 80px 32px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+    align-items: center;
+  }
+  .brand-eyebrow { font-size: 11px; letter-spacing: 3px; color: #666; text-transform: uppercase; margin-bottom: 16px; }
+  .brand-title { font-size: 36px; font-weight: 800; letter-spacing: -1px; line-height: 1.1; margin-bottom: 16px; }
+  .brand-text { font-size: 14px; color: #888; line-height: 1.7; }
+  .brand-logo-big { display: flex; align-items: center; justify-content: center; }
+  .logo-circle {
+    width: 180px; height: 180px; border-radius: 50%;
+    border: 3px solid #333;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .logo-inner-circle {
+    width: 120px; height: 120px; border-radius: 50%;
+    border: 3px solid #333;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-text { font-size: 18px; font-weight: 800; color: #444; letter-spacing: -0.5px; }
+
+  /* HOW IT WORKS */
+  .hiw { padding: 64px 32px; background: #f9f9f9; }
+  .hiw-inner { max-width: 900px; margin: 0 auto; text-align: center; }
+  .hiw-title { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .hiw-sub { font-size: 14px; color: #888; margin-bottom: 40px; }
+  .hiw-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+  .hiw-step { text-align: center; }
+  .step-num { width: 40px; height: 40px; border-radius: 50%; background: #111; color: #fff; font-size: 16px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+  .step-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .step-text { font-size: 12px; color: #888; line-height: 1.5; }
+
+  /* FOOTER */
+  footer {
+    background: #111;
+    color: #888;
+    padding: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+  }
+  .footer-logo { color: #fff; font-size: 16px; font-weight: 800; }
+  .wa-btn { background: #25D366; color: #fff; border: none; border-radius: 4px; padding: 10px 20px; font-size: 13px; font-weight: 700; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">CD <span>&</span> Co.</span>
+  <div class="nav-links">
+    <a href="#">Inicio</a>
+    <a href="#">Relojes</a>
+    <a href="#">Novedades</a>
+    <a href="#">Sobre nosotros</a>
+  </div>
+  <div class="nav-right">
+    <span style="font-size:13px;color:#888;">🔍</span>
+    <button class="cart-btn">🛒 Carrito (0)</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg-text">TIME</div>
+  <div class="watch-silhouette">
+    <div class="strap-top"></div>
+    <div class="watch-body"><div class="watch-body-inner"></div></div>
+    <div class="strap-bottom"></div>
+  </div>
+  <div style="position:relative;z-index:2;">
+    <div class="hero-eyebrow">CD & Co. · Paraguay</div>
+    <div class="hero-title">Relojes que<br/><em>definen</em> tu estilo</div>
+    <div class="hero-sub">Selección premium de relojes. Pagá por transferencia bancaria, recibí en todo el país.</div>
+    <div class="hero-cta">
+      <button class="btn-primary">Ver Colección</button>
+      <button class="btn-secondary">💬 Consultar por WhatsApp</button>
+    </div>
+  </div>
+  <div class="hero-scroll">↓ Explorar</div>
+</section>
+
+<!-- FEATURES STRIP -->
+<div class="features">
+  <div class="feature"><span class="feature-icon">🚚</span> Envíos a todo Paraguay</div>
+  <div class="feature"><span class="feature-icon">🏦</span> Pago por transferencia bancaria</div>
+  <div class="feature"><span class="feature-icon">💬</span> Atención por WhatsApp</div>
+  <div class="feature"><span class="feature-icon">✅</span> Garantía de fábrica</div>
+</div>
+
+<!-- FEATURED PRODUCTS -->
+<div style="max-width:1100px;margin:0 auto;">
+  <div class="section">
+    <div class="section-header">
+      <div>
+        <span class="section-label">Colección</span>
+        <span class="section-title">Destacados</span>
+      </div>
+      <a href="#" class="section-link">Ver todos →</a>
+    </div>
+    <div class="product-grid">
+      <div class="product-card">
+        <div class="card-img" style="background:#e8e4de;">
+          <div class="watch-mock">
+            <div class="wmstrap" style="background:#c8a96e;border-radius:4px 4px 0 0;"></div>
+            <div class="wmface" style="background:#d4b87a;border-color:#b8984e;color:#fff;">12</div>
+            <div class="wmstrap" style="background:#c8a96e;border-radius:0 0 4px 4px;"></div>
+          </div>
+          <span class="discount-tag">-20%</span>
+        </div>
+        <div class="card-ref">Casio LTP-1169</div>
+        <div class="card-name">Casio Mujer LTP-1169</div>
+        <div class="card-variants">3 correas disponibles</div>
+        <div><span class="card-price">₲ 280.000</span><span class="card-price-old">₲ 350.000</span></div>
+      </div>
+      <div class="product-card">
+        <div class="card-img" style="background:#e8eef2;">
+          <div class="watch-mock">
+            <div class="wmstrap" style="background:#4a7a9b;border-radius:4px 4px 0 0;"></div>
+            <div class="wmface" style="background:#5a8aab;border-color:#3a6a8b;color:#cde;">12</div>
+            <div class="wmstrap" style="background:#4a7a9b;border-radius:0 0 4px 4px;"></div>
+          </div>
+        </div>
+        <div class="card-ref">Casio MTP-VD01</div>
+        <div class="card-name">Casio Deportivo Azul</div>
+        <div class="card-variants">4 correas disponibles</div>
+        <div><span class="card-price">₲ 415.000</span></div>
+      </div>
+      <div class="product-card">
+        <div class="card-img" style="background:#f0f0f0;">
+          <div class="watch-mock">
+            <div class="wmstrap" style="background:#222;border-radius:4px 4px 0 0;"></div>
+            <div class="wmface" style="background:#333;border-color:#111;color:#aaa;">12</div>
+            <div class="wmstrap" style="background:#222;border-radius:0 0 4px 4px;"></div>
+          </div>
+        </div>
+        <div class="card-ref">Casio MTP-1183</div>
+        <div class="card-name">Casio Hombre Negro</div>
+        <div class="card-variants">3 correas disponibles</div>
+        <div><span class="card-price">₲ 350.000</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="hiw">
+  <div class="hiw-inner">
+    <div class="hiw-title">¿Cómo comprás?</div>
+    <div class="hiw-sub">Simple, rápido y seguro — directo desde Paraguay</div>
+    <div class="hiw-steps">
+      <div class="hiw-step">
+        <div class="step-num">1</div>
+        <div class="step-title">Elegís tu reloj</div>
+        <div class="step-text">Navegás el catálogo y seleccionás el modelo y la correa que más te gusta</div>
+      </div>
+      <div class="hiw-step">
+        <div class="step-num">2</div>
+        <div class="step-title">Completás el pedido</div>
+        <div class="step-text">Ingresás tus datos de entrega y confirmás los productos en el carrito</div>
+      </div>
+      <div class="hiw-step">
+        <div class="step-num">3</div>
+        <div class="step-title">Coordinás por WhatsApp</div>
+        <div class="step-text">Te redirigimos a WhatsApp con el resumen del pedido para coordinar el pago</div>
+      </div>
+      <div class="hiw-step">
+        <div class="step-num">4</div>
+        <div class="step-title">Recibís en casa</div>
+        <div class="step-text">Confirmado el pago, preparamos y enviamos tu pedido a todo Paraguay</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BRAND -->
+<div class="brand-section">
+  <div>
+    <div class="brand-eyebrow">Nuestra historia</div>
+    <div class="brand-title">Tiempo con estilo,<br/>desde Paraguay</div>
+    <div class="brand-text">CD & Co. nació con la misión de acercar relojes de calidad a cada paraguayo. Seleccionamos cada pieza pensando en durabilidad, diseño y precio justo. Comprás con confianza y pagás como más cómodo te quede.</div>
+  </div>
+  <div class="brand-logo-big">
+    <div class="logo-circle">
+      <div class="logo-inner-circle">
+        <div class="logo-text">CD&Co.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <span class="footer-logo">CD & Co.</span>
+  <span>© 2025 · Asunción, Paraguay</span>
+  <button class="wa-btn">💬 WhatsApp</button>
+</footer>
+
+</body>
+</html>

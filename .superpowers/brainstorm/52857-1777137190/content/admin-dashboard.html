@@ -1,0 +1,118 @@
+<h2>Panel Admin — Layout</h2>
+<p class="subtitle">¿Cómo organizar el dashboard de administración?</p>
+
+<div class="cards">
+
+  <!-- Option A: Sidebar nav -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8f8f8;padding:12px;border-radius:8px;">
+      <div style="display:flex;gap:0;height:160px;border-radius:6px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <!-- Sidebar -->
+        <div style="background:#111;width:70px;padding:10px 8px;display:flex;flex-direction:column;gap:6px;">
+          <div style="color:#fff;font-size:8px;font-weight:700;margin-bottom:4px;">CD&CO</div>
+          <div style="background:#333;border-radius:3px;padding:4px 6px;font-size:7px;color:#fff;">📦 Productos</div>
+          <div style="background:#c8a96e;border-radius:3px;padding:4px 6px;font-size:7px;color:#111;font-weight:700;">📋 Pedidos</div>
+          <div style="background:#333;border-radius:3px;padding:4px 6px;font-size:7px;color:#aaa;">🖼 Storage</div>
+          <div style="margin-top:auto;background:#333;border-radius:3px;padding:4px 6px;font-size:7px;color:#aaa;">⬅ Salir</div>
+        </div>
+        <!-- Main content -->
+        <div style="flex:1;background:#f5f5f5;padding:10px;overflow:hidden;">
+          <div style="font-size:10px;font-weight:700;margin-bottom:8px;">Pedidos recientes</div>
+          <!-- Stats row -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px;">
+            <div style="background:#fff;border-radius:3px;padding:5px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+              <div style="font-size:11px;font-weight:700;">12</div>
+              <div style="font-size:7px;color:#888;">Hoy</div>
+            </div>
+            <div style="background:#fff;border-radius:3px;padding:5px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+              <div style="font-size:11px;font-weight:700;color:#c8a96e;">₲ 1.8M</div>
+              <div style="font-size:7px;color:#888;">Semana</div>
+            </div>
+            <div style="background:#fff;border-radius:3px;padding:5px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+              <div style="font-size:11px;font-weight:700;color:#4caf50;">8</div>
+              <div style="font-size:7px;color:#888;">Pendientes</div>
+            </div>
+          </div>
+          <!-- Orders table -->
+          <div style="background:#fff;border-radius:3px;padding:5px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+            <div style="display:grid;grid-template-columns:1fr 1.5fr 0.8fr 0.8fr;gap:4px;border-bottom:1px solid #eee;padding-bottom:3px;margin-bottom:3px;">
+              <span style="font-size:7px;color:#888;font-weight:600;">#</span>
+              <span style="font-size:7px;color:#888;font-weight:600;">Cliente</span>
+              <span style="font-size:7px;color:#888;font-weight:600;">Total</span>
+              <span style="font-size:7px;color:#888;font-weight:600;">Estado</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1.5fr 0.8fr 0.8fr;gap:4px;margin-bottom:3px;">
+              <span style="font-size:7px;">#1042</span>
+              <span style="font-size:7px;">ana@gmail.com</span>
+              <span style="font-size:7px;">₲ 400K</span>
+              <span style="font-size:7px;background:#fff3cd;padding:1px 4px;border-radius:2px;">Pendiente</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1.5fr 0.8fr 0.8fr;gap:4px;">
+              <span style="font-size:7px;">#1041</span>
+              <span style="font-size:7px;">luis@gmail.com</span>
+              <span style="font-size:7px;">₲ 180K</span>
+              <span style="font-size:7px;background:#d4edda;padding:1px 4px;border-radius:2px;color:#2e7d32;">Enviado</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Sidebar oscuro + contenido principal</h3>
+      <p>Nav lateral fijo con secciones. Área principal con stats + tabla de pedidos. Sensación de herramienta profesional.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Top nav + cards -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8f8f8;padding:12px;border-radius:8px;">
+      <div style="background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <!-- Top nav -->
+        <div style="background:#fff;border-bottom:1px solid #eee;padding:6px 10px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:10px;font-weight:700;">CD&CO Admin</span>
+          <span style="font-size:8px;padding:3px 8px;border-bottom:2px solid #222;font-weight:600;">Pedidos</span>
+          <span style="font-size:8px;padding:3px 8px;color:#888;">Productos</span>
+          <span style="font-size:8px;padding:3px 8px;color:#888;">Inventario</span>
+          <span style="margin-left:auto;font-size:7px;background:#f5f5f5;padding:3px 8px;border-radius:10px;">admin@cdco.com</span>
+        </div>
+        <div style="padding:10px;">
+          <!-- KPI cards -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:8px;">
+            <div style="background:#f9f9f9;border-radius:4px;padding:6px;border-left:3px solid #c8a96e;">
+              <div style="font-size:10px;font-weight:700;">₲ 1.8M</div>
+              <div style="font-size:7px;color:#888;">Esta semana</div>
+            </div>
+            <div style="background:#f9f9f9;border-radius:4px;padding:6px;border-left:3px solid #4caf50;">
+              <div style="font-size:10px;font-weight:700;">24</div>
+              <div style="font-size:7px;color:#888;">Pedidos total</div>
+            </div>
+            <div style="background:#f9f9f9;border-radius:4px;padding:6px;border-left:3px solid #ff9800;">
+              <div style="font-size:10px;font-weight:700;">8</div>
+              <div style="font-size:7px;color:#888;">Pendientes</div>
+            </div>
+            <div style="background:#f9f9f9;border-radius:4px;padding:6px;border-left:3px solid #2196f3;">
+              <div style="font-size:10px;font-weight:700;">47</div>
+              <div style="font-size:7px;color:#888;">Productos</div>
+            </div>
+          </div>
+          <!-- Table -->
+          <div style="font-size:8px;font-weight:700;margin-bottom:4px;">Pedidos</div>
+          <div style="background:#f9f9f9;border-radius:4px;padding:6px;font-size:7px;">
+            <div style="display:grid;grid-template-columns:0.5fr 1.5fr 1fr 0.8fr 0.8fr;gap:4px;border-bottom:1px solid #eee;padding-bottom:3px;margin-bottom:3px;">
+              <span style="color:#888;font-weight:600;">#</span><span style="color:#888;font-weight:600;">Email</span><span style="color:#888;font-weight:600;">Items</span><span style="color:#888;font-weight:600;">Total</span><span style="color:#888;font-weight:600;">Acción</span>
+            </div>
+            <div style="display:grid;grid-template-columns:0.5fr 1.5fr 1fr 0.8fr 0.8fr;gap:4px;">
+              <span>#1042</span><span>ana@gmail.com</span><span>Remera S, Jean M</span><span>₲ 400K</span>
+              <span style="background:#222;color:#fff;padding:1px 4px;border-radius:2px;text-align:center;cursor:pointer;">Enviar</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Nav superior + KPI cards + tabla</h3>
+      <p>Nav horizontal. 4 KPIs con color de acento. Tabla con botón "Enviar" inline. Más compacto, fácil de ampliar con más secciones.</p>
+    </div>
+  </div>
+
+</div>
