@@ -165,12 +165,12 @@ class Api::V1::GoalsController < Api::V1::BaseController
         attrs_list.each do |ga_attr|
           acc_id = ga_attr[:account_id] || ga_attr["account_id"]
           allocated = ga_attr[:allocated_amount] || ga_attr["allocated_amount"]
-          account = current_resource_owner.family.accounts.find_by(id: acc_id) if acc_id.present?
+          account = current_resource_owner.family.accounts.accessible_by(current_resource_owner).find_by(id: acc_id) if acc_id.present?
           goal.goal_accounts.build(account: account, allocated_amount: allocated) if account
         end
       elsif raw_params.key?(:account_ids)
         account_ids = Array(raw_params[:account_ids]).reject(&:blank?)
-        accounts = current_resource_owner.family.accounts.where(id: account_ids).to_a
+        accounts = current_resource_owner.family.accounts.accessible_by(current_resource_owner).where(id: account_ids).to_a
         allocations = submitted_allocations(raw_params)
         accounts.each do |account|
           goal.goal_accounts.build(account: account, allocated_amount: allocations[account.id.to_s])
@@ -181,7 +181,7 @@ class Api::V1::GoalsController < Api::V1::BaseController
     def sync_account_links(goal, raw_params)
       if raw_params.key?(:account_ids)
         account_ids = Array(raw_params[:account_ids]).reject(&:blank?)
-        accounts = current_resource_owner.family.accounts.where(id: account_ids).to_a
+        accounts = current_resource_owner.family.accounts.accessible_by(current_resource_owner).where(id: account_ids).to_a
         allocations = submitted_allocations(raw_params)
 
         desired_ids = accounts.map(&:id).to_set
@@ -218,7 +218,7 @@ class Api::V1::GoalsController < Api::V1::BaseController
               end
             end
           elsif acc_id.present?
-            account = current_resource_owner.family.accounts.find_by(id: acc_id)
+            account = current_resource_owner.family.accounts.accessible_by(current_resource_owner).find_by(id: acc_id)
             if account
               existing = goal.goal_accounts.reject(&:marked_for_destruction?).find { |ga| ga.account_id == account.id }
               if existing

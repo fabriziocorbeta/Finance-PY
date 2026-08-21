@@ -20,7 +20,7 @@ class Api::V1::GoalsControllerTest < ActionDispatch::IntegrationTest
       user: @user,
       name: "Test Write Key",
       scopes: [ "read_write" ],
-      source: "web",
+      source: "mobile",
       display_key: "test_write_#{SecureRandom.hex(8)}"
     )
 
@@ -274,6 +274,29 @@ class Api::V1::GoalsControllerTest < ActionDispatch::IntegrationTest
 
     patch api_v1_goal_url(other_goal), params: { goal: { name: "Hacked" } }, headers: api_headers(@write_api_key), as: :json
     assert_response :not_found
+  end
+
+  test "should not link a private account of another family member to a goal" do
+    other_user = users(:family_member)
+    private_account = @family.accounts.create!(
+      name: "Privada de family_member",
+      balance: 0,
+      currency: "USD",
+      owner: other_user,
+      accountable: Depository.new
+    )
+
+    patch api_v1_goal_url(@goal),
+          params: { goal: { account_ids: [ private_account.id ] } },
+          headers: api_headers(@write_api_key),
+          as: :json
+
+    assert_response :unprocessable_entity
+    json_response = JSON.parse(response.body)
+    assert_equal "validation_failed", json_response["error"]
+
+    @goal.reload
+    assert_not_includes @goal.linked_accounts, private_account
   end
 
   test "should fail to destroy goal if not archived" do
