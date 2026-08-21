@@ -480,7 +480,7 @@ Rails.application.routes.draw do
       resources :tags, only: %i[index show create update destroy]
 
       resources :budgets, only: %i[index show create update destroy]
-      resources :goals, only: %i[index show]
+      resources :goals, only: %i[index show create update destroy]
       resources :receivables, only: %i[index show create update destroy]
 
       resources :transactions, only: [ :index, :show, :create, :update, :destroy ]

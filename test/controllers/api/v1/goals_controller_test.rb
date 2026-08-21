@@ -16,7 +16,16 @@ class Api::V1::GoalsControllerTest < ActionDispatch::IntegrationTest
       display_key: "test_read_#{SecureRandom.hex(8)}"
     )
 
+    @write_api_key = ApiKey.create!(
+      user: @user,
+      name: "Test Write Key",
+      scopes: [ "read_write" ],
+      source: "mobile",
+      display_key: "test_write_#{SecureRandom.hex(8)}"
+    )
+
     Redis.new.del("api_rate_limit:#{@api_key.id}")
+    Redis.new.del("api_rate_limit:#{@write_api_key.id}")
 
     # Goal valida must_have_at_least_one_linked_account: sin un goal_account
     # asociado, create! falla con :at_least_one_linked_account_required.
@@ -41,8 +50,6 @@ class Api::V1::GoalsControllerTest < ActionDispatch::IntegrationTest
 
   test "should not list another family's goals" do
     other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
-    # Goal exige >=1 cuenta vinculada (must_have_at_least_one_linked_account),
-    # asi que la familia ajena tambien necesita una cuenta propia.
     other_account = other_family.accounts.create!(
       name: "Other Checking",
       balance: 0,
@@ -113,8 +120,6 @@ class Api::V1::GoalsControllerTest < ActionDispatch::IntegrationTest
 
   test "should not show another family's goal" do
     other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
-    # Goal exige >=1 cuenta vinculada (must_have_at_least_one_linked_account),
-    # asi que la familia ajena tambien necesita una cuenta propia.
     other_account = other_family.accounts.create!(
       name: "Other Checking",
       balance: 0,
@@ -133,6 +138,213 @@ class Api::V1::GoalsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
     json_response = JSON.parse(response.body)
     assert_equal "not_found", json_response["error"]
+  end
+
+  test "should create goal with account_ids" do
+    account = accounts(:depository)
+    params = {
+      goal: {
+        name: "Vacation Fund",
+        target_amount: 5000,
+        currency: "USD",
+        account_ids: [ account.id ]
+      }
+    }
+
+    assert_difference -> { @family.goals.count }, 1 do
+      post api_v1_goals_url, params: params, headers: api_headers(@write_api_key), as: :json
+    end
+
+    assert_response :created
+    json_response = JSON.parse(response.body)["data"]
+    assert_equal "Vacation Fund", json_response["name"]
+
+    created_goal = Goal.find(json_response["id"])
+    assert_includes created_goal.linked_accounts, account
+  end
+
+  test "should create goal with goal_accounts_attributes" do
+    account = accounts(:depository)
+    params = {
+      goal: {
+        name: "House Fund",
+        target_amount: 50000,
+        currency: "USD",
+        goal_accounts_attributes: [
+          { account_id: account.id, allocated_amount: 1000 }
+        ]
+      }
+    }
+
+    assert_difference -> { @family.goals.count }, 1 do
+      post api_v1_goals_url, params: params, headers: api_headers(@write_api_key), as: :json
+    end
+
+    assert_response :created
+    json_response = JSON.parse(response.body)["data"]
+    assert_equal "House Fund", json_response["name"]
+  end
+
+  test "should fail to create goal without linked accounts" do
+    params = {
+      goal: {
+        name: "Unlinked Goal",
+        target_amount: 2000,
+        currency: "USD"
+      }
+    }
+
+    assert_no_difference -> { @family.goals.count } do
+      post api_v1_goals_url, params: params, headers: api_headers(@write_api_key), as: :json
+    end
+
+    assert_response :unprocessable_entity
+    json_response = JSON.parse(response.body)
+    assert_equal "validation_failed", json_response["error"]
+  end
+
+  test "should require write scope to create a goal" do
+    params = {
+      goal: {
+        name: "Forbidden Goal",
+        target_amount: 1000,
+        currency: "USD",
+        account_ids: [ accounts(:depository).id ]
+      }
+    }
+
+    post api_v1_goals_url, params: params, headers: api_headers(@api_key), as: :json
+    assert_response :forbidden
+  end
+
+  test "should update goal" do
+    params = {
+      goal: {
+        name: "Updated Goal Name"
+      }
+    }
+
+    patch api_v1_goal_url(@goal), params: params, headers: api_headers(@write_api_key), as: :json
+    assert_response :success
+
+    @goal.reload
+    assert_equal "Updated Goal Name", @goal.name
+  end
+
+  test "should fail to update goal when removing all linked accounts" do
+    params = {
+      goal: {
+        account_ids: []
+      }
+    }
+
+    patch api_v1_goal_url(@goal), params: params, headers: api_headers(@write_api_key), as: :json
+    assert_response :unprocessable_entity
+
+    json_response = JSON.parse(response.body)
+    assert_equal "validation_failed", json_response["error"]
+  end
+
+  test "should require write scope to update a goal" do
+    params = {
+      goal: {
+        name: "Unauthorized Update"
+      }
+    }
+
+    patch api_v1_goal_url(@goal), params: params, headers: api_headers(@api_key), as: :json
+    assert_response :forbidden
+  end
+
+  test "should not update another family's goal" do
+    other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
+    other_account = other_family.accounts.create!(
+      name: "Other Checking",
+      balance: 0,
+      currency: "USD",
+      accountable: Depository.new
+    )
+    other_goal = other_family.goals.new(
+      name: "Other Car",
+      target_amount: 15000,
+      currency: "USD"
+    )
+    other_goal.goal_accounts.build(account: other_account)
+    other_goal.save!
+
+    patch api_v1_goal_url(other_goal), params: { goal: { name: "Hacked" } }, headers: api_headers(@write_api_key), as: :json
+    assert_response :not_found
+  end
+
+  test "should not link a private account of another family member to a goal" do
+    other_user = users(:family_member)
+    private_account = @family.accounts.create!(
+      name: "Privada de family_member",
+      balance: 0,
+      currency: "USD",
+      owner: other_user,
+      accountable: Depository.new
+    )
+
+    patch api_v1_goal_url(@goal),
+          params: { goal: { account_ids: [ private_account.id ] } },
+          headers: api_headers(@write_api_key),
+          as: :json
+
+    assert_response :unprocessable_entity
+    json_response = JSON.parse(response.body)
+    assert_equal "validation_failed", json_response["error"]
+
+    @goal.reload
+    assert_not_includes @goal.linked_accounts, private_account
+  end
+
+  test "should fail to destroy goal if not archived" do
+    delete api_v1_goal_url(@goal), headers: api_headers(@write_api_key)
+    assert_response :unprocessable_entity
+
+    json_response = JSON.parse(response.body)
+    assert_equal "validation_failed", json_response["error"]
+    assert Goal.exists?(@goal.id)
+  end
+
+  test "should destroy goal if archived" do
+    @goal.archive!
+
+    assert_difference -> { @family.goals.count }, -1 do
+      delete api_v1_goal_url(@goal), headers: api_headers(@write_api_key)
+    end
+
+    assert_response :no_content
+    assert_not Goal.exists?(@goal.id)
+  end
+
+  test "should require write scope to destroy a goal" do
+    @goal.archive!
+
+    delete api_v1_goal_url(@goal), headers: api_headers(@api_key)
+    assert_response :forbidden
+  end
+
+  test "should not destroy another family's goal" do
+    other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
+    other_account = other_family.accounts.create!(
+      name: "Other Checking",
+      balance: 0,
+      currency: "USD",
+      accountable: Depository.new
+    )
+    other_goal = other_family.goals.new(
+      name: "Other Car",
+      target_amount: 15000,
+      currency: "USD"
+    )
+    other_goal.goal_accounts.build(account: other_account)
+    other_goal.save!
+    other_goal.archive!
+
+    delete api_v1_goal_url(other_goal), headers: api_headers(@write_api_key)
+    assert_response :not_found
   end
 
   private
