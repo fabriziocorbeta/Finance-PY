@@ -16,7 +16,16 @@ class Api::V1::BudgetsControllerTest < ActionDispatch::IntegrationTest
       display_key: "test_read_#{SecureRandom.hex(8)}"
     )
 
+    @write_api_key = ApiKey.create!(
+      user: @user,
+      name: "Test Write Key",
+      scopes: [ "read_write" ],
+      source: "web",
+      display_key: "test_write_#{SecureRandom.hex(8)}"
+    )
+
     Redis.new.del("api_rate_limit:#{@api_key.id}")
+    Redis.new.del("api_rate_limit:#{@write_api_key.id}")
 
     # budgets(:one) ya existe para dylan_family (la familia de family_admin)
     # con exactamente este mes. Budget valida unicidad de start_date/end_date
@@ -105,6 +114,131 @@ class Api::V1::BudgetsControllerTest < ActionDispatch::IntegrationTest
     )
 
     get api_v1_budget_url(id: other_budget.id), headers: api_headers(@api_key)
+    assert_response :not_found
+    json_response = JSON.parse(response.body)
+    assert_equal "not_found", json_response["error"]
+  end
+
+  test "should create budget with read_write scope" do
+    start_date = Date.new(2030, 1, 1)
+    end_date = start_date.end_of_month
+
+    assert_difference -> { @family.budgets.count }, 1 do
+      post api_v1_budgets_url,
+           params: { budget: { start_date: start_date.to_s, end_date: end_date.to_s, budgeted_spending: 1000, expected_income: 2000 } },
+           headers: api_headers(@write_api_key)
+    end
+
+    assert_response :created
+    json_response = JSON.parse(response.body)["data"]
+    assert_equal start_date.to_s, json_response["start_date"]
+    assert_equal end_date.to_s, json_response["end_date"]
+    assert_equal "1000.0", json_response["budgeted_spending"]
+    assert_equal "2000.0", json_response["expected_income"]
+  end
+
+  test "should fail to create budget without write scope" do
+    post api_v1_budgets_url,
+         params: { budget: { start_date: "2030-02-01", end_date: "2030-02-28", budgeted_spending: 1000 } },
+         headers: api_headers(@api_key)
+
+    assert_response :forbidden
+    json_response = JSON.parse(response.body)
+    assert_equal "insufficient_scope", json_response["error"]
+  end
+
+  test "should fail to create budget with duplicate dates" do
+    post api_v1_budgets_url,
+         params: { budget: { start_date: @budget.start_date.to_s, end_date: @budget.end_date.to_s } },
+         headers: api_headers(@write_api_key)
+
+    assert_response :unprocessable_entity
+    json_response = JSON.parse(response.body)
+    assert_equal "validation_failed", json_response["error"]
+  end
+
+  test "should require authentication when creating a budget" do
+    post api_v1_budgets_url,
+         params: { budget: { start_date: "2030-03-01", end_date: "2030-03-31" } }
+
+    assert_response :unauthorized
+  end
+
+  test "should update budget with read_write scope" do
+    patch api_v1_budget_url(id: @budget.id),
+          params: { budget: { budgeted_spending: 5000, expected_income: 6000 } },
+          headers: api_headers(@write_api_key)
+
+    assert_response :success
+    json_response = JSON.parse(response.body)["data"]
+    assert_equal "5000.0", json_response["budgeted_spending"]
+    assert_equal "6000.0", json_response["expected_income"]
+
+    @budget.reload
+    assert_equal 5000, @budget.budgeted_spending
+    assert_equal 6000, @budget.expected_income
+  end
+
+  test "should fail to update budget without write scope" do
+    patch api_v1_budget_url(id: @budget.id),
+          params: { budget: { budgeted_spending: 5000 } },
+          headers: api_headers(@api_key)
+
+    assert_response :forbidden
+    json_response = JSON.parse(response.body)
+    assert_equal "insufficient_scope", json_response["error"]
+  end
+
+  test "should not update another family's budget" do
+    other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
+    other_budget = other_family.budgets.create!(
+      start_date: Date.current.beginning_of_month,
+      end_date: Date.current.end_of_month,
+      currency: other_family.currency
+    )
+
+    patch api_v1_budget_url(id: other_budget.id),
+          params: { budget: { budgeted_spending: 5000 } },
+          headers: api_headers(@write_api_key)
+
+    assert_response :not_found
+    json_response = JSON.parse(response.body)
+    assert_equal "not_found", json_response["error"]
+  end
+
+  test "should destroy budget with read_write scope" do
+    destroy_budget = @family.budgets.create!(
+      start_date: Date.new(2030, 4, 1),
+      end_date: Date.new(2030, 4, 30),
+      currency: @family.currency
+    )
+
+    assert_difference -> { @family.budgets.count }, -1 do
+      delete api_v1_budget_url(id: destroy_budget.id), headers: api_headers(@write_api_key)
+    end
+
+    assert_response :no_content
+    assert_nil Budget.find_by(id: destroy_budget.id)
+  end
+
+  test "should fail to destroy budget without write scope" do
+    delete api_v1_budget_url(id: @budget.id), headers: api_headers(@api_key)
+
+    assert_response :forbidden
+    json_response = JSON.parse(response.body)
+    assert_equal "insufficient_scope", json_response["error"]
+  end
+
+  test "should not destroy another family's budget" do
+    other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
+    other_budget = other_family.budgets.create!(
+      start_date: Date.current.beginning_of_month,
+      end_date: Date.current.end_of_month,
+      currency: other_family.currency
+    )
+
+    delete api_v1_budget_url(id: other_budget.id), headers: api_headers(@write_api_key)
+
     assert_response :not_found
     json_response = JSON.parse(response.body)
     assert_equal "not_found", json_response["error"]
