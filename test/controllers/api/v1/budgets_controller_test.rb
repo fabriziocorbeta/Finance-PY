@@ -20,7 +20,7 @@ class Api::V1::BudgetsControllerTest < ActionDispatch::IntegrationTest
       user: @user,
       name: "Test Write Key",
       scopes: [ "read_write" ],
-      source: "web",
+      source: "mobile",
       display_key: "test_write_#{SecureRandom.hex(8)}"
     )
 
