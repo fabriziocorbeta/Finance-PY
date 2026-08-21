@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "autoPort": true,
+  "configurations": [
+    {
+      "name": "Python HTTP Server (Puerto 8000)",
+      "runtimeExecutable": "/usr/local/bin/python3.10",
+      "runtimeArgs": ["-m", "http.server", "8000", "--directory", "/Users/Fabrizio/Library/CloudStorage/GoogleDrive-fabriziocorbeta@gmail.com/Mi unidad/03 Emprendimientos/02  Sistema/01 - cdco"],
+      "env": {}
+    }
+  ]
+}

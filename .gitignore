@@ -1,0 +1,15 @@
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.smart-connections/
+.obsidian-git-data
+.trash/
+.DS_Store
+.local-secrets/
+cd-co-crm/.env
+"01 - cdco/.env.local"
+cd-co-crm/supabase/.env.local
+node_modules/
+0 - Agentes/01 - RUFLO/ruflo/
+cd-co-crm/
+"01 - cdco/"
+.claude/worktrees/
