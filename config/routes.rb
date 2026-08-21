@@ -481,7 +481,7 @@ Rails.application.routes.draw do
 
       resources :budgets, only: %i[index show create update destroy]
       resources :goals, only: %i[index show]
-      resources :receivables, only: %i[index show]
+      resources :receivables, only: %i[index show create update destroy]
 
       resources :transactions, only: [ :index, :show, :create, :update, :destroy ]
       resources :trades, only: [ :index, :show, :create, :update, :destroy ]

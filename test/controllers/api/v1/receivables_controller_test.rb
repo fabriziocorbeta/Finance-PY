@@ -16,13 +16,23 @@ class Api::V1::ReceivablesControllerTest < ActionDispatch::IntegrationTest
       display_key: "test_read_#{SecureRandom.hex(8)}"
     )
 
+    @write_api_key = ApiKey.create!(
+      user: @user,
+      name: "Test Write Key",
+      scopes: [ "read_write" ],
+      source: "mobile",
+      display_key: "test_write_#{SecureRandom.hex(8)}"
+    )
+
     Redis.new.del("api_rate_limit:#{@api_key.id}")
+    Redis.new.del("api_rate_limit:#{@write_api_key.id}")
 
     @receivable = Receivable.create!(total_amount: 500, due_day: 15)
     @account = @family.accounts.create!(
       name: "Test Receivable",
       balance: 500,
       currency: "USD",
+      owner: @user,
       accountable: @receivable
     )
   end
@@ -134,6 +144,189 @@ class Api::V1::ReceivablesControllerTest < ActionDispatch::IntegrationTest
     )
 
     get api_v1_receivable_url(other_receivable), headers: api_headers(@api_key)
+    assert_response :not_found
+    json_response = JSON.parse(response.body)
+    assert_equal "not_found", json_response["error"]
+  end
+
+  # CREATE action tests
+  test "should create receivable" do
+    assert_difference -> { Receivable.count } => 1, -> { Account.count } => 1 do
+      post api_v1_receivables_url,
+           params: {
+             receivable: {
+               name: "New Receivable Account",
+               total_amount: 1200,
+               balance: 1200,
+               installment_count: 6,
+               due_day: 10,
+               currency: "USD"
+             }
+           },
+           headers: api_headers(@write_api_key)
+    end
+
+    assert_response :created
+    json_response = JSON.parse(response.body)["data"]
+    assert_equal "1200.0", json_response["total_amount"]
+    assert_equal 6, json_response["installment_count"]
+    assert_equal 10, json_response["due_day"]
+  end
+
+  test "should require write scope when creating a receivable" do
+    post api_v1_receivables_url,
+         params: { receivable: { name: "Test", total_amount: 100 } },
+         headers: api_headers(@api_key)
+
+    assert_response :forbidden
+    json_response = JSON.parse(response.body)
+    assert_equal "insufficient_scope", json_response["error"]
+  end
+
+  test "should return unprocessable_entity on invalid create params" do
+    post api_v1_receivables_url,
+         params: {
+           receivable: {
+             name: "Invalid Receivable",
+             total_amount: 100,
+             due_day: 35
+           }
+         },
+         headers: api_headers(@write_api_key)
+
+    assert_response :unprocessable_entity
+    json_response = JSON.parse(response.body)
+    assert_equal "validation_failed", json_response["error"]
+  end
+
+  # UPDATE action tests
+  test "should update receivable" do
+    patch api_v1_receivable_url(@receivable),
+          params: {
+            receivable: {
+              name: "Updated Receivable Name",
+              total_amount: 750,
+              due_day: 20
+            }
+          },
+          headers: api_headers(@write_api_key)
+
+    assert_response :success
+    json_response = JSON.parse(response.body)["data"]
+    assert_equal "750.0", json_response["total_amount"]
+    assert_equal 20, json_response["due_day"]
+
+    @receivable.reload
+    assert_equal 750, @receivable.total_amount
+    assert_equal 20, @receivable.due_day
+    assert_equal "Updated Receivable Name", @receivable.account.name
+  end
+
+  test "should require write scope when updating a receivable" do
+    patch api_v1_receivable_url(@receivable),
+          params: { receivable: { total_amount: 600 } },
+          headers: api_headers(@api_key)
+
+    assert_response :forbidden
+    json_response = JSON.parse(response.body)
+    assert_equal "insufficient_scope", json_response["error"]
+  end
+
+  test "should not update receivable of an account owned by another user in the same family" do
+    other_user = users(:family_member)
+    private_receivable = Receivable.create!(total_amount: 999, due_day: 10)
+    @family.accounts.create!(
+      name: "Privada de family_member",
+      balance: 999,
+      currency: "USD",
+      owner: other_user,
+      accountable: private_receivable
+    )
+
+    patch api_v1_receivable_url(private_receivable),
+          params: { receivable: { total_amount: 1234 } },
+          headers: api_headers(@write_api_key)
+
+    assert_response :not_found
+    json_response = JSON.parse(response.body)
+    assert_equal "not_found", json_response["error"]
+
+    private_receivable.reload
+    assert_equal 999, private_receivable.total_amount
+  end
+
+  test "should not update another family's receivable" do
+    other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
+    other_receivable = Receivable.create!(total_amount: 1000)
+    other_family.accounts.create!(
+      name: "Other Receivable",
+      balance: 1000,
+      currency: "USD",
+      accountable: other_receivable
+    )
+
+    patch api_v1_receivable_url(other_receivable),
+          params: { receivable: { total_amount: 2000 } },
+          headers: api_headers(@write_api_key)
+
+    assert_response :not_found
+    json_response = JSON.parse(response.body)
+    assert_equal "not_found", json_response["error"]
+  end
+
+  # DESTROY action tests
+  test "should destroy receivable" do
+    assert_difference -> { Receivable.count } => -1, -> { Account.count } => -1 do
+      delete api_v1_receivable_url(@receivable), headers: api_headers(@write_api_key)
+    end
+
+    assert_response :success
+    json_response = JSON.parse(response.body)
+    assert_equal "Receivable deleted successfully", json_response["message"]
+  end
+
+  test "should require write scope when destroying a receivable" do
+    delete api_v1_receivable_url(@receivable), headers: api_headers(@api_key)
+
+    assert_response :forbidden
+    json_response = JSON.parse(response.body)
+    assert_equal "insufficient_scope", json_response["error"]
+  end
+
+  test "should not destroy receivable of an account owned by another user in the same family" do
+    other_user = users(:family_member)
+    private_receivable = Receivable.create!(total_amount: 999, due_day: 10)
+    @family.accounts.create!(
+      name: "Privada de family_member",
+      balance: 999,
+      currency: "USD",
+      owner: other_user,
+      accountable: private_receivable
+    )
+
+    assert_no_difference [ "Receivable.count", "Account.count" ] do
+      delete api_v1_receivable_url(private_receivable), headers: api_headers(@write_api_key)
+    end
+
+    assert_response :not_found
+    json_response = JSON.parse(response.body)
+    assert_equal "not_found", json_response["error"]
+  end
+
+  test "should not destroy another family's receivable" do
+    other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
+    other_receivable = Receivable.create!(total_amount: 1000)
+    other_family.accounts.create!(
+      name: "Other Receivable",
+      balance: 1000,
+      currency: "USD",
+      accountable: other_receivable
+    )
+
+    assert_no_difference [ "Receivable.count", "Account.count" ] do
+      delete api_v1_receivable_url(other_receivable), headers: api_headers(@write_api_key)
+    end
+
     assert_response :not_found
     json_response = JSON.parse(response.body)
     assert_equal "not_found", json_response["error"]
