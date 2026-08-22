@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.Modifier
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -29,6 +28,7 @@ import py.com.cdco.financespy.screens.RulesListScreen
 import py.com.cdco.financespy.screens.RulesListViewModel
 import py.com.cdco.financespy.screens.TransactionsScreen
 import py.com.cdco.financespy.screens.TransactionsViewModel
+import py.com.cdco.financespy.theme.FinancePyTheme
 
 @Composable
 fun App(
@@ -41,7 +41,7 @@ fun App(
     ruleFormViewModelFactory: (String?) -> RuleFormViewModel,
     accountDetailViewModelFactory: (String) -> AccountDetailViewModel
 ) {
-    MaterialTheme {
+    FinancePyTheme {
         when (isLoggedIn) {
             null -> {}
             false -> LoginScreen(onLoginClick = onLoginClick)
