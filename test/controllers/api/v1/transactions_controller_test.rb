@@ -427,6 +427,52 @@ end
     assert transaction_data["transfer"].key?("other_account")
   end
 
+  test "index action does not cause N+1 queries when rendering transfer transactions" do
+    from_account = @family.accounts.create!(
+      name: "N+1 Test From Account",
+      balance: 10000,
+      currency: "USD",
+      accountable: Depository.new
+    )
+
+    to_account = @family.accounts.create!(
+      name: "N+1 Test To Account",
+      balance: 0,
+      currency: "USD",
+      accountable: Depository.new
+    )
+
+    # Create 5 transfers (which creates 10 transactions)
+    5.times do |i|
+      Transfer::Creator.new(
+        family: @family,
+        source_account_id: from_account.id,
+        destination_account_id: to_account.id,
+        date: Date.current,
+        amount: 100 + i
+      ).create
+    end
+
+    queries = []
+    counter = ->(name, start, finish, id, payload) {
+      unless payload[:name] == "SCHEMA" || payload[:sql].include?("SAVEPOINT") || payload[:sql].include?("TRANSACTION")
+        queries << payload[:sql]
+      end
+    }
+
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
+      get api_v1_transactions_url, params: { per_page: 50 }, headers: api_headers(@api_key)
+    end
+
+    assert_response :success
+
+    # Ensure no individual transaction query was repeated per row during rendering.
+    # Without eager loading, rendering 10 transfer transactions triggers queries for each transaction's
+    # transfer outflow_transaction / inflow_transaction and entry/account.
+    # With full eager loading, queries should be a small, bounded number.
+    assert_operator queries.size, :<=, 15, "Expected bounded query count without N+1 regression, got #{queries.size} queries:\n#{queries.join("\n")}"
+  end
+
   private
 
     def api_headers(api_key)
