@@ -85,6 +85,10 @@ class Api::V1::BudgetsControllerTest < ActionDispatch::IntegrationTest
     assert_equal @budget.id, budget["id"]
     assert_equal @budget.start_date.to_s, budget["start_date"]
     assert_equal @budget.end_date.to_s, budget["end_date"]
+    assert_equal @budget.actual_spending, budget["actual_spending"]
+    assert_equal @budget.allocated_spending, budget["allocated_spending"]
+    assert_equal @budget.available_to_spend, budget["available_to_spend"]
+    assert_equal @budget.percent_of_budget_spent, budget["percent_of_budget_spent"]
   end
 
   test "should require authentication when showing a budget" do
