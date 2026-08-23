@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -88,8 +89,10 @@ fun App(
                                 text = {
                                     Text(
                                         "Dashboard",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = if (currentRoute == Routes.DASHBOARD) FinancePyColors.textPrimary() else FinancePyColors.textSecondary()
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = if (currentRoute == Routes.DASHBOARD) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             )
@@ -99,8 +102,10 @@ fun App(
                                 text = {
                                     Text(
                                         "Transacciones",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = if (currentRoute == Routes.TRANSACTIONS) FinancePyColors.textPrimary() else FinancePyColors.textSecondary()
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = if (currentRoute == Routes.TRANSACTIONS) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             )
@@ -110,8 +115,10 @@ fun App(
                                 text = {
                                     Text(
                                         "Reglas",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = if (currentRoute == Routes.RULES) FinancePyColors.textPrimary() else FinancePyColors.textSecondary()
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = if (currentRoute == Routes.RULES) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             )

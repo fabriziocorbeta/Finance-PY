@@ -13,8 +13,8 @@ android {
         applicationId = "py.com.cdco.financespy.dev"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0-1a"
+        versionCode = 4
+        versionName = "0.1.0-layout-fix"
     }
 
     buildTypes {
