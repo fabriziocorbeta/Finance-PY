@@ -1,7 +1,14 @@
 <%# locals: (account_group:, mobile: false, all_tab: false, open: nil, **args) %>
 
 <div id="<%= account_group.dom_id(tab: all_tab ? :all : nil, mobile: mobile) %>">
-  <% is_open = open.nil? ? account_group.accounts.any? { |account| page_active?(account_path(account)) } : open %>
+  <%
+    accounts_with_paths = account_group.accounts.map do |account|
+      path = account_path(account)
+      is_active = page_active?(path)
+      [account, path, is_active]
+    end
+    is_open = open.nil? ? accounts_with_paths.any? { |_, _, is_active| is_active } : open
+  %>
   <%= render DS::Disclosure.new(align: :left, open: is_open) do |disclosure| %>
     <% disclosure.with_summary_content do %>
       <div class="flex items-center gap-3">
@@ -22,11 +29,11 @@
     <% end %>
 
     <div class="space-y-1">
-      <% account_group.accounts.each do |account| %>
-        <%= link_to account_path(account),
+      <% accounts_with_paths.each do |account, path, is_active| %>
+        <%= link_to path,
                   class: class_names(
                     "block flex items-center gap-2 px-3 py-2 rounded-lg",
-                    page_active?(account_path(account)) ? "bg-container" : "hover:bg-surface-hover"
+                    is_active ? "bg-container" : "hover:bg-surface-hover"
                   ),
                   title: account.name do %>
           <%= render "accounts/logo", account: account, size: "sm", color: account_group.color %>

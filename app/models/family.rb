@@ -179,11 +179,13 @@ class Family < ApplicationRecord
   end
 
   def balance_sheet(user: Current.user)
-    BalanceSheet.new(self, user: user)
+    @balance_sheet_by_user ||= {}
+    @balance_sheet_by_user[user&.id] ||= BalanceSheet.new(self, user: user)
   end
 
   def income_statement(user: Current.user)
-    IncomeStatement.new(self, user: user)
+    @income_statement_by_user ||= {}
+    @income_statement_by_user[user&.id] ||= IncomeStatement.new(self, user: user)
   end
 
   # Returns the Investment Contributions category for this family, creating it if it doesn't exist.
