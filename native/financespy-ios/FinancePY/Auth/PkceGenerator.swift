@@ -13,9 +13,17 @@ enum PkceGenerator {
         return PkcePair(codeVerifier: verifier, codeChallenge: challenge)
     }
 
+    static func generateState() -> String {
+        var buffer = [UInt8](repeating: 0, count: 32)
+        let status = SecRandomCopyBytes(kSecRandomDefault, buffer.count, &buffer)
+        precondition(status == errSecSuccess, "SecRandomCopyBytes failed")
+        return base64UrlEncode(Data(buffer))
+    }
+
     private static func generateCodeVerifier() -> String {
         var buffer = [UInt8](repeating: 0, count: 32)
-        _ = SecRandomCopyBytes(kSecRandomDefault, buffer.count, &buffer)
+        let status = SecRandomCopyBytes(kSecRandomDefault, buffer.count, &buffer)
+        precondition(status == errSecSuccess, "SecRandomCopyBytes failed")
         return base64UrlEncode(Data(buffer))
     }
 

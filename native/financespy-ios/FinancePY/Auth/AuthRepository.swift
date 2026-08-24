@@ -6,6 +6,7 @@ enum AuthError: LocalizedError {
     case sessionFailed(Error)
     case missingAuthorizationCode
     case missingCodeVerifier
+    case invalidState
     case tokenExchangeFailed(Int, String?)
     case invalidResponse
 
@@ -19,6 +20,8 @@ enum AuthError: LocalizedError {
             return "Authorization code missing from callback."
         case .missingCodeVerifier:
             return "PKCE code verifier is missing."
+        case .invalidState:
+            return "OAuth state mismatch — possible callback spoofing."
         case .tokenExchangeFailed(let status, let message):
             return "Token exchange failed (\(status)): \(message ?? "Unknown error")"
         case .invalidResponse:
@@ -60,6 +63,7 @@ final class AuthRepository: ObservableObject {
     private let scope = "read_write"
 
     private(set) var currentCodeVerifier: String?
+    private var currentState: String?
     private let tokenStorage = KeychainTokenStorage.shared
 
     private init() {}
@@ -67,6 +71,8 @@ final class AuthRepository: ObservableObject {
     func buildAuthorizationUrl() throws -> URL {
         let pkce = PkceGenerator.generate()
         self.currentCodeVerifier = pkce.codeVerifier
+        let state = PkceGenerator.generateState()
+        self.currentState = state
 
         var components = URLComponents(string: "\(baseUrl)/oauth/authorize")
         components?.queryItems = [
@@ -75,7 +81,8 @@ final class AuthRepository: ObservableObject {
             URLQueryItem(name: "redirect_uri", value: redirectUri),
             URLQueryItem(name: "scope", value: scope),
             URLQueryItem(name: "code_challenge", value: pkce.codeChallenge),
-            URLQueryItem(name: "code_challenge_method", value: "S256")
+            URLQueryItem(name: "code_challenge_method", value: "S256"),
+            URLQueryItem(name: "state", value: state)
         ]
 
         guard let url = components?.url else {
@@ -103,7 +110,7 @@ final class AuthRepository: ObservableObject {
             }
 
             session.presentationContextProvider = WebAuthPresentationContextProvider.shared
-            session.prefersEphemeralWebBrowserSession = false
+            session.prefersEphemeralWebBrowserSession = true
             session.start()
         }
 
@@ -116,6 +123,15 @@ final class AuthRepository: ObservableObject {
               let code = codeItem.value else {
             throw AuthError.missingAuthorizationCode
         }
+
+        guard let expectedState = currentState else {
+            throw AuthError.invalidState
+        }
+        let receivedState = components.queryItems?.first(where: { $0.name == "state" })?.value
+        guard let receivedState, receivedState == expectedState else {
+            throw AuthError.invalidState
+        }
+        currentState = nil
 
         try await exchangeCode(code)
     }
