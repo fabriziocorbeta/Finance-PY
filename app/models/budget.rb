@@ -224,7 +224,7 @@ class Budget < ApplicationRecord
   # Actuals: How much user has spent on each budget category
   # =============================================================================
   def estimated_spending
-    income_statement.median_expense(interval: "month")
+    @estimated_spending ||= income_statement.median_expense(interval: "month")
   end
 
   def actual_spending
@@ -239,11 +239,15 @@ class Budget < ApplicationRecord
   end
 
   def category_median_monthly_expense(category)
-    income_statement.median_expense(category: category)
+    @category_median_monthly_expense ||= {}
+    key = category&.id || :uncategorized
+    @category_median_monthly_expense[key] ||= income_statement.median_expense(category: category)
   end
 
   def category_avg_monthly_expense(category)
-    income_statement.avg_expense(category: category)
+    @category_avg_monthly_expense ||= {}
+    key = category&.id || :uncategorized
+    @category_avg_monthly_expense[key] ||= income_statement.avg_expense(category: category)
   end
 
   def available_to_spend
@@ -287,11 +291,11 @@ class Budget < ApplicationRecord
   # Income: How much user earned relative to what they expected to earn
   # =============================================================================
   def estimated_income
-    family.income_statement.median_income(interval: "month")
+    @estimated_income ||= income_statement.median_income(interval: "month")
   end
 
   def actual_income
-    family.income_statement.income_totals(period: self.period).total
+    @actual_income ||= income_statement.income_totals(period: period).total
   end
 
   def actual_income_percent

@@ -98,22 +98,22 @@ class IncomeStatement
 
   def median_expense(interval: "month", category: nil)
     if category.present?
-      category_stats(interval: interval).find { |stat| stat.classification == "expense" && stat.category_id == category.id }&.median || 0
+      category_expense_stats_index(interval: interval)[category.id]&.median || 0
     else
-      family_stats(interval: interval).find { |stat| stat.classification == "expense" }&.median || 0
+      family_stats_index(interval: interval)["expense"]&.median || 0
     end
   end
 
   def avg_expense(interval: "month", category: nil)
     if category.present?
-      category_stats(interval: interval).find { |stat| stat.classification == "expense" && stat.category_id == category.id }&.avg || 0
+      category_expense_stats_index(interval: interval)[category.id]&.avg || 0
     else
-      family_stats(interval: interval).find { |stat| stat.classification == "expense" }&.avg || 0
+      family_stats_index(interval: interval)["expense"]&.avg || 0
     end
   end
 
   def median_income(interval: "month")
-    family_stats(interval: interval).find { |stat| stat.classification == "income" }&.median || 0
+    family_stats_index(interval: interval)["income"]&.median || 0
   end
 
   private
@@ -185,6 +185,18 @@ class IncomeStatement
       @category_stats[interval] ||= Rails.cache.fetch([
         "income_statement", "category_stats", family.id, user&.id, interval, included_account_ids_hash, family.entries_cache_version
       ]) { CategoryStats.new(family, interval:, account_ids: included_account_ids).call }
+    end
+
+    def category_expense_stats_index(interval: "month")
+      @category_expense_stats_index ||= {}
+      @category_expense_stats_index[interval] ||= category_stats(interval: interval)
+        .select { |stat| stat.classification == "expense" }
+        .index_by(&:category_id)
+    end
+
+    def family_stats_index(interval: "month")
+      @family_stats_index ||= {}
+      @family_stats_index[interval] ||= family_stats(interval: interval).index_by(&:classification)
     end
 
     def included_account_ids
