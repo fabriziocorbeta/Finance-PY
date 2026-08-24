@@ -1,0 +1,364 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		300000000000000000000001 /* FinancePYApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000001 /* FinancePYApp.swift */; };
+		300000000000000000000002 /* PkceGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* PkceGenerator.swift */; };
+		300000000000000000000003 /* KeychainTokenStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* KeychainTokenStorage.swift */; };
+		300000000000000000000004 /* AuthRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000004 /* AuthRepository.swift */; };
+		300000000000000000000005 /* ApiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000005 /* ApiClient.swift */; };
+		300000000000000000000006 /* FinancePyApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000006 /* FinancePyApi.swift */; };
+		300000000000000000000007 /* AccountEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000007 /* AccountEntity.swift */; };
+		300000000000000000000008 /* EntryEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000008 /* EntryEntity.swift */; };
+		300000000000000000000009 /* TransactionEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000009 /* TransactionEntity.swift */; };
+		30000000000000000000000A /* SyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000A /* SyncEngine.swift */; };
+		30000000000000000000000B /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B /* LoginView.swift */; };
+		30000000000000000000000C /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000C /* DashboardView.swift */; };
+		30000000000000000000000D /* TransactionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* TransactionsView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		111111112222222233333308 /* FinancePY.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FinancePY.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		200000000000000000000001 /* FinancePYApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinancePYApp.swift; sourceTree = "<group>"; };
+		200000000000000000000002 /* PkceGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PkceGenerator.swift; sourceTree = "<group>"; };
+		200000000000000000000003 /* KeychainTokenStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainTokenStorage.swift; sourceTree = "<group>"; };
+		200000000000000000000004 /* AuthRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthRepository.swift; sourceTree = "<group>"; };
+		200000000000000000000005 /* ApiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApiClient.swift; sourceTree = "<group>"; };
+		200000000000000000000006 /* FinancePyApi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinancePyApi.swift; sourceTree = "<group>"; };
+		200000000000000000000007 /* AccountEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountEntity.swift; sourceTree = "<group>"; };
+		200000000000000000000008 /* EntryEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryEntity.swift; sourceTree = "<group>"; };
+		200000000000000000000009 /* TransactionEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionEntity.swift; sourceTree = "<group>"; };
+		20000000000000000000000A /* SyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEngine.swift; sourceTree = "<group>"; };
+		20000000000000000000000B /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		20000000000000000000000C /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		20000000000000000000000D /* TransactionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionsView.swift; sourceTree = "<group>"; };
+		20000000000000000000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		111111112222222233333304 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		111111112222222233333306 = {
+			isa = PBXGroup;
+			children = (
+				11111111222222223333330F /* FinancePY */,
+				111111112222222233333307 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		111111112222222233333307 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				111111112222222233333308 /* FinancePY.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		11111111222222223333330F /* FinancePY */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000001 /* FinancePYApp.swift */,
+				400000000000000000000001 /* Auth */,
+				400000000000000000000002 /* Network */,
+				400000000000000000000003 /* Persistence */,
+				400000000000000000000004 /* Sync */,
+				400000000000000000000005 /* Screens */,
+				20000000000000000000000E /* Info.plist */,
+			);
+			path = FinancePY;
+			sourceTree = "<group>";
+		};
+		400000000000000000000001 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000002 /* PkceGenerator.swift */,
+				200000000000000000000003 /* KeychainTokenStorage.swift */,
+				200000000000000000000004 /* AuthRepository.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		400000000000000000000002 /* Network */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000005 /* ApiClient.swift */,
+				200000000000000000000006 /* FinancePyApi.swift */,
+			);
+			path = Network;
+			sourceTree = "<group>";
+		};
+		400000000000000000000003 /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000007 /* AccountEntity.swift */,
+				200000000000000000000008 /* EntryEntity.swift */,
+				200000000000000000000009 /* TransactionEntity.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		400000000000000000000004 /* Sync */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000000A /* SyncEngine.swift */,
+			);
+			path = Sync;
+			sourceTree = "<group>";
+		};
+		400000000000000000000005 /* Screens */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000000B /* LoginView.swift */,
+				20000000000000000000000C /* DashboardView.swift */,
+				20000000000000000000000D /* TransactionsView.swift */,
+			);
+			path = Screens;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		111111112222222233333302 /* FinancePY */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 11111111222222223333330A /* Build configuration list for PBXNativeTarget "FinancePY" */;
+			buildPhases = (
+				111111112222222233333303 /* Sources */,
+				111111112222222233333304 /* Frameworks */,
+				111111112222222233333305 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FinancePY;
+			productName = FinancePY;
+			productReference = 111111112222222233333308 /* FinancePY.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		111111112222222233333301 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					111111112222222233333302 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = 111111112222222233333309 /* Build configuration list for PBXProject "FinancePY" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 111111112222222233333306;
+			productRefGroup = 111111112222222233333307 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				111111112222222233333302 /* FinancePY */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		111111112222222233333305 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		111111112222222233333303 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				300000000000000000000001 /* FinancePYApp.swift in Sources */,
+				300000000000000000000002 /* PkceGenerator.swift in Sources */,
+				300000000000000000000003 /* KeychainTokenStorage.swift in Sources */,
+				300000000000000000000004 /* AuthRepository.swift in Sources */,
+				300000000000000000000005 /* ApiClient.swift in Sources */,
+				300000000000000000000006 /* FinancePyApi.swift in Sources */,
+				300000000000000000000007 /* AccountEntity.swift in Sources */,
+				300000000000000000000008 /* EntryEntity.swift in Sources */,
+				300000000000000000000009 /* TransactionEntity.swift in Sources */,
+				30000000000000000000000A /* SyncEngine.swift in Sources */,
+				30000000000000000000000B /* LoginView.swift in Sources */,
+				30000000000000000000000C /* DashboardView.swift in Sources */,
+				30000000000000000000000D /* TransactionsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		11111111222222223333330B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		11111111222222223333330C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		11111111222222223333330D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FinancePY/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = py.com.cdco.financespy.ios.dev;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		11111111222222223333330E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FinancePY/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = py.com.cdco.financespy.ios.dev;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		111111112222222233333309 /* Build configuration list for PBXProject "FinancePY" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				11111111222222223333330B /* Debug */,
+				11111111222222223333330C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		11111111222222223333330A /* Build configuration list for PBXNativeTarget "FinancePY" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				11111111222222223333330D /* Debug */,
+				11111111222222223333330E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 111111112222222233333301 /* Project object */;
+}
