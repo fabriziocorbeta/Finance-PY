@@ -106,6 +106,45 @@ RSpec.configure do |config|
               }
             }
           },
+          Receivable: {
+            type: :object,
+            required: %w[id total_amount],
+            properties: {
+              id: { type: :string, format: :uuid },
+              total_amount: { type: :string },
+              installment_count: { type: :integer, nullable: true },
+              due_day: { type: :integer, nullable: true }
+            }
+          },
+          ReceivableResponse: {
+            type: :object,
+            required: %w[data],
+            properties: {
+              data: { '$ref' => '#/components/schemas/Receivable' }
+            }
+          },
+          ReceivableCollection: {
+            type: :object,
+            required: %w[data meta],
+            properties: {
+              data: {
+                type: :array,
+                items: { '$ref' => '#/components/schemas/Receivable' }
+              },
+              meta: {
+                type: :object,
+                required: %w[current_page total_pages total_count per_page],
+                properties: {
+                  current_page: { type: :integer },
+                  next_page: { type: :integer, nullable: true },
+                  prev_page: { type: :integer, nullable: true },
+                  total_pages: { type: :integer },
+                  total_count: { type: :integer },
+                  per_page: { type: :integer }
+                }
+              }
+            }
+          },
           ErrorResponseWithImportId: {
             type: :object,
             required: %w[error import_id],
