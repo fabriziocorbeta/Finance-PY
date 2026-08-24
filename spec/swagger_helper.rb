@@ -418,6 +418,47 @@ RSpec.configure do |config|
               updated_at: { type: :string, format: :'date-time' }
             }
           },
+          Budget: {
+            type: :object,
+            required: %w[id start_date end_date currency],
+            properties: {
+              id: { type: :string, format: :uuid },
+              start_date: { type: :string, format: :date },
+              end_date: { type: :string, format: :date },
+              budgeted_spending: { type: :string, nullable: true },
+              expected_income: { type: :string, nullable: true },
+              currency: { type: :string }
+            }
+          },
+          BudgetResponse: {
+            type: :object,
+            required: %w[data],
+            properties: {
+              data: { '$ref' => '#/components/schemas/Budget' }
+            }
+          },
+          BudgetCollection: {
+            type: :object,
+            required: %w[data meta],
+            properties: {
+              data: {
+                type: :array,
+                items: { '$ref' => '#/components/schemas/Budget' }
+              },
+              meta: {
+                type: :object,
+                required: %w[current_page total_pages total_count per_page],
+                properties: {
+                  current_page: { type: :integer },
+                  next_page: { type: :integer, nullable: true },
+                  prev_page: { type: :integer, nullable: true },
+                  total_pages: { type: :integer },
+                  total_count: { type: :integer },
+                  per_page: { type: :integer }
+                }
+              }
+            }
+          },
           TagCollection: {
             type: :array,
             items: { '$ref' => '#/components/schemas/TagDetail' }
