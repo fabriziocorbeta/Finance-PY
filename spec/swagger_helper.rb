@@ -106,6 +106,51 @@ RSpec.configure do |config|
               }
             }
           },
+          Goal: {
+            type: :object,
+            required: %w[id name target_amount currency state progress_basis],
+            properties: {
+              id: { type: :string, format: :uuid },
+              name: { type: :string },
+              target_amount: { type: :string },
+              currency: { type: :string },
+              target_date: { type: :string, format: :date, nullable: true },
+              color: { type: :string, nullable: true },
+              icon: { type: :string, nullable: true },
+              notes: { type: :string, nullable: true },
+              state: { type: :string, enum: %w[active paused completed archived] },
+              progress_basis: { type: :string, enum: %w[balance contributions] }
+            }
+          },
+          GoalResponse: {
+            type: :object,
+            required: %w[data],
+            properties: {
+              data: { '$ref' => '#/components/schemas/Goal' }
+            }
+          },
+          GoalCollection: {
+            type: :object,
+            required: %w[data meta],
+            properties: {
+              data: {
+                type: :array,
+                items: { '$ref' => '#/components/schemas/Goal' }
+              },
+              meta: {
+                type: :object,
+                required: %w[current_page total_pages total_count per_page],
+                properties: {
+                  current_page: { type: :integer },
+                  next_page: { type: :integer, nullable: true },
+                  prev_page: { type: :integer, nullable: true },
+                  total_pages: { type: :integer },
+                  total_count: { type: :integer },
+                  per_page: { type: :integer }
+                }
+              }
+            }
+          },
           Receivable: {
             type: :object,
             required: %w[id total_amount],
