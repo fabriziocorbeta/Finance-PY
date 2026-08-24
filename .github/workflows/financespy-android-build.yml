@@ -50,3 +50,35 @@ jobs:
           path: native/financespy-kmp/androidApp/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 30
+
+      # Optional: uploads the APK straight to Google Drive so it doesn't have
+      # to be pulled through GitHub Actions' artifact storage. Only runs once
+      # both secrets below are configured on the repo (Settings > Secrets and
+      # variables > Actions):
+      #   GDRIVE_SA_JSON    - full JSON key of a Google Cloud service account
+      #                       with the Drive API enabled.
+      #   GDRIVE_FOLDER_ID  - id of the destination Drive folder (from its
+      #                       URL: drive.google.com/drive/folders/<this>),
+      #                       shared with the service account's email as Editor
+      #                       so uploads count against the folder owner's
+      #                       quota, not the service account's own 0-byte one.
+      - name: Upload APK to Google Drive
+        if: ${{ secrets.GDRIVE_SA_JSON != '' && secrets.GDRIVE_FOLDER_ID != '' }}
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y rclone
+
+          printf '%s' "${{ secrets.GDRIVE_SA_JSON }}" > "$RUNNER_TEMP/gdrive-sa.json"
+          mkdir -p ~/.config/rclone
+          cat > ~/.config/rclone/rclone.conf <<EOF
+          [gdrive]
+          type = drive
+          scope = drive
+          service_account_file = $RUNNER_TEMP/gdrive-sa.json
+          EOF
+
+          apk_path=$(find androidApp/build/outputs/apk/debug -name '*.apk' | head -n1)
+          branch_safe=$(echo "${{ inputs.ref || github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
+          dest_name="financespy-${branch_safe}-run${{ github.run_number }}.apk"
+
+          rclone copyto "$apk_path" "gdrive:$dest_name" --drive-root-folder-id "${{ secrets.GDRIVE_FOLDER_ID }}" -v
