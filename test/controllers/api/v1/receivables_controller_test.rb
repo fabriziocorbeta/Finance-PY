@@ -106,6 +106,15 @@ class Api::V1::ReceivablesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should show receivable" do
+    @account.update!(balance: 300)
+    @account.entries.create!(
+      name: "Opening balance",
+      amount: 500,
+      date: 1.month.ago,
+      currency: "USD",
+      entryable: Valuation.new(kind: "opening_anchor")
+    )
+
     get api_v1_receivable_url(@receivable), headers: api_headers(@api_key)
     assert_response :success
 
@@ -113,6 +122,13 @@ class Api::V1::ReceivablesControllerTest < ActionDispatch::IntegrationTest
     assert_equal @receivable.id, receivable["id"]
     assert_equal "500.0", receivable["total_amount"]
     assert_equal 15, receivable["due_day"]
+    assert_equal "300.0", receivable["balance"]
+    assert_equal 30000, receivable["balance_cents"]
+    assert_equal "500.0", receivable["original_balance"]
+    assert_equal 50000, receivable["original_balance_cents"]
+    assert_equal "200.0", receivable["paid_amount"]
+    assert_equal 20000, receivable["paid_amount_cents"]
+    assert_equal 40.0, receivable["percent_paid"]
   end
 
   test "should require authentication when showing a receivable" do
