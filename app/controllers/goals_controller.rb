@@ -15,9 +15,14 @@ class GoalsController < ApplicationController
 
     pooled = Goal.pooled_allocations_for(Current.family)
     flows = Goal.market_flows_for(Current.family)
+    paces = Goal.paces_for(Current.family)
+    matched_pledges = Goal.last_matched_pledge_dates_for(Current.family)
+
     all_goals.each do |goal|
       goal.pooled_allocations = pooled
       goal.market_flows = flows
+      goal.pace = paces[goal.id] || 0
+      goal.last_matched_pledge_at = matched_pledges[goal.id]
     end
 
     @linkable_account_count = Current.user.accessible_accounts.where(accountable_type: FUNDABLE_TYPES).visible.count
