@@ -23,6 +23,12 @@ import androidx.navigation.compose.rememberNavController
 import py.com.cdco.financespy.navigation.Routes
 import py.com.cdco.financespy.screens.AccountDetailScreen
 import py.com.cdco.financespy.screens.AccountDetailViewModel
+import py.com.cdco.financespy.screens.BudgetDetailScreen
+import py.com.cdco.financespy.screens.BudgetDetailViewModel
+import py.com.cdco.financespy.screens.BudgetFormScreen
+import py.com.cdco.financespy.screens.BudgetFormViewModel
+import py.com.cdco.financespy.screens.BudgetsListScreen
+import py.com.cdco.financespy.screens.BudgetsListViewModel
 import py.com.cdco.financespy.screens.DashboardScreen
 import py.com.cdco.financespy.screens.DashboardViewModel
 import py.com.cdco.financespy.screens.LoginScreen
@@ -46,7 +52,10 @@ fun App(
     rulesListViewModelFactory: () -> RulesListViewModel,
     ruleDetailViewModelFactory: (String) -> RuleDetailViewModel,
     ruleFormViewModelFactory: (String?) -> RuleFormViewModel,
-    accountDetailViewModelFactory: (String) -> AccountDetailViewModel
+    accountDetailViewModelFactory: (String) -> AccountDetailViewModel,
+    budgetsListViewModelFactory: () -> BudgetsListViewModel,
+    budgetDetailViewModelFactory: (String) -> BudgetDetailViewModel,
+    budgetFormViewModelFactory: (String?) -> BudgetFormViewModel
 ) {
     FinancePyTheme {
         when (isLoggedIn) {
@@ -64,10 +73,11 @@ fun App(
                         .statusBarsPadding()
                         .navigationBarsPadding()
                 ) {
-                    if (currentRoute == Routes.DASHBOARD || currentRoute == Routes.TRANSACTIONS || currentRoute == Routes.RULES) {
+                    if (currentRoute == Routes.DASHBOARD || currentRoute == Routes.TRANSACTIONS || currentRoute == Routes.RULES || currentRoute == Routes.BUDGETS) {
                         val selectedIndex = when (currentRoute) {
                             Routes.TRANSACTIONS -> 1
                             Routes.RULES -> 2
+                            Routes.BUDGETS -> 3
                             else -> 0
                         }
                         TabRow(
@@ -122,6 +132,19 @@ fun App(
                                     )
                                 }
                             )
+                            Tab(
+                                selected = currentRoute == Routes.BUDGETS,
+                                onClick = { navController.navigate(Routes.BUDGETS) { launchSingleTop = true } },
+                                text = {
+                                    Text(
+                                        "Presupuestos",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = if (currentRoute == Routes.BUDGETS) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            )
                         }
                     }
 
@@ -142,6 +165,13 @@ fun App(
                                 onCreateClick = { navController.navigate(Routes.ruleFormCreate()) }
                             )
                         }
+                        composable(Routes.BUDGETS) {
+                            BudgetsListScreen(
+                                viewModel = remember { budgetsListViewModelFactory() },
+                                onBudgetClick = { budgetId -> navController.navigate(Routes.budgetDetail(budgetId)) },
+                                onCreateClick = { navController.navigate(Routes.budgetFormCreate()) }
+                            )
+                        }
                         composable(Routes.ACCOUNT_DETAIL) { entry ->
                             val accountId = entry.arguments?.getString("accountId") ?: return@composable
                             AccountDetailScreen(viewModel = remember(accountId) { accountDetailViewModelFactory(accountId) })
@@ -158,6 +188,21 @@ fun App(
                             val ruleId = entry.arguments?.getString("ruleId")
                             RuleFormScreen(
                                 viewModel = remember(ruleId) { ruleFormViewModelFactory(ruleId) },
+                                onSaved = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Routes.BUDGET_DETAIL) { entry ->
+                            val budgetId = entry.arguments?.getString("budgetId") ?: return@composable
+                            BudgetDetailScreen(
+                                viewModel = remember(budgetId) { budgetDetailViewModelFactory(budgetId) },
+                                onEditClick = { navController.navigate(Routes.budgetFormEdit(budgetId)) },
+                                onDeleted = { navController.popBackStack(Routes.BUDGETS, inclusive = false) }
+                            )
+                        }
+                        composable(Routes.BUDGET_FORM) { entry ->
+                            val budgetId = entry.arguments?.getString("budgetId")
+                            BudgetFormScreen(
+                                viewModel = remember(budgetId) { budgetFormViewModelFactory(budgetId) },
                                 onSaved = { navController.popBackStack() }
                             )
                         }

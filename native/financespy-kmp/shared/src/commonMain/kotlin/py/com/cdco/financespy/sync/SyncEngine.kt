@@ -2,10 +2,13 @@ package py.com.cdco.financespy.sync
 
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.AccountDto
+import py.com.cdco.financespy.api.dto.BudgetDto
 import py.com.cdco.financespy.api.dto.RuleDto
 import py.com.cdco.financespy.api.dto.TransactionListItemDto
 import py.com.cdco.financespy.db.AccountDao
 import py.com.cdco.financespy.db.AccountEntity
+import py.com.cdco.financespy.db.BudgetDao
+import py.com.cdco.financespy.db.BudgetEntity
 import py.com.cdco.financespy.db.EntryDao
 import py.com.cdco.financespy.db.EntryEntity
 import py.com.cdco.financespy.db.RuleDao
@@ -24,12 +27,14 @@ class SyncEngine(
     private val transactionDao: TransactionDao,
     private val ruleDao: RuleDao,
     private val ruleRunDao: RuleRunDao,
+    private val budgetDao: BudgetDao,
     private val currentDateProvider: () -> String
 ) {
     suspend fun syncAll(): Result<Unit> = runCatching {
         syncAccounts()
         syncTransactions()
         syncRules()
+        syncBudgets()
     }
 
     private suspend fun syncAccounts() {
@@ -61,6 +66,13 @@ class SyncEngine(
             })
         }
     }
+
+    private suspend fun syncBudgets() {
+        val remote = api.fetchAllBudgets()
+        val entities = remote.map { it.toEntity() }
+        budgetDao.upsertAll(entities)
+        budgetDao.deleteAllExcept(entities.map { it.id })
+    }
 }
 
 private fun AccountDto.toEntity() = AccountEntity(
@@ -78,6 +90,26 @@ private fun TransactionListItemDto.toEntryEntity() = EntryEntity(
 private fun TransactionListItemDto.toTransactionEntity() = TransactionEntity(
     id = id, categoryId = category?.id, categoryName = category?.name,
     merchantId = merchant?.id, merchantName = merchant?.name, kind = "standard"
+)
+
+private fun BudgetDto.toEntity() = BudgetEntity(
+    id = id,
+    startDate = start_date,
+    endDate = end_date,
+    budgetedSpending = budgeted_spending,
+    expectedIncome = expected_income,
+    currency = currency,
+    actualSpending = actual_spending,
+    actualSpendingCents = actual_spending_cents,
+    allocatedSpending = allocated_spending,
+    allocatedSpendingCents = allocated_spending_cents,
+    availableToSpend = available_to_spend,
+    availableToSpendCents = available_to_spend_cents,
+    percentOfBudgetSpent = percent_of_budget_spent,
+    actualIncome = actual_income,
+    actualIncomeCents = actual_income_cents,
+    remainingExpectedIncome = remaining_expected_income,
+    remainingExpectedIncomeCents = remaining_expected_income_cents
 )
 
 // Wave 1b solo soporta reglas de 1 condicion + 1 accion (ver spec). Una regla real

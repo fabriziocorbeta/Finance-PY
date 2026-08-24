@@ -16,6 +16,9 @@ import py.com.cdco.financespy.db.buildDatabase
 import py.com.cdco.financespy.db.initDatabaseBuilder
 import py.com.cdco.financespy.network.ApiClient
 import py.com.cdco.financespy.screens.AccountDetailViewModel
+import py.com.cdco.financespy.screens.BudgetDetailViewModel
+import py.com.cdco.financespy.screens.BudgetFormViewModel
+import py.com.cdco.financespy.screens.BudgetsListViewModel
 import py.com.cdco.financespy.screens.DashboardViewModel
 import py.com.cdco.financespy.screens.RuleDetailViewModel
 import py.com.cdco.financespy.screens.RuleFormViewModel
@@ -30,6 +33,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var dashboardViewModel: DashboardViewModel
     private lateinit var transactionsViewModel: TransactionsViewModel
     private lateinit var rulesListViewModel: RulesListViewModel
+    private lateinit var budgetsListViewModel: BudgetsListViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,6 +51,7 @@ class MainActivity : ComponentActivity() {
             transactionDao = database.transactionDao(),
             ruleDao = database.ruleDao(),
             ruleRunDao = database.ruleRunDao(),
+            budgetDao = database.budgetDao(),
             currentDateProvider = { currentIsoDate() }
         )
         dashboardViewModel = DashboardViewModel(
@@ -63,6 +68,10 @@ class MainActivity : ComponentActivity() {
         rulesListViewModel = RulesListViewModel(
             scope = lifecycleScope,
             ruleDao = database.ruleDao()
+        )
+        budgetsListViewModel = BudgetsListViewModel(
+            scope = lifecycleScope,
+            budgetDao = database.budgetDao()
         )
 
         lifecycleScope.launch {
@@ -96,6 +105,23 @@ class MainActivity : ComponentActivity() {
                         accountId = accountId,
                         accountDao = database.accountDao(),
                         entryDao = database.entryDao()
+                    )
+                },
+                budgetsListViewModelFactory = { budgetsListViewModel },
+                budgetDetailViewModelFactory = { budgetId ->
+                    BudgetDetailViewModel(
+                        scope = lifecycleScope,
+                        budgetId = budgetId,
+                        api = api,
+                        budgetDao = database.budgetDao()
+                    )
+                },
+                budgetFormViewModelFactory = { budgetId ->
+                    BudgetFormViewModel(
+                        scope = lifecycleScope,
+                        budgetId = budgetId,
+                        api = api,
+                        budgetDao = database.budgetDao()
                     )
                 }
             )
