@@ -604,6 +604,70 @@ components:
         updated_at:
           type: string
           format: date-time
+    Budget:
+      type: object
+      required:
+      - id
+      - start_date
+      - end_date
+      - currency
+      properties:
+        id:
+          type: string
+          format: uuid
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        budgeted_spending:
+          type: string
+          nullable: true
+        expected_income:
+          type: string
+          nullable: true
+        currency:
+          type: string
+    BudgetResponse:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Budget'
+    BudgetCollection:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Budget'
+        meta:
+          type: object
+          required:
+          - current_page
+          - total_pages
+          - total_count
+          - per_page
+          properties:
+            current_page:
+              type: integer
+            next_page:
+              type: integer
+              nullable: true
+            prev_page:
+              type: integer
+              nullable: true
+            total_pages:
+              type: integer
+            total_count:
+              type: integer
+            per_page:
+              type: integer
     TagCollection:
       type: array
       items:
@@ -801,6 +865,62 @@ components:
           type: array
           items:
             "$ref": "#/components/schemas/Goal"
+        meta:
+          type: object
+          required:
+          - current_page
+          - total_pages
+          - total_count
+          - per_page
+          properties:
+            current_page:
+              type: integer
+            next_page:
+              type: integer
+              nullable: true
+            prev_page:
+              type: integer
+              nullable: true
+            total_pages:
+              type: integer
+            total_count:
+              type: integer
+            per_page:
+              type: integer
+    Receivable:
+      type: object
+      required:
+      - id
+      - total_amount
+      properties:
+        id:
+          type: string
+          format: uuid
+        total_amount:
+          type: string
+        installment_count:
+          type: integer
+          nullable: true
+        due_day:
+          type: integer
+          nullable: true
+    ReceivableResponse:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          "$ref": "#/components/schemas/Receivable"
+    ReceivableCollection:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Receivable"
         meta:
           type: object
           required:
@@ -1963,6 +2083,193 @@ components:
               type: integer
               minimum: 0
 paths:
+  "/api/v1/budgets":
+    get:
+      summary: List budgets
+      tags:
+      - Budgets
+      security:
+      - apiKeyAuth: []
+      produces:
+      - application/json
+      parameters:
+      - name: page
+        in: query
+        type: integer
+        required: false
+        description: 'Page number (default: 1)'
+      - name: per_page
+        in: query
+        type: integer
+        required: false
+        description: 'Items per page (default: 25, max: 100)'
+      responses:
+        '200':
+          description: budgets listed
+          schema:
+            $ref: '#/components/schemas/BudgetCollection'
+        '401':
+          description: unauthorized
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: forbidden - requires read scope
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create a budget
+      tags:
+      - Budgets
+      security:
+      - apiKeyAuth: []
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            budget:
+              type: object
+              properties:
+                start_date:
+                  type: string
+                  format: date
+                end_date:
+                  type: string
+                  format: date
+                  nullable: true
+                currency:
+                  type: string
+                  nullable: true
+                budgeted_spending:
+                  type: number
+                  nullable: true
+                expected_income:
+                  type: number
+                  nullable: true
+              required:
+              - start_date
+          required:
+          - budget
+      responses:
+        '201':
+          description: budget created
+          schema:
+            $ref: '#/components/schemas/BudgetResponse'
+        '401':
+          description: unauthorized
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: forbidden - requires write scope
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: validation error - duplicate dates
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  "/api/v1/budgets/{id}":
+    parameters:
+    - name: id
+      in: path
+      type: string
+      required: true
+      description: Budget ID
+    get:
+      summary: Retrieve a budget
+      tags:
+      - Budgets
+      security:
+      - apiKeyAuth: []
+      produces:
+      - application/json
+      responses:
+        '200':
+          description: budget retrieved
+          schema:
+            $ref: '#/components/schemas/BudgetResponse'
+        '401':
+          description: unauthorized
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: forbidden - requires read scope
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: budget not found
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      summary: Update a budget
+      tags:
+      - Budgets
+      security:
+      - apiKeyAuth: []
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            budget:
+              type: object
+              properties:
+                budgeted_spending:
+                  type: number
+                  nullable: true
+                expected_income:
+                  type: number
+                  nullable: true
+                currency:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: budget updated
+          schema:
+            $ref: '#/components/schemas/BudgetResponse'
+        '401':
+          description: unauthorized
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: forbidden - requires write scope
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: budget not found
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: validation error
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete a budget
+      tags:
+      - Budgets
+      security:
+      - apiKeyAuth: []
+      responses:
+        '204':
+          description: budget deleted
+        '401':
+          description: unauthorized
+        '403':
+          description: forbidden - requires write scope
+        '404':
+          description: budget not found
   "/api/v1/accounts":
     get:
       summary: List accounts
@@ -4080,6 +4387,235 @@ paths:
               required:
               - recurring_transaction
         required: true
+  "/api/v1/receivables":
+    get:
+      summary: List receivables
+      tags:
+      - Receivables
+      security:
+      - apiKeyAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        description: 'Page number (default: 1)'
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        description: 'Items per page (default: 25, max: 100)'
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: receivables listed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ReceivableCollection"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires read scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    post:
+      summary: Create a receivable
+      tags:
+      - Receivables
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '201':
+          description: receivable created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ReceivableResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: unprocessable entity
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Account name for receivable
+                total_amount:
+                  type: number
+                  description: Total receivable amount
+                balance:
+                  type: number
+                  description: Initial account balance
+                installment_count:
+                  type: integer
+                  description: Number of installments
+                due_day:
+                  type: integer
+                  description: Day of month payment is due (1-31)
+                currency:
+                  type: string
+                  description: Currency code
+                notes:
+                  type: string
+                  description: Notes
+        required: true
+  "/api/v1/receivables/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Receivable ID
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Retrieve a receivable
+      tags:
+      - Receivables
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: receivable retrieved
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ReceivableResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires read scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: receivable not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    patch:
+      summary: Update a receivable
+      tags:
+      - Receivables
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: receivable updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ReceivableResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: receivable not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: unprocessable entity
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                total_amount:
+                  type: number
+                balance:
+                  type: number
+                installment_count:
+                  type: integer
+                due_day:
+                  type: integer
+                currency:
+                  type: string
+                notes:
+                  type: string
+        required: true
+    delete:
+      summary: Delete a receivable
+      tags:
+      - Receivables
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: receivable deleted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/DeleteResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: receivable not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
   "/api/v1/recurring_transactions/{id}":
     parameters:
     - name: id

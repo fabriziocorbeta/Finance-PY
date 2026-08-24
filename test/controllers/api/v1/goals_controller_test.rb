@@ -98,6 +98,11 @@ class Api::V1::GoalsControllerTest < ActionDispatch::IntegrationTest
     assert_equal @goal.id, goal["id"]
     assert_equal @goal.name, goal["name"]
     assert_equal @goal.state, goal["state"]
+    assert_equal @goal.current_balance.to_f, goal["current_balance"].to_f
+    assert_equal((@goal.current_balance_money.amount * @goal.current_balance_money.currency.minor_unit_conversion).round(0).to_i, goal["current_balance_cents"])
+    assert_equal @goal.remaining_amount.to_f, goal["remaining_amount"].to_f
+    assert_equal((@goal.remaining_amount_money.amount * @goal.remaining_amount_money.currency.minor_unit_conversion).round(0).to_i, goal["remaining_amount_cents"])
+    assert_equal @goal.progress_percent, goal["progress_percent"]
   end
 
   test "should require authentication when showing a goal" do
