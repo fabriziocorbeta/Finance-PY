@@ -133,8 +133,8 @@ class Api::V1::BudgetsControllerTest < ActionDispatch::IntegrationTest
     json_response = JSON.parse(response.body)["data"]
     assert_equal start_date.to_s, json_response["start_date"]
     assert_equal end_date.to_s, json_response["end_date"]
-    assert_equal "1000.0", json_response["budgeted_spending"]
-    assert_equal "2000.0", json_response["expected_income"]
+    assert_equal 1000.0, json_response["budgeted_spending"]
+    assert_equal 2000.0, json_response["expected_income"]
   end
 
   test "should fail to create budget without write scope" do
@@ -171,8 +171,8 @@ class Api::V1::BudgetsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     json_response = JSON.parse(response.body)["data"]
-    assert_equal "5000.0", json_response["budgeted_spending"]
-    assert_equal "6000.0", json_response["expected_income"]
+    assert_equal 5000.0, json_response["budgeted_spending"]
+    assert_equal 6000.0, json_response["expected_income"]
 
     @budget.reload
     assert_equal 5000, @budget.budgeted_spending
