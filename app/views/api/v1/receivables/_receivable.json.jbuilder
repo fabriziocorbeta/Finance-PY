@@ -15,11 +15,17 @@ paid_money = Money.new(paid_amount, receivable.account.currency)
 
 percent_paid = original_balance_amount.zero? ? 0.0 : ((paid_amount / original_balance_amount) * 100).to_f
 
-json.extract! receivable, :id, :total_amount, :installment_count, :due_day
-json.balance balance_amount
+json.id receivable.id
+json.name receivable.account&.name
+json.currency receivable.account&.currency
+json.notes receivable.account&.notes
+json.total_amount receivable.total_amount&.to_f
+json.installment_count receivable.installment_count
+json.due_day receivable.due_day
+json.balance balance_amount.to_f
 json.balance_cents money_to_minor_units.call(balance_money)
-json.original_balance original_balance_amount
+json.original_balance original_balance_amount.to_f
 json.original_balance_cents money_to_minor_units.call(original_balance_money)
-json.paid_amount paid_amount
+json.paid_amount paid_amount.to_f
 json.paid_amount_cents money_to_minor_units.call(paid_money)
 json.percent_paid percent_paid

@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -26,6 +27,12 @@ import py.com.cdco.financespy.screens.AccountDetailViewModel
 import py.com.cdco.financespy.screens.DashboardScreen
 import py.com.cdco.financespy.screens.DashboardViewModel
 import py.com.cdco.financespy.screens.LoginScreen
+import py.com.cdco.financespy.screens.ReceivableDetailScreen
+import py.com.cdco.financespy.screens.ReceivableDetailViewModel
+import py.com.cdco.financespy.screens.ReceivableFormScreen
+import py.com.cdco.financespy.screens.ReceivableFormViewModel
+import py.com.cdco.financespy.screens.ReceivablesListScreen
+import py.com.cdco.financespy.screens.ReceivablesListViewModel
 import py.com.cdco.financespy.screens.RuleDetailScreen
 import py.com.cdco.financespy.screens.RuleDetailViewModel
 import py.com.cdco.financespy.screens.RuleFormScreen
@@ -46,7 +53,10 @@ fun App(
     rulesListViewModelFactory: () -> RulesListViewModel,
     ruleDetailViewModelFactory: (String) -> RuleDetailViewModel,
     ruleFormViewModelFactory: (String?) -> RuleFormViewModel,
-    accountDetailViewModelFactory: (String) -> AccountDetailViewModel
+    accountDetailViewModelFactory: (String) -> AccountDetailViewModel,
+    receivablesListViewModelFactory: () -> ReceivablesListViewModel,
+    receivableDetailViewModelFactory: (String) -> ReceivableDetailViewModel,
+    receivableFormViewModelFactory: (String?) -> ReceivableFormViewModel
 ) {
     FinancePyTheme {
         when (isLoggedIn) {
@@ -64,16 +74,18 @@ fun App(
                         .statusBarsPadding()
                         .navigationBarsPadding()
                 ) {
-                    if (currentRoute == Routes.DASHBOARD || currentRoute == Routes.TRANSACTIONS || currentRoute == Routes.RULES) {
+                    if (currentRoute in listOf(Routes.DASHBOARD, Routes.TRANSACTIONS, Routes.RULES, Routes.RECEIVABLES)) {
                         val selectedIndex = when (currentRoute) {
                             Routes.TRANSACTIONS -> 1
                             Routes.RULES -> 2
+                            Routes.RECEIVABLES -> 3
                             else -> 0
                         }
-                        TabRow(
+                        ScrollableTabRow(
                             selectedTabIndex = selectedIndex,
                             containerColor = FinancePyColors.container(),
                             contentColor = FinancePyColors.textPrimary(),
+                            edgePadding = 16.dp,
                             indicator = { tabPositions ->
                                 if (selectedIndex < tabPositions.size) {
                                     TabRowDefaults.SecondaryIndicator(
@@ -122,6 +134,19 @@ fun App(
                                     )
                                 }
                             )
+                            Tab(
+                                selected = currentRoute == Routes.RECEIVABLES,
+                                onClick = { navController.navigate(Routes.RECEIVABLES) { launchSingleTop = true } },
+                                text = {
+                                    Text(
+                                        "Cuentas a cobrar",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = if (currentRoute == Routes.RECEIVABLES) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            )
                         }
                     }
 
@@ -142,6 +167,13 @@ fun App(
                                 onCreateClick = { navController.navigate(Routes.ruleFormCreate()) }
                             )
                         }
+                        composable(Routes.RECEIVABLES) {
+                            ReceivablesListScreen(
+                                viewModel = remember { receivablesListViewModelFactory() },
+                                onReceivableClick = { receivableId -> navController.navigate(Routes.receivableDetail(receivableId)) },
+                                onCreateClick = { navController.navigate(Routes.receivableFormCreate()) }
+                            )
+                        }
                         composable(Routes.ACCOUNT_DETAIL) { entry ->
                             val accountId = entry.arguments?.getString("accountId") ?: return@composable
                             AccountDetailScreen(viewModel = remember(accountId) { accountDetailViewModelFactory(accountId) })
@@ -158,6 +190,21 @@ fun App(
                             val ruleId = entry.arguments?.getString("ruleId")
                             RuleFormScreen(
                                 viewModel = remember(ruleId) { ruleFormViewModelFactory(ruleId) },
+                                onSaved = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Routes.RECEIVABLE_DETAIL) { entry ->
+                            val receivableId = entry.arguments?.getString("receivableId") ?: return@composable
+                            ReceivableDetailScreen(
+                                viewModel = remember(receivableId) { receivableDetailViewModelFactory(receivableId) },
+                                onEditClick = { navController.navigate(Routes.receivableFormEdit(receivableId)) },
+                                onDeleted = { navController.popBackStack(Routes.RECEIVABLES, inclusive = false) }
+                            )
+                        }
+                        composable(Routes.RECEIVABLE_FORM) { entry ->
+                            val receivableId = entry.arguments?.getString("receivableId")
+                            ReceivableFormScreen(
+                                viewModel = remember(receivableId) { receivableFormViewModelFactory(receivableId) },
                                 onSaved = { navController.popBackStack() }
                             )
                         }

@@ -17,6 +17,9 @@ import py.com.cdco.financespy.db.initDatabaseBuilder
 import py.com.cdco.financespy.network.ApiClient
 import py.com.cdco.financespy.screens.AccountDetailViewModel
 import py.com.cdco.financespy.screens.DashboardViewModel
+import py.com.cdco.financespy.screens.ReceivableDetailViewModel
+import py.com.cdco.financespy.screens.ReceivableFormViewModel
+import py.com.cdco.financespy.screens.ReceivablesListViewModel
 import py.com.cdco.financespy.screens.RuleDetailViewModel
 import py.com.cdco.financespy.screens.RuleFormViewModel
 import py.com.cdco.financespy.screens.RulesListViewModel
@@ -30,6 +33,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var dashboardViewModel: DashboardViewModel
     private lateinit var transactionsViewModel: TransactionsViewModel
     private lateinit var rulesListViewModel: RulesListViewModel
+    private lateinit var receivablesListViewModel: ReceivablesListViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,6 +51,7 @@ class MainActivity : ComponentActivity() {
             transactionDao = database.transactionDao(),
             ruleDao = database.ruleDao(),
             ruleRunDao = database.ruleRunDao(),
+            receivableDao = database.receivableDao(),
             currentDateProvider = { currentIsoDate() }
         )
         dashboardViewModel = DashboardViewModel(
@@ -63,6 +68,10 @@ class MainActivity : ComponentActivity() {
         rulesListViewModel = RulesListViewModel(
             scope = lifecycleScope,
             ruleDao = database.ruleDao()
+        )
+        receivablesListViewModel = ReceivablesListViewModel(
+            scope = lifecycleScope,
+            receivableDao = database.receivableDao()
         )
 
         lifecycleScope.launch {
@@ -96,6 +105,23 @@ class MainActivity : ComponentActivity() {
                         accountId = accountId,
                         accountDao = database.accountDao(),
                         entryDao = database.entryDao()
+                    )
+                },
+                receivablesListViewModelFactory = { receivablesListViewModel },
+                receivableDetailViewModelFactory = { receivableId ->
+                    ReceivableDetailViewModel(
+                        scope = lifecycleScope,
+                        receivableId = receivableId,
+                        api = api,
+                        receivableDao = database.receivableDao()
+                    )
+                },
+                receivableFormViewModelFactory = { receivableId ->
+                    ReceivableFormViewModel(
+                        scope = lifecycleScope,
+                        receivableId = receivableId,
+                        api = api,
+                        receivableDao = database.receivableDao()
                     )
                 }
             )
