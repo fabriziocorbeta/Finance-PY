@@ -32,9 +32,9 @@ class ReceivablesControllerTest < ActionDispatch::IntegrationTest
 
     get receivables_path
     assert_response :success
-    assert_select "h1", text: "Cuentas a Cobrar", count: 1
+    assert_select "h1", text: "Receivables", count: 1
     assert_select "a[href=?]", new_receivable_path
-    assert_match "Todavía no tenés cuentas a cobrar.", response.body
+    assert_match "You don't have any receivables yet.", response.body
   end
 
   test "creates with receivable details" do
