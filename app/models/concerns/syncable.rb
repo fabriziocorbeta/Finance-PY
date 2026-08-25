@@ -3,10 +3,16 @@ module Syncable
 
   included do
     has_many :syncs, as: :syncable, dependent: :destroy
+
+    attr_writer :syncing
   end
 
   def syncing?
-    syncs.visible.any?
+    if instance_variable_defined?(:@syncing)
+      @syncing
+    else
+      @syncing = syncs.visible.any?
+    end
   end
 
   # Schedules a sync for syncable.  If there is an existing sync pending/syncing for this syncable,
@@ -16,6 +22,7 @@ module Syncable
   # getting stuck on stale syncs after server/Sidekiq restarts. If a sync is older than
   # 5 minutes, we assume its job was lost and create a new sync.
   def sync_later(parent_sync: nil, window_start_date: nil, window_end_date: nil)
+    remove_instance_variable(:@syncing) if instance_variable_defined?(:@syncing)
     Sync.transaction do
       with_lock do
         sync = self.syncs.visible.first
