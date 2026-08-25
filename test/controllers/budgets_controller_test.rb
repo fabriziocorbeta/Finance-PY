@@ -7,7 +7,7 @@ class BudgetsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "show renders budget page and fragment cached sidebar and donut" do
-    get budget_path(id: @budget.to_param)
+    get budget_path(month_year: @budget.to_param)
     assert_response :success
     assert_includes @response.body, "account-sidebar-tabs"
     assert_includes @response.body, "sidebar-active-account"
