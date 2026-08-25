@@ -12,6 +12,7 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -59,6 +60,11 @@ fun App(
     accountDetailViewModelFactory: (String) -> AccountDetailViewModel
 ) {
     FinancePyTheme {
+        if (isLoggedIn != null) {
+            LaunchedEffect(Unit) {
+                println("ColdStartProfile: FIRST FRAME RENDERED at ${System.currentTimeMillis()} ms")
+            }
+        }
         when (isLoggedIn) {
             null -> {}
             false -> LoginScreen(onLoginClick = onLoginClick)

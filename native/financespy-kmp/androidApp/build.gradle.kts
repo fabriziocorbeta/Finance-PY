@@ -35,6 +35,7 @@ dependencies {
     implementation(project(":shared"))
     implementation(compose.runtime)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.ktor.client.core)
     implementation(libs.room.runtime)
     implementation(libs.kotlinx.coroutines.core)
