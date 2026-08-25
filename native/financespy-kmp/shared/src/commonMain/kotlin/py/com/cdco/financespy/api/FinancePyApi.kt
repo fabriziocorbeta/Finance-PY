@@ -15,8 +15,13 @@ import py.com.cdco.financespy.api.dto.AccountsResponse
 import py.com.cdco.financespy.api.dto.BalanceSheetResponse
 import py.com.cdco.financespy.api.dto.CategoriesResponse
 import py.com.cdco.financespy.api.dto.CategoryDto
+import py.com.cdco.financespy.api.dto.CreateGoalBody
+import py.com.cdco.financespy.api.dto.CreateGoalRequest
 import py.com.cdco.financespy.api.dto.CreateRuleBody
 import py.com.cdco.financespy.api.dto.CreateRuleRequest
+import py.com.cdco.financespy.api.dto.GoalDto
+import py.com.cdco.financespy.api.dto.GoalEnvelope
+import py.com.cdco.financespy.api.dto.GoalsEnvelope
 import py.com.cdco.financespy.api.dto.MerchantDto
 import py.com.cdco.financespy.api.dto.RuleDto
 import py.com.cdco.financespy.api.dto.RuleEnvelope
@@ -26,6 +31,8 @@ import py.com.cdco.financespy.api.dto.RulesEnvelope
 import py.com.cdco.financespy.api.dto.TagDto
 import py.com.cdco.financespy.api.dto.TransactionListItemDto
 import py.com.cdco.financespy.api.dto.TransactionsResponse
+import py.com.cdco.financespy.api.dto.UpdateGoalBody
+import py.com.cdco.financespy.api.dto.UpdateGoalRequest
 import py.com.cdco.financespy.api.dto.UpdateRuleBody
 import py.com.cdco.financespy.api.dto.UpdateRuleRequest
 
@@ -115,5 +122,45 @@ class FinancePyApi(private val http: HttpClient) {
 
     suspend fun deleteRule(id: String) {
         http.delete("/api/v1/rules/$id")
+    }
+
+    suspend fun fetchAllGoals(): List<GoalDto> {
+        val all = mutableListOf<GoalDto>()
+        var page = 1
+        while (true) {
+            val response: GoalsEnvelope = http.get("/api/v1/goals") {
+                parameter("page", page)
+                parameter("per_page", 100)
+            }.body()
+            all += response.data
+            if (response.meta.next_page == null) break
+            page = response.meta.next_page!!
+        }
+        return all
+    }
+
+    suspend fun fetchGoal(id: String): GoalDto {
+        val response: GoalEnvelope = http.get("/api/v1/goals/$id").body()
+        return response.data
+    }
+
+    suspend fun createGoal(body: CreateGoalBody): GoalDto {
+        val response: GoalEnvelope = http.post("/api/v1/goals") {
+            contentType(ContentType.Application.Json)
+            setBody(CreateGoalRequest(goal = body))
+        }.body()
+        return response.data
+    }
+
+    suspend fun updateGoal(id: String, body: UpdateGoalBody): GoalDto {
+        val response: GoalEnvelope = http.patch("/api/v1/goals/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(UpdateGoalRequest(goal = body))
+        }.body()
+        return response.data
+    }
+
+    suspend fun deleteGoal(id: String) {
+        http.delete("/api/v1/goals/$id")
     }
 }

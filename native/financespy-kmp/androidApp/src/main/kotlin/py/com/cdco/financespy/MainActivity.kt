@@ -17,6 +17,9 @@ import py.com.cdco.financespy.db.initDatabaseBuilder
 import py.com.cdco.financespy.network.ApiClient
 import py.com.cdco.financespy.screens.AccountDetailViewModel
 import py.com.cdco.financespy.screens.DashboardViewModel
+import py.com.cdco.financespy.screens.GoalDetailViewModel
+import py.com.cdco.financespy.screens.GoalFormViewModel
+import py.com.cdco.financespy.screens.GoalsListViewModel
 import py.com.cdco.financespy.screens.RuleDetailViewModel
 import py.com.cdco.financespy.screens.RuleFormViewModel
 import py.com.cdco.financespy.screens.RulesListViewModel
@@ -30,6 +33,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var dashboardViewModel: DashboardViewModel
     private lateinit var transactionsViewModel: TransactionsViewModel
     private lateinit var rulesListViewModel: RulesListViewModel
+    private lateinit var goalsListViewModel: GoalsListViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,6 +51,7 @@ class MainActivity : ComponentActivity() {
             transactionDao = database.transactionDao(),
             ruleDao = database.ruleDao(),
             ruleRunDao = database.ruleRunDao(),
+            goalDao = database.goalDao(),
             currentDateProvider = { currentIsoDate() }
         )
         dashboardViewModel = DashboardViewModel(
@@ -63,6 +68,10 @@ class MainActivity : ComponentActivity() {
         rulesListViewModel = RulesListViewModel(
             scope = lifecycleScope,
             ruleDao = database.ruleDao()
+        )
+        goalsListViewModel = GoalsListViewModel(
+            scope = lifecycleScope,
+            goalDao = database.goalDao()
         )
 
         lifecycleScope.launch {
@@ -89,6 +98,18 @@ class MainActivity : ComponentActivity() {
                 },
                 ruleFormViewModelFactory = { ruleId ->
                     RuleFormViewModel(scope = lifecycleScope, ruleId = ruleId, api = api, ruleDao = database.ruleDao())
+                },
+                goalsListViewModelFactory = { goalsListViewModel },
+                goalDetailViewModelFactory = { goalId ->
+                    GoalDetailViewModel(
+                        scope = lifecycleScope, goalId = goalId, api = api, goalDao = database.goalDao()
+                    )
+                },
+                goalFormViewModelFactory = { goalId ->
+                    GoalFormViewModel(
+                        scope = lifecycleScope, goalId = goalId, api = api,
+                        goalDao = database.goalDao(), accountDao = database.accountDao()
+                    )
                 },
                 accountDetailViewModelFactory = { accountId ->
                     AccountDetailViewModel(
