@@ -126,6 +126,13 @@ class Account < ApplicationRecord
   end
 
   class << self
+    def syncing_account_ids_for(family)
+      Sync.visible
+          .where(syncable_type: "Account", syncable_id: family.accounts.visible.select(:id))
+          .pluck(:syncable_id)
+          .to_set
+    end
+
     def human_attribute_name(attribute, options = {})
       options = { moniker: Current.family&.moniker_label || "Family" }.merge(options)
       super(attribute, options)
