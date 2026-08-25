@@ -28,7 +28,7 @@ class ReceivablesControllerTest < ActionDispatch::IntegrationTest
 
   test "index renders empty state and new receivable link when family has no receivables" do
     # Remove all receivable accounts for family
-    Current.family.accounts.where(accountable_type: "Receivable").destroy_all
+    @user.family.accounts.where(accountable_type: "Receivable").destroy_all
 
     get receivables_path
     assert_response :success
