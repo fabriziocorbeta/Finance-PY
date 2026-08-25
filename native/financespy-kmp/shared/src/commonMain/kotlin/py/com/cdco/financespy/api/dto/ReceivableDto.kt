@@ -1,6 +1,41 @@
 package py.com.cdco.financespy.api.dto
 
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.doubleOrNull
+
+@OptIn(ExperimentalSerializationApi::class)
+object FlexibleDoubleSerializer : KSerializer<Double?> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("FlexibleDouble", PrimitiveKind.DOUBLE)
+
+    override fun deserialize(decoder: Decoder): Double? {
+        return when (decoder) {
+            is JsonDecoder -> {
+                val element = decoder.decodeJsonElement()
+                if (element is JsonPrimitive) {
+                    element.doubleOrNull ?: element.content.toDoubleOrNull()
+                } else null
+            }
+            else -> runCatching { decoder.decodeDouble() }.getOrNull()
+        }
+    }
+
+    override fun serialize(encoder: Encoder, value: Double?) {
+        if (value != null) {
+            encoder.encodeDouble(value)
+        } else {
+            encoder.encodeNull()
+        }
+    }
+}
 
 @Serializable
 data class ReceivablesEnvelope(
@@ -27,14 +62,14 @@ data class ReceivablesMetaDto(
 data class ReceivableDto(
     val id: String,
     val name: String? = null,
-    val total_amount: Double? = null,
-    val balance: Double? = null,
+    @Serializable(with = FlexibleDoubleSerializer::class) val total_amount: Double? = null,
+    @Serializable(with = FlexibleDoubleSerializer::class) val balance: Double? = null,
     val balance_cents: Long? = null,
-    val original_balance: Double? = null,
+    @Serializable(with = FlexibleDoubleSerializer::class) val original_balance: Double? = null,
     val original_balance_cents: Long? = null,
-    val paid_amount: Double? = null,
+    @Serializable(with = FlexibleDoubleSerializer::class) val paid_amount: Double? = null,
     val paid_amount_cents: Long? = null,
-    val percent_paid: Double? = null,
+    @Serializable(with = FlexibleDoubleSerializer::class) val percent_paid: Double? = null,
     val installment_count: Int? = null,
     val due_day: Int? = null,
     val currency: String? = null,
