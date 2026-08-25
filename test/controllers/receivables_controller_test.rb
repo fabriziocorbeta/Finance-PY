@@ -34,7 +34,7 @@ class ReceivablesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", text: "Receivables", count: 1
     assert_select "a[href=?]", new_receivable_path
-    assert_match "You don't have any receivables yet.", response.body
+    assert_select "p", text: /You don't have any receivables yet\./
   end
 
   test "creates with receivable details" do
