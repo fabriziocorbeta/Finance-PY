@@ -14,7 +14,8 @@ class FragmentCachingTenantIsolationTest < ActionDispatch::IntegrationTest
       email: "user_alpha_#{SecureRandom.hex(4)}@example.com",
       password: user_password_test,
       first_name: "UserAlpha",
-      last_name: "Test"
+      last_name: "Test",
+      onboarded_at: Time.current
     )
     @account_a = @family_a.accounts.create!(
       name: "Cuenta Alpha 123",
@@ -34,7 +35,8 @@ class FragmentCachingTenantIsolationTest < ActionDispatch::IntegrationTest
       email: "user_beta_#{SecureRandom.hex(4)}@example.com",
       password: user_password_test,
       first_name: "UserBeta",
-      last_name: "Test"
+      last_name: "Test",
+      onboarded_at: Time.current
     )
     @account_b = @family_b.accounts.create!(
       name: "Cuenta Beta 999",
