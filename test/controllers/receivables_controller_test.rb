@@ -26,6 +26,17 @@ class ReceivablesControllerTest < ActionDispatch::IntegrationTest
     assert_no_match "GYM Schatzi", response.body
   end
 
+  test "index renders empty state and new receivable link when family has no receivables" do
+    # Remove all receivable accounts for family
+    Current.family.accounts.where(accountable_type: "Receivable").destroy_all
+
+    get receivables_path
+    assert_response :success
+    assert_select "h1", text: "Cuentas a Cobrar", count: 1
+    assert_select "a[href=?]", new_receivable_path
+    assert_match "Todavía no tenés cuentas a cobrar.", response.body
+  end
+
   test "creates with receivable details" do
     assert_difference -> { Account.count } => 1,
       -> { Receivable.count } => 1,
