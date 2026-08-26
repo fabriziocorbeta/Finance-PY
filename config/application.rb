@@ -30,11 +30,6 @@ module Sure
     config.i18n.available_locales = [ :es, :"es-PY", :en ]
     config.i18n.load_path += Dir[Rails.root.join("config/locales/**/*.yml")]
 
-    # Rails defaults to :vips since 7.1, but this app only bundles mini_magick
-    # (see Gemfile). Without this, any ActiveStorage variant call raises a
-    # LoadError for the missing ruby-vips gem.
-    config.active_storage.variant_processor = :mini_magick
-
     config.app_mode = (ENV["SELF_HOSTED"] == "true" || ENV["SELF_HOSTING_ENABLED"] == "true" ? "self_hosted" : "managed").inquiry
 
     # Self hosters can optionally set their own encryption keys if they want to use ActiveRecord encryption.
