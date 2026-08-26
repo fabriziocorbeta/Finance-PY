@@ -8,7 +8,7 @@ ERP financiero para PyMEs paraguayas — fork privado de [Sure](https://github.c
 - PostgreSQL (Supabase, schema `financespy`, session pooler)
 - Redis 5.4+ (Sidekiq)
 - Docker Compose en producción (Caddy + web + worker + Redis), VM propia
-- CI: GitHub Actions (lint, tests, brakeman, pipelock)
+- CI: GitHub Actions (lint, tests, brakeman, pipelock, gitleaks secret scanning)
 
 ## Desarrollo local
 
@@ -49,6 +49,8 @@ Guías específicas en `docs/hosting/`: `docker.md`, `gcp-vm.md`, `hetzner.md`, 
 
 ## Notas de seguridad
 
+- Escaneo automático de secretos: CI ejecuta **Gitleaks** en cada push y Pull Request para prevenir filtraciones de llaves y credenciales.
+- Divulgación responsable: Consultar [SECURITY.md](SECURITY.md) para el protocolo de reporte de vulnerabilidades y políticas de seguridad.
 - CORS restringido a allowlist (`CORS_ALLOWED_ORIGINS`), no wildcard.
 - Rate limiting vía `rack-attack` en login, OAuth token, admin, API.
 - CSP en report-only por defecto — activar enforce solo tras revisar violaciones.

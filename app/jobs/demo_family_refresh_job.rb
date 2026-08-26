@@ -15,9 +15,11 @@ class DemoFamilyRefreshJob < ApplicationJob
     newly_created_families_count = Family.where(created_at: period_start...period_end).count
 
     if old_family
-      delete_old_family_monitoring_key!(old_family)
-      anonymize_family_emails!(old_family)
-      DestroyJob.perform_later(old_family)
+      RlsContext.with_family(old_family) do
+        delete_old_family_monitoring_key!(old_family)
+        anonymize_family_emails!(old_family)
+        DestroyJob.perform_later(old_family)
+      end
     end
 
     Demo::Generator.new.generate_default_data!(skip_clear: true, email: demo_email)
