@@ -19,6 +19,7 @@ import py.com.cdco.financespy.db.buildDatabase
 import py.com.cdco.financespy.db.initDatabaseBuilder
 import py.com.cdco.financespy.network.ApiClient
 import py.com.cdco.financespy.screens.AccountDetailViewModel
+import py.com.cdco.financespy.screens.BudgetDashboardViewModel
 import py.com.cdco.financespy.screens.DashboardViewModel
 import py.com.cdco.financespy.screens.GoalDetailViewModel
 import py.com.cdco.financespy.screens.GoalFormViewModel
@@ -61,6 +62,12 @@ class MainActivity : ComponentActivity() {
             api = api,
             accountDao = database.accountDao(),
             entryDao = database.entryDao()
+        )
+    }
+    private val budgetDashboardViewModel by lazy {
+        BudgetDashboardViewModel(
+            scope = lifecycleScope,
+            api = api
         )
     }
     private val transactionsViewModel by lazy {
@@ -115,6 +122,7 @@ class MainActivity : ComponentActivity() {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                 },
                 dashboardViewModelFactory = { dashboardViewModel },
+                budgetDashboardViewModelFactory = { budgetDashboardViewModel },
                 transactionsViewModelFactory = { transactionsViewModel },
                 rulesListViewModelFactory = { rulesListViewModel },
                 ruleDetailViewModelFactory = { ruleId ->
