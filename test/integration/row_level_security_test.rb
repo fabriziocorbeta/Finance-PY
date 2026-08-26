@@ -25,6 +25,8 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     @valuation_entry_b = Entry.create!(account: @account_b, amount: 1000, date: Date.current, name: "Valuation Entry", currency: @account_b.currency, entryable: @valuation_b)
     @receivable_b = Receivable.create!(total_amount: 500)
     @receivable_account_b = Account.create!(family: @family_b, accountable: @receivable_b, name: "Receivable Account", currency: "USD", balance: 500)
+    @fleet_vehicle_b = FleetVehicle.create!(family: @family_b, plate: "ABC-123", brand: "Toyota", model: "Corolla", year: 2020, status: "active")
+    @fuel_log_b = FuelLog.create!(fleet_vehicle: @fleet_vehicle_b, account: @account_b, liters: 40, cost: 300000, logged_at: Date.current)
   end
 
   test "when app.current_family_id session variable is set, raw SQL and ActiveRecord queries cannot access family_b records" do
@@ -52,6 +54,7 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     assert_nil Rule.find_by(id: @rule_b.id)
     assert_nil Category.find_by(id: @category_b.id)
     assert_nil Tag.find_by(id: @tag_b.id)
+    assert_nil FleetVehicle.find_by(id: @fleet_vehicle_b.id)
 
     # Indirect tables
     assert_nil Entry.find_by(id: @entry_b.id)
@@ -60,6 +63,8 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     assert_nil Merchant.find_by(id: @merchant_b.id)
     assert_nil Valuation.find_by(id: @valuation_b.id)
     assert_nil Receivable.find_by(id: @receivable_b.id)
+    assert_nil FuelLog.find_by(id: @fuel_log_b.id)
+    assert_nil FuelLogLine.find_by(id: "00000000-0000-0000-0000-000000000000") if defined?(FuelLogLine)
 
     # Raw SQL queries bypassing Rails model scoping
     raw_accounts = ActiveRecord::Base.connection.execute("SELECT * FROM accounts WHERE id = '#{@account_b.id}'")
@@ -70,6 +75,17 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
 
     raw_transactions = ActiveRecord::Base.connection.execute("SELECT * FROM transactions WHERE id = '#{@transaction_b.id}'")
     assert_equal 0, raw_transactions.count
+
+    raw_fleet_vehicles = ActiveRecord::Base.connection.execute("SELECT * FROM fleet_vehicles WHERE id = '#{@fleet_vehicle_b.id}'")
+    assert_equal 0, raw_fleet_vehicles.count
+
+    raw_fuel_logs = ActiveRecord::Base.connection.execute("SELECT * FROM fuel_logs WHERE id = '#{@fuel_log_b.id}'")
+    assert_equal 0, raw_fuel_logs.count
+
+    if ActiveRecord::Base.connection.table_exists?("fuel_log_lines")
+      raw_fuel_log_lines = ActiveRecord::Base.connection.execute("SELECT * FROM fuel_log_lines WHERE fuel_log_id = '#{@fuel_log_b.id}'")
+      assert_equal 0, raw_fuel_log_lines.count
+    end
   ensure
     ActiveRecord::Base.connection.execute("RESET app.current_family_id")
   end
