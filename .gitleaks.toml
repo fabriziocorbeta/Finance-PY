@@ -1,0 +1,14 @@
+# Gitleaks configuration file
+# See https://github.com/gitleaks/gitleaks for details.
+
+title = "Gitleaks config for cd-co-erp"
+
+[allowlist]
+description = "Global allowlist for known false positives and public keys"
+regexes = [
+  '''SUPABASE_ANON_KEY''',
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+'''
+]
+keywords = [
+  "SUPABASE_ANON_KEY"
+]
