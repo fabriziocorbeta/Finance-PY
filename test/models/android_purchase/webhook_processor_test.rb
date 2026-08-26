@@ -5,7 +5,7 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
     @account = accounts(:depository)
   end
 
-  test "creates a negative-amount entry with the merchant/item as the name" do
+  test "creates a positive-amount (expense) entry with the merchant/item as the name" do
     result = AndroidPurchase::WebhookProcessor.new(
       account_id: @account.id,
       amount: 50000,
@@ -18,7 +18,7 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
     assert_equal :created, result
 
     entry = @account.entries.order(created_at: :desc).first
-    assert_equal(-50000.0, entry.amount.to_f)
+    assert_equal(50000.0, entry.amount.to_f)
     assert_equal "Google Play - Some App Pro", entry.name
     assert_equal "google_play", entry.source
     assert_equal Date.new(2026, 7, 28), entry.date
@@ -26,7 +26,7 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
     assert_equal "Some App Pro - Gs. 50.000", entry.transaction.extra["raw_text"]
   end
 
-  test "forces the amount negative even if a positive number is sent" do
+  test "forces the amount positive (expense) even if a negative number is sent" do
     AndroidPurchase::WebhookProcessor.new(
       account_id: @account.id,
       amount: -50000,
@@ -37,7 +37,7 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
     ).process
 
     entry = @account.entries.order(created_at: :desc).first
-    assert_equal(-50000.0, entry.amount.to_f)
+    assert_equal(50000.0, entry.amount.to_f)
   end
 
   test "is idempotent for the same amount/timestamp/merchant" do
@@ -142,7 +142,7 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
 
     assert_equal :created, result
     entry = @account.entries.order(created_at: :desc).first
-    assert_equal(-112000.0, entry.amount.to_f)
+    assert_equal(112000.0, entry.amount.to_f)
   end
 
   test "treats a multi-group comma-thousands amount correctly" do
@@ -157,7 +157,7 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
 
     assert_equal :created, result
     entry = @account.entries.order(created_at: :desc).first
-    assert_equal(-1250000.0, entry.amount.to_f)
+    assert_equal(1250000.0, entry.amount.to_f)
   end
 
   test "treats an unconfirmed dot-thousands string amount as whole guaranies, not a 1000x-smaller decimal" do
@@ -172,7 +172,7 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
 
     assert_equal :created, result
     entry = @account.entries.order(created_at: :desc).first
-    assert_equal(-150000.0, entry.amount.to_f)
+    assert_equal(150000.0, entry.amount.to_f)
   end
 
   test "treats a multi-group dot-thousands string amount correctly" do
@@ -187,7 +187,7 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
 
     assert_equal :created, result
     entry = @account.entries.order(created_at: :desc).first
-    assert_equal(-1250000.0, entry.amount.to_f)
+    assert_equal(1250000.0, entry.amount.to_f)
   end
 
   test "still treats a plain decimal string amount as a decimal, not thousands-separated" do
@@ -202,7 +202,7 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
 
     assert_equal :created, result
     entry = @account.entries.order(created_at: :desc).first
-    assert_equal(-12.5, entry.amount.to_f)
+    assert_equal(12.5, entry.amount.to_f)
   end
 
   test "treats a comma-decimal string amount (LatAm format) correctly" do
@@ -217,7 +217,7 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
 
     assert_equal :created, result
     entry = @account.entries.order(created_at: :desc).first
-    assert_equal(-1250000.50, entry.amount.to_f)
+    assert_equal(1250000.50, entry.amount.to_f)
   end
 
   test "accepts a numeric amount sent as a string" do
@@ -232,7 +232,7 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
 
     assert_equal :created, result
     entry = @account.entries.order(created_at: :desc).first
-    assert_equal(-7500.0, entry.amount.to_f)
+    assert_equal(7500.0, entry.amount.to_f)
   end
 
   test "treats a duplicate that hits the DB unique index (not just the app-level validation) as idempotent" do
