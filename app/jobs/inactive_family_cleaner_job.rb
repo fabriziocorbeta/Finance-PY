@@ -18,19 +18,21 @@ class InactiveFamilyCleanerJob < ApplicationJob
     Rails.logger.info("InactiveFamilyCleanerJob: Found #{count} inactive families to clean up#{' (dry run)' if dry_run}")
 
     families.find_each do |family|
-      if family.requires_data_archive?
-        if dry_run
-          Rails.logger.info("InactiveFamilyCleanerJob: Would archive data for family #{family.id}")
-        else
-          archive_family_data(family)
+      RlsContext.with_family(family) do
+        if family.requires_data_archive?
+          if dry_run
+            Rails.logger.info("InactiveFamilyCleanerJob: Would archive data for family #{family.id}")
+          else
+            archive_family_data(family)
+          end
         end
-      end
 
-      if dry_run
-        Rails.logger.info("InactiveFamilyCleanerJob: Would destroy family #{family.id} (created: #{family.created_at})")
-      else
-        Rails.logger.info("InactiveFamilyCleanerJob: Destroying family #{family.id} (created: #{family.created_at})")
-        family.destroy
+        if dry_run
+          Rails.logger.info("InactiveFamilyCleanerJob: Would destroy family #{family.id} (created: #{family.created_at})")
+        else
+          Rails.logger.info("InactiveFamilyCleanerJob: Destroying family #{family.id} (created: #{family.created_at})")
+          family.destroy
+        end
       end
     end
 
