@@ -28,7 +28,7 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
 
   test "when app.current_family_id session variable is set, raw SQL and ActiveRecord queries cannot access family_b records" do
     ActiveRecord::Base.connection.execute(
-      ActiveRecord::Base.sanitize_sql(["SET app.current_family_id = ?", @family_a.id])
+      ActiveRecord::Base.sanitize_sql([ "SET app.current_family_id = ?", @family_a.id ])
     )
 
     # Direct family_id tables
@@ -72,7 +72,7 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
 
   test "ActiveJob sets app.current_family_id context during perform" do
     ActiveRecord::Base.connection.execute(
-      ActiveRecord::Base.sanitize_sql(["SET app.current_family_id = ?", @family_a.id])
+      ActiveRecord::Base.sanitize_sql([ "SET app.current_family_id = ?", @family_a.id ])
     )
 
     # Verify background job execution with family context
@@ -87,7 +87,7 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     sync_a = Sync.create!(family: @family_a, syncable: @family_a.accounts.first || Account.create!(family: @family_a, name: "Family A Acc", currency: "USD", balance: 100))
 
     ActiveRecord::Base.connection.execute(
-      ActiveRecord::Base.sanitize_sql(["SET app.current_family_id = ?", @family_a.id])
+      ActiveRecord::Base.sanitize_sql([ "SET app.current_family_id = ?", @family_a.id ])
     )
 
     assert_nothing_raised do
@@ -103,7 +103,7 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     Transaction.create!(entry: entry_a)
 
     ActiveRecord::Base.connection.execute(
-      ActiveRecord::Base.sanitize_sql(["SET app.current_family_id = ?", @family_a.id])
+      ActiveRecord::Base.sanitize_sql([ "SET app.current_family_id = ?", @family_a.id ])
     )
 
     assert_nothing_raised do
@@ -119,7 +119,7 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     balance_b = @account_b.balances.create!(date: Date.current, balance: 1000, currency: "USD")
 
     ActiveRecord::Base.connection.execute(
-      ActiveRecord::Base.sanitize_sql(["SET app.current_family_id = ?", @family_a.id])
+      ActiveRecord::Base.sanitize_sql([ "SET app.current_family_id = ?", @family_a.id ])
     )
 
     DataCacheClearJob.perform_now(@family_a)

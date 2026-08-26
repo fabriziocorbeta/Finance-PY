@@ -57,7 +57,7 @@ module Authentication
       family_id = Current.family&.id
       if family_id.present?
         ActiveRecord::Base.connection.execute(
-          ActiveRecord::Base.sanitize_sql(["SET app.current_family_id = ?", family_id])
+          ActiveRecord::Base.sanitize_sql([ "SET app.current_family_id = ?", family_id ])
         )
       end
     end
