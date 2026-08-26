@@ -12,6 +12,7 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -26,6 +27,12 @@ import py.com.cdco.financespy.screens.AccountDetailScreen
 import py.com.cdco.financespy.screens.AccountDetailViewModel
 import py.com.cdco.financespy.screens.DashboardScreen
 import py.com.cdco.financespy.screens.DashboardViewModel
+import py.com.cdco.financespy.screens.GoalDetailScreen
+import py.com.cdco.financespy.screens.GoalDetailViewModel
+import py.com.cdco.financespy.screens.GoalFormScreen
+import py.com.cdco.financespy.screens.GoalFormViewModel
+import py.com.cdco.financespy.screens.GoalsListScreen
+import py.com.cdco.financespy.screens.GoalsListViewModel
 import py.com.cdco.financespy.screens.LoginScreen
 import py.com.cdco.financespy.screens.ReceivableDetailScreen
 import py.com.cdco.financespy.screens.ReceivableDetailViewModel
@@ -53,12 +60,20 @@ fun App(
     rulesListViewModelFactory: () -> RulesListViewModel,
     ruleDetailViewModelFactory: (String) -> RuleDetailViewModel,
     ruleFormViewModelFactory: (String?) -> RuleFormViewModel,
+    goalsListViewModelFactory: () -> GoalsListViewModel,
+    goalDetailViewModelFactory: (String) -> GoalDetailViewModel,
+    goalFormViewModelFactory: (String?) -> GoalFormViewModel,
     accountDetailViewModelFactory: (String) -> AccountDetailViewModel,
     receivablesListViewModelFactory: () -> ReceivablesListViewModel,
     receivableDetailViewModelFactory: (String) -> ReceivableDetailViewModel,
     receivableFormViewModelFactory: (String?) -> ReceivableFormViewModel
 ) {
     FinancePyTheme {
+        if (isLoggedIn != null) {
+            LaunchedEffect(Unit) {
+                println("ColdStartProfile: FIRST FRAME RENDERED at ${System.currentTimeMillis()} ms")
+            }
+        }
         when (isLoggedIn) {
             null -> {}
             false -> LoginScreen(onLoginClick = onLoginClick)
@@ -74,18 +89,19 @@ fun App(
                         .statusBarsPadding()
                         .navigationBarsPadding()
                 ) {
-                    if (currentRoute in listOf(Routes.DASHBOARD, Routes.TRANSACTIONS, Routes.RULES, Routes.RECEIVABLES)) {
+                    if (currentRoute in listOf(Routes.DASHBOARD, Routes.TRANSACTIONS, Routes.RULES, Routes.GOALS, Routes.RECEIVABLES)) {
                         val selectedIndex = when (currentRoute) {
                             Routes.TRANSACTIONS -> 1
                             Routes.RULES -> 2
-                            Routes.RECEIVABLES -> 3
+                            Routes.GOALS -> 3
+                            Routes.RECEIVABLES -> 4
                             else -> 0
                         }
                         ScrollableTabRow(
                             selectedTabIndex = selectedIndex,
+                            edgePadding = 0.dp,
                             containerColor = FinancePyColors.container(),
                             contentColor = FinancePyColors.textPrimary(),
-                            edgePadding = 16.dp,
                             indicator = { tabPositions ->
                                 if (selectedIndex < tabPositions.size) {
                                     TabRowDefaults.SecondaryIndicator(
@@ -135,6 +151,19 @@ fun App(
                                 }
                             )
                             Tab(
+                                selected = currentRoute == Routes.GOALS,
+                                onClick = { navController.navigate(Routes.GOALS) { launchSingleTop = true } },
+                                text = {
+                                    Text(
+                                        "Metas",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = if (currentRoute == Routes.GOALS) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            )
+                            Tab(
                                 selected = currentRoute == Routes.RECEIVABLES,
                                 onClick = { navController.navigate(Routes.RECEIVABLES) { launchSingleTop = true } },
                                 text = {
@@ -167,6 +196,13 @@ fun App(
                                 onCreateClick = { navController.navigate(Routes.ruleFormCreate()) }
                             )
                         }
+                        composable(Routes.GOALS) {
+                            GoalsListScreen(
+                                viewModel = remember { goalsListViewModelFactory() },
+                                onGoalClick = { goalId -> navController.navigate(Routes.goalDetail(goalId)) },
+                                onCreateClick = { navController.navigate(Routes.goalFormCreate()) }
+                            )
+                        }
                         composable(Routes.RECEIVABLES) {
                             ReceivablesListScreen(
                                 viewModel = remember { receivablesListViewModelFactory() },
@@ -190,6 +226,21 @@ fun App(
                             val ruleId = entry.arguments?.getString("ruleId")
                             RuleFormScreen(
                                 viewModel = remember(ruleId) { ruleFormViewModelFactory(ruleId) },
+                                onSaved = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Routes.GOAL_DETAIL) { entry ->
+                            val goalId = entry.arguments?.getString("goalId") ?: return@composable
+                            GoalDetailScreen(
+                                viewModel = remember(goalId) { goalDetailViewModelFactory(goalId) },
+                                onEditClick = { navController.navigate(Routes.goalFormEdit(goalId)) },
+                                onDeleted = { navController.popBackStack(Routes.GOALS, inclusive = false) }
+                            )
+                        }
+                        composable(Routes.GOAL_FORM) { entry ->
+                            val goalId = entry.arguments?.getString("goalId")
+                            GoalFormScreen(
+                                viewModel = remember(goalId) { goalFormViewModelFactory(goalId) },
                                 onSaved = { navController.popBackStack() }
                             )
                         }

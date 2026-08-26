@@ -12,6 +12,12 @@ es:
       edit: Editar %{account}
     dashboard:
       title: Cuentas a Cobrar
+      new: Nueva cuenta a cobrar
+      empty: Todavía no tenés cuentas a cobrar. Creá una para empezar a hacer seguimiento de lo que te deben.
       register_payment: Registrar Pago
       completed: Completadas (%{count})
       due_day: Vence el día
+    index:
+      title: Cuentas a Cobrar
+      new: Nueva cuenta a cobrar
+      empty: Todavía no tenés cuentas a cobrar. Creá una para empezar a hacer seguimiento de lo que te deben.

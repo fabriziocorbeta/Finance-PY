@@ -288,4 +288,33 @@ class AccountTest < ActiveSupport::TestCase
     assert_equal "read_write", share.permission
     assert share.include_in_finances?
   end
+
+  # Syncable memoization & batching tests
+
+  test "syncing? memoizes false without querying database again" do
+    @account.syncs.destroy_all
+    assert_not @account.syncing?
+
+    # Verify subsequent call uses instance variable memoization
+    @account.expects(:syncs).never
+    assert_not @account.syncing?
+  end
+
+  test "syncing writer overrides syncing? without querying database" do
+    @account.syncing = true
+    @account.expects(:syncs).never
+    assert @account.syncing?
+
+    @account.syncing = false
+    assert_not @account.syncing?
+  end
+
+  test "syncing_account_ids_for returns set of syncing account ids for family" do
+    @account.syncs.destroy_all
+    assert_empty Account.syncing_account_ids_for(@family)
+
+    sync = @account.syncs.create!
+    syncing_ids = Account.syncing_account_ids_for(@family)
+    assert_includes syncing_ids, @account.id
+  end
 end
