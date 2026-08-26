@@ -44,7 +44,7 @@ jobs:
         run: ./gradlew :androidApp:assembleDebug --no-daemon
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: financespy-debug-apk
           path: native/financespy-kmp/androidApp/build/outputs/apk/debug/*.apk
