@@ -205,12 +205,12 @@ class Api::V1::ReceivablesController < Api::V1::BaseController
 
     def extracted_params
       raw = if params[:receivable].present?
-              params[:receivable]
-            elsif params[:account].present?
-              params[:account]
-            else
-              params
-            end
+        params[:receivable]
+      elsif params[:account].present?
+        params[:account]
+      else
+        params
+      end
 
       receivable_attrs = raw[:accountable_attributes] || {}
 
