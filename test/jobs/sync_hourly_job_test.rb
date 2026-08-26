@@ -4,6 +4,7 @@ class SyncHourlyJobTest < ActiveJob::TestCase
   test "syncs all active items for each hourly syncable class" do
     mock_item = mock("coinstats_item")
     mock_item.expects(:sync_later).once
+    mock_item.stubs(:family).returns(nil)
 
     mock_relation = mock("active_relation")
     mock_relation.stubs(:find_each).yields(mock_item)
@@ -17,9 +18,11 @@ class SyncHourlyJobTest < ActiveJob::TestCase
     failing_item = mock("failing_item")
     failing_item.expects(:sync_later).raises(StandardError.new("Test error"))
     failing_item.stubs(:id).returns(1)
+    failing_item.stubs(:family).returns(nil)
 
     success_item = mock("success_item")
     success_item.expects(:sync_later).once
+    success_item.stubs(:family).returns(nil)
 
     mock_relation = mock("active_relation")
     mock_relation.stubs(:find_each).multiple_yields([ failing_item ], [ success_item ])
