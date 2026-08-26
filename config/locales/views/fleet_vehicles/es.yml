@@ -16,8 +16,15 @@ es:
       fuel_logs_history: "Historial de Combustible"
       no_fuel_logs: "No hay registros de combustible todavía."
       add_fuel_log: "Agregar Registro de Combustible"
+      add_fuel_line: "+ Agregar otro combustible"
+      fuel_type: "Tipo de combustible"
       save_fuel_log: "Guardar"
       average_efficiency: "Rendimiento prom."
+      monthly_consumed: "Consumo del mes"
+      monthly_distance: "Recorrido del mes"
+      monthly_efficiency: "Rendimiento del mes"
+      consumed_value: "%{value} L"
+      distance_value: "%{value} km"
       efficiency_value: "%{value} km/L"
       efficiency_no_data: "Sin datos"
       select_account: "Seleccione una cuenta"
@@ -41,6 +48,11 @@ es:
     destroy:
       success: "Vehículo eliminado exitosamente."
   fuel_logs:
+    fuel_types:
+      nafta: "Nafta"
+      alcohol: "Alcohol"
+      gnc: "GNC"
+      diesel: "Diesel"
     columns:
       date: "Fecha"
       liters: "Litros"

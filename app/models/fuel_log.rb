@@ -3,10 +3,16 @@ class FuelLog < ApplicationRecord
   belongs_to :account
   belongs_to :entry, optional: true
 
+  has_many :fuel_log_lines, dependent: :destroy
+  accepts_nested_attributes_for :fuel_log_lines, allow_destroy: true, reject_if: :all_blank
+
+  before_validation :sync_totals_from_lines
+
   validates :liters, presence: true, numericality: { greater_than: 0 }
   validates :cost, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :odometer, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :logged_at, presence: true
+  validate :must_have_at_least_one_fuel_log_line
   validate :account_belongs_to_family
 
   after_create_commit :create_associated_entry
@@ -15,6 +21,21 @@ class FuelLog < ApplicationRecord
   after_destroy_commit :destroy_associated_entry
 
   private
+
+    def sync_totals_from_lines
+      active_lines = fuel_log_lines.reject(&:marked_for_destruction?)
+      return if active_lines.empty?
+
+      self.liters = active_lines.sum { |line| line.liters.to_f }
+      self.cost = active_lines.sum { |line| line.cost.to_f }
+    end
+
+    def must_have_at_least_one_fuel_log_line
+      active_lines = fuel_log_lines.reject(&:marked_for_destruction?)
+      if active_lines.empty?
+        errors.add(:base, "Debe registrar al menos un tipo de combustible")
+      end
+    end
 
     def account_belongs_to_family
       if account && fleet_vehicle && account.family_id != fleet_vehicle.family_id

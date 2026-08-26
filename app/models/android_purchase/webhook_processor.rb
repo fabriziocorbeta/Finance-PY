@@ -81,26 +81,71 @@ class AndroidPurchase::WebhookProcessor
       nil
     end
 
-    # Tasker sends the amount as whatever string it scraped from the
-    # notification. Confirmed against a real Google Wallet PYG notification
-    # ("PYG112,000 con GNB GOOGLE ••6536"): thousands are comma-separated
-    # with no decimal part, which BigDecimal would otherwise silently
-    # misread as a comma-decimal (112,000 -> 112.0) -- a 1000x-smaller
-    # amount saved with no error, since PYG amounts round-trip fine as a
-    # smaller-but-valid number. Disambiguate the formats we can see:
-    #   "1.250.000,50"  -> comma-decimal, dot-thousands (es-PY/es-AR style)
-    #   "112,000"       -> comma-thousands, no decimal part (CONFIRMED real format)
-    #   "150.000"       -> dot-thousands, no decimal part (unconfirmed, kept defensively)
-    #   "12.50"         -> plain decimal (single dot, 1-2 trailing digits)
+    # Normalizes raw string amounts sent by Tasker/Google Wallet notifications into standard decimal string format.
+    # Notifications arrive with varying number formats depending on currency and locale:
+    #   - "150.000"       -> dot-thousands, PYG style (whole guaranies: 150000)
+    #   - "1.250.000"     -> multi-group dot-thousands (1250000)
+    #   - "112,000"       -> comma-thousands (112000)
+    #   - "1,250,000"     -> multi-group comma-thousands (1250000)
+    #   - "1.250.000,50"  -> LatAm format (dot thousands, comma decimal: 1250000.50)
+    #   - "1,250,000.50"  -> US format (comma thousands, dot decimal: 1250000.50)
+    #   - "12.50" / "12.5"-> standard decimal (12.50 / 12.5)
+    #   - "12,50" / "12,5"-> comma decimal (12.50 / 12.5)
+    #   - "7500" / 50000  -> integer numbers
+    #
+    # Disambiguation Heuristic:
+    # 1. Both separators present ('.' and ','):
+    #    - Whichever separator appears last is the decimal separator.
+    #    - If ',' is last (e.g. "1.250.000,50"): remove all '.', replace ',' with '.'.
+    #    - If '.' is last (e.g. "1,250,000.50"): remove all ','.
+    # 2. Multiple occurrences of a separator:
+    #    - Multiple '.' (e.g. "1.250.000") or ',' (e.g. "1,250,000") means it's a thousands separator.
+    # 3. Single separator with multiple groups (split by separator):
+    #    - If the last group after the separator has exactly 3 digits (and there's more than 1 group,
+    #      e.g. "150.000" or "112,000"): thousands separator. Remove the separator.
+    #    - If the last group has 1-2 digits (e.g. "12.50" or "12,50"): decimal separator.
+    #      Keep '.' or convert ',' to '.'.
     def normalized_amount_string
       str = @amount.to_s.strip
+      return str if str.empty?
 
-      if str.match?(/\A-?\d{1,3}(\.\d{3})+,\d+\z/)
-        str.delete(".").sub(",", ".")
-      elsif str.match?(/\A-?\d{1,3}(,\d{3})+\z/)
-        str.delete(",")
-      elsif str.match?(/\A-?\d{1,3}(\.\d{3})+\z/)
-        str.delete(".")
+      has_dot = str.include?(".")
+      has_comma = str.include?(",")
+
+      if has_dot && has_comma
+        last_dot = str.rindex(".")
+        last_comma = str.rindex(",")
+        if last_comma > last_dot
+          str.delete(".").sub(",", ".")
+        else
+          str.delete(",")
+        end
+      elsif has_dot
+        if str.count(".") > 1
+          str.delete(".")
+        else
+          groups = str.split(".")
+          if groups.size > 1 && groups.last.length == 3
+            str.delete(".")
+          elsif groups.size > 1 && groups.last.length <= 2
+            str
+          else
+            str
+          end
+        end
+      elsif has_comma
+        if str.count(",") > 1
+          str.delete(",")
+        else
+          groups = str.split(",")
+          if groups.size > 1 && groups.last.length == 3
+            str.delete(",")
+          elsif groups.size > 1 && groups.last.length <= 2
+            str.sub(",", ".")
+          else
+            str
+          end
+        end
       else
         str
       end
