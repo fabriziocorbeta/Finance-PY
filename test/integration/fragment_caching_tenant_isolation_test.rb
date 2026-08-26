@@ -9,6 +9,7 @@ class FragmentCachingTenantIsolationTest < ActionDispatch::IntegrationTest
 
     # Family A setup
     @family_a = Family.create!(name: "Familia Alpha", currency: "USD")
+    @family_a.start_trial_subscription!
     @user_a = User.create!(
       family: @family_a,
       email: "user_alpha_#{SecureRandom.hex(4)}@example.com",
@@ -23,13 +24,12 @@ class FragmentCachingTenantIsolationTest < ActionDispatch::IntegrationTest
       currency: "USD",
       accountable: Depository.new
     )
+    @family_a.categories.create!(name: "Categoria Alpha 123")
     @budget_a = Budget.find_or_bootstrap(@family_a, start_date: Date.current, user: @user_a)
-    if (bc_a = @budget_a.budget_categories.first)
-      bc_a.category.update!(name: "Categoria Alpha 123")
-    end
 
     # Family B setup
     @family_b = Family.create!(name: "Familia Beta", currency: "USD")
+    @family_b.start_trial_subscription!
     @user_b = User.create!(
       family: @family_b,
       email: "user_beta_#{SecureRandom.hex(4)}@example.com",
@@ -44,10 +44,8 @@ class FragmentCachingTenantIsolationTest < ActionDispatch::IntegrationTest
       currency: "USD",
       accountable: Depository.new
     )
+    @family_b.categories.create!(name: "Categoria Beta 999")
     @budget_b = Budget.find_or_bootstrap(@family_b, start_date: Date.current, user: @user_b)
-    if (bc_b = @budget_b.budget_categories.first)
-      bc_b.category.update!(name: "Categoria Beta 999")
-    end
   end
 
   teardown do
