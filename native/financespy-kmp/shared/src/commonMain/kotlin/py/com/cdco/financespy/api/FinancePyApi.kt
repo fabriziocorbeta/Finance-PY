@@ -13,6 +13,9 @@ import io.ktor.http.contentType
 import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.AccountsResponse
 import py.com.cdco.financespy.api.dto.BalanceSheetResponse
+import py.com.cdco.financespy.api.dto.BudgetDto
+import py.com.cdco.financespy.api.dto.BudgetEnvelope
+import py.com.cdco.financespy.api.dto.BudgetsEnvelope
 import py.com.cdco.financespy.api.dto.CategoriesResponse
 import py.com.cdco.financespy.api.dto.CategoryDto
 import py.com.cdco.financespy.api.dto.CreateGoalBody
@@ -43,7 +46,7 @@ import py.com.cdco.financespy.api.dto.UpdateReceivableRequest
 import py.com.cdco.financespy.api.dto.UpdateRuleBody
 import py.com.cdco.financespy.api.dto.UpdateRuleRequest
 
-class FinancePyApi(private val http: HttpClient) {
+open class FinancePyApi(private val http: HttpClient) {
     suspend fun fetchAllAccounts(): List<AccountDto> {
         val all = mutableListOf<AccountDto>()
         var page = 1
@@ -169,6 +172,27 @@ class FinancePyApi(private val http: HttpClient) {
 
     suspend fun deleteGoal(id: String) {
         http.delete("/api/v1/goals/$id")
+    }
+
+    open suspend fun fetchAllBudgets(): List<BudgetDto> {
+        val all = mutableListOf<BudgetDto>()
+        var page = 1
+        while (true) {
+            val response: BudgetsEnvelope = http.get("/api/v1/budgets") {
+                parameter("page", page)
+                parameter("per_page", 100)
+            }.body()
+            all += response.data
+            val meta = response.meta
+            if (meta == null || meta.next_page == null) break
+            page = meta.next_page
+        }
+        return all
+    }
+
+    suspend fun fetchBudget(id: String): BudgetDto {
+        val response: BudgetEnvelope = http.get("/api/v1/budgets/$id").body()
+        return response.data
     }
 
     suspend fun fetchAllReceivables(): List<ReceivableDto> {

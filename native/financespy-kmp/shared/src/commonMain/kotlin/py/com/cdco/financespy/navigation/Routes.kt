@@ -2,6 +2,7 @@ package py.com.cdco.financespy.navigation
 
 object Routes {
     const val DASHBOARD = "dashboard"
+    const val BUDGETS = "budgets"
     const val TRANSACTIONS = "transactions"
     const val RULES = "rules"
     const val GOALS = "goals"

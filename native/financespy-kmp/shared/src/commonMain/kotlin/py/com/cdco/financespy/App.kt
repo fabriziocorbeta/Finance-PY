@@ -25,6 +25,8 @@ import androidx.navigation.compose.rememberNavController
 import py.com.cdco.financespy.navigation.Routes
 import py.com.cdco.financespy.screens.AccountDetailScreen
 import py.com.cdco.financespy.screens.AccountDetailViewModel
+import py.com.cdco.financespy.screens.BudgetDashboardScreen
+import py.com.cdco.financespy.screens.BudgetDashboardViewModel
 import py.com.cdco.financespy.screens.DashboardScreen
 import py.com.cdco.financespy.screens.DashboardViewModel
 import py.com.cdco.financespy.screens.GoalDetailScreen
@@ -56,6 +58,7 @@ fun App(
     isLoggedIn: Boolean?,
     onLoginClick: () -> Unit,
     dashboardViewModelFactory: () -> DashboardViewModel,
+    budgetDashboardViewModelFactory: () -> BudgetDashboardViewModel,
     transactionsViewModelFactory: () -> TransactionsViewModel,
     rulesListViewModelFactory: () -> RulesListViewModel,
     ruleDetailViewModelFactory: (String) -> RuleDetailViewModel,
@@ -89,12 +92,13 @@ fun App(
                         .statusBarsPadding()
                         .navigationBarsPadding()
                 ) {
-                    if (currentRoute in listOf(Routes.DASHBOARD, Routes.TRANSACTIONS, Routes.RULES, Routes.GOALS, Routes.RECEIVABLES)) {
+                    if (currentRoute in listOf(Routes.DASHBOARD, Routes.BUDGETS, Routes.TRANSACTIONS, Routes.RULES, Routes.GOALS, Routes.RECEIVABLES)) {
                         val selectedIndex = when (currentRoute) {
-                            Routes.TRANSACTIONS -> 1
-                            Routes.RULES -> 2
-                            Routes.GOALS -> 3
-                            Routes.RECEIVABLES -> 4
+                            Routes.BUDGETS -> 1
+                            Routes.TRANSACTIONS -> 2
+                            Routes.RULES -> 3
+                            Routes.GOALS -> 4
+                            Routes.RECEIVABLES -> 5
                             else -> 0
                         }
                         ScrollableTabRow(
@@ -119,6 +123,19 @@ fun App(
                                         "Dashboard",
                                         style = MaterialTheme.typography.labelLarge,
                                         color = if (currentRoute == Routes.DASHBOARD) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            )
+                            Tab(
+                                selected = currentRoute == Routes.BUDGETS,
+                                onClick = { navController.navigate(Routes.BUDGETS) { launchSingleTop = true } },
+                                text = {
+                                    Text(
+                                        "Presupuestos",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = if (currentRoute == Routes.BUDGETS) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
@@ -184,6 +201,11 @@ fun App(
                             DashboardScreen(
                                 viewModel = remember { dashboardViewModelFactory() },
                                 onAccountClick = { accountId -> navController.navigate(Routes.accountDetail(accountId)) }
+                            )
+                        }
+                        composable(Routes.BUDGETS) {
+                            BudgetDashboardScreen(
+                                viewModel = remember { budgetDashboardViewModelFactory() }
                             )
                         }
                         composable(Routes.TRANSACTIONS) {

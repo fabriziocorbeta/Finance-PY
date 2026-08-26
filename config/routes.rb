@@ -594,6 +594,10 @@ Rails.application.routes.draw do
     end
   end
 
+  namespace :internal do
+    get "version", to: "versions#show"
+  end
+
   namespace :webhooks do
     post "plaid"
     post "plaid_eu"
