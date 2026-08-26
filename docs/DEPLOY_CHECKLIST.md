@@ -75,10 +75,7 @@ Si necesitás realizar el deploy manualmente desde la terminal de la notebook:
 
 Para que el workflow de GitHub Actions (`.github/workflows/notify-deploy-pending.yml`) pueda verificar automáticamente si producción está al día:
 
-1. Definí `INTERNAL_VERSION_TOKEN` en tu archivo `.env` de producción en la notebook:
-   ```env
-   INTERNAL_VERSION_TOKEN=tu-token-seguro-aqui
-   ```
+1. Definí la variable `INTERNAL_VERSION_TOKEN` en tu archivo `.env` de producción en la notebook, con un valor aleatorio propio (no un ejemplo de este documento).
 2. Agregá los siguientes Secrets en el repositorio de GitHub (Settings -> Secrets and variables -> Actions):
    - `INTERNAL_VERSION_TOKEN`: mismo valor configurado en el `.env` de producción.
    - `PROD_URL`: URL pública o accesible del entorno (ej. `https://finance.cd-co.com.py`).
