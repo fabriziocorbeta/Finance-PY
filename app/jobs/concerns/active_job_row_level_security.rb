@@ -61,14 +61,14 @@ module ActiveJobRowLevelSecurity
       elsif hash[:statement_import_id].present?
         StatementImport.find_by(id: hash[:statement_import_id])&.family
       elsif hash[:simplefin_account_id].present?
-        SimplefinAccount.find_by(id: hash[:simplefin_account_id])&.family
+        SimplefinAccount.find_by(id: hash[:simplefin_account_id])&.simplefin_item&.family
       end
     end
 
     def extract_family_from_id(id)
       Family.find_by(id: id) ||
         StatementImport.find_by(id: id)&.family ||
-        SimplefinAccount.find_by(id: id)&.family ||
+        SimplefinAccount.find_by(id: id)&.simplefin_item&.family ||
         SimplefinItem.find_by(id: id)&.family ||
         SnaptradeItem.find_by(id: id)&.family ||
         IndexaCapitalItem.find_by(id: id)&.family
