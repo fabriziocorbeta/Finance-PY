@@ -1,0 +1,86 @@
+name: Notify Deploy Pending
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  check-deploy-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check production version
+        id: check_version
+        env:
+          PROD_URL: ${{ secrets.PROD_URL || 'https://finance.cd-co.com.py' }}
+          INTERNAL_VERSION_TOKEN: ${{ secrets.INTERNAL_VERSION_TOKEN }}
+        run: |
+          echo "Checking production endpoint at $PROD_URL/internal/version..."
+
+          if [ -z "$INTERNAL_VERSION_TOKEN" ]; then
+            echo "::warning::INTERNAL_VERSION_TOKEN secret is not set in GitHub repository settings."
+          fi
+
+          RESPONSE=$(curl -s -m 10 -H "X-Internal-Token: $INTERNAL_VERSION_TOKEN" "$PROD_URL/internal/version" || echo "")
+
+          if [ -z "$RESPONSE" ]; then
+            echo "status=unreachable" >> $GITHUB_OUTPUT
+            echo "deployed_sha=unknown" >> $GITHUB_OUTPUT
+            echo "::warning::Production endpoint ($PROD_URL/internal/version) is unreachable or timed out."
+            exit 0
+          fi
+
+          DEPLOYED_SHA=$(echo "$RESPONSE" | jq -r '.commit_sha // empty')
+
+          if [ -z "$DEPLOYED_SHA" ] || [ "$DEPLOYED_SHA" = "null" ]; then
+            echo "status=invalid_response" >> $GITHUB_OUTPUT
+            echo "deployed_sha=unknown" >> $GITHUB_OUTPUT
+            echo "::warning::Could not extract commit_sha from endpoint response: $RESPONSE"
+            exit 0
+          fi
+
+          echo "status=ok" >> $GITHUB_OUTPUT
+          echo "deployed_sha=$DEPLOYED_SHA" >> $GITHUB_OUTPUT
+          echo "Deployed SHA in production: $DEPLOYED_SHA"
+
+      - name: Compare main branch with production
+        env:
+          MAIN_SHA: ${{ github.sha }}
+          DEPLOYED_SHA: ${{ steps.check_version.outputs.deployed_sha }}
+          STATUS: ${{ steps.check_version.outputs.status }}
+        run: |
+          echo "## 🚀 Production Deployment Status Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Latest main commit:** \`$MAIN_SHA\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Production running commit:** \`$DEPLOYED_SHA\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$STATUS" != "ok" ] || [ "$DEPLOYED_SHA" = "unknown" ]; then
+            echo "⚠️ **WARNING: Unable to determine production version**" >> $GITHUB_STEP_SUMMARY
+            echo "Could not fetch the running version from production. Please check if the production service and Tailscale/Caddy routing are active." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          if [ "$MAIN_SHA" = "$DEPLOYED_SHA" ]; then
+            echo "✅ **Production is UP TO DATE with main.**" >> $GITHUB_STEP_SUMMARY
+          else
+            if git cat-file -e "$DEPLOYED_SHA^{commit}" 2>/dev/null; then
+              BEHIND_COUNT=$(git rev-list --count "$DEPLOYED_SHA..$MAIN_SHA")
+              echo "⚠️ **DEPLOY PENDING: Production is $BEHIND_COUNT commit(s) behind main!**" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### 📜 Commits pending deploy:" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              git log --oneline "$DEPLOYED_SHA..$MAIN_SHA" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⚠️ **DEPLOY PENDING: Deployed commit (\`$DEPLOYED_SHA\`) differs from main (\`$MAIN_SHA\`).**" >> $GITHUB_STEP_SUMMARY
+              echo "(Deployed commit object was not found in main's shallow history history)" >> $GITHUB_STEP_SUMMARY
+            fi
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "👉 **Action Required:** Run \`bin/deploy_notebook.sh\` on your Mac via SSH to deploy pending updates to production." >> $GITHUB_STEP_SUMMARY
+          fi
