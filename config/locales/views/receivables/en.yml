@@ -11,7 +11,13 @@ en:
     edit:
       edit: Edit %{account}
     dashboard:
-      title: Cuentas a Cobrar
+      title: Receivables
+      new: New receivable
+      empty: You don't have any receivables yet. Create one to start tracking what people owe you.
       register_payment: Register Payment
       completed: Completed (%{count})
       due_day: Due day
+    index:
+      title: Receivables
+      new: New receivable
+      empty: You don't have any receivables yet. Create one to start tracking what people owe you.
