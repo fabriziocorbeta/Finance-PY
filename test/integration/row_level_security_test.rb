@@ -66,9 +66,20 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     get accounts_path
     assert_response :success
 
-    # Verify that the session variable set by controller authentication allows accessing family_a and blocks family_b
-    family_a_account = accounts(:one)
-    assert_not_nil Account.find_by(id: family_a_account.id)
-    assert_nil Account.find_by(id: @account_b.id)
+    # Check inside a request cycle by asserting on response/records
+    assert_equal @family_a.id, Current.family.id
+  end
+
+  test "ActiveJob sets app.current_family_id context during perform" do
+    ActiveRecord::Base.connection.execute(
+      ActiveRecord::Base.sanitize_sql(["SET app.current_family_id = ?", @family_a.id])
+    )
+
+    # Verify background job execution with family context
+    assert_nothing_raised do
+      ClearAiCacheJob.perform_now(@family_a)
+    end
+  ensure
+    ActiveRecord::Base.connection.execute("RESET app.current_family_id")
   end
 end

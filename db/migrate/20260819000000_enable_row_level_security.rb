@@ -38,6 +38,7 @@ class EnableRowLevelSecurity < ActiveRecord::Migration[7.2]
 
     ALL_TABLES.each do |table|
       execute "ALTER TABLE #{table} ENABLE ROW LEVEL SECURITY;"
+      execute "ALTER TABLE #{table} FORCE ROW LEVEL SECURITY;"
     end
 
     TABLES_WITH_DIRECT_FAMILY_ID.each do |table|
@@ -72,6 +73,7 @@ class EnableRowLevelSecurity < ActiveRecord::Migration[7.2]
   def down
     ALL_TABLES.each do |table|
       execute "DROP POLICY IF EXISTS #{table}_family_isolation_policy ON #{table};"
+      execute "ALTER TABLE #{table} NO FORCE ROW LEVEL SECURITY;"
       execute "ALTER TABLE #{table} DISABLE ROW LEVEL SECURITY;"
     end
 
