@@ -5,7 +5,7 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
     @account = accounts(:depository)
   end
 
-  test "creates a positive-amount (expense) entry with the merchant/item as the name" do
+  test "creates a positive-amount entry with the merchant/item as the name" do
     result = AndroidPurchase::WebhookProcessor.new(
       account_id: @account.id,
       amount: 50000,
@@ -26,7 +26,7 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
     assert_equal "Some App Pro - Gs. 50.000", entry.transaction.extra["raw_text"]
   end
 
-  test "forces the amount positive (expense) even if a negative number is sent" do
+  test "forces the amount positive even if a negative number is sent" do
     AndroidPurchase::WebhookProcessor.new(
       account_id: @account.id,
       amount: -50000,
