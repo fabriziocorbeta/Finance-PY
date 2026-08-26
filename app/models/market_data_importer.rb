@@ -68,29 +68,32 @@ class MarketDataImporter
     def required_exchange_rate_pairs
       pair_dates = {} # { [source, target] => earliest_date }
 
-      # 1. ENTRY-BASED PAIRS – we need rates from the first entry date
-      Entry.joins(:account)
-           .where.not("entries.currency = accounts.currency")
-           .group("entries.currency", "accounts.currency")
-           .minimum("entries.date")
-           .each do |(source, target), date|
-        key = [ source, target ]
-        pair_dates[key] = [ pair_dates[key], date ].compact.min
-      end
+      Family.find_each do |family|
+        RlsContext.with_family(family) do
+          # 1. ENTRY-BASED PAIRS – we need rates from the first entry date
+          Entry.joins(:account)
+               .where.not("entries.currency = accounts.currency")
+               .group("entries.currency", "accounts.currency")
+               .minimum("entries.date")
+               .each do |(source, target), date|
+            key = [ source, target ]
+            pair_dates[key] = [ pair_dates[key], date ].compact.min
+          end
 
-      # 2. ACCOUNT-BASED PAIRS – use the account's oldest entry date
-      account_first_entry_dates = Entry.group(:account_id).minimum(:date)
+          # 2. ACCOUNT-BASED PAIRS – use the account's oldest entry date
+          account_first_entry_dates = Entry.group(:account_id).minimum(:date)
 
-      Account.joins(:family)
-             .where.not("families.currency = accounts.currency")
-             .select("accounts.id, accounts.currency AS source, families.currency AS target")
-             .find_each do |account|
-        earliest_entry_date = account_first_entry_dates[account.id]
+          Account.where.not("currency = ?", family.currency)
+                 .select("id, currency AS source")
+                 .find_each do |account|
+            earliest_entry_date = account_first_entry_dates[account.id]
 
-        chosen_date = [ earliest_entry_date, default_start_date ].compact.min
+            chosen_date = [ earliest_entry_date, default_start_date ].compact.min
 
-        key = [ account.source, account.target ]
-        pair_dates[key] = [ pair_dates[key], chosen_date ].compact.min
+            key = [ account.source, family.currency ]
+            pair_dates[key] = [ pair_dates[key], chosen_date ].compact.min
+          end
+        end
       end
 
       # Convert to array of hashes for ease of use
@@ -102,14 +105,30 @@ class MarketDataImporter
     def get_first_required_price_date(security)
       return default_start_date if snapshot?
 
-      Trade.with_entry.where(security: security).minimum(:date) || default_start_date
+      earliest_date = nil
+      Family.find_each do |family|
+        RlsContext.with_family(family) do
+          min_date = Trade.with_entry.where(security: security).minimum(:date)
+          earliest_date = [ earliest_date, min_date ].compact.min if min_date
+        end
+      end
+
+      earliest_date || default_start_date
     end
 
     # An approximation that grabs more than we likely need, but simplifies the logic
     def get_first_required_exchange_rate_date(from_currency:)
       return default_start_date if snapshot?
 
-      Entry.where(currency: from_currency).minimum(:date) || default_start_date
+      earliest_date = nil
+      Family.find_each do |family|
+        RlsContext.with_family(family) do
+          min_date = Entry.where(currency: from_currency).minimum(:date)
+          earliest_date = [ earliest_date, min_date ].compact.min if min_date
+        end
+      end
+
+      earliest_date || default_start_date
     end
 
     def default_start_date
