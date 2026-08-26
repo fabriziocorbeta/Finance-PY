@@ -9,14 +9,14 @@ class FleetVehicle < ApplicationRecord
   validates :model, presence: true
 
   def average_fuel_efficiency
-    logs = fuel_logs.where.not(odometer: nil).order(:logged_at)
+    logs = fuel_logs.includes(:fuel_log_lines).where.not(odometer: nil).order(:logged_at, :created_at)
     return nil if logs.size < 2
 
     valid_pairs_efficiencies = []
 
     logs.each_cons(2) do |prev_log, curr_log|
       distance = curr_log.odometer - prev_log.odometer
-      liters = curr_log.liters
+      liters = curr_log.fuel_log_lines.sum(&:liters)
 
       if distance > 0 && liters > 0
         valid_pairs_efficiencies << (distance.to_f / liters)

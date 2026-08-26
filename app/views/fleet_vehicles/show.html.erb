@@ -75,13 +75,17 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
-            <% @fleet_vehicle.fuel_logs.order(logged_at: :desc).each do |log| %>
+            <% @fleet_vehicle.fuel_logs.includes(:fuel_log_lines, :account).order(logged_at: :desc, created_at: :desc).each do |log| %>
               <tr class="hover:bg-gray-50/50">
                 <td class="px-4 py-3 text-sm text-primary">
                   <%= l(log.logged_at.to_date, format: :short) %>
                 </td>
                 <td class="px-4 py-3 text-sm text-right text-primary">
-                  <%= number_with_precision(log.liters, precision: 2) %>
+                  <% if log.fuel_log_lines.any? %>
+                    <%= log.fuel_log_lines.map { |line| "#{t("fuel_logs.fuel_types.#{line.fuel_type}")} #{number_with_precision(line.liters, precision: 2)}L" }.join(" + ") %>
+                  <% else %>
+                    <%= number_with_precision(log.liters, precision: 2) %>
+                  <% end %>
                 </td>
                 <td class="px-4 py-3 text-sm text-right text-primary font-medium">
                   <%= number_to_currency(log.cost, unit: "", separator: ",", delimiter: ".") %> <span class="text-xs uppercase text-secondary"><%= log.account.currency %></span>
@@ -109,19 +113,82 @@
       <p class="text-sm text-secondary py-4 text-center mb-6"><%= t("fleet_vehicles.show.no_fuel_logs") %></p>
     <% end %>
 
+    <% new_log = @fleet_vehicle.fuel_logs.new %>
+    <% new_log.fuel_log_lines.build if new_log.fuel_log_lines.empty? %>
+
     <div class="border-t border-gray-100 pt-6">
       <h3 class="text-md font-medium text-primary mb-4"><%= t("fleet_vehicles.show.add_fuel_log") %></h3>
-      <%= styled_form_with model: [@fleet_vehicle, @fleet_vehicle.fuel_logs.new], class: "space-y-4" do |f| %>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+      <%= styled_form_with model: [@fleet_vehicle, new_log], class: "space-y-4" do |f| %>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <%= f.date_field :logged_at, label: t("fuel_logs.columns.date"), required: true, value: Date.current %>
-          <%= f.number_field :liters, label: t("fuel_logs.columns.liters"), required: true, step: :any %>
-          <%= f.number_field :cost, label: t("fuel_logs.columns.cost"), required: true, step: :any %>
           <%= f.collection_select :account_id, Current.family.accounts.active.alphabetically, :id, :name, { prompt: t("fleet_vehicles.show.select_account") }, label: t("fuel_logs.columns.account"), required: true %>
           <%= f.number_field :odometer, label: t("fuel_logs.columns.odometer"), step: 1 %>
-          <div class="lg:col-span-3">
-            <%= f.text_field :notes, label: t("fuel_logs.columns.notes") %>
+        </div>
+
+        <div class="space-y-3 pt-2">
+          <label class="text-xs font-medium text-secondary uppercase tracking-wide block"><%= t("fuel_logs.columns.liters") %> & <%= t("fuel_logs.columns.cost") %></label>
+
+          <div id="fuel-log-lines-container" class="space-y-3">
+            <%= f.fields_for :fuel_log_lines do |line_form| %>
+              <div class="flex flex-wrap md:flex-nowrap items-end gap-2 p-3 rounded-lg border border-secondary bg-container" data-controller="element-removal">
+                <div class="w-full md:flex-1">
+                  <%= line_form.label :fuel_type, t("fleet_vehicles.show.fuel_type"), class: "text-xs font-medium text-secondary uppercase tracking-wide block mb-1" %>
+                  <%= line_form.select :fuel_type, FuelLogLine.fuel_types.keys.map { |k| [t("fuel_logs.fuel_types.#{k}"), k] }, {}, class: "form-field__input border border-secondary rounded-md px-2.5 py-1.5 w-full text-sm text-primary bg-container" %>
+                </div>
+                <div class="flex-1 md:w-32">
+                  <%= line_form.label :liters, t("fuel_logs.columns.liters"), class: "text-xs font-medium text-secondary uppercase tracking-wide block mb-1" %>
+                  <%= line_form.number_field :liters, step: :any, min: 0.01, required: true, class: "form-field__input border border-secondary rounded-md px-2.5 py-1.5 w-full text-sm text-primary bg-container" %>
+                </div>
+                <div class="flex-1 md:w-36">
+                  <%= line_form.label :cost, t("fuel_logs.columns.cost"), class: "text-xs font-medium text-secondary uppercase tracking-wide block mb-1" %>
+                  <%= line_form.number_field :cost, step: :any, min: 0, required: true, class: "form-field__input border border-secondary rounded-md px-2.5 py-1.5 w-full text-sm text-primary bg-container" %>
+                </div>
+                <div class="w-8 h-8 flex items-center justify-center shrink-0 mb-[2px]">
+                  <button type="button" class="text-secondary hover:text-destructive transition-colors w-full h-full flex items-center justify-center" data-action="click->element-removal#remove" title="Remove item">
+                    <%= icon "trash-2", size: "sm", color: "current" %>
+                  </button>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <template id="fuel-log-line-template">
+            <%= f.fields_for :fuel_log_lines, FuelLogLine.new, child_index: "NEW_RECORD" do |line_form| %>
+              <div class="flex flex-wrap md:flex-nowrap items-end gap-2 p-3 rounded-lg border border-secondary bg-container" data-controller="element-removal">
+                <div class="w-full md:flex-1">
+                  <%= line_form.label :fuel_type, t("fleet_vehicles.show.fuel_type"), class: "text-xs font-medium text-secondary uppercase tracking-wide block mb-1" %>
+                  <%= line_form.select :fuel_type, FuelLogLine.fuel_types.keys.map { |k| [t("fuel_logs.fuel_types.#{k}"), k] }, {}, class: "form-field__input border border-secondary rounded-md px-2.5 py-1.5 w-full text-sm text-primary bg-container" %>
+                </div>
+                <div class="flex-1 md:w-32">
+                  <%= line_form.label :liters, t("fuel_logs.columns.liters"), class: "text-xs font-medium text-secondary uppercase tracking-wide block mb-1" %>
+                  <%= line_form.number_field :liters, step: :any, min: 0.01, required: true, class: "form-field__input border border-secondary rounded-md px-2.5 py-1.5 w-full text-sm text-primary bg-container" %>
+                </div>
+                <div class="flex-1 md:w-36">
+                  <%= line_form.label :cost, t("fuel_logs.columns.cost"), class: "text-xs font-medium text-secondary uppercase tracking-wide block mb-1" %>
+                  <%= line_form.number_field :cost, step: :any, min: 0, required: true, class: "form-field__input border border-secondary rounded-md px-2.5 py-1.5 w-full text-sm text-primary bg-container" %>
+                </div>
+                <div class="w-8 h-8 flex items-center justify-center shrink-0 mb-[2px]">
+                  <button type="button" class="text-secondary hover:text-destructive transition-colors w-full h-full flex items-center justify-center" data-action="click->element-removal#remove" title="Remove item">
+                    <%= icon "trash-2", size: "sm", color: "current" %>
+                  </button>
+                </div>
+              </div>
+            <% end %>
+          </template>
+
+          <div class="pt-1">
+            <button type="button" onclick="const template = document.getElementById('fuel-log-line-template'); const container = document.getElementById('fuel-log-lines-container'); const content = template.innerHTML.replace(/NEW_RECORD/g, new Date().getTime()); container.insertAdjacentHTML('beforeend', content);" class="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1">
+              <%= icon "plus", size: "xs" %>
+              <%= t("fleet_vehicles.show.add_fuel_line") %>
+            </button>
           </div>
         </div>
+
+        <div>
+          <%= f.text_field :notes, label: t("fuel_logs.columns.notes") %>
+        </div>
+
         <div class="flex justify-end pt-2">
           <%= f.submit t("fleet_vehicles.show.save_fuel_log") %>
         </div>
