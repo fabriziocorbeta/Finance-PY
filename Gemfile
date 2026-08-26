@@ -107,6 +107,7 @@ gem "ruby-openai"
 gem "langfuse-ruby", "~> 0.2.0", require: "langfuse"
 gem "anthropic-rb"
 gem "mini_magick", "~> 5.3"
+gem "ruby-vips", "~> 2.0"
 
 # Localization & Money
 
