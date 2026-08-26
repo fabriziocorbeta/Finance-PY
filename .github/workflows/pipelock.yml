@@ -19,6 +19,7 @@ jobs:
       - name: Pipelock Scan
         uses: luckyPipewrench/pipelock@v2
         with:
+          config: 'pipelock.yaml'
           scan-diff: 'true'
           fail-on-findings: 'true'
           test-vectors: 'false'

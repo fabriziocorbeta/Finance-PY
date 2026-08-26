@@ -1,0 +1,72 @@
+# Pipelock config for cd-co-erp (FinancePY).
+# Based on `pipelock audit`'s generated suggestion, trimmed to what's actually
+# tailored to this repo (dropped unused enterprise scaffolding: fetch_proxy,
+# durable_audit_queue, remote kill-switch, etc. — all empty defaults anyway).
+
+version: 1
+mode: balanced
+
+api_allowlist:
+    - '*.anthropic.com'
+    - '*.openai.com'
+    - github.com
+    - '*.github.com'
+    - '*.githubusercontent.com'
+    - registry.npmjs.org
+    - '*.npmjs.com'
+    - '*.rubygems.org'
+
+suppress:
+    - rule: Anthropic API Key
+      path: '*.anthropic.com*'
+      reason: provider-bound credential
+    - rule: OpenAI API Key
+      path: '*.openai.com*'
+      reason: provider-bound credential
+    - rule: OpenAI Service Key
+      path: '*.openai.com*'
+      reason: provider-bound credential
+    - rule: Fireworks API Key
+      path: '*.fireworks.ai*'
+      reason: provider-bound credential
+    - rule: LLM Router API Key
+      path: '*.openrouter.ai*'
+      reason: provider-bound credential
+    - rule: Answer Engine API Key
+      path: '*.perplexity.ai*'
+      reason: provider-bound credential
+    - rule: Web Research API Key
+      path: '*.tavily.com*'
+      reason: provider-bound credential
+    - rule: Google API Key
+      path: '*.googleapis.com*'
+      reason: provider-bound credential
+    - rule: Hugging Face Token
+      path: '*.huggingface.co*'
+      reason: provider-bound credential
+    - rule: Databricks Token
+      path: '*.databricks.com*'
+      reason: provider-bound credential
+    - rule: Replicate API Token
+      path: '*.replicate.com*'
+      reason: provider-bound credential
+    - rule: Together AI Key
+      path: '*.together.ai*'
+      reason: provider-bound credential
+    - rule: Pinecone API Key
+      path: '*.pinecone.io*'
+      reason: provider-bound credential
+    - rule: Groq API Key
+      path: '*.groq.com*'
+      reason: provider-bound credential
+    - rule: xAI API Key
+      path: '*.x.ai*'
+      reason: provider-bound credential
+    - rule: PostgreSQL Connection String
+      path: 'compose.prod.yml'
+      reason: >-
+        Literal postgres:postgres@test-db credential for the CI-only ephemeral
+        test database service (test-db, port 5432/financespy_test). Default
+        Postgres image credentials, unreachable outside the compose network,
+        never used against a real database. See comment above the line in
+        compose.prod.yml.
