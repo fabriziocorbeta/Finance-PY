@@ -43,7 +43,7 @@ class FuelLogsControllerTest < ActionDispatch::IntegrationTest
       end
     end
 
-    created_log = FuelLog.last
+    created_log = @fleet_vehicle.fuel_logs.order(:created_at).last
     assert_equal 50.0, created_log.liters
     assert_equal 310000.0, created_log.cost
     assert_redirected_to fleet_vehicle_url(@fleet_vehicle)

@@ -51,7 +51,7 @@ class FuelLogMigrationTest < ActiveSupport::TestCase
     log3.save!(validate: false)
 
     # Execute migration logic directly
-    require_relative "../../db/migrate/20260819000000_create_fuel_log_lines_and_migrate_historical_data"
+    require_relative "../../db/migrate/20260819000001_create_fuel_log_lines_and_migrate_historical_data"
     migration = CreateFuelLogLinesAndMigrateHistoricalData.new
 
     # Run historical migration logic
