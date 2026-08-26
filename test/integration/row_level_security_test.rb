@@ -9,19 +9,20 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     @family_b = Family.create!(name: "Other Family", currency: "USD")
     @user_b = User.create!(family: @family_b, email: "other_user@example.com", password: "password123")
 
-    @account_b = Account.create!(family: @family_b, name: "Other Account", currency: "USD", balance: 1000)
-    @entry_b = Entry.create!(account: @account_b, amount: 50, date: Date.current, name: "Other Entry")
-    @transaction_b = Transaction.create!(entry: @entry_b)
+    @account_b = Account.create!(family: @family_b, name: "Other Account", currency: "USD", balance: 1000, accountable: Depository.new)
+    @entry_b = Entry.create!(account: @account_b, amount: 50, date: Date.current, name: "Other Entry", currency: @account_b.currency, entryable: Transaction.new)
+    @transaction_b = @entry_b.entryable
     @category_b = Category.create!(family: @family_b, name: "Other Category")
     @tag_b = Tag.create!(family: @family_b, name: "Other Tag")
     @budget_b = Budget.create!(family: @family_b, start_date: Date.current.beginning_of_month, end_date: Date.current.end_of_month, currency: "USD")
     @budget_category_b = BudgetCategory.create!(budget: @budget_b, category: @category_b, budgeted_spending: 500, currency: "USD")
-    @goal_b = Goal.create!(family: @family_b, name: "Other Goal", target_amount: 1000, currency: "USD", state: "active")
-    @goal_b.goal_accounts.create!(account: @account_b)
-    @rule_b = Rule.create!(family: @family_b, resource_type: "Transaction", name: "Other Rule")
+    @goal_b = Goal.new(family: @family_b, name: "Other Goal", target_amount: 1000, currency: "USD", state: "active")
+    @goal_b.goal_accounts.build(account: @account_b)
+    @goal_b.save!
+    @rule_b = Rule.create!(family: @family_b, resource_type: "Transaction", name: "Other Rule", actions: [ Rule::Action.new(action_type: "exclude_transaction") ])
     @merchant_b = FamilyMerchant.create!(family: @family_b, name: "Other Merchant")
     @valuation_b = Valuation.create!(kind: "reconciliation")
-    @valuation_entry_b = Entry.create!(account: @account_b, amount: 1000, date: Date.current, name: "Valuation Entry", entryable: @valuation_b)
+    @valuation_entry_b = Entry.create!(account: @account_b, amount: 1000, date: Date.current, name: "Valuation Entry", currency: @account_b.currency, entryable: @valuation_b)
     @receivable_b = Receivable.create!(total_amount: 500)
     @receivable_account_b = Account.create!(family: @family_b, accountable: @receivable_b, name: "Receivable Account", currency: "USD", balance: 500)
   end
@@ -84,7 +85,7 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
   end
 
   test "bank sync job (SyncJob) sets RLS context and accesses family records under RLS" do
-    sync_a = Sync.create!(family: @family_a, syncable: @family_a.accounts.first || Account.create!(family: @family_a, name: "Family A Acc", currency: "USD", balance: 100))
+    sync_a = Sync.create!(syncable: @family_a.accounts.first || Account.create!(family: @family_a, name: "Family A Acc", currency: "USD", balance: 100, accountable: Depository.new))
 
     ActiveRecord::Base.connection.execute(
       ActiveRecord::Base.sanitize_sql([ "SET app.current_family_id = ?", @family_a.id ])
