@@ -281,7 +281,8 @@ GEM
       signet (>= 0.16, < 2.a)
     hashdiff (1.2.0)
     hashery (2.1.2)
-    hashie (5.0.0)
+    hashie (5.1.0)
+      logger
     heapy (0.2.0)
       thor
     highline (3.1.2)
@@ -469,7 +470,7 @@ GEM
     omniauth-oauth2 (1.8.0)
       oauth2 (>= 1.4, < 3)
       omniauth (~> 2.0)
-    omniauth-rails_csrf_protection (1.0.2)
+    omniauth-rails_csrf_protection (2.0.1)
       actionpack (>= 4.2)
       omniauth (~> 2.0)
     omniauth-saml (2.2.4)
@@ -546,7 +547,7 @@ GEM
       faraday-follow_redirects
       json-jwt (>= 1.11.0)
       rack (>= 2.1.0)
-    rack-protection (4.1.1)
+    rack-protection (4.2.1)
       base64 (>= 0.1.0)
       logger (>= 1.6.0)
       rack (>= 3.0.0, < 4)
