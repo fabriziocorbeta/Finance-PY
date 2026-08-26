@@ -25,12 +25,12 @@ class Api::V1::TransactionsController < Api::V1::BaseController
       { entry: :account },
       :category, :merchant, :tags,
       transfer_as_outflow: {
-        inflow_transaction: { entry: :account },
-        outflow_transaction: { entry: :account }
+        inflow_transaction: [ { entry: :account }, :category, :merchant, :tags ],
+        outflow_transaction: [ { entry: :account }, :category, :merchant, :tags ]
       },
       transfer_as_inflow: {
-        inflow_transaction: { entry: :account },
-        outflow_transaction: { entry: :account }
+        inflow_transaction: [ { entry: :account }, :category, :merchant, :tags ],
+        outflow_transaction: [ { entry: :account }, :category, :merchant, :tags ]
       }
     ).reverse_chronological
 
@@ -110,7 +110,7 @@ class Api::V1::TransactionsController < Api::V1::BaseController
       error: "internal_server_error",
       message: "An unexpected error occurred"
     }, status: :internal_server_error
-end
+  end
 
   def update
     if @entry.split_child?
@@ -284,7 +284,7 @@ end
              "entries.name ILIKE ? OR entries.notes ILIKE ? OR merchants.name ILIKE ?",
              search_term, search_term, search_term
            )
-end
+    end
 
     def transaction_params
       params.require(:transaction).permit(
