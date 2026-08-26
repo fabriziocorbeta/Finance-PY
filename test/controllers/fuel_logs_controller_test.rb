@@ -18,24 +18,34 @@ class FuelLogsControllerTest < ActionDispatch::IntegrationTest
 
     @fuel_log = @fleet_vehicle.fuel_logs.create!(
       account: @account,
-      liters: 50.5,
-      cost: 150000,
-      logged_at: Date.current
+      logged_at: Date.current,
+      fuel_log_lines_attributes: [
+        { fuel_type: "nafta", liters: 50.5, cost: 150000 }
+      ]
     )
   end
 
-  test "should create fuel log" do
+  test "should create fuel log with multiple lines" do
     assert_difference("FuelLog.count", 1) do
-      post fleet_vehicle_fuel_logs_url(@fleet_vehicle), params: {
-        fuel_log: {
-          account_id: @account.id,
-          liters: 45.0,
-          cost: 135000,
-          logged_at: Date.current
+      assert_difference("FuelLogLine.count", 2) do
+        post fleet_vehicle_fuel_logs_url(@fleet_vehicle), params: {
+          fuel_log: {
+            account_id: @account.id,
+            odometer: 12000,
+            logged_at: Date.current,
+            notes: "Carga mixta",
+            fuel_log_lines_attributes: {
+              "0" => { fuel_type: "nafta", liters: "10.0", cost: "70000" },
+              "1" => { fuel_type: "alcohol", liters: "40.0", cost: "240000" }
+            }
+          }
         }
-      }
+      end
     end
 
+    created_log = @fleet_vehicle.fuel_logs.order(:created_at).last
+    assert_equal 50.0, created_log.liters
+    assert_equal 310000.0, created_log.cost
     assert_redirected_to fleet_vehicle_url(@fleet_vehicle)
   end
 
@@ -53,9 +63,10 @@ class FuelLogsControllerTest < ActionDispatch::IntegrationTest
     post fleet_vehicle_fuel_logs_url(@fleet_vehicle), params: {
       fuel_log: {
         account_id: @account.id,
-        liters: 45.0,
-        cost: 135000,
-        logged_at: Date.current
+        logged_at: Date.current,
+        fuel_log_lines_attributes: {
+          "0" => { fuel_type: "nafta", liters: "45.0", cost: "135000" }
+        }
       }
     }
     assert_redirected_to root_url

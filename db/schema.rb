@@ -650,6 +650,16 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_000000) do
     t.index ["family_id"], name: "index_fleet_vehicles_on_family_id"
   end
 
+  create_table "fuel_log_lines", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "fuel_log_id", null: false
+    t.string "fuel_type", default: "nafta", null: false
+    t.decimal "liters", precision: 10, scale: 2, null: false
+    t.decimal "cost", precision: 19, scale: 4, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["fuel_log_id"], name: "index_fuel_log_lines_on_fuel_log_id"
+  end
+
   create_table "fuel_logs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "fleet_vehicle_id", null: false
     t.decimal "liters", precision: 10, scale: 2, null: false
@@ -1883,6 +1893,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_000000) do
   add_foreign_key "family_merchant_associations", "families"
   add_foreign_key "family_merchant_associations", "merchants"
   add_foreign_key "fleet_vehicles", "families"
+  add_foreign_key "fuel_log_lines", "fuel_logs", on_delete: :cascade
   add_foreign_key "fuel_logs", "accounts"
   add_foreign_key "fuel_logs", "entries"
   add_foreign_key "fuel_logs", "fleet_vehicles"
