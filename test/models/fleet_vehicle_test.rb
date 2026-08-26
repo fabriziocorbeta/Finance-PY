@@ -94,4 +94,48 @@ class FleetVehicleTest < ActiveSupport::TestCase
     # Average efficiency should be (10 + 10) / 2 = 10.0
     assert_equal 10.0, @vehicle.average_fuel_efficiency
   end
+
+  test "monthly_fuel_consumed, monthly_distance, and monthly_average_efficiency" do
+    current_month = Date.current
+
+    # Last log of previous month at 10,000 km
+    @vehicle.fuel_logs.create!(
+      account: @account,
+      odometer: 10000,
+      logged_at: current_month.prev_month.end_of_month,
+      fuel_log_lines_attributes: [
+        { fuel_type: "nafta", liters: 50, cost: 350000 }
+      ]
+    )
+
+    # First log of current month at 10,400 km with 40L
+    @vehicle.fuel_logs.create!(
+      account: @account,
+      odometer: 10400,
+      logged_at: current_month.beginning_of_month + 2.days,
+      fuel_log_lines_attributes: [
+        { fuel_type: "nafta", liters: 20, cost: 140000 },
+        { fuel_type: "alcohol", liters: 20, cost: 120000 }
+      ]
+    )
+
+    # Second log of current month at 11,000 km with 60L
+    @vehicle.fuel_logs.create!(
+      account: @account,
+      odometer: 11000,
+      logged_at: current_month.beginning_of_month + 10.days,
+      fuel_log_lines_attributes: [
+        { fuel_type: "nafta", liters: 60, cost: 420000 }
+      ]
+    )
+
+    # Monthly consumed: 40 + 60 = 100L
+    assert_equal 100.0, @vehicle.monthly_fuel_consumed(current_month)
+
+    # Monthly distance: 11000 - 10000 (prev month last log) = 1000 km
+    assert_equal 1000, @vehicle.monthly_distance(current_month)
+
+    # Monthly efficiency: 1000 / 100 = 10 km/L
+    assert_equal 10.0, @vehicle.monthly_average_efficiency(current_month)
+  end
 end

@@ -62,6 +62,8 @@ class CreateFuelLogLinesAndMigrateHistoricalData < ActiveRecord::Migration[7.2]
     # Group by fleet_vehicle_id, odometer, logged_at
     grouped_logs = MigrationFuelLog.all.group_by { |log| [ log.fleet_vehicle_id, log.odometer, log.logged_at ] }
 
+    affected_account_ids = grouped_logs.values.select { |logs| logs.size > 1 }.flat_map { |logs| logs.map(&:account_id) }.compact.uniq
+
     grouped_logs.each do |_key, logs|
       primary_log = logs.first
 
@@ -128,6 +130,10 @@ class CreateFuelLogLinesAndMigrateHistoricalData < ActiveRecord::Migration[7.2]
         entry = MigrationEntry.find_by(id: primary_log.entry_id)
         entry&.update_columns(amount: total_cost)
       end
+    end
+
+    if affected_account_ids.any?
+      Account.where(id: affected_account_ids).find_each(&:sync_later)
     end
   end
 end

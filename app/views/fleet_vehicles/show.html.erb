@@ -21,7 +21,7 @@
 
 <div class="space-y-6">
   <div class="bg-container rounded-xl shadow-border-xs p-4">
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
       <div>
         <h4 class="text-xs font-medium text-secondary uppercase"><%= t("fleet_vehicles.index.columns.brand") %></h4>
         <p class="text-primary mt-1"><%= @fleet_vehicle.brand %></p>
@@ -43,6 +43,28 @@
         <p class="text-primary mt-1">
           <% if @fleet_vehicle.average_fuel_efficiency %>
             <%= t("fleet_vehicles.show.efficiency_value", value: number_with_precision(@fleet_vehicle.average_fuel_efficiency, precision: 2)) %>
+          <% else %>
+            <%= t("fleet_vehicles.show.efficiency_no_data") %>
+          <% end %>
+        </p>
+      </div>
+      <div>
+        <h4 class="text-xs font-medium text-secondary uppercase"><%= t("fleet_vehicles.show.monthly_consumed") %></h4>
+        <p class="text-primary mt-1">
+          <%= t("fleet_vehicles.show.consumed_value", value: number_with_precision(@fleet_vehicle.monthly_fuel_consumed, precision: 2)) %>
+        </p>
+      </div>
+      <div>
+        <h4 class="text-xs font-medium text-secondary uppercase"><%= t("fleet_vehicles.show.monthly_distance") %></h4>
+        <p class="text-primary mt-1">
+          <%= t("fleet_vehicles.show.distance_value", value: number_with_precision(@fleet_vehicle.monthly_distance, precision: 0)) %>
+        </p>
+      </div>
+      <div>
+        <h4 class="text-xs font-medium text-secondary uppercase"><%= t("fleet_vehicles.show.monthly_efficiency") %></h4>
+        <p class="text-primary mt-1">
+          <% if @fleet_vehicle.monthly_average_efficiency %>
+            <%= t("fleet_vehicles.show.efficiency_value", value: number_with_precision(@fleet_vehicle.monthly_average_efficiency, precision: 2)) %>
           <% else %>
             <%= t("fleet_vehicles.show.efficiency_no_data") %>
           <% end %>
