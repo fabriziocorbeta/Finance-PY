@@ -104,9 +104,10 @@ gem "after_commit_everywhere", "~> 1.0"
 
 # AI
 gem "ruby-openai"
-gem "langfuse-ruby", "~> 0.1.4", require: "langfuse"
+gem "langfuse-ruby", "~> 0.2.0", require: "langfuse"
 gem "anthropic-rb"
-gem "mini_magick", "~> 4.12"
+gem "mini_magick", "~> 5.3"
+gem "ruby-vips", "~> 2.0"
 
 # Localization & Money
 
