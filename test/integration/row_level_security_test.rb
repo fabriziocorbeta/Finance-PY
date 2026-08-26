@@ -26,7 +26,7 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     @receivable_b = Receivable.create!(total_amount: 500)
     @receivable_account_b = Account.create!(family: @family_b, accountable: @receivable_b, name: "Receivable Account", currency: "USD", balance: 500)
     @fleet_vehicle_b = FleetVehicle.create!(family: @family_b, plate: "ABC-123", brand: "Toyota", model: "Corolla", year: 2020, status: "active")
-    @fuel_log_b = FuelLog.create!(fleet_vehicle: @fleet_vehicle_b, liters: 40, cost: 300000, logged_at: Date.current)
+    @fuel_log_b = FuelLog.create!(fleet_vehicle: @fleet_vehicle_b, account: @account_b, liters: 40, cost: 300000, logged_at: Date.current)
   end
 
   test "when app.current_family_id session variable is set, raw SQL and ActiveRecord queries cannot access family_b records" do
