@@ -9,7 +9,8 @@ es:
         sku: "SKU"
         category: "Categoría"
         stock: "Stock"
-        sell_price: "Precio"
+        buy_price: "P. Costo"
+        sell_price: "P. Venta"
         currency: "Moneda"
     form:
       name: "Nombre"

@@ -11,7 +11,7 @@ class Product < ApplicationRecord
   validates :sku, uniqueness: { scope: :family_id }, allow_nil: true
   validates :buy_price, :sell_price, :stock, :min_stock, numericality: { greater_than_or_equal_to: 0 }
 
-  after_commit :sync_family_inventory, if: -> { saved_change_to_stock? || saved_change_to_buy_price? }
+  after_commit :sync_family_inventory, if: -> { saved_change_to_stock? || saved_change_to_buy_price? || saved_change_to_currency? }
   after_destroy_commit :sync_family_inventory
 
   private
