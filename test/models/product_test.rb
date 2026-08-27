@@ -84,6 +84,12 @@ class ProductTest < ActiveSupport::TestCase
     assert_not_equal updated_balance, account.reload.balance
 
     updated_balance2 = account.balance
+    # ExchangeRate.rates_for defaults an unresolved pair to a 1:1 rate (documented,
+    # logged) so a genuinely missing rate degrades gracefully instead of raising. With
+    # no real PYG/USD rate seeded, product.currency going usd -> pyg would silently
+    # keep the same total under that fallback and this assertion would not actually
+    # prove the sync fired for a currency-only change. Seed a real rate.
+    ExchangeRate.create!(from_currency: "PYG", to_currency: @family.currency, date: Date.current, rate: 0.00013)
     product.update!(currency: "pyg")
     assert_not_equal updated_balance2, account.reload.balance
   end

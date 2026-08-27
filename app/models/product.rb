@@ -11,8 +11,14 @@ class Product < ApplicationRecord
   validates :sku, uniqueness: { scope: :family_id }, allow_nil: true
   validates :buy_price, :sell_price, :stock, :min_stock, numericality: { greater_than_or_equal_to: 0 }
 
-  after_commit :sync_family_inventory, if: -> { saved_change_to_stock? || saved_change_to_buy_price? || saved_change_to_currency? }
-  after_destroy_commit :sync_family_inventory
+  # Two separate callbacks that share a method name (after_commit :sync_family_inventory
+  # here, after_destroy_commit :sync_family_inventory below) collide in Rails commit
+  # callback chain - only the last-registered one's condition survives, so destroy would
+  # silently swallow the create/update trigger (or vice versa). One callback, one combined
+  # condition, avoids that.
+  after_commit :sync_family_inventory, if: -> {
+    destroyed? || saved_change_to_stock? || saved_change_to_buy_price? || saved_change_to_currency?
+  }
 
   private
 
