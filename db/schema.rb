@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_20_000000) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_21_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -657,6 +657,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_20_000000) do
     t.decimal "cost", precision: 19, scale: 4, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "brand"
     t.index ["fuel_log_id"], name: "index_fuel_log_lines_on_fuel_log_id"
   end
 
