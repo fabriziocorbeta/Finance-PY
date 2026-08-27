@@ -24,9 +24,6 @@ import py.com.cdco.financespy.screens.DashboardViewModel
 import py.com.cdco.financespy.screens.GoalDetailViewModel
 import py.com.cdco.financespy.screens.GoalFormViewModel
 import py.com.cdco.financespy.screens.GoalsListViewModel
-import py.com.cdco.financespy.screens.ReceivableDetailViewModel
-import py.com.cdco.financespy.screens.ReceivableFormViewModel
-import py.com.cdco.financespy.screens.ReceivablesListViewModel
 import py.com.cdco.financespy.screens.RuleDetailViewModel
 import py.com.cdco.financespy.screens.RuleFormViewModel
 import py.com.cdco.financespy.screens.RulesListViewModel
@@ -55,7 +52,6 @@ class MainActivity : ComponentActivity() {
             ruleDao = database.ruleDao(),
             ruleRunDao = database.ruleRunDao(),
             goalDao = database.goalDao(),
-            receivableDao = database.receivableDao(),
             currentDateProvider = { currentIsoDate() }
         )
     }
@@ -90,12 +86,6 @@ class MainActivity : ComponentActivity() {
         GoalsListViewModel(
             scope = lifecycleScope,
             goalDao = database.goalDao()
-        )
-    }
-    private val receivablesListViewModel by lazy {
-        ReceivablesListViewModel(
-            scope = lifecycleScope,
-            receivableDao = database.receivableDao()
         )
     }
 
@@ -162,23 +152,6 @@ class MainActivity : ComponentActivity() {
                         accountId = accountId,
                         accountDao = database.accountDao(),
                         entryDao = database.entryDao()
-                    )
-                },
-                receivablesListViewModelFactory = { receivablesListViewModel },
-                receivableDetailViewModelFactory = { receivableId ->
-                    ReceivableDetailViewModel(
-                        scope = lifecycleScope,
-                        receivableId = receivableId,
-                        api = api,
-                        receivableDao = database.receivableDao()
-                    )
-                },
-                receivableFormViewModelFactory = { receivableId ->
-                    ReceivableFormViewModel(
-                        scope = lifecycleScope,
-                        receivableId = receivableId,
-                        api = api,
-                        receivableDao = database.receivableDao()
                     )
                 }
             )

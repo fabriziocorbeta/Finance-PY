@@ -3,7 +3,6 @@ package py.com.cdco.financespy.sync
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.GoalDto
-import py.com.cdco.financespy.api.dto.ReceivableDto
 import py.com.cdco.financespy.api.dto.RuleDto
 import py.com.cdco.financespy.api.dto.TransactionListItemDto
 import py.com.cdco.financespy.db.AccountDao
@@ -12,8 +11,6 @@ import py.com.cdco.financespy.db.EntryDao
 import py.com.cdco.financespy.db.EntryEntity
 import py.com.cdco.financespy.db.GoalDao
 import py.com.cdco.financespy.db.GoalEntity
-import py.com.cdco.financespy.db.ReceivableDao
-import py.com.cdco.financespy.db.ReceivableEntity
 import py.com.cdco.financespy.db.RuleDao
 import py.com.cdco.financespy.db.RuleEntity
 import py.com.cdco.financespy.db.RuleRunDao
@@ -31,7 +28,6 @@ class SyncEngine(
     private val ruleDao: RuleDao,
     private val ruleRunDao: RuleRunDao,
     private val goalDao: GoalDao? = null,
-    private val receivableDao: ReceivableDao? = null,
     private val currentDateProvider: () -> String
 ) {
     suspend fun syncAll(): Result<Unit> = runCatching {
@@ -39,7 +35,6 @@ class SyncEngine(
         syncTransactions()
         syncRules()
         syncGoals()
-        syncReceivables()
     }
 
     private suspend fun syncAccounts() {
@@ -75,14 +70,6 @@ class SyncEngine(
     suspend fun syncGoals() {
         val dao = goalDao ?: return
         val remote = api.fetchAllGoals()
-        val entities = remote.map { it.toEntity() }
-        dao.upsertAll(entities)
-        dao.deleteAllExcept(entities.map { it.id })
-    }
-
-    suspend fun syncReceivables() {
-        val dao = receivableDao ?: return
-        val remote = api.fetchAllReceivables()
         val entities = remote.map { it.toEntity() }
         dao.upsertAll(entities)
         dao.deleteAllExcept(entities.map { it.id })
@@ -123,24 +110,6 @@ private fun GoalDto.toEntity() = GoalEntity(
     remainingAmountCents = remaining_amount_cents,
     progressPercent = progress_percent,
     updatedAt = null
-)
-
-private fun ReceivableDto.toEntity() = ReceivableEntity(
-    id = id,
-    name = name ?: "(sin nombre)",
-    totalAmount = total_amount ?: 0.0,
-    balance = balance ?: 0.0,
-    balanceCents = balance_cents ?: 0L,
-    originalBalance = original_balance ?: 0.0,
-    originalBalanceCents = original_balance_cents ?: 0L,
-    paidAmount = paid_amount ?: 0.0,
-    paidAmountCents = paid_amount_cents ?: 0L,
-    percentPaid = percent_paid ?: 0.0,
-    installmentCount = installment_count,
-    dueDay = due_day,
-    currency = currency ?: "PYG",
-    notes = notes,
-    updatedAt = updated_at ?: ""
 )
 
 // Wave 1b solo soporta reglas de 1 condicion + 1 accion (ver spec). Una regla real

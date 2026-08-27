@@ -6,9 +6,9 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [
         AccountEntity::class, EntryEntity::class, TransactionEntity::class,
-        RuleEntity::class, RuleRunEntity::class, GoalEntity::class, ReceivableEntity::class
+        RuleEntity::class, RuleRunEntity::class, GoalEntity::class
     ],
-    version = 4,
+    version = 3,
     exportSchema = true
 )
 abstract class FinancePyDatabase : RoomDatabase() {
@@ -18,7 +18,6 @@ abstract class FinancePyDatabase : RoomDatabase() {
     abstract fun ruleDao(): RuleDao
     abstract fun ruleRunDao(): RuleRunDao
     abstract fun goalDao(): GoalDao
-    abstract fun receivableDao(): ReceivableDao
 }
 
 expect fun buildDatabase(): FinancePyDatabase
