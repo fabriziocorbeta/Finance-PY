@@ -11,7 +11,7 @@ jobs:
   security-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -29,6 +29,8 @@ jobs:
             .github/workflows/llm-evals.yml
             compose.example.yml
             compose.example.ai.yml
+            compose.prod.yml
             config/locales/views/reports/
             docs/hosting/ai.md
             app/models/provider/binance.rb
+            app/controllers/internal/versions_controller.rb

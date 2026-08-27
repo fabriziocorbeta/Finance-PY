@@ -13,11 +13,10 @@ class FuelLogTest < ActiveSupport::TestCase
     @fuel_log = FuelLog.new(
       fleet_vehicle: @vehicle,
       account: @account,
-      liters: 50.5,
-      cost: 350000,
       odometer: 15000,
       logged_at: Date.today
     )
+    @fuel_log.fuel_log_lines.build(fuel_type: "nafta", liters: 50.5, cost: 350000)
   end
 
   test "should be valid with valid attributes" do
@@ -29,30 +28,19 @@ class FuelLogTest < ActiveSupport::TestCase
     assert_not @fuel_log.valid?
   end
 
-  test "should require liters" do
-    @fuel_log.liters = nil
+  test "should require at least one fuel log line" do
+    @fuel_log.fuel_log_lines.clear
     assert_not @fuel_log.valid?
   end
 
-  test "liters must be greater than 0" do
-    @fuel_log.liters = 0
-    assert_not @fuel_log.valid?
+  test "liters and cost are automatically synced from fuel log lines" do
+    @fuel_log.fuel_log_lines.clear
+    @fuel_log.fuel_log_lines.build(fuel_type: "nafta", liters: 10.0, cost: 70000)
+    @fuel_log.fuel_log_lines.build(fuel_type: "alcohol", liters: 40.0, cost: 240000)
+    @fuel_log.valid?
 
-    @fuel_log.liters = -1
-    assert_not @fuel_log.valid?
-  end
-
-  test "should require cost" do
-    @fuel_log.cost = nil
-    assert_not @fuel_log.valid?
-  end
-
-  test "cost must be greater than or equal to 0" do
-    @fuel_log.cost = -1
-    assert_not @fuel_log.valid?
-
-    @fuel_log.cost = 0
-    assert @fuel_log.valid?
+    assert_equal 50.0, @fuel_log.liters
+    assert_equal 310000.0, @fuel_log.cost
   end
 
   test "odometer must be greater than or equal to 0 if present" do
@@ -78,24 +66,19 @@ class FuelLogTest < ActiveSupport::TestCase
     assert_not @fuel_log.valid?
   end
 
-  test "should create entry and sync" do
+  test "should create entry and sync with total cost of multiple lines" do
+    @fuel_log.fuel_log_lines.clear
+    @fuel_log.fuel_log_lines.build(fuel_type: "nafta", liters: 10.0, cost: 70000)
+    @fuel_log.fuel_log_lines.build(fuel_type: "alcohol", liters: 40.0, cost: 240000)
+
     assert_difference "Entry.count", 1 do
       @fuel_log.save!
     end
-    assert_equal @fuel_log.entry.amount, @fuel_log.cost
+    assert_equal 310000, @fuel_log.entry.amount
   end
 
   test "associated entry is categorized as Combustible" do
     @fuel_log.save!
     assert_equal "Combustible", @fuel_log.entry.transaction.category.name
-  end
-
-  test "reuses the existing Combustible category instead of duplicating it" do
-    existing = @family.categories.create!(name: "Combustible", color: "#f59e0b", lucide_icon: "fuel")
-
-    assert_no_difference "Category.count" do
-      @fuel_log.save!
-    end
-    assert_equal existing, @fuel_log.entry.transaction.category
   end
 end

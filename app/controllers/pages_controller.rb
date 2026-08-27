@@ -42,7 +42,7 @@ class PagesController < ApplicationController
   end
 
   def changelog
-    @release_notes = github_provider.fetch_latest_release_notes
+    @release_notes = github_provider&.fetch_latest_release_notes
 
     # Fallback if no release notes are available
     if @release_notes.nil?

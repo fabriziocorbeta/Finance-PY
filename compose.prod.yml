@@ -25,6 +25,7 @@ x-rails-env: &rails_env
   # Android purchase-notification webhook (POST /webhooks/android_purchase)
   ANDROID_WEBHOOK_TOKEN: ${ANDROID_WEBHOOK_TOKEN:-}
   ANDROID_WEBHOOK_FAMILY_ID: ${ANDROID_WEBHOOK_FAMILY_ID:-}
+  INTERNAL_VERSION_TOKEN: ${INTERNAL_VERSION_TOKEN:-}
   OPENAI_MODEL: ${OPENAI_MODEL:-}
 
 services:

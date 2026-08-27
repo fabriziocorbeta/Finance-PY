@@ -52,6 +52,34 @@ class Goal < ApplicationRecord
 
   attr_writer :market_flows
 
+  def self.paces_for(family)
+    results = GoalAccount.joins(:goal)
+                         .where(goals: { family_id: family.id })
+                         .joins("INNER JOIN entries ON entries.account_id = goal_accounts.account_id")
+                         .joins("INNER JOIN transactions ON transactions.id = entries.entryable_id AND entries.entryable_type = 'Transaction'")
+                         .where(entries: { date: 90.days.ago.to_date..Date.current, excluded: false })
+                         .merge(Transaction.excluding_pending)
+                         .group("goals.id")
+                         .sum("entries.amount")
+
+    results.transform_values do |net|
+      (-net.to_d / 3).round(2)
+    end
+  end
+
+  attr_writer :pace
+
+  def self.last_matched_pledge_dates_for(family)
+    Entry.where(entryable_type: "Transaction")
+         .joins("INNER JOIN goal_pledges ON goal_pledges.matched_transaction_id = entries.entryable_id")
+         .joins("INNER JOIN goals ON goals.id = goal_pledges.goal_id")
+         .where(goals: { family_id: family.id }, goal_pledges: { status: "matched" })
+         .group("goal_pledges.goal_id")
+         .maximum(:date)
+  end
+
+  attr_writer :last_matched_pledge_at
+
   aasm column: :state do
     after_all_transitions :reset_state_dependent_caches!
 

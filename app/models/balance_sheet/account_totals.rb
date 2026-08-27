@@ -27,7 +27,7 @@ class BalanceSheet::AccountTotals
 
     def visible_accounts
       @visible_accounts ||= begin
-        scope = family.accounts.visible.with_attached_logo.includes(:account_shares)
+        scope = family.accounts.visible.with_attached_logo.includes(:account_shares, :accountable)
         scope = scope.accessible_by(user) if user
         scope
       end
@@ -44,10 +44,12 @@ class BalanceSheet::AccountTotals
     # Wraps each account in an AccountRow with its converted balance and sync status.
     def account_rows
       @account_rows ||= accounts.map do |account|
+        is_syncing = sync_status_monitor.account_syncing?(account)
+        account.syncing = is_syncing if account.respond_to?(:syncing=)
         AccountRow.new(
           account: account,
           converted_balance: converted_balance_for(account),
-          is_syncing: sync_status_monitor.account_syncing?(account),
+          is_syncing: is_syncing,
           included_in_finances: finance_account_ids.nil? || finance_account_ids.include?(account.id)
         )
       end

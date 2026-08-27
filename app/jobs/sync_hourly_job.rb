@@ -19,7 +19,9 @@ class SyncHourlyJob < ApplicationJob
 
     def sync_items(syncable_class)
       syncable_class.active.find_each do |item|
-        item.sync_later
+        RlsContext.with_family(item.family) do
+          item.sync_later
+        end
       rescue => e
         Rails.logger.error("Failed to sync #{syncable_class.name} #{item.id}: #{e.message}")
       end

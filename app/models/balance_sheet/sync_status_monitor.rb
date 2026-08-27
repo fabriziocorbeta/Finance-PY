@@ -16,10 +16,7 @@ class BalanceSheet::SyncStatusMonitor
 
     def syncing_account_ids
       Rails.cache.fetch(cache_key) do
-        Sync.visible
-            .where(syncable_type: "Account", syncable_id: family.accounts.visible.pluck(:id))
-            .pluck(:syncable_id)
-            .to_set
+        Account.syncing_account_ids_for(family)
       end
     end
 

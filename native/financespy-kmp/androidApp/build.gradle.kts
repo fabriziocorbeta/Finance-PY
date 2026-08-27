@@ -13,8 +13,8 @@ android {
         applicationId = "py.com.cdco.financespy.dev"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0-1a"
+        versionCode = 4
+        versionName = "0.1.0-layout-fix"
     }
 
     buildTypes {
@@ -35,6 +35,7 @@ dependencies {
     implementation(project(":shared"))
     implementation(compose.runtime)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.ktor.client.core)
     implementation(libs.room.runtime)
     implementation(libs.kotlinx.coroutines.core)
