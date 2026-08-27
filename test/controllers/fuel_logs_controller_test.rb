@@ -47,11 +47,12 @@ class FuelLogsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 50.0, created_log.liters
     assert_equal 310000.0, created_log.cost
 
-    lines = created_log.fuel_log_lines.order(:id)
-    assert_equal "nafta", lines.first.fuel_type
-    assert_equal "Super 97", lines.first.brand
-    assert_equal "alcohol", lines.last.fuel_type
-    assert_nil lines.last.brand.presence
+    # order(:id) sorts by gen_random_uuid(), not insertion order - flaky ~50% of runs.
+    # Look up each line by fuel_type instead of relying on row order.
+    nafta_line = created_log.fuel_log_lines.find_by!(fuel_type: "nafta")
+    alcohol_line = created_log.fuel_log_lines.find_by!(fuel_type: "alcohol")
+    assert_equal "Super 97", nafta_line.brand
+    assert_nil alcohol_line.brand.presence
 
     assert_redirected_to fleet_vehicle_url(@fleet_vehicle)
   end
