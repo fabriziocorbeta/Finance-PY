@@ -603,7 +603,7 @@ GEM
       logger
       prism (>= 1.6.0)
       tsort
-    rchardet (1.10.0)
+    rchardet (1.10.2)
     rdoc (8.0.0)
       erb
       prism (>= 1.6.0)
