@@ -301,3 +301,4 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     assert_not_nil Balance.find_by(id: balance_b.id)
   end
 end
+
