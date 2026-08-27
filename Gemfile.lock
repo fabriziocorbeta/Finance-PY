@@ -307,13 +307,14 @@ GEM
       http-2 (>= 1.2.0)
     i18n (1.15.2)
       concurrent-ruby (~> 1.0)
-    i18n-tasks (1.0.15)
+    i18n-tasks (1.1.2)
       activesupport (>= 4.0.2)
       ast (>= 2.1.0)
       erubi
-      highline (>= 2.0.0)
+      highline (>= 3.0.0)
       i18n
       parser (>= 3.2.2.1)
+      prism
       rails-i18n
       rainbow (>= 2.2.2, < 4.0)
       ruby-progressbar (~> 1.8, >= 1.8.1)
@@ -501,7 +502,7 @@ GEM
     ostruct (0.6.3)
     pagy (9.3.5)
     parallel (1.27.0)
-    parser (3.3.10.2)
+    parser (3.3.12.0)
       ast (~> 2.4.1)
       racc
     pdf-reader (2.15.1)
@@ -798,9 +799,9 @@ GEM
     uber (0.1.0)
     unaccent (0.4.0)
     unicode (0.4.4.5)
-    unicode-display_width (3.1.4)
-      unicode-emoji (~> 4.0, >= 4.0.4)
-    unicode-emoji (4.0.4)
+    unicode-display_width (3.2.0)
+      unicode-emoji (~> 4.1)
+    unicode-emoji (4.2.0)
     uri (1.1.1)
     useragent (0.16.11)
     validate_url (1.0.15)
