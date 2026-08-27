@@ -114,7 +114,7 @@ GEM
     base64 (0.3.0)
     bcrypt (3.1.22)
     benchmark (0.5.0)
-    benchmark-ips (2.14.0)
+    benchmark-ips (2.15.1)
     better_html (2.1.1)
       actionview (>= 6.0)
       activesupport (>= 6.0)
@@ -159,8 +159,9 @@ GEM
     cronex (0.15.0)
       tzinfo
       unicode (>= 0.4.4.5)
-    css_parser (1.21.1)
+    css_parser (3.0.0)
       addressable
+      ssrf_filter (~> 1.5)
     csv (3.3.5)
     date (3.5.1)
     debug (1.11.0)
@@ -191,9 +192,9 @@ GEM
     docile (1.4.1)
     doorkeeper (5.8.2)
       railties (>= 5)
-    dotenv (3.1.8)
-    dotenv-rails (3.1.8)
-      dotenv (= 3.1.8)
+    dotenv (3.2.0)
+    dotenv-rails (3.2.0)
+      dotenv (= 3.2.0)
       railties (>= 6.1)
     drb (2.2.3)
     ed25519 (1.4.0)
@@ -223,7 +224,7 @@ GEM
       multipart-post (~> 2.0)
     faraday-net_http (3.4.4)
       net-http (~> 0.5)
-    faraday-retry (2.3.2)
+    faraday-retry (2.4.0)
       faraday (~> 2.0)
     ffi (1.17.4-aarch64-linux-gnu)
     ffi (1.17.4-aarch64-linux-musl)
@@ -287,11 +288,11 @@ GEM
       thor
     highline (3.1.2)
       reline
-    hotwire-livereload (2.0.0)
+    hotwire-livereload (2.1.1)
       actioncable (>= 7.0.0)
       listen (>= 3.0.0)
       railties (>= 7.0.0)
-    hotwire_combobox (0.4.0)
+    hotwire_combobox (0.4.1)
       platform_agent (>= 1.0.1)
       rails (>= 7.0.7.2)
       stimulus-rails (>= 1.2)
@@ -307,13 +308,14 @@ GEM
       http-2 (>= 1.2.0)
     i18n (1.15.2)
       concurrent-ruby (~> 1.0)
-    i18n-tasks (1.0.15)
+    i18n-tasks (1.1.2)
       activesupport (>= 4.0.2)
       ast (>= 2.1.0)
       erubi
-      highline (>= 2.0.0)
+      highline (>= 3.0.0)
       i18n
       parser (>= 3.2.2.1)
+      prism
       rails-i18n
       rainbow (>= 2.2.2, < 4.0)
       ruby-progressbar (~> 1.8, >= 1.8.1)
@@ -344,9 +346,9 @@ GEM
       bindata
       faraday (~> 2.0)
       faraday-follow_redirects
-    json-schema (5.2.2)
+    json-schema (6.2.0)
       addressable (~> 2.8)
-      bigdecimal (~> 3.1)
+      bigdecimal (>= 3.1, < 5)
     jwt (2.10.2)
       base64
     langfuse-ruby (0.2.0)
@@ -364,7 +366,8 @@ GEM
     letter_opener (1.10.0)
       launchy (>= 2.2, < 4)
     lint_roller (1.1.0)
-    listen (3.9.0)
+    listen (3.10.0)
+      logger
       rb-fsevent (~> 0.10, >= 0.10.3)
       rb-inotify (~> 0.9, >= 0.9.10)
     logger (1.7.0)
@@ -382,7 +385,7 @@ GEM
     loofah (2.25.2)
       crass (~> 1.0.2)
       nokogiri (>= 1.12.0)
-    lookbook (2.3.11)
+    lookbook (2.3.14)
       activemodel
       css_parser
       htmlbeautifier (~> 1.3)
@@ -394,23 +397,23 @@ GEM
       view_component (>= 2.0)
       yard (~> 0.9)
       zeitwerk (~> 2.5)
-    lucide-rails (0.7.3)
+    lucide-rails (0.7.4)
       railties (>= 4.1.0)
-    mail (2.8.1)
+    mail (2.9.1)
+      logger
       mini_mime (>= 0.1.1)
       net-imap
       net-pop
       net-smtp
-    marcel (1.1.0)
+    marcel (1.2.1)
     matrix (0.4.2)
     memory_profiler (1.1.0)
-    method_source (1.1.0)
     mini_histogram (0.3.1)
     mini_magick (5.3.3)
       logger
     mini_mime (1.1.5)
     minitest (5.27.0)
-    mocha (2.7.1)
+    mocha (3.1.0)
       ruby2_keywords (>= 0.0.5)
     msgpack (1.8.4)
     multi_json (1.20.1)
@@ -420,16 +423,16 @@ GEM
     mutex_m (0.3.0)
     net-http (0.9.1)
       uri (>= 0.11.1)
-    net-imap (0.5.8)
+    net-imap (0.6.6)
       date
       net-protocol
     net-pop (0.1.2)
       net-protocol
-    net-protocol (0.2.2)
+    net-protocol (0.3.0)
       timeout
     net-smtp (0.5.1)
       net-protocol
-    nio4r (2.7.4)
+    nio4r (2.7.5)
     nokogiri (1.19.4-aarch64-linux-gnu)
       racc (~> 1.4)
     nokogiri (1.19.4-aarch64-linux-musl)
@@ -457,8 +460,9 @@ GEM
     octokit (10.0.0)
       faraday (>= 1, < 3)
       sawyer (~> 0.9)
-    omniauth (2.1.3)
+    omniauth (2.1.4)
       hashie (>= 3.4.6)
+      logger
       rack (>= 2.2.3)
       rack-protection
     omniauth-github (2.0.1)
@@ -501,7 +505,7 @@ GEM
     ostruct (0.6.3)
     pagy (9.3.5)
     parallel (1.27.0)
-    parser (3.3.10.2)
+    parser (3.3.12.0)
       ast (~> 2.4.1)
       racc
     pdf-reader (2.15.1)
@@ -624,11 +628,11 @@ GEM
     retriable (3.4.1)
     rexml (3.4.2)
     rotp (6.3.0)
-    rouge (4.5.2)
-    rqrcode (3.1.0)
+    rouge (4.7.0)
+    rqrcode (3.2.0)
       chunky_png (~> 1.0)
       rqrcode_core (~> 2.0)
-    rqrcode_core (2.0.0)
+    rqrcode_core (2.1.0)
     rspec-core (3.13.6)
       rspec-support (~> 3.13.0)
     rspec-expectations (3.13.5)
@@ -645,14 +649,14 @@ GEM
       rspec-expectations (~> 3.13)
       rspec-mocks (~> 3.13)
       rspec-support (~> 3.13)
-    rspec-support (3.13.6)
+    rspec-support (3.13.7)
     rswag-api (2.16.0)
       activesupport (>= 5.2, < 8.1)
       railties (>= 5.2, < 8.1)
-    rswag-specs (2.16.0)
-      activesupport (>= 5.2, < 8.1)
-      json-schema (>= 2.2, < 6.0)
-      railties (>= 5.2, < 8.1)
+    rswag-specs (2.17.0)
+      activesupport (>= 5.2, < 8.2)
+      json-schema (>= 2.2, < 7.0)
+      railties (>= 5.2, < 8.2)
       rspec-core (>= 2.14)
     rswag-ui (2.16.0)
       actionpack (>= 5.2, < 8.1)
@@ -727,7 +731,7 @@ GEM
     sentry-sidekiq (5.26.0)
       sentry-ruby (~> 5.26.0)
       sidekiq (>= 3.0)
-    sidekiq (8.0.5)
+    sidekiq (8.0.10)
       connection_pool (>= 2.5.0)
       json (>= 2.9.0)
       logger (>= 1.6.2)
@@ -738,7 +742,7 @@ GEM
       fugit (~> 1.8, >= 1.11.1)
       globalid (>= 1.0.1)
       sidekiq (>= 6.5.0)
-    sidekiq-unique-jobs (8.0.11)
+    sidekiq-unique-jobs (8.1.0)
       concurrent-ruby (~> 1.0, >= 1.0.5)
       sidekiq (>= 7.0.0, < 9.0.0)
       thor (>= 1.0, < 3.0)
@@ -759,6 +763,7 @@ GEM
     snaky_hash (2.0.3)
       hashie (>= 0.1.0, < 6)
       version_gem (>= 1.1.8, < 3)
+    ssrf_filter (1.5.0)
     stackprof (0.2.27)
     stimulus-rails (1.3.4)
       railties (>= 6.0.0)
@@ -790,7 +795,7 @@ GEM
     tsort (0.2.0)
     ttfunk (1.8.0)
       bigdecimal (~> 3.1)
-    turbo-rails (2.0.16)
+    turbo-rails (2.0.23)
       actionpack (>= 7.1.0)
       railties (>= 7.1.0)
     tzinfo (2.0.6)
@@ -798,9 +803,9 @@ GEM
     uber (0.1.0)
     unaccent (0.4.0)
     unicode (0.4.4.5)
-    unicode-display_width (3.1.4)
-      unicode-emoji (~> 4.0, >= 4.0.4)
-    unicode-emoji (4.0.4)
+    unicode-display_width (3.2.0)
+      unicode-emoji (~> 4.1)
+    unicode-emoji (4.2.0)
     uri (1.1.1)
     useragent (0.16.11)
     validate_url (1.0.15)
@@ -810,10 +815,10 @@ GEM
       base64
     vernier (1.8.0)
     version_gem (1.1.9)
-    view_component (3.23.2)
-      activesupport (>= 5.2.0, < 8.1)
+    view_component (4.12.0)
+      actionview (>= 7.1.0)
+      activesupport (>= 7.1.0)
       concurrent-ruby (~> 1)
-      method_source (~> 1.0)
     web-console (4.2.1)
       actionview (>= 6.0.0)
       activemodel (>= 6.0.0)
@@ -836,13 +841,13 @@ GEM
       crack (>= 0.3.2)
       hashdiff (>= 0.4.0, < 2.0.0)
     websocket (1.2.11)
-    websocket-driver (0.8.0)
+    websocket-driver (0.8.2)
       base64
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
     xpath (3.2.0)
       nokogiri (~> 1.8)
-    yard (0.9.37)
+    yard (0.9.45)
     zeitwerk (2.8.3)
 
 PLATFORMS
@@ -894,7 +899,7 @@ DEPENDENCIES
   langfuse-ruby (~> 0.2.0)
   letter_opener
   logtail-rails
-  lookbook (= 2.3.11)
+  lookbook (= 2.3.14)
   lucide-rails
   mini_magick (~> 5.3)
   mocha
@@ -923,7 +928,7 @@ DEPENDENCIES
   redcarpet
   redis (~> 5.4)
   rotp (~> 6.3)
-  rqrcode (~> 3.0)
+  rqrcode (~> 3.2)
   rspec-rails
   rswag-api
   rswag-specs
