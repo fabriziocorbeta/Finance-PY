@@ -18,6 +18,7 @@
             <th class="px-4 py-3 text-xs font-medium text-secondary uppercase tracking-wider"><%= t(".columns.sku") %></th>
             <th class="px-4 py-3 text-xs font-medium text-secondary uppercase tracking-wider"><%= t(".columns.category") %></th>
             <th class="px-4 py-3 text-xs font-medium text-secondary uppercase tracking-wider text-right"><%= t(".columns.stock") %></th>
+            <th class="px-4 py-3 text-xs font-medium text-secondary uppercase tracking-wider text-right"><%= t(".columns.buy_price") %></th>
             <th class="px-4 py-3 text-xs font-medium text-secondary uppercase tracking-wider text-right"><%= t(".columns.sell_price") %></th>
             <th class="px-4 py-3 text-xs font-medium text-secondary uppercase tracking-wider text-center"><%= t(".columns.currency") %></th>
           </tr>
@@ -37,7 +38,10 @@
               <td class="px-4 py-3 text-sm text-primary text-right font-medium <%= product.stock <= 0 ? 'text-red-600' : '' %>">
                 <%= product.stock %>
               </td>
-              <td class="px-4 py-3 text-sm text-primary text-right">
+              <td class="px-4 py-3 text-sm text-secondary text-right">
+                <%= number_to_currency(product.buy_price, unit: "", separator: ",", delimiter: ".") %>
+              </td>
+              <td class="px-4 py-3 text-sm text-primary text-right font-medium">
                 <%= number_to_currency(product.sell_price, unit: "", separator: ",", delimiter: ".") %>
               </td>
               <td class="px-4 py-3 text-sm text-secondary text-center uppercase">

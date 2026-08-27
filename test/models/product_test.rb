@@ -60,4 +60,37 @@ class ProductTest < ActiveSupport::TestCase
     assert_equal "pyg", product.currency
     assert product.pyg?
   end
+
+  test "updating stock, buy_price, or currency triggers sync_family_inventory" do
+    @family.update!(business_mode_enabled: true)
+    product = Product.create!(
+      family: @family,
+      name: "Inventory Product",
+      buy_price: 100,
+      sell_price: 200,
+      stock: 10,
+      currency: "usd"
+    )
+
+    account = @family.accounts.find_by(name: "Mercadería", accountable_type: "OtherAsset")
+    assert_not_nil account
+    initial_balance = account.balance
+
+    product.update!(stock: 20)
+    assert_not_equal initial_balance, account.reload.balance
+
+    updated_balance = account.balance
+    product.update!(buy_price: 150)
+    assert_not_equal updated_balance, account.reload.balance
+
+    updated_balance2 = account.balance
+    # ExchangeRate.rates_for defaults an unresolved pair to a 1:1 rate (documented,
+    # logged) so a genuinely missing rate degrades gracefully instead of raising. With
+    # no real PYG/USD rate seeded, product.currency going usd -> pyg would silently
+    # keep the same total under that fallback and this assertion would not actually
+    # prove the sync fired for a currency-only change. Seed a real rate.
+    ExchangeRate.create!(from_currency: "PYG", to_currency: @family.currency, date: Date.current, rate: 0.00013)
+    product.update!(currency: "pyg")
+    assert_not_equal updated_balance2, account.reload.balance
+  end
 end

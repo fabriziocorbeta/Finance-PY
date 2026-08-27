@@ -302,6 +302,29 @@
         915
       ],
       "note": "account_id llega a FuelLog.new via @fleet_vehicle.fuel_logs.new(...); FuelLog#account_belongs_to_family (app/models/fuel_log.rb) rechaza el save si account.family_id != fleet_vehicle.family_id (fleet_vehicle siempre es de Current.family via set_fleet_vehicle). Cross-tenant account_id falla la validacion del modelo, no crea el registro."
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 105,
+      "fingerprint": "e9b7e9ca7d1055bdabad15526a1100c99cdc57937491f9b244b94c634ae7fe70",
+      "check_name": "PermitAttributes",
+      "message": "Potentially dangerous key allowed for mass assignment",
+      "file": "app/controllers/fuel_logs_controller.rb",
+      "line": 34,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.require(:fuel_log).permit(:odometer, :account_id, :logged_at, :notes, :liters, :cost, :fuel_log_lines_attributes => ([:id, :fuel_type, :brand, :liters, :cost, :_destroy]))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "FuelLogsController",
+        "method": "fuel_log_params"
+      },
+      "user_input": ":account_id",
+      "confidence": "High",
+      "cwe_id": [
+        915
+      ],
+      "note": "Mismo caso ya justificado arriba (fingerprint anterior), el fingerprint cambio porque se agrego :brand al array de fuel_log_lines_attributes. account_id sigue siendo el unico input relevante y sigue validado por FuelLog#account_belongs_to_family. :id dentro de fuel_log_lines_attributes tambien es seguro: accepts_nested_attributes_for resuelve el id contra fuel_log.fuel_log_lines (scoped a traves de la asociacion del padre), no via FuelLogLine.find global, asi que un id de otra family no matchea y Rails lo trata como registro no encontrado."
     }
   ],
   "brakeman_version": "7.1.0",

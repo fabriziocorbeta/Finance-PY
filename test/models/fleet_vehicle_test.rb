@@ -57,42 +57,82 @@ class FleetVehicleTest < ActiveSupport::TestCase
     assert other_vehicle.valid?
   end
 
-  test "average_fuel_efficiency calculates correctly for multi-fuel fill-up events" do
-    # Log 1: Initial fill up at 10,000 km
-    log1 = @vehicle.fuel_logs.create!(
+  test "can save optional brand on fuel log line" do
+    log = @vehicle.fuel_logs.create!(
+      account: @account,
+      odometer: 10000,
+      logged_at: Date.today,
+      fuel_log_lines_attributes: [
+        { fuel_type: "nafta", brand: "Podium", liters: 40, cost: 280000 }
+      ]
+    )
+
+    line = log.fuel_log_lines.first
+    assert_equal "Podium", line.brand
+  end
+
+  test "average_fuel_efficiency separates single fuel type, mixed fill-ups, and prevents contamination between categories" do
+    # Log 0: Initial fill up at 10,000 km
+    @vehicle.fuel_logs.create!(
       account: @account,
       odometer: 10000,
       logged_at: 10.days.ago,
       fuel_log_lines_attributes: [
-        { fuel_type: "nafta", liters: 40, cost: 280000 }
+        { fuel_type: "nafta", brand: "Super 97", liters: 40, cost: 280000 }
       ]
     )
 
-    # Log 2: Fill up at 10,500 km (distance 500 km) with mixed fuel (10L nafta + 40L alcohol = 50L total)
-    # Expected efficiency: 500 km / 50 L = 10 km/L
-    log2 = @vehicle.fuel_logs.create!(
+    # Log 1: Single fuel type (Nafta) at 10,500 km (distance 500 km, 50L) -> 10.0 km/L Nafta
+    @vehicle.fuel_logs.create!(
       account: @account,
       odometer: 10500,
-      logged_at: 5.days.ago,
+      logged_at: 8.days.ago,
       fuel_log_lines_attributes: [
-        { fuel_type: "nafta", liters: 10, cost: 70000 },
+        { fuel_type: "nafta", brand: "Grid", liters: 50, cost: 350000 }
+      ]
+    )
+
+    # Log 2: Single fuel type (Alcohol) at 11,000 km (distance 500 km, 50L) -> 10.0 km/L Alcohol
+    @vehicle.fuel_logs.create!(
+      account: @account,
+      odometer: 11000,
+      logged_at: 6.days.ago,
+      fuel_log_lines_attributes: [
+        { fuel_type: "alcohol", liters: 50, cost: 300000 }
+      ]
+    )
+
+    # Log 3: Mixed fuel fill-up (Nafta + Alcohol) at 11,400 km (distance 400 km, 10L nafta + 40L alcohol = 50L total) -> 8.0 km/L Mixto
+    @vehicle.fuel_logs.create!(
+      account: @account,
+      odometer: 11400,
+      logged_at: 4.days.ago,
+      fuel_log_lines_attributes: [
+        { fuel_type: "nafta", brand: "Prix", liters: 10, cost: 70000 },
         { fuel_type: "alcohol", liters: 40, cost: 240000 }
       ]
     )
 
-    # Log 3: Fill up at 11,000 km (distance 500 km) with 50L nafta
-    # Expected efficiency: 500 km / 50 L = 10 km/L
-    log3 = @vehicle.fuel_logs.create!(
+    # Log 4: Single fuel type (Nafta) at 12,000 km (distance 600 km, 50L) -> 12.0 km/L Nafta
+    @vehicle.fuel_logs.create!(
       account: @account,
-      odometer: 11000,
+      odometer: 12000,
       logged_at: Date.today,
       fuel_log_lines_attributes: [
-        { fuel_type: "nafta", liters: 50, cost: 350000 }
+        { fuel_type: "nafta", brand: "Podium", liters: 50, cost: 400000 }
       ]
     )
 
-    # Average efficiency should be (10 + 10) / 2 = 10.0
-    assert_equal 10.0, @vehicle.average_fuel_efficiency
+    efficiency = @vehicle.average_fuel_efficiency
+
+    # Nafta average: (10.0 + 12.0) / 2 = 11.0
+    assert_equal 11.0, efficiency["nafta"]
+
+    # Alcohol average: 10.0
+    assert_equal 10.0, efficiency["alcohol"]
+
+    # Mixto average: 8.0
+    assert_equal 8.0, efficiency["mixto"]
   end
 
   test "monthly_fuel_consumed, monthly_distance, and monthly_average_efficiency" do
@@ -104,38 +144,45 @@ class FleetVehicleTest < ActiveSupport::TestCase
       odometer: 10000,
       logged_at: current_month.prev_month.end_of_month,
       fuel_log_lines_attributes: [
-        { fuel_type: "nafta", liters: 50, cost: 350000 }
+        { fuel_type: "nafta", brand: "Super 97", liters: 50, cost: 350000 }
       ]
     )
 
-    # First log of current month at 10,400 km with 40L
+    # First log of current month at 10,400 km with 20L nafta + 20L alcohol (40L total, mixed) -> 400 km / 40 L = 10 km/L Mixto
     @vehicle.fuel_logs.create!(
       account: @account,
       odometer: 10400,
       logged_at: current_month.beginning_of_month + 2.days,
       fuel_log_lines_attributes: [
-        { fuel_type: "nafta", liters: 20, cost: 140000 },
+        { fuel_type: "nafta", brand: "Grid", liters: 20, cost: 140000 },
         { fuel_type: "alcohol", liters: 20, cost: 120000 }
       ]
     )
 
-    # Second log of current month at 11,000 km with 60L
+    # Second log of current month at 11,000 km with 60L nafta (single) -> 600 km / 60 L = 10 km/L Nafta
     @vehicle.fuel_logs.create!(
       account: @account,
       odometer: 11000,
       logged_at: current_month.beginning_of_month + 10.days,
       fuel_log_lines_attributes: [
-        { fuel_type: "nafta", liters: 60, cost: 420000 }
+        { fuel_type: "nafta", brand: "Podium", liters: 60, cost: 420000 }
       ]
     )
 
-    # Monthly consumed: 40 + 60 = 100L
-    assert_equal 100.0, @vehicle.monthly_fuel_consumed(current_month)
+    # Monthly consumed by fuel type: nafta: 20 + 60 = 80L, alcohol: 20L
+    consumed = @vehicle.monthly_fuel_consumed(current_month)
+    assert_equal 80.0, consumed["nafta"]
+    assert_equal 20.0, consumed["alcohol"]
 
-    # Monthly distance: 11000 - 10000 (prev month last log) = 1000 km
-    assert_equal 1000, @vehicle.monthly_distance(current_month)
+    # Monthly distance by interval category: mixto: 400 km, nafta: 600 km
+    distance = @vehicle.monthly_distance(current_month)
+    assert_equal 400.0, distance["mixto"]
+    assert_equal 600.0, distance["nafta"]
+    assert_equal 1000.0, distance.values.sum
 
-    # Monthly efficiency: 1000 / 100 = 10 km/L
-    assert_equal 10.0, @vehicle.monthly_average_efficiency(current_month)
+    # Monthly efficiency by interval category: mixto: 10.0, nafta: 10.0
+    efficiency = @vehicle.monthly_average_efficiency(current_month)
+    assert_equal 10.0, efficiency["mixto"]
+    assert_equal 10.0, efficiency["nafta"]
   end
 end
