@@ -1,7 +1,105 @@
 require "test_helper"
 
 class RowLevelSecurityTest < ActionDispatch::IntegrationTest
+  def self.ensure_non_superuser_role
+    return if @non_superuser_role_ensured
+
+    config = ActiveRecord::Base.connection_db_config.configuration_hash
+    dbname = config[:database] || config[:dbname] || "sure_test"
+    pg_conn = PG.connect(
+      host: config[:host] || "127.0.0.1",
+      port: config[:port] || 5432,
+      dbname: dbname,
+      user: config[:user] || config[:username],
+      password: config[:password]
+    )
+    pg_conn.exec("SET lock_timeout = '5s';")
+    pg_conn.exec("CREATE ROLE app_user WITH LOGIN NOSUPERUSER NOBYPASSRLS;") rescue nil
+    pg_conn.exec("GRANT ALL ON ALL TABLES IN SCHEMA public TO app_user;")
+    pg_conn.exec("GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO app_user;")
+    pg_conn.exec("GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO app_user;")
+    pg_conn.exec("GRANT ALL ON SCHEMA public TO app_user;")
+
+    policy_count = pg_conn.exec("SELECT COUNT(*) FROM pg_policies WHERE policyname = 'accounts_family_isolation_policy';").getvalue(0, 0).to_i
+    if policy_count == 0
+      pg_conn.exec <<~SQL
+        CREATE OR REPLACE FUNCTION current_family_id() RETURNS uuid AS $$
+        BEGIN
+          RETURN NULLIF(current_setting('app.current_family_id', true), '')::uuid;
+        EXCEPTION
+          WHEN invalid_text_representation THEN
+            RETURN NULL;
+        END;
+        $$ LANGUAGE plpgsql STABLE;
+
+        DO $$
+        DECLARE
+          tbl text;
+          direct_tables text[] := ARRAY['accounts', 'budgets', 'goals', 'rules', 'categories', 'tags'];
+        BEGIN
+          FOREACH tbl IN ARRAY direct_tables LOOP
+            EXECUTE 'ALTER TABLE ' || tbl || ' ENABLE ROW LEVEL SECURITY;';
+            EXECUTE 'ALTER TABLE ' || tbl || ' FORCE ROW LEVEL SECURITY;';
+            EXECUTE 'DROP POLICY IF EXISTS ' || tbl || '_family_isolation_policy ON ' || tbl || ';';
+            EXECUTE 'CREATE POLICY ' || tbl || '_family_isolation_policy ON ' || tbl ||
+                    ' FOR ALL USING (family_id = current_family_id()) WITH CHECK (family_id = current_family_id());';
+          END LOOP;
+        END $$;
+
+        ALTER TABLE merchants ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE merchants FORCE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS merchants_family_isolation_policy ON merchants;
+        CREATE POLICY merchants_family_isolation_policy ON merchants FOR ALL USING (family_id = current_family_id() OR family_id IS NULL) WITH CHECK (family_id = current_family_id() OR family_id IS NULL);
+
+        ALTER TABLE entries ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE entries FORCE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS entries_family_isolation_policy ON entries;
+        CREATE POLICY entries_family_isolation_policy ON entries FOR ALL USING (account_id IN (SELECT id FROM accounts WHERE family_id = current_family_id())) WITH CHECK (account_id IN (SELECT id FROM accounts WHERE family_id = current_family_id()));
+
+        ALTER TABLE budget_categories ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE budget_categories FORCE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS budget_categories_family_isolation_policy ON budget_categories;
+        CREATE POLICY budget_categories_family_isolation_policy ON budget_categories FOR ALL USING (budget_id IN (SELECT id FROM budgets WHERE family_id = current_family_id())) WITH CHECK (budget_id IN (SELECT id FROM budgets WHERE family_id = current_family_id()));
+
+        ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE transactions FORCE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS transactions_family_isolation_policy ON transactions;
+        CREATE POLICY transactions_family_isolation_policy ON transactions FOR ALL USING (id IN (SELECT entryable_id FROM entries WHERE entryable_type = 'Transaction' AND account_id IN (SELECT id FROM accounts WHERE family_id = current_family_id()))) WITH CHECK (true);
+
+        ALTER TABLE valuations ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE valuations FORCE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS valuations_family_isolation_policy ON valuations;
+        CREATE POLICY valuations_family_isolation_policy ON valuations FOR ALL USING (id IN (SELECT entryable_id FROM entries WHERE entryable_type = 'Valuation' AND account_id IN (SELECT id FROM accounts WHERE family_id = current_family_id()))) WITH CHECK (true);
+
+        ALTER TABLE receivables ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE receivables FORCE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS receivables_family_isolation_policy ON receivables;
+        CREATE POLICY receivables_family_isolation_policy ON receivables FOR ALL USING (id IN (SELECT accountable_id FROM accounts WHERE accountable_type = 'Receivable' AND family_id = current_family_id())) WITH CHECK (true);
+
+        ALTER TABLE fleet_vehicles ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE fleet_vehicles FORCE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS fleet_vehicles_family_isolation_policy ON fleet_vehicles;
+        CREATE POLICY fleet_vehicles_family_isolation_policy ON fleet_vehicles FOR ALL USING (family_id = current_family_id()) WITH CHECK (family_id = current_family_id());
+
+        ALTER TABLE fuel_logs ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE fuel_logs FORCE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS fuel_logs_family_isolation_policy ON fuel_logs;
+        CREATE POLICY fuel_logs_family_isolation_policy ON fuel_logs FOR ALL USING (fleet_vehicle_id IN (SELECT id FROM fleet_vehicles WHERE family_id = current_family_id())) WITH CHECK (fleet_vehicle_id IN (SELECT id FROM fleet_vehicles WHERE family_id = current_family_id()));
+
+        ALTER TABLE fuel_log_lines ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE fuel_log_lines FORCE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS fuel_log_lines_family_isolation_policy ON fuel_log_lines;
+        CREATE POLICY fuel_log_lines_family_isolation_policy ON fuel_log_lines FOR ALL USING (fuel_log_id IN (SELECT id FROM fuel_logs WHERE fleet_vehicle_id IN (SELECT id FROM fleet_vehicles WHERE family_id = current_family_id()))) WITH CHECK (fuel_log_id IN (SELECT id FROM fuel_logs WHERE fleet_vehicle_id IN (SELECT id FROM fleet_vehicles WHERE family_id = current_family_id())));
+      SQL
+    end
+    @non_superuser_role_ensured = true
+  ensure
+    pg_conn&.close
+  end
+
   setup do
+    self.class.ensure_non_superuser_role
+
     @family_a = families(:dylan_family)
     @user_a = users(:family_admin) # belongs to @family_a
 
@@ -48,8 +146,6 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
   end
 
   test "when app.current_family_id session variable is set, raw SQL and ActiveRecord queries cannot access family_b records" do
-    ensure_non_superuser_role
-
     ActiveRecord::Base.connection.execute("SET ROLE app_user")
     ActiveRecord::Base.connection.execute(
       ActiveRecord::Base.sanitize_sql([ "SET app.current_family_id = ?", @family_a.id ])
@@ -204,98 +300,4 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     assert_nil Balance.find_by(id: balance_a.id)
     assert_not_nil Balance.find_by(id: balance_b.id)
   end
-
-  private
-
-    def ensure_non_superuser_role
-      config = ActiveRecord::Base.connection_db_config.configuration_hash
-      dbname = config[:database] || config[:dbname] || "sure_test"
-      pg_conn = PG.connect(
-        host: config[:host] || "127.0.0.1",
-        port: config[:port] || 5432,
-        dbname: dbname,
-        user: config[:user] || config[:username],
-        password: config[:password]
-      )
-      pg_conn.exec("CREATE ROLE app_user WITH LOGIN NOSUPERUSER NOBYPASSRLS;") rescue nil
-      pg_conn.exec("GRANT ALL ON ALL TABLES IN SCHEMA public TO app_user;")
-      pg_conn.exec("GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO app_user;")
-      pg_conn.exec("GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO app_user;")
-      pg_conn.exec("GRANT ALL ON SCHEMA public TO app_user;")
-
-      policy_count = pg_conn.exec("SELECT COUNT(*) FROM pg_policies WHERE policyname = 'accounts_family_isolation_policy';").getvalue(0, 0).to_i
-      if policy_count == 0
-        pg_conn.exec <<~SQL
-          CREATE OR REPLACE FUNCTION current_family_id() RETURNS uuid AS $$
-          BEGIN
-            RETURN NULLIF(current_setting('app.current_family_id', true), '')::uuid;
-          EXCEPTION
-            WHEN invalid_text_representation THEN
-              RETURN NULL;
-          END;
-          $$ LANGUAGE plpgsql STABLE;
-
-          DO $$
-          DECLARE
-            tbl text;
-            direct_tables text[] := ARRAY['accounts', 'budgets', 'goals', 'rules', 'categories', 'tags'];
-          BEGIN
-            FOREACH tbl IN ARRAY direct_tables LOOP
-              EXECUTE 'ALTER TABLE ' || tbl || ' ENABLE ROW LEVEL SECURITY;';
-              EXECUTE 'ALTER TABLE ' || tbl || ' FORCE ROW LEVEL SECURITY;';
-              EXECUTE 'DROP POLICY IF EXISTS ' || tbl || '_family_isolation_policy ON ' || tbl || ';';
-              EXECUTE 'CREATE POLICY ' || tbl || '_family_isolation_policy ON ' || tbl ||
-                      ' FOR ALL USING (family_id = current_family_id()) WITH CHECK (family_id = current_family_id());';
-            END LOOP;
-          END $$;
-
-          ALTER TABLE merchants ENABLE ROW LEVEL SECURITY;
-          ALTER TABLE merchants FORCE ROW LEVEL SECURITY;
-          DROP POLICY IF EXISTS merchants_family_isolation_policy ON merchants;
-          CREATE POLICY merchants_family_isolation_policy ON merchants FOR ALL USING (family_id = current_family_id() OR family_id IS NULL) WITH CHECK (family_id = current_family_id() OR family_id IS NULL);
-
-          ALTER TABLE entries ENABLE ROW LEVEL SECURITY;
-          ALTER TABLE entries FORCE ROW LEVEL SECURITY;
-          DROP POLICY IF EXISTS entries_family_isolation_policy ON entries;
-          CREATE POLICY entries_family_isolation_policy ON entries FOR ALL USING (account_id IN (SELECT id FROM accounts WHERE family_id = current_family_id())) WITH CHECK (account_id IN (SELECT id FROM accounts WHERE family_id = current_family_id()));
-
-          ALTER TABLE budget_categories ENABLE ROW LEVEL SECURITY;
-          ALTER TABLE budget_categories FORCE ROW LEVEL SECURITY;
-          DROP POLICY IF EXISTS budget_categories_family_isolation_policy ON budget_categories;
-          CREATE POLICY budget_categories_family_isolation_policy ON budget_categories FOR ALL USING (budget_id IN (SELECT id FROM budgets WHERE family_id = current_family_id())) WITH CHECK (budget_id IN (SELECT id FROM budgets WHERE family_id = current_family_id()));
-
-          ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
-          ALTER TABLE transactions FORCE ROW LEVEL SECURITY;
-          DROP POLICY IF EXISTS transactions_family_isolation_policy ON transactions;
-          CREATE POLICY transactions_family_isolation_policy ON transactions FOR ALL USING (id IN (SELECT entryable_id FROM entries WHERE entryable_type = 'Transaction' AND account_id IN (SELECT id FROM accounts WHERE family_id = current_family_id()))) WITH CHECK (true);
-
-          ALTER TABLE valuations ENABLE ROW LEVEL SECURITY;
-          ALTER TABLE valuations FORCE ROW LEVEL SECURITY;
-          DROP POLICY IF EXISTS valuations_family_isolation_policy ON valuations;
-          CREATE POLICY valuations_family_isolation_policy ON valuations FOR ALL USING (id IN (SELECT entryable_id FROM entries WHERE entryable_type = 'Valuation' AND account_id IN (SELECT id FROM accounts WHERE family_id = current_family_id()))) WITH CHECK (true);
-
-          ALTER TABLE receivables ENABLE ROW LEVEL SECURITY;
-          ALTER TABLE receivables FORCE ROW LEVEL SECURITY;
-          DROP POLICY IF EXISTS receivables_family_isolation_policy ON receivables;
-          CREATE POLICY receivables_family_isolation_policy ON receivables FOR ALL USING (id IN (SELECT accountable_id FROM accounts WHERE accountable_type = 'Receivable' AND family_id = current_family_id())) WITH CHECK (true);
-
-          ALTER TABLE fleet_vehicles ENABLE ROW LEVEL SECURITY;
-          ALTER TABLE fleet_vehicles FORCE ROW LEVEL SECURITY;
-          DROP POLICY IF EXISTS fleet_vehicles_family_isolation_policy ON fleet_vehicles;
-          CREATE POLICY fleet_vehicles_family_isolation_policy ON fleet_vehicles FOR ALL USING (family_id = current_family_id()) WITH CHECK (family_id = current_family_id());
-
-          ALTER TABLE fuel_logs ENABLE ROW LEVEL SECURITY;
-          ALTER TABLE fuel_logs FORCE ROW LEVEL SECURITY;
-          DROP POLICY IF EXISTS fuel_logs_family_isolation_policy ON fuel_logs;
-          CREATE POLICY fuel_logs_family_isolation_policy ON fuel_logs FOR ALL USING (fleet_vehicle_id IN (SELECT id FROM fleet_vehicles WHERE family_id = current_family_id())) WITH CHECK (fleet_vehicle_id IN (SELECT id FROM fleet_vehicles WHERE family_id = current_family_id()));
-
-          ALTER TABLE fuel_log_lines ENABLE ROW LEVEL SECURITY;
-          ALTER TABLE fuel_log_lines FORCE ROW LEVEL SECURITY;
-          DROP POLICY IF EXISTS fuel_log_lines_family_isolation_policy ON fuel_log_lines;
-          CREATE POLICY fuel_log_lines_family_isolation_policy ON fuel_log_lines FOR ALL USING (fuel_log_id IN (SELECT id FROM fuel_logs WHERE fleet_vehicle_id IN (SELECT id FROM fleet_vehicles WHERE family_id = current_family_id()))) WITH CHECK (fuel_log_id IN (SELECT id FROM fuel_logs WHERE fleet_vehicle_id IN (SELECT id FROM fleet_vehicles WHERE family_id = current_family_id())));
-        SQL
-      end
-    ensure
-      pg_conn&.close
-    end
 end
