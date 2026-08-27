@@ -40,35 +40,63 @@
       </div>
       <div>
         <h4 class="text-xs font-medium text-secondary uppercase"><%= t("fleet_vehicles.show.average_efficiency") %></h4>
-        <p class="text-primary mt-1">
-          <% if @fleet_vehicle.average_fuel_efficiency %>
-            <%= t("fleet_vehicles.show.efficiency_value", value: number_with_precision(@fleet_vehicle.average_fuel_efficiency, precision: 2)) %>
+        <div class="text-primary mt-1 text-sm space-y-0.5">
+          <% if @fleet_vehicle.average_fuel_efficiency.present? %>
+            <% @fleet_vehicle.average_fuel_efficiency.each do |type, eff| %>
+              <div>
+                <span class="capitalize font-medium text-xs"><%= t("fuel_logs.fuel_types.#{type}", default: type.capitalize) %>:</span>
+                <%= t("fleet_vehicles.show.efficiency_value", value: number_with_precision(eff, precision: 2)) %>
+              </div>
+            <% end %>
           <% else %>
             <%= t("fleet_vehicles.show.efficiency_no_data") %>
           <% end %>
-        </p>
+        </div>
       </div>
       <div>
         <h4 class="text-xs font-medium text-secondary uppercase"><%= t("fleet_vehicles.show.monthly_consumed") %></h4>
-        <p class="text-primary mt-1">
-          <%= t("fleet_vehicles.show.consumed_value", value: number_with_precision(@fleet_vehicle.monthly_fuel_consumed, precision: 2)) %>
-        </p>
+        <div class="text-primary mt-1 text-sm space-y-0.5">
+          <% if @fleet_vehicle.monthly_fuel_consumed.present? %>
+            <% @fleet_vehicle.monthly_fuel_consumed.each do |type, liters| %>
+              <div>
+                <span class="capitalize font-medium text-xs"><%= t("fuel_logs.fuel_types.#{type}", default: type.capitalize) %>:</span>
+                <%= t("fleet_vehicles.show.consumed_value", value: number_with_precision(liters, precision: 2)) %>
+              </div>
+            <% end %>
+          <% else %>
+            <%= t("fleet_vehicles.show.consumed_value", value: number_with_precision(0, precision: 2)) %>
+          <% end %>
+        </div>
       </div>
       <div>
         <h4 class="text-xs font-medium text-secondary uppercase"><%= t("fleet_vehicles.show.monthly_distance") %></h4>
-        <p class="text-primary mt-1">
-          <%= t("fleet_vehicles.show.distance_value", value: number_with_precision(@fleet_vehicle.monthly_distance, precision: 0)) %>
-        </p>
+        <div class="text-primary mt-1 text-sm space-y-0.5">
+          <% if @fleet_vehicle.monthly_distance.present? %>
+            <% @fleet_vehicle.monthly_distance.each do |type, dist| %>
+              <div>
+                <span class="capitalize font-medium text-xs"><%= t("fuel_logs.fuel_types.#{type}", default: type.capitalize) %>:</span>
+                <%= t("fleet_vehicles.show.distance_value", value: number_with_precision(dist, precision: 0)) %>
+              </div>
+            <% end %>
+          <% else %>
+            <%= t("fleet_vehicles.show.distance_value", value: number_with_precision(0, precision: 0)) %>
+          <% end %>
+        </div>
       </div>
       <div>
         <h4 class="text-xs font-medium text-secondary uppercase"><%= t("fleet_vehicles.show.monthly_efficiency") %></h4>
-        <p class="text-primary mt-1">
-          <% if @fleet_vehicle.monthly_average_efficiency %>
-            <%= t("fleet_vehicles.show.efficiency_value", value: number_with_precision(@fleet_vehicle.monthly_average_efficiency, precision: 2)) %>
+        <div class="text-primary mt-1 text-sm space-y-0.5">
+          <% if @fleet_vehicle.monthly_average_efficiency.present? %>
+            <% @fleet_vehicle.monthly_average_efficiency.each do |type, eff| %>
+              <div>
+                <span class="capitalize font-medium text-xs"><%= t("fuel_logs.fuel_types.#{type}", default: type.capitalize) %>:</span>
+                <%= t("fleet_vehicles.show.efficiency_value", value: number_with_precision(eff, precision: 2)) %>
+              </div>
+            <% end %>
           <% else %>
             <%= t("fleet_vehicles.show.efficiency_no_data") %>
           <% end %>
-        </p>
+        </div>
       </div>
     </div>
     <% if @fleet_vehicle.notes.present? %>
@@ -104,7 +132,11 @@
                 </td>
                 <td class="px-4 py-3 text-sm text-right text-primary">
                   <% if log.fuel_log_lines.any? %>
-                    <%= log.fuel_log_lines.map { |line| "#{t("fuel_logs.fuel_types.#{line.fuel_type}")} #{number_with_precision(line.liters, precision: 2)}L" }.join(" + ") %>
+                    <%= log.fuel_log_lines.map { |line|
+                      label = t("fuel_logs.fuel_types.#{line.fuel_type}")
+                      label += " (#{line.brand})" if line.brand.present?
+                      "#{label} #{number_with_precision(line.liters, precision: 2)}L"
+                    }.join(" + ") %>
                   <% else %>
                     <%= number_with_precision(log.liters, precision: 2) %>
                   <% end %>
@@ -153,10 +185,14 @@
 
           <div id="fuel-log-lines-container" class="space-y-3">
             <%= f.fields_for :fuel_log_lines do |line_form| %>
-              <div class="flex flex-wrap md:flex-nowrap items-end gap-2 p-3 rounded-lg border border-secondary bg-container" data-controller="element-removal">
+              <div class="flex flex-wrap md:flex-nowrap items-end gap-2 p-3 rounded-lg border border-secondary bg-container" data-controller="element-removal fuel-type-selector">
                 <div class="w-full md:flex-1">
                   <%= line_form.label :fuel_type, t("fleet_vehicles.show.fuel_type"), class: "text-xs font-medium text-secondary uppercase tracking-wide block mb-1" %>
-                  <%= line_form.select :fuel_type, FuelLogLine.fuel_types.keys.map { |k| [t("fuel_logs.fuel_types.#{k}"), k] }, {}, class: "form-field__input border border-secondary rounded-md px-2.5 py-1.5 w-full text-sm text-primary bg-container" %>
+                  <%= line_form.select :fuel_type, FuelLogLine.fuel_types.keys.map { |k| [t("fuel_logs.fuel_types.#{k}"), k] }, {}, class: "form-field__input border border-secondary rounded-md px-2.5 py-1.5 w-full text-sm text-primary bg-container", data: { fuel_type_selector_target: "fuelType", action: "change->fuel-type-selector#updateBrands" } %>
+                </div>
+                <div class="w-full md:flex-1 <%= 'hidden' unless %w[nafta diesel].include?(line_form.object.fuel_type) %>" data-fuel-type-selector-target="brandContainer">
+                  <%= line_form.label :brand, t("fleet_vehicles.show.brand"), class: "text-xs font-medium text-secondary uppercase tracking-wide block mb-1" %>
+                  <%= line_form.select :brand, FuelLogLine.brands_for(line_form.object.fuel_type).map { |b| [b, b] }, { include_blank: t("fleet_vehicles.show.select_brand") }, class: "form-field__input border border-secondary rounded-md px-2.5 py-1.5 w-full text-sm text-primary bg-container", data: { fuel_type_selector_target: "brandSelect", prompt: t("fleet_vehicles.show.select_brand") } %>
                 </div>
                 <div class="flex-1 md:w-32">
                   <%= line_form.label :liters, t("fuel_logs.columns.liters"), class: "text-xs font-medium text-secondary uppercase tracking-wide block mb-1" %>
@@ -177,10 +213,14 @@
 
           <template id="fuel-log-line-template">
             <%= f.fields_for :fuel_log_lines, FuelLogLine.new, child_index: "NEW_RECORD" do |line_form| %>
-              <div class="flex flex-wrap md:flex-nowrap items-end gap-2 p-3 rounded-lg border border-secondary bg-container" data-controller="element-removal">
+              <div class="flex flex-wrap md:flex-nowrap items-end gap-2 p-3 rounded-lg border border-secondary bg-container" data-controller="element-removal fuel-type-selector">
                 <div class="w-full md:flex-1">
                   <%= line_form.label :fuel_type, t("fleet_vehicles.show.fuel_type"), class: "text-xs font-medium text-secondary uppercase tracking-wide block mb-1" %>
-                  <%= line_form.select :fuel_type, FuelLogLine.fuel_types.keys.map { |k| [t("fuel_logs.fuel_types.#{k}"), k] }, {}, class: "form-field__input border border-secondary rounded-md px-2.5 py-1.5 w-full text-sm text-primary bg-container" %>
+                  <%= line_form.select :fuel_type, FuelLogLine.fuel_types.keys.map { |k| [t("fuel_logs.fuel_types.#{k}"), k] }, {}, class: "form-field__input border border-secondary rounded-md px-2.5 py-1.5 w-full text-sm text-primary bg-container", data: { fuel_type_selector_target: "fuelType", action: "change->fuel-type-selector#updateBrands" } %>
+                </div>
+                <div class="w-full md:flex-1 hidden" data-fuel-type-selector-target="brandContainer">
+                  <%= line_form.label :brand, t("fleet_vehicles.show.brand"), class: "text-xs font-medium text-secondary uppercase tracking-wide block mb-1" %>
+                  <%= line_form.select :brand, [], { include_blank: t("fleet_vehicles.show.select_brand") }, class: "form-field__input border border-secondary rounded-md px-2.5 py-1.5 w-full text-sm text-primary bg-container", data: { fuel_type_selector_target: "brandSelect", prompt: t("fleet_vehicles.show.select_brand") } %>
                 </div>
                 <div class="flex-1 md:w-32">
                   <%= line_form.label :liters, t("fuel_logs.columns.liters"), class: "text-xs font-medium text-secondary uppercase tracking-wide block mb-1" %>

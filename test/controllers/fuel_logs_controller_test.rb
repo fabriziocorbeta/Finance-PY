@@ -20,12 +20,12 @@ class FuelLogsControllerTest < ActionDispatch::IntegrationTest
       account: @account,
       logged_at: Date.current,
       fuel_log_lines_attributes: [
-        { fuel_type: "nafta", liters: 50.5, cost: 150000 }
+        { fuel_type: "nafta", brand: "Podium", liters: 50.5, cost: 150000 }
       ]
     )
   end
 
-  test "should create fuel log with multiple lines" do
+  test "should create fuel log with multiple lines and brands" do
     assert_difference("FuelLog.count", 1) do
       assert_difference("FuelLogLine.count", 2) do
         post fleet_vehicle_fuel_logs_url(@fleet_vehicle), params: {
@@ -35,8 +35,8 @@ class FuelLogsControllerTest < ActionDispatch::IntegrationTest
             logged_at: Date.current,
             notes: "Carga mixta",
             fuel_log_lines_attributes: {
-              "0" => { fuel_type: "nafta", liters: "10.0", cost: "70000" },
-              "1" => { fuel_type: "alcohol", liters: "40.0", cost: "240000" }
+              "0" => { fuel_type: "nafta", brand: "Super 97", liters: "10.0", cost: "70000" },
+              "1" => { fuel_type: "alcohol", brand: "", liters: "40.0", cost: "240000" }
             }
           }
         }
@@ -46,6 +46,13 @@ class FuelLogsControllerTest < ActionDispatch::IntegrationTest
     created_log = @fleet_vehicle.fuel_logs.order(:created_at).last
     assert_equal 50.0, created_log.liters
     assert_equal 310000.0, created_log.cost
+
+    lines = created_log.fuel_log_lines.order(:id)
+    assert_equal "nafta", lines.first.fuel_type
+    assert_equal "Super 97", lines.first.brand
+    assert_equal "alcohol", lines.last.fuel_type
+    assert_nil lines.last.brand.presence
+
     assert_redirected_to fleet_vehicle_url(@fleet_vehicle)
   end
 
