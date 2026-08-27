@@ -6,7 +6,12 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   DEFAULT_VIEWPORT_HEIGHT = 1400
 
   setup do
-    Capybara.default_max_wait_time = 5
+    # CI runners are slower/more contended than local dev (shared CPU, Postgres +
+    # Redis containers, concurrent asset compilation) - a handful of distinct,
+    # unrelated system tests (properties, settings, transactions form) have been
+    # intermittently timing out in CI on Capybara::ElementNotFound at 5s, never
+    # locally, which points at CI timing pressure rather than per-test bugs.
+    Capybara.default_max_wait_time = ENV["CI"].present? ? 10 : 5
 
     if ENV["SELENIUM_REMOTE_URL"].present?
       server_port = ENV.fetch("CAPYBARA_SERVER_PORT", 30_000 + (Process.pid % 1000)).to_i
