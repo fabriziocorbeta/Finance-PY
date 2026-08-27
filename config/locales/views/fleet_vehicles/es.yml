@@ -18,6 +18,8 @@ es:
       add_fuel_log: "Agregar Registro de Combustible"
       add_fuel_line: "+ Agregar otro combustible"
       fuel_type: "Tipo de combustible"
+      brand: "Marca / Grado"
+      select_brand: "Seleccionar marca"
       save_fuel_log: "Guardar"
       average_efficiency: "Rendimiento prom."
       monthly_consumed: "Consumo del mes"
@@ -53,6 +55,7 @@ es:
       alcohol: "Alcohol"
       gnc: "GNC"
       diesel: "Diesel"
+      mixto: "Mixto"
     columns:
       date: "Fecha"
       liters: "Litros"
