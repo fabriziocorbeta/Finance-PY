@@ -138,6 +138,22 @@ jobs:
           bin/rails db:schema:load
           bin/rails db:seed
 
+      - name: Check for pending migrations
+        run: |
+          if bin/rails db:migrate:status | grep -qE '^\s*down\b'; then
+            echo "::error::Hay migraciones pendientes sin aplicar (status down)."
+            bin/rails db:migrate:status
+            exit 1
+          fi
+
+      - name: Verify schema.rb is up to date
+        run: |
+          bin/rails db:migrate
+          if ! git diff --exit-code db/schema.rb; then
+            echo "::error::schema.rb esta desactualizado, corre bin/rails db:migrate y commitea el resultado real."
+            exit 1
+          fi
+
       - name: Unit and integration tests
         run: bin/rails test
 
