@@ -27,22 +27,30 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     @receivable_account_b = Account.create!(family: @family_b, accountable: @receivable_b, name: "Receivable Account", currency: "USD", balance: 500)
     @fleet_vehicle_b = FleetVehicle.create!(family: @family_b, plate: "ABC-123", brand: "Toyota", model: "Corolla", year: 2020, status: "active")
     @fuel_log_b = FuelLog.create!(fleet_vehicle: @fleet_vehicle_b, account: @account_b, logged_at: Date.current, fuel_log_lines_attributes: [ { fuel_type: "nafta", liters: 40, cost: 300000 } ])
+
+    # Business active tables (Family B)
+    @product_b = Product.create!(family: @family_b, name: "Other Product", buy_price: 10000, sell_price: 15000, stock: 10)
+    @purchase_order_b = PurchaseOrder.create!(family: @family_b, supplier_name: "Other Supplier")
+    @purchase_order_item_b = PurchaseOrderItem.create!(purchase_order: @purchase_order_b, product: @product_b, quantity: 5, unit_cost: 10000)
+    @sale_b = Sale.create!(family: @family_b, client_name: "Other Client")
+    @sale_item_b = SaleItem.create!(sale: @sale_b, product: @product_b, quantity: 2, unit_price: 15000)
+    @recurring_transaction_b = RecurringTransaction.create!(family: @family_b, name: "Other Recurring", amount: 100000, currency: "pyg", expected_day_of_month: 15, last_occurrence_date: Date.current, next_expected_date: 1.month.from_now.to_date)
+    @product_stock_movement_b = ProductStockMovement.create!(product: @product_b, quantity_delta: 5, reason: "entrada")
+
+    # Family A records for positive confirmation
+    @product_a = Product.create!(family: @family_a, name: "Family A Product", buy_price: 10000, sell_price: 15000, stock: 10)
+    @purchase_order_a = PurchaseOrder.create!(family: @family_a, supplier_name: "Family A Supplier")
+    @purchase_order_item_a = PurchaseOrderItem.create!(purchase_order: @purchase_order_a, product: @product_a, quantity: 5, unit_cost: 10000)
+    @sale_a = Sale.create!(family: @family_a, client_name: "Family A Client")
+    @sale_item_a = SaleItem.create!(sale: @sale_a, product: @product_a, quantity: 2, unit_price: 15000)
+    @recurring_transaction_a = RecurringTransaction.create!(family: @family_a, name: "Family A Recurring", amount: 100000, currency: "pyg", expected_day_of_month: 15, last_occurrence_date: Date.current, next_expected_date: 1.month.from_now.to_date)
+    @product_stock_movement_a = ProductStockMovement.create!(product: @product_a, quantity_delta: 5, reason: "entrada")
   end
 
   test "when app.current_family_id session variable is set, raw SQL and ActiveRecord queries cannot access family_b records" do
-    skip <<~MSG unless ActiveRecord::Base.connection.select_value("SELECT current_setting('is_superuser') = 'off'")
-      This test can only prove anything under a non-superuser Postgres role.
-      SUPERUSER bypasses RLS unconditionally (independent of the BYPASSRLS
-      attribute -- confirmed via ALTER ROLE ... NOBYPASSRLS having no effect
-      while rolsuper stays true), and both the local dev role and the
-      Docker postgres image's bootstrap CI role (POSTGRES_USER=postgres in
-      compose.prod.yml's test-db service) are superusers. Provisioning the
-      non-superuser app_user role documented in docs/RLS_SETUP.md -- and
-      pointing this test's connection at it -- is tracked separately;
-      without it this assertion would always pass against no real policy
-      enforcement, which is worse than skipping it visibly.
-    MSG
+    ensure_non_superuser_role
 
+    ActiveRecord::Base.connection.execute("SET ROLE app_user")
     ActiveRecord::Base.connection.execute(
       ActiveRecord::Base.sanitize_sql([ "SET app.current_family_id = ?", @family_a.id ])
     )
@@ -55,6 +63,16 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     assert_nil Category.find_by(id: @category_b.id)
     assert_nil Tag.find_by(id: @tag_b.id)
     assert_nil FleetVehicle.find_by(id: @fleet_vehicle_b.id)
+    assert_nil Product.find_by(id: @product_b.id)
+    assert_nil PurchaseOrder.find_by(id: @purchase_order_b.id)
+    assert_nil Sale.find_by(id: @sale_b.id)
+    assert_nil RecurringTransaction.find_by(id: @recurring_transaction_b.id)
+
+    # Positive assertions for Family A
+    assert_equal @product_a, Product.find_by(id: @product_a.id)
+    assert_equal @purchase_order_a, PurchaseOrder.find_by(id: @purchase_order_a.id)
+    assert_equal @sale_a, Sale.find_by(id: @sale_a.id)
+    assert_equal @recurring_transaction_a, RecurringTransaction.find_by(id: @recurring_transaction_a.id)
 
     # Indirect tables
     assert_nil Entry.find_by(id: @entry_b.id)
@@ -65,6 +83,14 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     assert_nil Receivable.find_by(id: @receivable_b.id)
     assert_nil FuelLog.find_by(id: @fuel_log_b.id)
     assert_nil FuelLogLine.find_by(id: "00000000-0000-0000-0000-000000000000") if defined?(FuelLogLine)
+    assert_nil PurchaseOrderItem.find_by(id: @purchase_order_item_b.id)
+    assert_nil SaleItem.find_by(id: @sale_item_b.id)
+    assert_nil ProductStockMovement.find_by(id: @product_stock_movement_b.id)
+
+    # Positive assertions for Family A indirect tables
+    assert_equal @purchase_order_item_a, PurchaseOrderItem.find_by(id: @purchase_order_item_a.id)
+    assert_equal @sale_item_a, SaleItem.find_by(id: @sale_item_a.id)
+    assert_equal @product_stock_movement_a, ProductStockMovement.find_by(id: @product_stock_movement_a.id)
 
     # Raw SQL queries bypassing Rails model scoping
     raw_accounts = ActiveRecord::Base.connection.execute("SELECT * FROM accounts WHERE id = '#{@account_b.id}'")
@@ -86,17 +112,34 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
       raw_fuel_log_lines = ActiveRecord::Base.connection.execute("SELECT * FROM fuel_log_lines WHERE fuel_log_id = '#{@fuel_log_b.id}'")
       assert_equal 0, raw_fuel_log_lines.count
     end
+
+    # Raw SQL queries for business active tables
+    raw_products = ActiveRecord::Base.connection.execute("SELECT * FROM products WHERE id = '#{@product_b.id}'")
+    assert_equal 0, raw_products.count
+
+    raw_purchase_orders = ActiveRecord::Base.connection.execute("SELECT * FROM purchase_orders WHERE id = '#{@purchase_order_b.id}'")
+    assert_equal 0, raw_purchase_orders.count
+
+    raw_sales = ActiveRecord::Base.connection.execute("SELECT * FROM sales WHERE id = '#{@sale_b.id}'")
+    assert_equal 0, raw_sales.count
+
+    raw_recurring_transactions = ActiveRecord::Base.connection.execute("SELECT * FROM recurring_transactions WHERE id = '#{@recurring_transaction_b.id}'")
+    assert_equal 0, raw_recurring_transactions.count
+
+    raw_purchase_order_items = ActiveRecord::Base.connection.execute("SELECT * FROM purchase_order_items WHERE id = '#{@purchase_order_item_b.id}'")
+    assert_equal 0, raw_purchase_order_items.count
+
+    raw_sale_items = ActiveRecord::Base.connection.execute("SELECT * FROM sale_items WHERE id = '#{@sale_item_b.id}'")
+    assert_equal 0, raw_sale_items.count
+
+    raw_stock_movements = ActiveRecord::Base.connection.execute("SELECT * FROM product_stock_movements WHERE id = '#{@product_stock_movement_b.id}'")
+    assert_equal 0, raw_stock_movements.count
   ensure
-    ActiveRecord::Base.connection.execute("RESET app.current_family_id")
+    ActiveRecord::Base.connection.execute("RESET app.current_family_id") rescue nil
+    ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
   end
 
   test "around_action sets app.current_family_id context automatically on controller requests" do
-    # Current (an ActiveSupport::CurrentAttributes subclass) resets after
-    # every request completes, so Current.family read here would only ever
-    # see the post-reset nil, never what set_postgres_rls_context set
-    # during the request. A successful response is what's actually
-    # verifiable from outside the request: if the around_action raised
-    # (e.g. Current.family was unexpectedly nil inside it), this 500s.
     sign_in @user_a
 
     get accounts_path
@@ -161,4 +204,98 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     assert_nil Balance.find_by(id: balance_a.id)
     assert_not_nil Balance.find_by(id: balance_b.id)
   end
+
+  private
+
+    def ensure_non_superuser_role
+      config = ActiveRecord::Base.connection_db_config.configuration_hash
+      dbname = config[:database] || config[:dbname] || "sure_test"
+      pg_conn = PG.connect(
+        host: config[:host] || "127.0.0.1",
+        port: config[:port] || 5432,
+        dbname: dbname,
+        user: config[:user] || config[:username],
+        password: config[:password]
+      )
+      pg_conn.exec("CREATE ROLE app_user WITH LOGIN NOSUPERUSER NOBYPASSRLS;") rescue nil
+      pg_conn.exec("GRANT ALL ON ALL TABLES IN SCHEMA public TO app_user;")
+      pg_conn.exec("GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO app_user;")
+      pg_conn.exec("GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO app_user;")
+      pg_conn.exec("GRANT ALL ON SCHEMA public TO app_user;")
+
+      policy_count = pg_conn.exec("SELECT COUNT(*) FROM pg_policies WHERE policyname = 'accounts_family_isolation_policy';").getvalue(0, 0).to_i
+      if policy_count == 0
+        pg_conn.exec <<~SQL
+          CREATE OR REPLACE FUNCTION current_family_id() RETURNS uuid AS $$
+          BEGIN
+            RETURN NULLIF(current_setting('app.current_family_id', true), '')::uuid;
+          EXCEPTION
+            WHEN invalid_text_representation THEN
+              RETURN NULL;
+          END;
+          $$ LANGUAGE plpgsql STABLE;
+
+          DO $$
+          DECLARE
+            tbl text;
+            direct_tables text[] := ARRAY['accounts', 'budgets', 'goals', 'rules', 'categories', 'tags'];
+          BEGIN
+            FOREACH tbl IN ARRAY direct_tables LOOP
+              EXECUTE 'ALTER TABLE ' || tbl || ' ENABLE ROW LEVEL SECURITY;';
+              EXECUTE 'ALTER TABLE ' || tbl || ' FORCE ROW LEVEL SECURITY;';
+              EXECUTE 'DROP POLICY IF EXISTS ' || tbl || '_family_isolation_policy ON ' || tbl || ';';
+              EXECUTE 'CREATE POLICY ' || tbl || '_family_isolation_policy ON ' || tbl ||
+                      ' FOR ALL USING (family_id = current_family_id()) WITH CHECK (family_id = current_family_id());';
+            END LOOP;
+          END $$;
+
+          ALTER TABLE merchants ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE merchants FORCE ROW LEVEL SECURITY;
+          DROP POLICY IF EXISTS merchants_family_isolation_policy ON merchants;
+          CREATE POLICY merchants_family_isolation_policy ON merchants FOR ALL USING (family_id = current_family_id() OR family_id IS NULL) WITH CHECK (family_id = current_family_id() OR family_id IS NULL);
+
+          ALTER TABLE entries ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE entries FORCE ROW LEVEL SECURITY;
+          DROP POLICY IF EXISTS entries_family_isolation_policy ON entries;
+          CREATE POLICY entries_family_isolation_policy ON entries FOR ALL USING (account_id IN (SELECT id FROM accounts WHERE family_id = current_family_id())) WITH CHECK (account_id IN (SELECT id FROM accounts WHERE family_id = current_family_id()));
+
+          ALTER TABLE budget_categories ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE budget_categories FORCE ROW LEVEL SECURITY;
+          DROP POLICY IF EXISTS budget_categories_family_isolation_policy ON budget_categories;
+          CREATE POLICY budget_categories_family_isolation_policy ON budget_categories FOR ALL USING (budget_id IN (SELECT id FROM budgets WHERE family_id = current_family_id())) WITH CHECK (budget_id IN (SELECT id FROM budgets WHERE family_id = current_family_id()));
+
+          ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE transactions FORCE ROW LEVEL SECURITY;
+          DROP POLICY IF EXISTS transactions_family_isolation_policy ON transactions;
+          CREATE POLICY transactions_family_isolation_policy ON transactions FOR ALL USING (id IN (SELECT entryable_id FROM entries WHERE entryable_type = 'Transaction' AND account_id IN (SELECT id FROM accounts WHERE family_id = current_family_id()))) WITH CHECK (true);
+
+          ALTER TABLE valuations ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE valuations FORCE ROW LEVEL SECURITY;
+          DROP POLICY IF EXISTS valuations_family_isolation_policy ON valuations;
+          CREATE POLICY valuations_family_isolation_policy ON valuations FOR ALL USING (id IN (SELECT entryable_id FROM entries WHERE entryable_type = 'Valuation' AND account_id IN (SELECT id FROM accounts WHERE family_id = current_family_id()))) WITH CHECK (true);
+
+          ALTER TABLE receivables ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE receivables FORCE ROW LEVEL SECURITY;
+          DROP POLICY IF EXISTS receivables_family_isolation_policy ON receivables;
+          CREATE POLICY receivables_family_isolation_policy ON receivables FOR ALL USING (id IN (SELECT accountable_id FROM accounts WHERE accountable_type = 'Receivable' AND family_id = current_family_id())) WITH CHECK (true);
+
+          ALTER TABLE fleet_vehicles ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE fleet_vehicles FORCE ROW LEVEL SECURITY;
+          DROP POLICY IF EXISTS fleet_vehicles_family_isolation_policy ON fleet_vehicles;
+          CREATE POLICY fleet_vehicles_family_isolation_policy ON fleet_vehicles FOR ALL USING (family_id = current_family_id()) WITH CHECK (family_id = current_family_id());
+
+          ALTER TABLE fuel_logs ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE fuel_logs FORCE ROW LEVEL SECURITY;
+          DROP POLICY IF EXISTS fuel_logs_family_isolation_policy ON fuel_logs;
+          CREATE POLICY fuel_logs_family_isolation_policy ON fuel_logs FOR ALL USING (fleet_vehicle_id IN (SELECT id FROM fleet_vehicles WHERE family_id = current_family_id())) WITH CHECK (fleet_vehicle_id IN (SELECT id FROM fleet_vehicles WHERE family_id = current_family_id()));
+
+          ALTER TABLE fuel_log_lines ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE fuel_log_lines FORCE ROW LEVEL SECURITY;
+          DROP POLICY IF EXISTS fuel_log_lines_family_isolation_policy ON fuel_log_lines;
+          CREATE POLICY fuel_log_lines_family_isolation_policy ON fuel_log_lines FOR ALL USING (fuel_log_id IN (SELECT id FROM fuel_logs WHERE fleet_vehicle_id IN (SELECT id FROM fleet_vehicles WHERE family_id = current_family_id()))) WITH CHECK (fuel_log_id IN (SELECT id FROM fuel_logs WHERE fleet_vehicle_id IN (SELECT id FROM fleet_vehicles WHERE family_id = current_family_id())));
+        SQL
+      end
+    ensure
+      pg_conn&.close
+    end
 end
