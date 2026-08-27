@@ -22,7 +22,7 @@ Para que las políticas RLS tengan efecto real y bloqueen efectivamente accesos 
 #### Script SQL para Configurar el Rol de Aplicación sin BYPASSRLS
 ```sql
 -- 1. Crear el rol dedicado para la app Rails (sin superusuario ni bypassrls)
-CREATE ROLE app_user WITH LOGIN PASSWORD 'un_password_seguro_aqui' NOBYPASSRLS NOSUPERUSER;
+CREATE ROLE app_user WITH LOGIN PASSWORD :'app_user_password' NOBYPASSRLS NOSUPERUSER; -- pasar con psql -v app_user_password=... , nunca hardcodear el valor real acá
 
 -- 2. Conceder permisos necesarios en el esquema financespy
 -- NOTA: produccion usa el schema "financespy", no "public" (confirmado via
