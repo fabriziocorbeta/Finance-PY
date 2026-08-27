@@ -1,48 +1,54 @@
 # frozen_string_literal: true
 
+entry = transaction.entry
+
 json.id transaction.id
-json.date transaction.entry.date
-json.amount transaction.entry.amount_money.format
+json.date entry.date
 
 # Agent/automation-friendly numeric fields (avoid localized parsing and clarify sign)
 # `amount` in v1 is a localized string and may follow an accounting sign convention.
 # Expose minor units (cents) as integers to make the API agent-friendly.
 # Uses currency.minor_unit_conversion (e.g. 100 for USD/EUR, 1 for JPY, 1000 for KWD).
-amount_money = transaction.entry.amount_money
+amount_money = entry.amount_money
+json.amount amount_money.format
+
 conversion_factor = amount_money.currency.minor_unit_conversion
 amount_cents = (amount_money.amount * conversion_factor).round(0).to_i.abs
 json.amount_cents amount_cents
-json.signed_amount_cents(transaction.entry.classification == "income" ? amount_cents : -amount_cents)
+json.signed_amount_cents(entry.classification == "income" ? amount_cents : -amount_cents)
 
-json.currency transaction.entry.currency
-json.name transaction.entry.name
-json.notes transaction.entry.notes
-json.classification transaction.entry.classification
+json.currency entry.currency
+json.name entry.name
+json.notes entry.notes
+json.classification entry.classification
 
 # Account information
+account = entry.account
 json.account do
-  json.id transaction.entry.account.id
-  json.name transaction.entry.account.name
-  json.account_type transaction.entry.account.accountable_type.underscore
+  json.id account.id
+  json.name account.name
+  json.account_type account.accountable_type.underscore
 end
 
 # Category information
-if transaction.category.present?
+category = transaction.category
+if category.present?
   json.category do
-    json.id transaction.category.id
-    json.name transaction.category.name
-    json.color transaction.category.color
-    json.icon transaction.category.lucide_icon
+    json.id category.id
+    json.name category.name
+    json.color category.color
+    json.icon category.lucide_icon
   end
 else
   json.category nil
 end
 
 # Merchant information
-if transaction.merchant.present?
+merchant = transaction.merchant
+if merchant.present?
   json.merchant do
-    json.id transaction.merchant.id
-    json.name transaction.merchant.name
+    json.id merchant.id
+    json.name merchant.name
   end
 else
   json.merchant nil
@@ -56,24 +62,32 @@ json.tags transaction.tags do |tag|
 end
 
 # Transfer information (if this transaction is part of a transfer)
-if transaction.transfer.present?
+transfer = transaction.transfer
+if transfer.present?
+  inflow_entry = transfer.inflow_transaction&.entry
   json.transfer do
-    json.id transaction.transfer.id
-    json.amount transaction.transfer.amount_abs.format
-    json.currency transaction.transfer.inflow_transaction.entry.currency
+    json.id transfer.id
+    json.amount transfer.amount_abs&.format
+    json.currency inflow_entry&.currency
 
     # Other transaction in the transfer
-    if transaction.transfer.inflow_transaction == transaction
-      other_transaction = transaction.transfer.outflow_transaction
+    if transfer.inflow_transaction == transaction
+      other_transaction = transfer.outflow_transaction
     else
-      other_transaction = transaction.transfer.inflow_transaction
+      other_transaction = transfer.inflow_transaction
     end
 
     if other_transaction.present?
-      json.other_account do
-        json.id other_transaction.entry.account.id
-        json.name other_transaction.entry.account.name
-        json.account_type other_transaction.entry.account.accountable_type.underscore
+      other_entry = other_transaction.entry
+      other_account = other_entry&.account
+      if other_account.present?
+        json.other_account do
+          json.id other_account.id
+          json.name other_account.name
+          json.account_type other_account.accountable_type.underscore
+        end
+      else
+        json.other_account nil
       end
     end
   end
