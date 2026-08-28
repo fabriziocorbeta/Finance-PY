@@ -22,18 +22,16 @@ Para que las políticas RLS tengan efecto real y bloqueen efectivamente accesos 
 #### Script SQL para Configurar el Rol de Aplicación sin BYPASSRLS
 ```sql
 -- 1. Crear el rol dedicado para la app Rails (sin superusuario ni bypassrls)
-CREATE ROLE app_user WITH LOGIN PASSWORD :'app_user_password' NOBYPASSRLS NOSUPERUSER; -- pasar con psql -v app_user_password=... , nunca hardcodear el valor real acá
+CREATE ROLE app_user WITH LOGIN PASSWORD 'un_password_seguro_aqui' NOBYPASSRLS NOSUPERUSER;
 
--- 2. Conceder permisos necesarios en el esquema financespy
--- NOTA: produccion usa el schema "financespy", no "public" (confirmado via
--- docker inspect del contenedor y compose.local.yml). Ajustar antes de correr.
-GRANT USAGE ON SCHEMA financespy TO app_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA financespy TO app_user;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA financespy TO app_user;
+-- 2. Conceder permisos necesarios en el esquema public
+GRANT USAGE ON SCHEMA public TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_user;
 
 -- 3. Asegurar permisos por defecto para futuras migraciones
-ALTER DEFAULT PRIVILEGES IN SCHEMA financespy GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA financespy GRANT USAGE, SELECT ON SEQUENCES TO app_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO app_user;
 ```
 
 Posteriormente, actualizar la variable de entorno `POSTGRES_USER=app_user` (y su contraseña respectiva) en el servidor de producción.
@@ -153,15 +151,3 @@ SELECT * FROM accounts WHERE family_id = '22222222-2222-2222-2222-222222222222';
 
 COMMIT;
 ```
-
----
-
-## 4. Tablas deliberadamente excluidas: `users` e `invitations`
-
-`users` e `invitations` tienen `family_id`, pero NO reciben policy RLS a nivel de tabla. Es una decisión deliberada, no un gap pendiente:
-
-- `users.email` tiene un índice único **global** (no scoped por family). El login (`SessionsController#create`, `User.find_by(email:)`) necesita encontrar al usuario ANTES de que exista contexto de family - en ese punto `current_family_id()` es `NULL`, así que una policy `family_id = current_family_id()` devolvería 0 filas siempre y ningún login funcionaría.
-- `invitations` tiene el mismo problema para el flujo de aceptar invitación por token (el invitado todavía no tiene family propia en ese momento).
-- La alternativa de agregar `OR current_family_id() IS NULL` a la policy anula la protección: cualquier contexto sin family seteada (incluyendo un job que se olvidó de setearlo) vería la tabla completa - exactamente el bug que RLS existe para prevenir.
-
-El aislamiento entre families para estas dos tablas sigue siendo responsabilidad de la capa Rails (`family.users`, `family.invitations`), como ya es hoy. Si en el futuro se necesita RLS real acá, requiere un rol de DB separado con permiso explícito solo para el lookup de login/accept-invite, no el patrón `family_id = current_family_id()` que usan el resto de las tablas.
