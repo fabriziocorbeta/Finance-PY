@@ -20,7 +20,7 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     pg_conn.exec("GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO app_user;")
     pg_conn.exec("GRANT ALL ON SCHEMA public TO app_user;")
 
-    policy_count = pg_conn.exec("SELECT COUNT(*) FROM pg_policies WHERE policyname = 'accounts_family_isolation_policy';").getvalue(0, 0).to_i
+    policy_count = pg_conn.exec("SELECT COUNT(*) FROM pg_policies WHERE policyname = 'products_family_isolation_policy';").getvalue(0, 0).to_i
     if policy_count == 0
       pg_conn.exec <<~SQL
         CREATE OR REPLACE FUNCTION current_family_id() RETURNS uuid AS $$
@@ -35,7 +35,7 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
         DO $$
         DECLARE
           tbl text;
-          direct_tables text[] := ARRAY['accounts', 'budgets', 'goals', 'rules', 'categories', 'tags'];
+          direct_tables text[] := ARRAY['accounts', 'budgets', 'goals', 'rules', 'categories', 'tags', 'fleet_vehicles', 'products', 'purchase_orders', 'sales', 'recurring_transactions'];
         BEGIN
           FOREACH tbl IN ARRAY direct_tables LOOP
             EXECUTE 'ALTER TABLE ' || tbl || ' ENABLE ROW LEVEL SECURITY;';
@@ -76,11 +76,6 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
         DROP POLICY IF EXISTS receivables_family_isolation_policy ON receivables;
         CREATE POLICY receivables_family_isolation_policy ON receivables FOR ALL USING (id IN (SELECT accountable_id FROM accounts WHERE accountable_type = 'Receivable' AND family_id = current_family_id())) WITH CHECK (true);
 
-        ALTER TABLE fleet_vehicles ENABLE ROW LEVEL SECURITY;
-        ALTER TABLE fleet_vehicles FORCE ROW LEVEL SECURITY;
-        DROP POLICY IF EXISTS fleet_vehicles_family_isolation_policy ON fleet_vehicles;
-        CREATE POLICY fleet_vehicles_family_isolation_policy ON fleet_vehicles FOR ALL USING (family_id = current_family_id()) WITH CHECK (family_id = current_family_id());
-
         ALTER TABLE fuel_logs ENABLE ROW LEVEL SECURITY;
         ALTER TABLE fuel_logs FORCE ROW LEVEL SECURITY;
         DROP POLICY IF EXISTS fuel_logs_family_isolation_policy ON fuel_logs;
@@ -90,6 +85,21 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
         ALTER TABLE fuel_log_lines FORCE ROW LEVEL SECURITY;
         DROP POLICY IF EXISTS fuel_log_lines_family_isolation_policy ON fuel_log_lines;
         CREATE POLICY fuel_log_lines_family_isolation_policy ON fuel_log_lines FOR ALL USING (fuel_log_id IN (SELECT id FROM fuel_logs WHERE fleet_vehicle_id IN (SELECT id FROM fleet_vehicles WHERE family_id = current_family_id()))) WITH CHECK (fuel_log_id IN (SELECT id FROM fuel_logs WHERE fleet_vehicle_id IN (SELECT id FROM fleet_vehicles WHERE family_id = current_family_id())));
+
+        ALTER TABLE purchase_order_items ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE purchase_order_items FORCE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS purchase_order_items_family_isolation_policy ON purchase_order_items;
+        CREATE POLICY purchase_order_items_family_isolation_policy ON purchase_order_items FOR ALL USING (purchase_order_id IN (SELECT id FROM purchase_orders WHERE family_id = current_family_id())) WITH CHECK (purchase_order_id IN (SELECT id FROM purchase_orders WHERE family_id = current_family_id()));
+
+        ALTER TABLE sale_items ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE sale_items FORCE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS sale_items_family_isolation_policy ON sale_items;
+        CREATE POLICY sale_items_family_isolation_policy ON sale_items FOR ALL USING (sale_id IN (SELECT id FROM sales WHERE family_id = current_family_id())) WITH CHECK (sale_id IN (SELECT id FROM sales WHERE family_id = current_family_id()));
+
+        ALTER TABLE product_stock_movements ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE product_stock_movements FORCE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS product_stock_movements_family_isolation_policy ON product_stock_movements;
+        CREATE POLICY product_stock_movements_family_isolation_policy ON product_stock_movements FOR ALL USING (product_id IN (SELECT id FROM products WHERE family_id = current_family_id())) WITH CHECK (product_id IN (SELECT id FROM products WHERE family_id = current_family_id()));
       SQL
     end
     @non_superuser_role_ensured = true
