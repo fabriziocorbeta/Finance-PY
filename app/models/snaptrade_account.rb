@@ -2,6 +2,11 @@ class SnaptradeAccount < ApplicationRecord
   include CurrencyNormalizable, Encryptable
   include SnaptradeAccount::DataHelpers
 
+  serialize :raw_payload, coder: JSON
+  serialize :raw_transactions_payload, coder: JSON
+  serialize :raw_holdings_payload, coder: JSON
+  serialize :raw_activities_payload, coder: JSON
+
   # Encrypt raw payloads if ActiveRecord encryption is configured
   if encryption_ready?
     encrypts :raw_payload
