@@ -42,10 +42,16 @@
         <h4 class="text-xs font-medium text-secondary uppercase"><%= t("fleet_vehicles.show.average_efficiency") %></h4>
         <div class="text-primary mt-1 text-sm space-y-0.5">
           <% if @fleet_vehicle.average_fuel_efficiency.present? %>
-            <% @fleet_vehicle.average_fuel_efficiency.each do |type, eff| %>
+            <% @fleet_vehicle.average_fuel_efficiency.except("overall").each do |type, eff| %>
               <div>
                 <span class="capitalize font-medium text-xs"><%= t("fuel_logs.fuel_types.#{type}", default: type.capitalize) %>:</span>
                 <%= t("fleet_vehicles.show.efficiency_value", value: number_with_precision(eff, precision: 2)) %>
+              </div>
+            <% end %>
+            <% if @fleet_vehicle.average_fuel_efficiency["overall"] %>
+              <div class="pt-0.5 mt-0.5 border-t border-gray-100">
+                <span class="font-semibold text-xs"><%= t("fuel_logs.fuel_types.overall") %>:</span>
+                <%= t("fleet_vehicles.show.efficiency_value", value: number_with_precision(@fleet_vehicle.average_fuel_efficiency["overall"], precision: 2)) %>
               </div>
             <% end %>
           <% else %>
@@ -87,10 +93,16 @@
         <h4 class="text-xs font-medium text-secondary uppercase"><%= t("fleet_vehicles.show.monthly_efficiency") %></h4>
         <div class="text-primary mt-1 text-sm space-y-0.5">
           <% if @fleet_vehicle.monthly_average_efficiency.present? %>
-            <% @fleet_vehicle.monthly_average_efficiency.each do |type, eff| %>
+            <% @fleet_vehicle.monthly_average_efficiency.except("overall").each do |type, eff| %>
               <div>
                 <span class="capitalize font-medium text-xs"><%= t("fuel_logs.fuel_types.#{type}", default: type.capitalize) %>:</span>
                 <%= t("fleet_vehicles.show.efficiency_value", value: number_with_precision(eff, precision: 2)) %>
+              </div>
+            <% end %>
+            <% if @fleet_vehicle.monthly_average_efficiency["overall"] %>
+              <div class="pt-0.5 mt-0.5 border-t border-gray-100">
+                <span class="font-semibold text-xs"><%= t("fuel_logs.fuel_types.overall") %>:</span>
+                <%= t("fleet_vehicles.show.efficiency_value", value: number_with_precision(@fleet_vehicle.monthly_average_efficiency["overall"], precision: 2)) %>
               </div>
             <% end %>
           <% else %>
