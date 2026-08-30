@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_22_000000) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_28_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -1536,10 +1536,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_22_000000) do
     t.string "account_type"
     t.string "provider"
     t.jsonb "institution_metadata"
-    t.jsonb "raw_payload"
-    t.jsonb "raw_transactions_payload"
-    t.jsonb "raw_holdings_payload", default: []
-    t.jsonb "raw_activities_payload", default: []
+    t.text "raw_payload"
+    t.text "raw_transactions_payload"
+    t.text "raw_holdings_payload", default: "[]"
+    t.text "raw_activities_payload", default: "[]"
     t.datetime "last_holdings_sync"
     t.datetime "last_activities_sync"
     t.boolean "activities_fetch_pending", default: false
