@@ -6,7 +6,9 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   DEFAULT_VIEWPORT_HEIGHT = 1400
 
   setup do
-    Capybara.default_max_wait_time = 5
+    # CI runners are slower/more contended than local dev, especially under
+    # heavy parallel job load — give system tests more room before timing out.
+    Capybara.default_max_wait_time = ENV["CI"].present? ? 15 : 5
 
     if ENV["SELENIUM_REMOTE_URL"].present?
       server_port = ENV.fetch("CAPYBARA_SERVER_PORT", 30_000 + (Process.pid % 1000)).to_i
