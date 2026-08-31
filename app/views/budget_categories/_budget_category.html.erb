@@ -3,7 +3,7 @@
 <%
   cache_key = [
     budget_category,
-    budget_category.budget.family.entries_cache_version,
+    budget_category.budget.family.entries_cache_version(date_range: budget_category.budget.period.date_range),
     show_budget_meta
   ]
 %>
