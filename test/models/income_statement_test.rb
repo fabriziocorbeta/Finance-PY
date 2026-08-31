@@ -546,6 +546,61 @@ class IncomeStatementTest < ActiveSupport::TestCase
     assert_empty results
   end
 
+  test "estimated_spending and actual_spending are unchanged when transactions are within lookback window" do
+    Entry.joins(:account).where(accounts: { family_id: @family.id }).destroy_all
+
+    create_transaction(account: @checking_account, amount: 500, category: @groceries_category, date: 2.months.ago)
+    create_transaction(account: @checking_account, amount: 300, category: @groceries_category, date: Date.current)
+
+    income_statement = IncomeStatement.new(@family)
+    budget = Budget.find_or_bootstrap(@family, start_date: Date.current)
+
+    stats_unbounded = IncomeStatement::FamilyStats.new(@family, lookback_months: nil).call
+    stats_bounded = IncomeStatement::FamilyStats.new(@family, lookback_months: 12).call
+
+    assert_equal stats_unbounded.map(&:median), stats_bounded.map(&:median)
+    assert_equal stats_unbounded.map(&:avg), stats_bounded.map(&:avg)
+    assert_equal 300, budget.actual_spending
+    assert_equal income_statement.median_expense(interval: "month"), budget.estimated_spending
+  end
+
+  test "short-history family does not error when calculating stats and estimated spending" do
+    short_family = Family.create!(name: "Short History Family", currency: "USD", locale: "en", date_format: "%Y-%m-%d")
+    checking = short_family.accounts.create!(name: "Checking", currency: "USD", balance: 1000, accountable: Depository.new)
+    cat = short_family.categories.create!(name: "Food")
+
+    create_transaction(account: checking, amount: 150, category: cat, date: 1.month.ago)
+    create_transaction(account: checking, amount: 200, category: cat, date: Date.current)
+
+    income_statement = IncomeStatement.new(short_family)
+    budget = Budget.find_or_bootstrap(short_family, start_date: Date.current)
+
+    assert_nothing_raised do
+      assert_not_nil budget.estimated_spending
+      assert_not_nil budget.actual_spending
+      assert_not_nil income_statement.median_expense
+      assert_not_nil income_statement.avg_expense
+    end
+  end
+
+  test "editing an entry in month A does not change the cache key for month B budget totals_query" do
+    month_a_range = Date.new(2025, 1, 1)..Date.new(2025, 1, 31)
+    month_b_range = Date.new(2025, 2, 1)..Date.new(2025, 2, 28)
+
+    entry_a = create_transaction(account: @checking_account, amount: 100, category: @groceries_category, date: Date.new(2025, 1, 15))
+    entry_b = create_transaction(account: @checking_account, amount: 150, category: @groceries_category, date: Date.new(2025, 2, 15))
+
+    version_b_before = @family.entries_cache_version(date_range: month_b_range)
+
+    # Edit entry in Month A
+    entry_a.update!(amount: 200, updated_at: Time.current + 1.hour)
+    @family.instance_variable_set(:@entries_cache_version_by_range, nil)
+
+    version_b_after = @family.entries_cache_version(date_range: month_b_range)
+
+    assert_equal version_b_before, version_b_after, "Month B cache version should not change when an entry in Month A is edited"
+  end
+
   test "returns zero totals when family has only tax-advantaged accounts" do
     # Create a fresh family with ONLY tax-advantaged accounts
     family_only_retirement = Family.create!(

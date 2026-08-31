@@ -1,4 +1,4 @@
-<% cache [budget.family_id, Current.user&.id, budget.id, budget.updated_at, budget.budget_categories.maximum(:updated_at), budget.family.entries_cache_version] do %>
+<% cache [budget.family_id, Current.user&.id, budget.id, budget.updated_at, budget.budget_categories.maximum(:updated_at), budget.family.entries_cache_version(date_range: budget.period.date_range)] do %>
   <%= tag.div data: { controller: "donut-chart", donut_chart_segments_value: budget.to_donut_segments_json }, class: "relative h-full" do %>
     <div data-donut-chart-target="chartContainer" class="absolute inset-0 pointer-events-none"></div>
 
