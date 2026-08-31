@@ -11,6 +11,10 @@
 /.bundle
 /vendor/bundle
 
+# Ignore Redis dump files
+*.rdb
+dump.rdb
+
 # Ignore all environment files (except templates).
 /.env*
 !/.env*.erb
