@@ -307,7 +307,7 @@ class Family < ApplicationRecord
   end
 
   def oldest_entry_date
-    entries.order(:date).first&.date || Date.current
+    @oldest_entry_date ||= entries.order(:date).first&.date || Date.current
   end
 
   # Used for invalidating family / balance sheet related aggregation queries
