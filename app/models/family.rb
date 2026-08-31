@@ -320,7 +320,7 @@ class Family < ApplicationRecord
       id,
       key,
       data_invalidation_key,
-      accounts.maximum(:updated_at)
+      accounts_cache_version
     ].compact.join("_")
   end
 

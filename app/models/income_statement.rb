@@ -30,11 +30,13 @@ class IncomeStatement
   end
 
   def expense_totals(period: Period.current_month)
-    build_period_total(classification: "expense", period: period)
+    @expense_totals ||= {}
+    @expense_totals[period] ||= build_period_total(classification: "expense", period: period)
   end
 
   def income_totals(period: Period.current_month)
-    build_period_total(classification: "income", period: period)
+    @income_totals ||= {}
+    @income_totals[period] ||= build_period_total(classification: "income", period: period)
   end
 
   def net_category_totals(period: Period.current_month)
