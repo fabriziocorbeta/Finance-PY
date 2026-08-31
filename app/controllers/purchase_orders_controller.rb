@@ -68,7 +68,7 @@ class PurchaseOrdersController < ApplicationController
   private
 
     def set_purchase_order
-      @purchase_order = Current.family.purchase_orders.find(params[:id])
+      @purchase_order = Current.family.purchase_orders.includes(purchase_order_items: :product).find(params[:id])
     end
 
     def purchase_order_params
