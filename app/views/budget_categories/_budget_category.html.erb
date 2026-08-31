@@ -1,5 +1,14 @@
 <%# locals: (budget_category:, show_budget_meta: true) %>
 
+<%
+  cache_key = [
+    budget_category,
+    budget_category.budget.family.entries_cache_version,
+    show_budget_meta
+  ]
+%>
+
+<% cache cache_key do %>
 <%= turbo_frame_tag dom_id(budget_category), class: "flex-1 min-w-0 block" do %>
   <%= link_to budget_budget_category_path(budget_category.budget, budget_category), class: "group block w-full px-4 py-2 bg-container", data: { turbo_frame: "drawer" } do %>
 
@@ -126,4 +135,5 @@
       </div>
     <% end %>
   <% end %>
+<% end %>
 <% end %>

@@ -61,8 +61,9 @@ class Budget < ApplicationRecord
           b.currency = family.currency
         end
 
+        budget.family = family
         budget.current_user = user
-        budget.sync_budget_categories
+        budget.sync_budget_categories_if_needed
 
         budget
       end
@@ -92,6 +93,13 @@ class Budget < ApplicationRecord
     self.class.date_to_param(start_date)
   end
 
+  def sync_budget_categories_if_needed
+    max_cat_updated = family.categories.maximum(:updated_at)
+    return if categories_last_synced_at.present? && max_cat_updated.present? && categories_last_synced_at >= max_cat_updated
+
+    sync_budget_categories
+  end
+
   def sync_budget_categories
     current_category_ids = family.categories.pluck(:id).to_set
     existing_budget_category_ids = budget_categories.pluck(:category_id).to_set
@@ -109,6 +117,8 @@ class Budget < ApplicationRecord
 
     # Remove old categories
     budget_categories.where(category_id: categories_to_remove).destroy_all if categories_to_remove.any?
+
+    update_column(:categories_last_synced_at, Time.current)
   end
 
   def uncategorized_budget_category

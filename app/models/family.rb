@@ -324,6 +324,10 @@ class Family < ApplicationRecord
     ].compact.join("_")
   end
 
+  def entries_max_updated_at
+    @entries_max_updated_at ||= entries.maximum(:updated_at)
+  end
+
   # Used for invalidating entry related aggregation queries
   def entries_cache_version(date_range: nil)
     if date_range
@@ -334,7 +338,7 @@ class Family < ApplicationRecord
       end
     else
       @entries_cache_version ||= begin
-        ts = entries.maximum(:updated_at)
+        ts = entries_max_updated_at
         ts.present? ? ts.to_i : 0
       end
     end
@@ -342,7 +346,7 @@ class Family < ApplicationRecord
 
   def entries_coarse_cache_version
     @entries_coarse_cache_version ||= begin
-      ts = entries.maximum(:updated_at)
+      ts = entries_max_updated_at
       ts.present? ? ts.to_date.to_s : "0"
     end
   end

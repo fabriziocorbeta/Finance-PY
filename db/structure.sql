@@ -354,7 +354,8 @@ CREATE TABLE public.budgets (
     expected_income numeric(19,4),
     currency character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    categories_last_synced_at timestamp(6) without time zone
 );
 
 ALTER TABLE ONLY public.budgets FORCE ROW LEVEL SECURITY;
@@ -6539,6 +6540,7 @@ CREATE POLICY valuations_family_isolation_policy ON public.valuations USING ((id
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260831100000'),
 ('20260828000000'),
 ('20260822000000'),
 ('20260821000000'),
