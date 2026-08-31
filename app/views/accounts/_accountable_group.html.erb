@@ -1,7 +1,7 @@
 <%# locals: (account_group:, family: Current.family, mobile: false, all_tab: false, open: nil, **args) %>
 
 <% family ||= Current.family %>
-<% cache [family.id, Current.user&.id, account_group.key, mobile, all_tab, "accountable_group", family.accounts.maximum(:updated_at), family.entries_cache_version] do %>
+<% cache [family.id, Current.user&.id, account_group.key, mobile, all_tab, "accountable_group", family.accounts_cache_version, family.entries_coarse_cache_version] do %>
   <div id="<%= account_group.dom_id(tab: all_tab ? :all : nil, mobile: mobile) %>">
     <%
       accounts_with_paths = account_group.accounts.map do |account|

@@ -347,6 +347,12 @@ class Family < ApplicationRecord
     end
   end
 
+  # Memoized per-request so repeated fragment cache key builds (once per
+  # sidebar account group) don't each re-run this query.
+  def accounts_cache_version
+    @accounts_cache_version ||= accounts.maximum(:updated_at)
+  end
+
   def self_hoster?
     Rails.application.config.app_mode.self_hosted?
   end
