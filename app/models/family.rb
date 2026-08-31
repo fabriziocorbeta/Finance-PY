@@ -325,10 +325,25 @@ class Family < ApplicationRecord
   end
 
   # Used for invalidating entry related aggregation queries
-  def entries_cache_version
-    @entries_cache_version ||= begin
+  def entries_cache_version(date_range: nil)
+    if date_range
+      @entries_cache_version_by_range ||= {}
+      @entries_cache_version_by_range[date_range] ||= begin
+        ts = entries.where(date: date_range).maximum(:updated_at)
+        ts.present? ? ts.to_i : 0
+      end
+    else
+      @entries_cache_version ||= begin
+        ts = entries.maximum(:updated_at)
+        ts.present? ? ts.to_i : 0
+      end
+    end
+  end
+
+  def entries_coarse_cache_version
+    @entries_coarse_cache_version ||= begin
       ts = entries.maximum(:updated_at)
-      ts.present? ? ts.to_i : 0
+      ts.present? ? ts.to_date.to_s : "0"
     end
   end
 

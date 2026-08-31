@@ -1,8 +1,11 @@
 class IncomeStatement::FamilyStats
-  def initialize(family, interval: "month", account_ids: nil)
+  DEFAULT_LOOKBACK_MONTHS = 12
+
+  def initialize(family, interval: "month", account_ids: nil, lookback_months: DEFAULT_LOOKBACK_MONTHS)
     @family = family
     @interval = interval
     @account_ids = account_ids
+    @lookback_months = lookback_months
   end
 
   def call
@@ -34,10 +37,17 @@ class IncomeStatement::FamilyStats
         family_id: @family.id
       }
 
+      params[:start_date] = @lookback_months.months.ago.to_date.beginning_of_month if @lookback_months.present?
+
       ids = @family.tax_advantaged_account_ids
       params[:tax_advantaged_account_ids] = ids if ids.present?
 
       params
+    end
+
+    def lookback_sql
+      return "" if @lookback_months.nil?
+      "AND ae.date >= :start_date"
     end
 
     def budget_excluded_kinds_sql
@@ -80,6 +90,7 @@ class IncomeStatement::FamilyStats
             #{pending_providers_sql}
             #{exclude_tax_advantaged_sql}
             #{scope_to_account_ids_sql}
+            #{lookback_sql}
           GROUP BY period, CASE WHEN t.kind IN ('investment_contribution', 'loan_payment') THEN 'expense' WHEN ae.amount < 0 THEN 'income' ELSE 'expense' END
         )
         SELECT
