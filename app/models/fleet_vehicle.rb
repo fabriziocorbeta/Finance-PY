@@ -13,6 +13,8 @@ class FleetVehicle < ApplicationRecord
     return {} if logs.size < 2
 
     category_efficiencies = Hash.new { |h, k| h[k] = [] }
+    total_distance = 0.0
+    total_liters = 0.0
 
     logs.each_cons(2) do |prev_log, curr_log|
       distance = curr_log.odometer - prev_log.odometer
@@ -22,11 +24,18 @@ class FleetVehicle < ApplicationRecord
 
       category = interval_category(curr_log)
       category_efficiencies[category] << (distance.to_f / liters)
+      total_distance += distance
+      total_liters += liters
     end
 
-    category_efficiencies.transform_values do |effs|
+    return {} if category_efficiencies.empty?
+
+    result = category_efficiencies.transform_values do |effs|
       effs.sum / effs.size
     end
+
+    result["overall"] = total_distance / total_liters if total_liters > 0
+    result
   end
 
   def monthly_fuel_consumed(month = Date.current)
@@ -85,6 +94,8 @@ class FleetVehicle < ApplicationRecord
     all_logs = ([ prev_log ].compact + month_logs.to_a).uniq
 
     category_efficiencies = Hash.new { |h, k| h[k] = [] }
+    total_distance = 0.0
+    total_liters = 0.0
 
     all_logs.each_cons(2) do |prev, curr|
       next unless month_logs.include?(curr)
@@ -95,11 +106,18 @@ class FleetVehicle < ApplicationRecord
 
       category = interval_category(curr)
       category_efficiencies[category] << (distance.to_f / liters)
+      total_distance += distance
+      total_liters += liters
     end
 
-    category_efficiencies.transform_values do |effs|
+    return {} if category_efficiencies.empty?
+
+    result = category_efficiencies.transform_values do |effs|
       effs.sum / effs.size
     end
+
+    result["overall"] = total_distance / total_liters if total_liters > 0
+    result
   end
 
   private

@@ -50,7 +50,7 @@ class BudgetCategory < ApplicationRecord
   end
 
   def actual_spending
-    budget.budget_category_actual_spending(self)
+    @actual_spending ||= budget.budget_category_actual_spending(self)
   end
 
   def update_budgeted_spending!(new_budgeted_spending)
@@ -100,39 +100,8 @@ class BudgetCategory < ApplicationRecord
   end
 
   def available_to_spend
-    if inherits_parent_budget?
-      # Subcategories using parent budget share the parent's available_to_spend
-      parent = parent_budget_category
-      return 0 unless parent
-      parent.available_to_spend
-    elsif subcategory?
-      # Subcategory with individual limit
-      (self[:budgeted_spending] || 0) - actual_spending
-    else
-      # Parent category
-      parent_budget = self[:budgeted_spending] || 0
-
-      # Get subcategories with and without individual limits
-      subcategories_with_limits = subcategories.reject(&:inherits_parent_budget?)
-
-      # Ring-fenced budgets for subcategories with individual limits
-      subcategories_individual_budgets = subcategories_with_limits.sum { |sc| sc[:budgeted_spending] || 0 }
-
-      # Shared pool = parent budget - ring-fenced budgets
-      shared_pool = parent_budget - subcategories_individual_budgets
-
-      # Get actual spending from income statement (includes all subcategories)
-      total_spending = actual_spending
-
-      # Subtract spending from subcategories with individual budgets (they use their ring-fenced money)
-      subcategories_with_limits_spending = subcategories_with_limits.sum(&:actual_spending)
-
-      # Spending from shared pool = total spending - ring-fenced spending
-      shared_pool_spending = total_spending - subcategories_with_limits_spending
-
-      # Available in shared pool
-      shared_pool - shared_pool_spending
-    end
+    return @available_to_spend if defined?(@available_to_spend)
+    @available_to_spend = compute_available_to_spend
   end
 
   def percent_of_budget_spent
@@ -240,6 +209,42 @@ class BudgetCategory < ApplicationRecord
   end
 
   private
+    def compute_available_to_spend
+      if inherits_parent_budget?
+        # Subcategories using parent budget share the parent's available_to_spend
+        parent = parent_budget_category
+        return 0 unless parent
+        parent.available_to_spend
+      elsif subcategory?
+        # Subcategory with individual limit
+        (self[:budgeted_spending] || 0) - actual_spending
+      else
+        # Parent category
+        parent_budget = self[:budgeted_spending] || 0
+
+        # Get subcategories with and without individual limits
+        subcategories_with_limits = subcategories.reject(&:inherits_parent_budget?)
+
+        # Ring-fenced budgets for subcategories with individual limits
+        subcategories_individual_budgets = subcategories_with_limits.sum { |sc| sc[:budgeted_spending] || 0 }
+
+        # Shared pool = parent budget - ring-fenced budgets
+        shared_pool = parent_budget - subcategories_individual_budgets
+
+        # Get actual spending from income statement (includes all subcategories)
+        total_spending = actual_spending
+
+        # Subtract spending from subcategories with individual budgets (they use their ring-fenced money)
+        subcategories_with_limits_spending = subcategories_with_limits.sum(&:actual_spending)
+
+        # Spending from shared pool = total spending - ring-fenced spending
+        shared_pool_spending = total_spending - subcategories_with_limits_spending
+
+        # Available in shared pool
+        shared_pool - shared_pool_spending
+      end
+    end
+
     def sync_parent_budgeted_spending!(previous_budgeted_spending:)
       parent_budget_category = budget.budget_categories.where(category_id: category.parent_id).lock.first
       return unless parent_budget_category

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict nwNSEKXMpiEhtJvaveOVqSZg6AJQiUpY5qPQptcYtfgVO5hx6FdimhQyz8JaZU1
+\restrict 8aimRRRWXsWO8dKdSQxba6TSES2pSmlHbFNYbyHDuxHL6A4k1fOSf8ITCrKOh6W
 
 -- Dumped from database version 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)
 -- Dumped by pg_dump version 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)
@@ -121,7 +121,7 @@ CREATE TABLE public.account_shares (
     include_in_finances boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT chk_account_shares_permission CHECK (((permission)::text = ANY (ARRAY[('full_control'::character varying)::text, ('read_write'::character varying)::text, ('read_only'::character varying)::text])))
+    CONSTRAINT chk_account_shares_permission CHECK (((permission)::text = ANY ((ARRAY['full_control'::character varying, 'read_write'::character varying, 'read_only'::character varying])::text[])))
 );
 
 
@@ -144,7 +144,7 @@ CREATE TABLE public.accounts (
     currency character varying,
     classification character varying GENERATED ALWAYS AS (
 CASE
-    WHEN ((accountable_type)::text = ANY (ARRAY[('Loan'::character varying)::text, ('CreditCard'::character varying)::text, ('OtherLiability'::character varying)::text])) THEN 'liability'::text
+    WHEN ((accountable_type)::text = ANY ((ARRAY['Loan'::character varying, 'CreditCard'::character varying, 'OtherLiability'::character varying])::text[])) THEN 'liability'::text
     ELSE 'asset'::text
 END) STORED,
     import_id uuid,
@@ -878,7 +878,7 @@ CREATE TABLE public.families (
     default_account_sharing character varying DEFAULT 'shared'::character varying NOT NULL,
     enabled_currencies character varying[],
     business_mode_enabled boolean DEFAULT false NOT NULL,
-    CONSTRAINT chk_families_default_account_sharing CHECK (((default_account_sharing)::text = ANY (ARRAY[('shared'::character varying)::text, ('private'::character varying)::text]))),
+    CONSTRAINT chk_families_default_account_sharing CHECK (((default_account_sharing)::text = ANY ((ARRAY['shared'::character varying, 'private'::character varying])::text[]))),
     CONSTRAINT month_start_day_range CHECK (((month_start_day >= 1) AND (month_start_day <= 28)))
 );
 
@@ -992,7 +992,7 @@ CREATE TABLE public.fuel_logs (
     notes character varying,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    account_id uuid,
+    account_id uuid NOT NULL,
     entry_id uuid
 );
 
@@ -1059,8 +1059,8 @@ CREATE TABLE public.goals (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_goals_name_length CHECK ((char_length((name)::text) <= 255)),
-    CONSTRAINT chk_goals_progress_basis_enum CHECK (((progress_basis)::text = ANY (ARRAY[('balance'::character varying)::text, ('contributions'::character varying)::text]))),
-    CONSTRAINT chk_goals_state_enum CHECK (((state)::text = ANY (ARRAY[('active'::character varying)::text, ('paused'::character varying)::text, ('completed'::character varying)::text, ('archived'::character varying)::text]))),
+    CONSTRAINT chk_goals_progress_basis_enum CHECK (((progress_basis)::text = ANY ((ARRAY['balance'::character varying, 'contributions'::character varying])::text[]))),
+    CONSTRAINT chk_goals_state_enum CHECK (((state)::text = ANY ((ARRAY['active'::character varying, 'paused'::character varying, 'completed'::character varying, 'archived'::character varying])::text[]))),
     CONSTRAINT chk_goals_target_amount_positive CHECK ((target_amount > (0)::numeric))
 );
 
@@ -2114,7 +2114,7 @@ CREATE TABLE public.securities (
     price_provider character varying,
     offline_reason character varying,
     first_provider_price_on date,
-    CONSTRAINT chk_securities_kind CHECK (((kind)::text = ANY (ARRAY[('standard'::character varying)::text, ('cash'::character varying)::text])))
+    CONSTRAINT chk_securities_kind CHECK (((kind)::text = ANY ((ARRAY['standard'::character varying, 'cash'::character varying])::text[])))
 );
 
 
@@ -2268,10 +2268,10 @@ CREATE TABLE public.snaptrade_accounts (
     account_type character varying,
     provider character varying,
     institution_metadata jsonb,
-    raw_payload jsonb,
-    raw_transactions_payload jsonb,
-    raw_holdings_payload jsonb DEFAULT '[]'::jsonb,
-    raw_activities_payload jsonb DEFAULT '[]'::jsonb,
+    raw_payload text,
+    raw_transactions_payload text,
+    raw_holdings_payload text DEFAULT '[]'::text,
+    raw_activities_payload text DEFAULT '[]'::text,
     last_holdings_sync timestamp(6) without time zone,
     last_activities_sync timestamp(6) without time zone,
     activities_fetch_pending boolean DEFAULT false,
@@ -5605,6 +5605,14 @@ ALTER TABLE ONLY public.import_rows
 
 
 --
+-- Name: trades fk_rails_14583816f0; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.trades
+    ADD CONSTRAINT fk_rails_14583816f0 FOREIGN KEY (security_id) REFERENCES public.securities(id);
+
+
+--
 -- Name: binance_accounts fk_rails_1cdb361f7b; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -5613,19 +5621,19 @@ ALTER TABLE ONLY public.binance_accounts
 
 
 --
+-- Name: entries fk_rails_206562018a; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.entries
+    ADD CONSTRAINT fk_rails_206562018a FOREIGN KEY (import_id) REFERENCES public.imports(id);
+
+
+--
 -- Name: simplefin_items fk_rails_22288b4a2f; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.simplefin_items
     ADD CONSTRAINT fk_rails_22288b4a2f FOREIGN KEY (family_id) REFERENCES public.families(id);
-
-
---
--- Name: categories fk_rails_22ababf336; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.categories
-    ADD CONSTRAINT fk_rails_22ababf336 FOREIGN KEY (family_id) REFERENCES public.families(id);
 
 
 --
@@ -5730,6 +5738,14 @@ ALTER TABLE ONLY public.entries
 
 ALTER TABLE ONLY public.accounts
     ADD CONSTRAINT fk_rails_37ced7af95 FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: merchants fk_rails_392453ec74; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.merchants
+    ADD CONSTRAINT fk_rails_392453ec74 FOREIGN KEY (family_id) REFERENCES public.families(id);
 
 
 --
@@ -5909,6 +5925,14 @@ ALTER TABLE ONLY public.invitations
 
 
 --
+-- Name: categories fk_rails_74d1a4d52c; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.categories
+    ADD CONSTRAINT fk_rails_74d1a4d52c FOREIGN KEY (family_id) REFERENCES public.families(id);
+
+
+--
 -- Name: sessions fk_rails_758836b4f0; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -5957,14 +5981,6 @@ ALTER TABLE ONLY public.sophtron_accounts
 
 
 --
--- Name: trades fk_rails_89e7d6c7d0; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.trades
-    ADD CONSTRAINT fk_rails_89e7d6c7d0 FOREIGN KEY (security_id) REFERENCES public.securities(id);
-
-
---
 -- Name: lunchflow_accounts fk_rails_8f1fcd8aa3; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -6002,14 +6018,6 @@ ALTER TABLE ONLY public.rule_actions
 
 ALTER TABLE ONLY public.mercury_accounts
     ADD CONSTRAINT fk_rails_934709c5df FOREIGN KEY (mercury_item_id) REFERENCES public.mercury_items(id);
-
-
---
--- Name: balances fk_rails_9452e1f8fd; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.balances
-    ADD CONSTRAINT fk_rails_9452e1f8fd FOREIGN KEY (account_id) REFERENCES public.accounts(id) ON DELETE CASCADE;
 
 
 --
@@ -6165,6 +6173,14 @@ ALTER TABLE ONLY public.indexa_capital_items
 
 
 --
+-- Name: holdings fk_rails_c18c2c3522; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.holdings
+    ADD CONSTRAINT fk_rails_c18c2c3522 FOREIGN KEY (security_id) REFERENCES public.securities(id);
+
+
+--
 -- Name: active_storage_attachments fk_rails_c3b3935057; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -6194,14 +6210,6 @@ ALTER TABLE ONLY public.eval_results
 
 ALTER TABLE ONLY public.impersonation_sessions
     ADD CONSTRAINT fk_rails_cca4e14dea FOREIGN KEY (impersonated_id) REFERENCES public.users(id);
-
-
---
--- Name: holdings fk_rails_cd86ce9d77; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.holdings
-    ADD CONSTRAINT fk_rails_cd86ce9d77 FOREIGN KEY (security_id) REFERENCES public.securities(id);
 
 
 --
@@ -6325,14 +6333,6 @@ ALTER TABLE ONLY public.eval_samples
 
 
 --
--- Name: merchants fk_rails_ea5781c1b9; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.merchants
-    ADD CONSTRAINT fk_rails_ea5781c1b9 FOREIGN KEY (family_id) REFERENCES public.families(id);
-
-
---
 -- Name: sso_audit_logs fk_rails_ee372936da; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -6381,6 +6381,14 @@ ALTER TABLE ONLY public.fuel_log_lines
 
 
 --
+-- Name: balances fk_rails_f3e5781e9c; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.balances
+    ADD CONSTRAINT fk_rails_f3e5781e9c FOREIGN KEY (account_id) REFERENCES public.accounts(id) ON DELETE CASCADE;
+
+
+--
 -- Name: mobile_devices fk_rails_f61b19cc7b; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -6394,14 +6402,6 @@ ALTER TABLE ONLY public.mobile_devices
 
 ALTER TABLE ONLY public.family_merchant_associations
     ADD CONSTRAINT fk_rails_f6ec19d267 FOREIGN KEY (merchant_id) REFERENCES public.merchants(id);
-
-
---
--- Name: entries fk_rails_f8a7316f9a; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.entries
-    ADD CONSTRAINT fk_rails_f8a7316f9a FOREIGN KEY (import_id) REFERENCES public.imports(id);
 
 
 --
@@ -6784,4 +6784,4 @@ CREATE POLICY valuations_family_isolation_policy ON public.valuations USING ((id
 -- PostgreSQL database dump complete
 --
 
-\unrestrict nwNSEKXMpiEhtJvaveOVqSZg6AJQiUpY5qPQptcYtfgVO5hx6FdimhQyz8JaZU1
+\unrestrict 8aimRRRWXsWO8dKdSQxba6TSES2pSmlHbFNYbyHDuxHL6A4k1fOSf8ITCrKOh6W
