@@ -14,7 +14,8 @@ class Budget < ApplicationRecord
 
   monetize :budgeted_spending, :expected_income, :allocated_spending,
            :actual_spending, :available_to_spend, :available_to_allocate,
-           :estimated_spending, :estimated_income, :actual_income, :remaining_expected_income
+           :estimated_spending, :estimated_income, :actual_income, :remaining_expected_income,
+           :precomputed_estimated_spending
 
   class << self
     def date_to_param(date)
@@ -109,6 +110,8 @@ class Budget < ApplicationRecord
 
     # Remove old categories
     budget_categories.where(category_id: categories_to_remove).destroy_all if categories_to_remove.any?
+
+    recompute_values!
   end
 
   def uncategorized_budget_category
@@ -163,12 +166,14 @@ class Budget < ApplicationRecord
 
       target_by_category = budget_categories.index_by(&:category_id)
 
-      source_budget.budget_categories.each do |source_bc|
+      source_budget.budget_categories.reload.each do |source_bc|
         target_bc = target_by_category[source_bc.category_id]
         next unless target_bc
 
         target_bc.update!(budgeted_spending: source_bc.budgeted_spending)
       end
+
+      recompute_values!
     end
   end
 
@@ -224,7 +229,71 @@ class Budget < ApplicationRecord
   # Actuals: How much user has spent on each budget category
   # =============================================================================
   def estimated_spending
-    @estimated_spending ||= income_statement.median_expense(interval: "month")
+    return precomputed_estimated_spending if precomputed_estimated_spending.present?
+    @estimated_spending ||= live_estimated_spending
+  end
+
+  def live_estimated_spending
+    income_statement.median_expense(interval: "month")
+  end
+
+  def recompute_values!
+    recompute_estimated_spending!
+    recompute_category_values!
+  end
+
+  def recompute_estimated_spending!
+    live_est = live_estimated_spending
+    self.precomputed_estimated_spending = live_est
+    update_columns(
+      precomputed_estimated_spending: live_est,
+      updated_at: Time.current
+    )
+  end
+
+  def recompute_category_values!
+    categories_list = budget_categories.reload.includes(:category).to_a
+    return if categories_list.empty?
+
+    actual_spendings = categories_list.each_with_object({}) do |bc, hash|
+      hash[bc.id] = bc.live_actual_spending
+    end
+
+    top_level, sub_cats = categories_list.partition { |bc| !bc.subcategory? }
+
+    available_spendings = {}
+
+    top_level.each do |bc|
+      actual = actual_spendings[bc.id] || 0
+      parent_budget = bc[:budgeted_spending] || 0
+      sub_with_limits = sub_cats.select { |s| (s.category.parent_id == bc.category_id || s.category.id == bc.category_id) && !s.inherits_parent_budget? }
+      sub_budgets = sub_with_limits.sum { |sc| sc[:budgeted_spending] || 0 }
+      shared_pool = parent_budget - sub_budgets
+      sub_spending = sub_with_limits.sum { |sc| actual_spendings[sc.id] || 0 }
+      shared_pool_spending = actual - sub_spending
+      available_spendings[bc.id] = shared_pool - shared_pool_spending
+    end
+
+    sub_cats.each do |bc|
+      if bc.inherits_parent_budget?
+        parent = bc.parent_budget_category
+        available_spendings[bc.id] = parent ? (available_spendings[parent.id] || 0) : 0
+      else
+        available_spendings[bc.id] = (bc[:budgeted_spending] || 0) - (actual_spendings[bc.id] || 0)
+      end
+    end
+
+    categories_list.each do |bc|
+      act = actual_spendings[bc.id] || 0
+      avail = available_spendings[bc.id] || 0
+      bc.precomputed_actual_spending = act
+      bc.precomputed_available_to_spend = avail
+      bc.update_columns(
+        precomputed_actual_spending: act,
+        precomputed_available_to_spend: avail,
+        updated_at: Time.current
+      )
+    end
   end
 
   def actual_spending

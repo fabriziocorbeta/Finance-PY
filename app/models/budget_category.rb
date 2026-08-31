@@ -6,7 +6,8 @@ class BudgetCategory < ApplicationRecord
 
   validates :budget_id, uniqueness: { scope: :category_id }
 
-  monetize :budgeted_spending, :available_to_spend, :avg_monthly_expense, :median_monthly_expense, :actual_spending
+  monetize :budgeted_spending, :available_to_spend, :avg_monthly_expense, :median_monthly_expense, :actual_spending,
+           :precomputed_actual_spending, :precomputed_available_to_spend
 
   class Group
     attr_reader :budget_category, :budget_subcategories
@@ -50,7 +51,12 @@ class BudgetCategory < ApplicationRecord
   end
 
   def actual_spending
-    @actual_spending ||= budget.budget_category_actual_spending(self)
+    return precomputed_actual_spending if precomputed_actual_spending.present?
+    @actual_spending ||= live_actual_spending
+  end
+
+  def live_actual_spending
+    budget.budget_category_actual_spending(self)
   end
 
   def update_budgeted_spending!(new_budgeted_spending)
@@ -61,6 +67,7 @@ class BudgetCategory < ApplicationRecord
       update!(budgeted_spending: new_budgeted_spending)
 
       sync_parent_budgeted_spending!(previous_budgeted_spending:) if subcategory?
+      budget.recompute_values!
     end
   end
 
@@ -100,8 +107,25 @@ class BudgetCategory < ApplicationRecord
   end
 
   def available_to_spend
+    return precomputed_available_to_spend if precomputed_available_to_spend.present?
     return @available_to_spend if defined?(@available_to_spend)
-    @available_to_spend = compute_available_to_spend
+    @available_to_spend = live_available_to_spend
+  end
+
+  def live_available_to_spend
+    compute_available_to_spend
+  end
+
+  def recompute_values!
+    act = live_actual_spending
+    avail = live_available_to_spend
+    self.precomputed_actual_spending = act
+    self.precomputed_available_to_spend = avail
+    update_columns(
+      precomputed_actual_spending: act,
+      precomputed_available_to_spend: avail,
+      updated_at: Time.current
+    )
   end
 
   def percent_of_budget_spent

@@ -27,6 +27,16 @@ class Transaction < ApplicationRecord
   accepts_nested_attributes_for :taggings, allow_destroy: true
 
   after_save :clear_merchant_unlinked_association, if: :merchant_id_previously_changed?
+  after_commit :enqueue_recompute_budget_job, if: -> { destroyed? || saved_change_to_kind? || saved_change_to_category_id? }
+
+  def enqueue_recompute_budget_job
+    return unless entry&.account&.family_id
+
+    RecomputeBudgetEstimatedSpendingJob.perform_later(
+      family_id: entry.account.family_id,
+      start_date: entry.date&.to_s
+    )
+  end
 
   # Accessors for exchange_rate stored in extra jsonb field
   def exchange_rate

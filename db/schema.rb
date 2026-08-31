@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_28_000000) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_31_172609) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -223,6 +223,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_28_000000) do
     t.string "currency", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.decimal "precomputed_actual_spending", precision: 19, scale: 4
+    t.decimal "precomputed_available_to_spend", precision: 19, scale: 4
     t.index ["budget_id", "category_id"], name: "index_budget_categories_on_budget_id_and_category_id", unique: true
     t.index ["budget_id"], name: "index_budget_categories_on_budget_id"
     t.index ["category_id"], name: "index_budget_categories_on_category_id"
@@ -237,6 +239,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_28_000000) do
     t.string "currency", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.decimal "precomputed_estimated_spending", precision: 19, scale: 4
     t.index ["family_id", "start_date", "end_date"], name: "index_budgets_on_family_id_and_start_date_and_end_date", unique: true
     t.index ["family_id"], name: "index_budgets_on_family_id"
   end
