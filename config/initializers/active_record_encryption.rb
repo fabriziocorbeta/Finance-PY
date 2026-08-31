@@ -1,3 +1,9 @@
+# Allow reading pre-existing plaintext values for columns that only recently
+# started being encrypted (see app/models/concerns/encryptable.rb#encryption_ready?
+# fix). Without this, ActiveRecord::Encryption::Errors::Decryption is raised
+# when reading any row written before encryption was actually active.
+Rails.application.config.active_record.encryption.support_unencrypted_data = true
+
 # Configure Active Record encryption keys
 # Priority order:
 # 1. Environment variables (works for both managed and self-hosted modes)
