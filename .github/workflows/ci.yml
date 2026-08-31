@@ -138,6 +138,15 @@ jobs:
           bin/rails db:schema:load
           bin/rails db:seed
 
+      - name: Verify RLS policies are active after schema load
+        run: |
+          POLICIES=$(PGPASSWORD=postgres psql -U postgres -h localhost -d sure_test -t -c "SELECT COUNT(*) FROM pg_policies;" | xargs)
+          if [ "$POLICIES" -lt 22 ]; then
+            echo "::error::RLS policies missing after schema load! Found $POLICIES policies, expected at least 22."
+            exit 1
+          fi
+          echo "Verified $POLICIES RLS policies active in database."
+
       - name: Check for pending migrations
         run: |
           if bin/rails db:migrate:status | grep -qE '^\s*down\b'; then
@@ -146,11 +155,11 @@ jobs:
             exit 1
           fi
 
-      - name: Verify schema.rb is up to date
+      - name: Verify structure.sql is up to date
         run: |
           bin/rails db:migrate
-          if ! git diff --exit-code db/schema.rb; then
-            echo "::error::schema.rb esta desactualizado, corre bin/rails db:migrate y commitea el resultado real."
+          if ! git diff --exit-code db/structure.sql; then
+            echo "::error::structure.sql esta desactualizado, corre bin/rails db:migrate y commitea el resultado real."
             exit 1
           fi
 

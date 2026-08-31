@@ -32,6 +32,9 @@ module Sure
 
     config.app_mode = (ENV["SELF_HOSTED"] == "true" || ENV["SELF_HOSTING_ENABLED"] == "true" ? "self_hosted" : "managed").inquiry
 
+    # Use SQL format for schema dumps to capture custom PostgreSQL DDL (RLS policies, functions, etc.)
+    config.active_record.schema_format = :sql
+
     # Self hosters can optionally set their own encryption keys if they want to use ActiveRecord encryption.
     if Rails.application.credentials.active_record_encryption.present?
       config.active_record.encryption = Rails.application.credentials.active_record_encryption

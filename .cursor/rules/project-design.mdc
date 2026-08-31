@@ -6,7 +6,7 @@ alwaysApply: true
 
 This file outlines how the codebase is structured and how data flows through the app.
 
-This is a personal finance application built in Ruby on Rails.  The primary domain entities for this app are outlined below.  For an authoritative overview of the relationships, [schema.rb](mdc:db/schema.rb) is the source of truth.
+This is a personal finance application built in Ruby on Rails.  The primary domain entities for this app are outlined below.  For an authoritative overview of the relationships, [structure.sql](mdc:db/structure.sql) is the source of truth.
 
 ## App Modes
 
