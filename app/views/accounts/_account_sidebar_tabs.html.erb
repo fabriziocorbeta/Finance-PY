@@ -1,7 +1,7 @@
 <%# locals: (family:, active_tab:, mobile: false) %>
 
 <div id="account-sidebar-tabs" data-controller="sidebar-active-account">
-  <% cache [family.id, Current.user&.id, active_tab, mobile, "sidebar_tabs", family.accounts.maximum(:updated_at), family.entries_cache_version] do %>
+  <% cache [family.id, Current.user&.id, active_tab, mobile, "sidebar_tabs", family.accounts_cache_version, family.entries_coarse_cache_version] do %>
     <% if family.missing_data_provider? %>
       <details class="group bg-yellow-tint-10 rounded-lg p-2 text-yellow-600 mb-3 text-xs">
         <summary class="flex items-center justify-between gap-2">
