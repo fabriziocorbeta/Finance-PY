@@ -306,8 +306,22 @@ class Family < ApplicationRecord
     end
   end
 
+  def preload_cache_versions_async(date_range: nil)
+    @async_oldest_entry = entries.order(:date).select(:date).limit(1).load_async
+    @async_entries_max = entries.order(updated_at: :desc).select(:updated_at).limit(1).load_async
+    @async_accounts_max = accounts.order(updated_at: :desc).select(:updated_at).limit(1).load_async
+    if date_range
+      @async_entries_range_max ||= {}
+      @async_entries_range_max[date_range] = entries.where(date: date_range).order(updated_at: :desc).select(:updated_at).limit(1).load_async
+    end
+  end
+
   def oldest_entry_date
-    @oldest_entry_date ||= entries.order(:date).first&.date || Date.current
+    @oldest_entry_date ||= if defined?(@async_oldest_entry) && @async_oldest_entry
+      @async_oldest_entry.first&.date || Date.current
+    else
+      entries.order(:date).pick(:date) || Date.current
+    end
   end
 
   # Used for invalidating family / balance sheet related aggregation queries
@@ -325,7 +339,11 @@ class Family < ApplicationRecord
   end
 
   def entries_max_updated_at
-    @entries_max_updated_at ||= entries.maximum(:updated_at)
+    @entries_max_updated_at ||= if defined?(@async_entries_max) && @async_entries_max
+      @async_entries_max.first&.updated_at
+    else
+      entries.maximum(:updated_at)
+    end
   end
 
   # Used for invalidating entry related aggregation queries
@@ -333,7 +351,11 @@ class Family < ApplicationRecord
     if date_range
       @entries_cache_version_by_range ||= {}
       @entries_cache_version_by_range[date_range] ||= begin
-        ts = entries.where(date: date_range).maximum(:updated_at)
+        ts = if defined?(@async_entries_range_max) && @async_entries_range_max && @async_entries_range_max[date_range]
+          @async_entries_range_max[date_range].first&.updated_at
+        else
+          entries.where(date: date_range).maximum(:updated_at)
+        end
         ts.present? ? ts.to_i : 0
       end
     else
@@ -354,7 +376,11 @@ class Family < ApplicationRecord
   # Memoized per-request so repeated fragment cache key builds (once per
   # sidebar account group) don't each re-run this query.
   def accounts_cache_version
-    @accounts_cache_version ||= accounts.maximum(:updated_at)
+    @accounts_cache_version ||= if defined?(@async_accounts_max) && @async_accounts_max
+      @async_accounts_max.first&.updated_at
+    else
+      accounts.maximum(:updated_at)
+    end
   end
 
   def self_hoster?

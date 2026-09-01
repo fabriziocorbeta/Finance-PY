@@ -53,8 +53,11 @@ class BudgetsController < ApplicationController
 
     def set_budget
       start_date = Budget.param_to_date(params[:month_year], family: Current.family)
+      Current.family.preload_cache_versions_async(date_range: start_date.beginning_of_month..start_date.end_of_month)
       @budget = Budget.find_or_bootstrap(Current.family, start_date: start_date, user: Current.user)
       raise ActiveRecord::RecordNotFound unless @budget
+
+      @budget.budget_categories.load_async
     end
 
     def redirect_to_current_month_budget
