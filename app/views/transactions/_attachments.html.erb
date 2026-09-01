@@ -1,8 +1,10 @@
 <%# locals: (transaction:, can_upload: false, can_delete: false) %>
 
+<% attachments = transaction.attachments.includes(:blob).to_a %>
+
 <div id="transaction_attachments_<%= transaction.id %>" class="pb-4">
   <!-- Upload Form -->
-  <% if can_upload && transaction.attachments.count < Transaction::MAX_ATTACHMENTS_PER_TRANSACTION %>
+  <% if can_upload && attachments.size < Transaction::MAX_ATTACHMENTS_PER_TRANSACTION %>
     <%= styled_form_with url: transaction_attachments_path(transaction),
           method: :post,
           multipart: true,
@@ -10,7 +12,7 @@
           class: "mb-4",
           data: {
             controller: "attachment-upload",
-            attachment_upload_max_files_value: Transaction::MAX_ATTACHMENTS_PER_TRANSACTION - transaction.attachments.count,
+            attachment_upload_max_files_value: Transaction::MAX_ATTACHMENTS_PER_TRANSACTION - attachments.size,
             attachment_upload_max_size_value: Transaction::MAX_ATTACHMENT_SIZE
           } do |form| %>
       <div class="space-y-3">
@@ -42,7 +44,7 @@
             <%= t(".select_up_to",
                   count: Transaction::MAX_ATTACHMENTS_PER_TRANSACTION,
                   size: Transaction::MAX_ATTACHMENT_SIZE / 1.megabyte,
-                  used: transaction.attachments.count) %>
+                  used: attachments.size) %>
           </p>
         </div>
 
@@ -60,17 +62,17 @@
     <div class="p-3 mb-4 rounded-lg border border-warning bg-warning/5 flex items-start gap-3">
       <%= icon "alert-circle", size: "sm", color: "warning", class: "mt-0.5" %>
       <div class="text-xs text-warning leading-relaxed font-medium">
-        <%= t(".max_reached", count: transaction.attachments.count, max: Transaction::MAX_ATTACHMENTS_PER_TRANSACTION) %>
+        <%= t(".max_reached", count: attachments.size, max: Transaction::MAX_ATTACHMENTS_PER_TRANSACTION) %>
       </div>
     </div>
   <% end %>
 
   <!-- Attachments List -->
-  <% if transaction.attachments.any? %>
+  <% if attachments.any? %>
     <div class="space-y-2">
-      <h4 class="text-sm font-medium text-primary"><%= t(".files", count: transaction.attachments.count) %></h4>
+      <h4 class="text-sm font-medium text-primary"><%= t(".files", count: attachments.size) %></h4>
       <div class="space-y-2">
-        <% transaction.attachments.each do |attachment| %>
+        <% attachments.each do |attachment| %>
           <div class="flex items-center justify-between p-3 border border-primary rounded-lg bg-container">
             <div class="flex items-center gap-3">
               <div class="flex-shrink-0">
