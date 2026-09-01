@@ -453,4 +453,52 @@ class BudgetTest < ActiveSupport::TestCase
     # Other Investments synthetic categories previously caused this to return 0
     assert spending >= 75, "Uncategorized actual spending should include the $75 transaction, got #{spending}"
   end
+
+  test "estimated_spending falls back to live computation when not precomputed" do
+    budget = budgets(:one)
+    assert_nil budget.precomputed_estimated_spending
+
+    assert_equal budget.live_estimated_spending, budget.estimated_spending
+  end
+
+  test "estimated_spending uses the precomputed value once present" do
+    budget = budgets(:one)
+    budget.update_column(:precomputed_estimated_spending, 12345)
+
+    assert_equal 12345, budget.reload.estimated_spending
+  end
+
+  test "recompute_values! persists estimated_spending and every category's actual/available spending" do
+    family = families(:dylan_family)
+    budget = budgets(:one)
+
+    category = Category.create!(
+      name: "Test Recompute Values Category #{Time.now.to_f}",
+      family: family,
+      color: "#4da568",
+      lucide_icon: "utensils"
+    )
+
+    budget_category = BudgetCategory.create!(
+      budget: budget,
+      category: category,
+      budgeted_spending: 200,
+      currency: "USD"
+    )
+
+    account = accounts(:depository)
+    Entry.create!(
+      account: account,
+      entryable: Transaction.create!(category: category),
+      date: Date.current,
+      name: "Recompute values test expense",
+      amount: 50,
+      currency: "USD"
+    )
+
+    budget.recompute_values!
+
+    assert_equal budget.live_estimated_spending, budget.reload.precomputed_estimated_spending
+    assert_equal 50, budget_category.reload.precomputed_actual_spending.to_i
+  end
 end

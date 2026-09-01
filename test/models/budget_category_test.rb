@@ -255,4 +255,22 @@ class BudgetCategoryTest < ActiveSupport::TestCase
     @subcategory_inheriting_bc.stubs(:actual_spending).returns(10)
     assert @subcategory_inheriting_bc.visible_on_track?
   end
+
+  test "actual_spending falls back to live computation when not precomputed" do
+    assert_nil @parent_budget_category.precomputed_actual_spending
+    assert_equal @parent_budget_category.live_actual_spending, @parent_budget_category.actual_spending
+  end
+
+  test "actual_spending uses the precomputed value once present, even when zero" do
+    @parent_budget_category.update_column(:precomputed_actual_spending, 0)
+    @parent_budget_category.stubs(:live_actual_spending).raises("should not be called")
+
+    assert_equal 0, @parent_budget_category.reload.actual_spending
+  end
+
+  test "available_to_spend uses the precomputed value once present" do
+    @parent_budget_category.update_column(:precomputed_available_to_spend, 42)
+
+    assert_equal 42, @parent_budget_category.reload.available_to_spend
+  end
 end

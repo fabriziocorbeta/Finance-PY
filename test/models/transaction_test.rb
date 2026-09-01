@@ -148,4 +148,27 @@ class TransactionTest < ActiveSupport::TestCase
 
     assert transaction.valid?
   end
+
+  # Regression test: the after_commit budget-recompute callback used to call
+  # self.entry, which is a has_one association. When a Transaction is created
+  # standalone (no Entry yet) and its Entry is attached afterward from the
+  # other side, self.entry would cache a nil result forever on that Ruby
+  # object, even after the Entry exists. This broke any later code path that
+  # calls transaction.entry on that same in-memory object (real example:
+  # RecurringTransaction.create_from_transaction).
+  test "creating a transaction before attaching its entry does not poison the entry association cache" do
+    account = accounts(:depository)
+    transaction = Transaction.create!(category: categories(:income))
+
+    entry = account.entries.create!(
+      date: Date.current,
+      amount: 50,
+      currency: "USD",
+      name: "Entry attached after transaction creation",
+      entryable: transaction
+    )
+
+    assert_equal entry, transaction.entry
+    assert_equal entry.account, transaction.entry.account
+  end
 end
