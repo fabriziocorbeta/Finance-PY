@@ -3,6 +3,11 @@ module Syncable
 
   included do
     has_many :syncs, as: :syncable, dependent: :destroy
+    # Preloadable via .includes(:visible_syncs) -- unlike syncs.visible.any?,
+    # which re-queries even when :syncs is preloaded because .visible is a
+    # scope applied on top of the association (Rails can't serve a further-
+    # scoped query from an already-loaded collection).
+    has_many :visible_syncs, -> { visible }, as: :syncable, class_name: "Sync"
 
     attr_writer :syncing
   end
@@ -11,7 +16,7 @@ module Syncable
     if instance_variable_defined?(:@syncing)
       @syncing
     else
-      @syncing = syncs.visible.any?
+      @syncing = visible_syncs.any?
     end
   end
 
