@@ -35,14 +35,6 @@ module Sure
     # Use SQL format for schema dumps to capture custom PostgreSQL DDL (RLS policies, functions, etc.)
     config.active_record.schema_format = :sql
 
-    # Without this, ActiveRecord::Relation#load_async silently falls back to
-    # synchronous execution on the calling thread (no error, no warning) --
-    # it needs an executor to actually run queries on a background thread.
-    # This is what makes Family#preload_cache_versions_async (and any other
-    # load_async use) actually overlap network wait instead of no-op'ing.
-    config.active_record.async_query_executor = :global_thread_pool
-    config.active_record.global_executor_concurrency = 4
-
     # Self hosters can optionally set their own encryption keys if they want to use ActiveRecord encryption.
     if Rails.application.credentials.active_record_encryption.present?
       config.active_record.encryption = Rails.application.credentials.active_record_encryption
