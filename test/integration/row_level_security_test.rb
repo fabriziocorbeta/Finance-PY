@@ -252,6 +252,16 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "app.current_family_id is reset on the connection after the request completes, so a reused pooled connection never carries a stale family context into the next request" do
+    sign_in @user_a
+
+    get accounts_path
+    assert_response :success
+
+    reset_value = ActiveRecord::Base.connection.select_value("SELECT current_setting('app.current_family_id', true)")
+    assert_predicate reset_value.to_s, :empty?
+  end
+
   test "ActiveJob sets app.current_family_id context during perform" do
     ActiveRecord::Base.connection.execute(
       ActiveRecord::Base.sanitize_sql([ "SET app.current_family_id = ?", @family_a.id ])
