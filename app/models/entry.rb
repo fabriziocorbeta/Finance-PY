@@ -25,6 +25,10 @@ class Entry < ApplicationRecord
 
   before_destroy :prevent_individual_child_deletion, if: :split_child?
 
+  after_commit :enqueue_recompute_budget_job, if: -> {
+    destroyed? || saved_change_to_date? || saved_change_to_amount? || saved_change_to_excluded?
+  }
+
   scope :visible, -> {
     joins(:account).where(accounts: { status: [ "draft", "active" ] })
   }
@@ -285,6 +289,18 @@ class Entry < ApplicationRecord
   def sync_account_later
     sync_start_date = [ date_previously_was, date ].compact.min unless destroyed?
     account.sync_later(window_start_date: sync_start_date)
+  end
+
+  def enqueue_recompute_budget_job
+    return unless account&.family_id
+
+    dates = [ date_previously_was, date ].compact
+    min_date = dates.min
+
+    RecomputeBudgetEstimatedSpendingJob.perform_later(
+      family_id: account.family_id,
+      start_date: min_date&.to_s
+    )
   end
 
   def entryable_name_short

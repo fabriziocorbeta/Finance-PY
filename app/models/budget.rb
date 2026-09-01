@@ -14,7 +14,8 @@ class Budget < ApplicationRecord
 
   monetize :budgeted_spending, :expected_income, :allocated_spending,
            :actual_spending, :available_to_spend, :available_to_allocate,
-           :estimated_spending, :estimated_income, :actual_income, :remaining_expected_income
+           :estimated_spending, :estimated_income, :actual_income, :remaining_expected_income,
+           :precomputed_estimated_spending
 
   class << self
     def date_to_param(date)
@@ -119,6 +120,15 @@ class Budget < ApplicationRecord
     budget_categories.where(category_id: categories_to_remove).destroy_all if categories_to_remove.any?
 
     update_column(:categories_last_synced_at, Time.current)
+
+    # New categories start with no precomputed values (nil falls back to live
+    # computation, which is cheap for a category with no entries yet). Enqueue
+    # a background recompute so they're precomputed soon without blocking this
+    # request — do NOT recompute synchronously here, this runs on the
+    # find_or_bootstrap hot path (every budget page load that needs a sync).
+    if categories_to_add.any? || categories_to_remove.any?
+      RecomputeBudgetEstimatedSpendingJob.perform_later(family_id: family_id, start_date: start_date.to_s)
+    end
   end
 
   def uncategorized_budget_category
@@ -179,6 +189,8 @@ class Budget < ApplicationRecord
 
         target_bc.update!(budgeted_spending: source_bc.budgeted_spending)
       end
+
+      recompute_category_values!
     end
   end
 
@@ -234,7 +246,70 @@ class Budget < ApplicationRecord
   # Actuals: How much user has spent on each budget category
   # =============================================================================
   def estimated_spending
-    @estimated_spending ||= income_statement.median_expense(interval: "month")
+    return precomputed_estimated_spending if precomputed_estimated_spending.present?
+    @estimated_spending ||= live_estimated_spending
+  end
+
+  def live_estimated_spending
+    income_statement.median_expense(interval: "month")
+  end
+
+  # Recomputes and persists this budget's own estimated_spending, and every one
+  # of its budget_categories' actual_spending/available_to_spend. Uses
+  # update_columns (skips callbacks/validations) since this is meant to run
+  # from a background job or a low-frequency user edit, not as part of a model
+  # lifecycle that should trigger further side effects.
+  def recompute_values!
+    recompute_estimated_spending!
+    recompute_category_values!
+  end
+
+  def recompute_estimated_spending!
+    live_value = live_estimated_spending
+    update_columns(precomputed_estimated_spending: live_value)
+    self.precomputed_estimated_spending = live_value
+  end
+
+  def recompute_category_values!
+    categories_list = budget_categories.reload.to_a
+    return if categories_list.empty?
+
+    actual_spendings = categories_list.each_with_object({}) do |bc, hash|
+      hash[bc.id] = bc.live_actual_spending
+    end
+
+    top_level, sub_cats = categories_list.partition { |bc| !bc.subcategory? }
+    available_spendings = {}
+
+    top_level.each do |bc|
+      actual = actual_spendings[bc.id] || 0
+      parent_budgeted = bc[:budgeted_spending] || 0
+      sub_with_limits = sub_cats.select do |sc|
+        sc.category.parent_id == bc.category_id && !sc.inherits_parent_budget?
+      end
+      sub_budgeted_total = sub_with_limits.sum { |sc| sc[:budgeted_spending] || 0 }
+      shared_pool = parent_budgeted - sub_budgeted_total
+      sub_spending_total = sub_with_limits.sum { |sc| actual_spendings[sc.id] || 0 }
+      shared_pool_spending = actual - sub_spending_total
+      available_spendings[bc.id] = shared_pool - shared_pool_spending
+    end
+
+    sub_cats.each do |bc|
+      available_spendings[bc.id] = if bc.inherits_parent_budget?
+        parent = top_level.find { |p| p.category_id == bc.category.parent_id }
+        parent ? (available_spendings[parent.id] || 0) : 0
+      else
+        (bc[:budgeted_spending] || 0) - (actual_spendings[bc.id] || 0)
+      end
+    end
+
+    categories_list.each do |bc|
+      act = actual_spendings[bc.id] || 0
+      avail = available_spendings[bc.id] || 0
+      bc.update_columns(precomputed_actual_spending: act, precomputed_available_to_spend: avail)
+      bc.precomputed_actual_spending = act
+      bc.precomputed_available_to_spend = avail
+    end
   end
 
   def actual_spending

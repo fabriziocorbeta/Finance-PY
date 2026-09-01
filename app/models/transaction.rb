@@ -27,6 +27,25 @@ class Transaction < ApplicationRecord
   accepts_nested_attributes_for :taggings, allow_destroy: true
 
   after_save :clear_merchant_unlinked_association, if: :merchant_id_previously_changed?
+  after_commit :enqueue_recompute_budget_job, if: -> { destroyed? || saved_change_to_kind? || saved_change_to_category_id? }
+
+  def enqueue_recompute_budget_job
+    # Deliberately bypasses the `entry` association (has_one, via Entryable)
+    # instead of using self.entry: if this callback ever fires before an Entry
+    # has been attached to this transaction (e.g. Transaction.create! followed
+    # by a separate Entry.create!(entryable: transaction), as opposed to the
+    # normal Entry.create!(entryable: Transaction.new(...)) nested-save path),
+    # self.entry would cache a nil result on this Ruby object permanently,
+    # even after the Entry is created moments later from the other side of
+    # the association. A fresh lookup avoids that entirely.
+    entry = Entry.find_by(entryable: self)
+    return unless entry&.account&.family_id
+
+    RecomputeBudgetEstimatedSpendingJob.perform_later(
+      family_id: entry.account.family_id,
+      start_date: entry.date&.to_s
+    )
+  end
 
   # Accessors for exchange_rate stored in extra jsonb field
   def exchange_rate
