@@ -18,7 +18,7 @@ module Authentication
     def authenticate_user!
       if session_record = find_session_by_cookie
         Current.session = session_record
-        set_postgres_rls_session_variable if respond_to?(:set_postgres_rls_session_variable, true)
+        RlsContext.set_family(Current.family&.id)
       else
         if self_hosted_first_login?
           redirect_to new_registration_url
@@ -51,15 +51,6 @@ module Authentication
     def set_request_details
       Current.user_agent = request.user_agent
       Current.ip_address = request.ip
-    end
-
-    def set_postgres_rls_session_variable
-      family_id = Current.family&.id
-      if family_id.present?
-        ActiveRecord::Base.connection.execute(
-          ActiveRecord::Base.sanitize_sql([ "SET app.current_family_id = ?", family_id ])
-        )
-      end
     end
 
     def set_sentry_user
