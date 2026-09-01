@@ -318,10 +318,10 @@ class Family < ApplicationRecord
 
   def oldest_entry_date
     @oldest_entry_date ||= if defined?(@async_oldest_entry) && @async_oldest_entry
-      @async_oldest_entry.first&.date
+      @async_oldest_entry.first&.date || Date.current
     else
-      entries.order(:date).pick(:date)
-    end || Date.current
+      entries.order(:date).pick(:date) || Date.current
+    end
   end
 
   # Used for invalidating family / balance sheet related aggregation queries
