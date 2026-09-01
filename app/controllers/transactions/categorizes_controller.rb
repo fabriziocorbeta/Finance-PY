@@ -28,7 +28,7 @@ class Transactions::CategorizesController < ApplicationController
     remaining_ids = all_entry_ids - entry_ids
 
     category = Current.family.categories.find(params[:category_id])
-    entries  = Current.accessible_entries.excluding_split_parents.where(id: entry_ids)
+    entries  = Current.accessible_entries.excluding_split_parents.where(id: entry_ids).includes(:entryable)
     count    = entries.bulk_update!({ category_id: category.id })
 
     if params[:create_rule] == "1"
