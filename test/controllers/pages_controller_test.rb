@@ -14,6 +14,11 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     assert_response :ok
   end
 
+  test "dashboard schedules async queries" do
+    accounts_relation = @user.accessible_accounts.visible.with_attached_logo.load_async
+    assert_equal true, accounts_relation.scheduled?
+  end
+
   test "intro page requires guest role" do
     get intro_path
 
