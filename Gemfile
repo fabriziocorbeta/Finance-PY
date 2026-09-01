@@ -1,6 +1,6 @@
 source "https://rubygems.org"
 
-ruby "3.4.7" if RUBY_VERSION >= "3.4"
+ruby "3.4.7"
 
 # Rails
 gem "rails", "~> 7.2.2"
