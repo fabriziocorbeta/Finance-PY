@@ -34,7 +34,7 @@
     <% @dashboard_sections.each do |section| %>
       <% next unless section[:visible] %>
       <section
-        class="bg-container rounded-xl shadow-border-xs transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
+        class="bg-container rounded-xl shadow-border-xs transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2<%= " 2xl:col-span-2" if section[:key] == "cashflow_sankey" %>"
         data-dashboard-sortable-target="section"
         data-section-key="<%= section[:key] %>"
         data-controller="dashboard-section<%= " cashflow-expand" if section[:key] == "cashflow_sankey" %>"
