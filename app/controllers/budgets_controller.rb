@@ -57,7 +57,11 @@ class BudgetsController < ApplicationController
       @budget = Budget.find_or_bootstrap(Current.family, start_date: start_date, user: Current.user)
       raise ActiveRecord::RecordNotFound unless @budget
 
-      @budget.budget_categories.load_async
+      # NOT .load_async: budget_categories has FORCE ROW LEVEL SECURITY,
+      # and the async executor's connection never gets app.current_family_id
+      # set (see Family#preload_cache_versions_async) -- it would silently
+      # come back empty instead of raising.
+      @budget.budget_categories.load
     end
 
     def redirect_to_current_month_budget
