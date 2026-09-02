@@ -9,9 +9,11 @@ class PagesController < ApplicationController
       redirect_to chats_path and return
     end
 
+    Current.family.preload_cache_versions_async(date_range: @period.date_range)
+    @accounts = Current.user.accessible_accounts.visible.with_attached_logo.load_async
+
     @balance_sheet = Current.family.balance_sheet
     @investment_statement = Current.family.investment_statement
-    @accounts = Current.user.accessible_accounts.visible.with_attached_logo
 
     family_currency = Current.family.currency
 
