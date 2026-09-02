@@ -17,25 +17,33 @@ set -euo pipefail
 # gem needs).
 #
 # Usage (env vars normally come from .env.local via the crontab entry):
-#   DATABASE_URL=<local postgres> SUPABASE_BACKUP_URL=<supabase> bin/backup_to_supabase.sh
+#   LOCAL_ADMIN_DATABASE_URL=<local postgres, superuser> SUPABASE_BACKUP_URL=<supabase> bin/backup_to_supabase.sh
 # =====================================================================
 
 WEB_CONTAINER="${WEB_CONTAINER:-financespy-web-1}"
 DUMP_PATH="/tmp/financespy_backup_$(date +%Y%m%d_%H%M%S).dump"
 
-: "${DATABASE_URL:?DATABASE_URL requerido (Postgres local, fuente del backup)}"
+: "${LOCAL_ADMIN_DATABASE_URL:?LOCAL_ADMIN_DATABASE_URL requerido (Postgres local, rol admin -- accounts/entries tienen FORCE ROW LEVEL SECURITY, el rol restringido de la app no puede leer todas las familias sin esto)}"
 : "${SUPABASE_BACKUP_URL:?SUPABASE_BACKUP_URL requerido (destino del backup)}"
 
-echo "=== 1. Dumping local Postgres ==="
-docker exec "$WEB_CONTAINER" pg_dump "$DATABASE_URL" \
+# pg_dump/pg_restore use plain libpq URI parsing, which doesn't understand
+# Rails' schema_search_path query param (ActiveRecord-specific) -- strip it.
+LOCAL_PG_URL="${LOCAL_ADMIN_DATABASE_URL%%\?*}"
+SUPABASE_PG_URL="${SUPABASE_BACKUP_URL%%\?*}"
+
+# Only the financespy schema -- this Supabase project's `public` schema
+# belongs to the CD&Co ERP app (shares the same project/database), NOT
+# FinancePY. Restoring into `public` here would clobber real ERP data.
+echo "=== 1. Dumping local Postgres (schema: financespy only) ==="
+docker exec "$WEB_CONTAINER" pg_dump "$LOCAL_PG_URL" \
   -Fc --no-owner --no-privileges \
-  --schema=financespy --schema=extensions --schema=public \
+  --schema=financespy \
   -f "$DUMP_PATH"
 
-echo "=== 2. Restoring into Supabase (clean, replaces the prior backup) ==="
+echo "=== 2. Restoring into Supabase (schema: financespy only, clean, replaces the prior backup) ==="
 docker exec "$WEB_CONTAINER" pg_restore \
   --no-owner --no-privileges --clean --if-exists \
-  -d "$SUPABASE_BACKUP_URL" \
+  -d "$SUPABASE_PG_URL" \
   "$DUMP_PATH"
 
 echo "=== 3. Cleaning up dump file ==="
