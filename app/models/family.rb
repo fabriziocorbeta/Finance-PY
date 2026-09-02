@@ -306,14 +306,17 @@ class Family < ApplicationRecord
     end
   end
 
+  # NOTE: this used to dispatch these lookups via .load_async, but entries
+  # and accounts both have FORCE ROW LEVEL SECURITY -- Rails' async query
+  # executor runs the query on a different pooled connection than the one
+  # RlsContext.set_family set app.current_family_id on, so the async
+  # connection sees zero rows regardless of real data. That silently
+  # emptied every family-scoped async_query_executor call downstream
+  # (found live: it blanked the whole dashboard and /budgets). Left
+  # deliberately synchronous; do not re-add .load_async here without also
+  # setting app.current_family_id on whatever connection the executor
+  # thread checks out.
   def preload_cache_versions_async(date_range: nil)
-    @async_oldest_entry = entries.order(:date).select(:date).limit(1).load_async
-    @async_entries_max = entries.order(updated_at: :desc).select(:updated_at).limit(1).load_async
-    @async_accounts_max = accounts.order(updated_at: :desc).select(:updated_at).limit(1).load_async
-    if date_range
-      @async_entries_range_max ||= {}
-      @async_entries_range_max[date_range] = entries.where(date: date_range).order(updated_at: :desc).select(:updated_at).limit(1).load_async
-    end
   end
 
   def oldest_entry_date
