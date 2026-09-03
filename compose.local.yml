@@ -1,6 +1,10 @@
 # FinancePY — Hosting local (PC de casa) durante fase de prueba, no comercial.
-# Datos críticos viven en Supabase (mismo DATABASE_URL que prod) → esta PC solo
-# corre compute, no hay Postgres local ni backup de DB que hacer acá.
+# Postgres corre en esta misma PC (servicio `postgres` abajo) -- cada query del
+# app antes cruzaba a Supabase en Oregon (~250ms por round-trip); en la misma
+# LAN/host es submilisegundo. Supabase se mantiene como réplica de respaldo:
+# bin/backup_to_supabase.sh (cron nocturno en el host) vuelca esta Postgres
+# local ahí, así que si esta PC muere el app puede apuntar de vuelta a
+# Supabase en minutos sin perder datos. Ver docs/db-migration-2026-09-01.md.
 #
 # Uso (dentro de WSL2/Ubuntu con Docker Desktop):
 #   cp .env.production.example .env.local && editar valores
@@ -10,17 +14,24 @@
 # Ver docs/cloudflared-config.yml.example
 #
 # Límites de recursos (para no afectar a otras personas usando esta PC):
-# Total: ~2.7GB RAM / ~2 cores. Números sincronizados 2026-08-04 con los
-# mismos límites ya aplicados a compose.prod.yml (commit 5656158,
-# 2026-07-30) para el mismo escenario de PC compartida -- incluye el fix de
-# WEB_CONCURRENCY=1 que evita el OOM real encontrado durante el intento de
-# Render (Puma en cluster mode con 2 workers no entra en una instancia
-# chica). cpu_shares bajo en todos los servicios: en contención, el uso
-# normal de la PC gana prioridad sobre estos contenedores.
+# Total: ~3.2GB RAM / ~2.25 cores (subido de ~2.7GB/2 cores el 2026-09-01 al
+# sumar Postgres local). CORRECCION 2026-09-03: la PC tiene 8GB reales (i5
+# 7200U), no 16GB como decia esta linea antes -- y WSL2 tiene un tope
+# EXPLICITO de memory=4GB en .wslconfig (no el default ~50% del host), asi
+# que estos ~3.2GB de mem_limit son la mayor parte del techo real
+# disponible, no un margen de cortesia comodo. `free -h` dentro de WSL2 ya
+# mostro apenas ~65MB libres en un momento normal de uso -- si se agregan
+# servicios o se suben limites, hacerlo con `free -h` a la vista, no a
+# ciegas. Numeros base sincronizados 2026-08-04 con compose.prod.yml
+# (commit 5656158) -- incluye el fix de WEB_CONCURRENCY=1 que evita el OOM
+# real encontrado durante el intento de Render (Puma en cluster mode con 2
+# workers no entra en una instancia chica). cpu_shares bajo en todos los
+# servicios: en contención, el uso normal de la PC gana prioridad sobre
+# estos contenedores.
 
 x-rails-env: &rails_env
   SECRET_KEY_BASE: ${SECRET_KEY_BASE:?SECRET_KEY_BASE requerido en .env.local}
-  DATABASE_URL: ${DATABASE_URL:?DATABASE_URL requerido en .env.local (mismo Supabase de prod)}
+  DATABASE_URL: ${DATABASE_URL:?DATABASE_URL requerido en .env.local (Postgres local, ver postgres service abajo)}
   SELF_HOSTED: "true"
   RAILS_FORCE_SSL: "false"
   RAILS_ASSUME_SSL: "true"
@@ -66,6 +77,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -85,6 +98,8 @@ services:
       <<: *rails_env
     depends_on:
       redis:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     dns:
       - 8.8.8.8
@@ -112,9 +127,30 @@ services:
     cpus: 0.25
     cpu_shares: 256
 
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: financespy
+      POSTGRES_USER: ${POSTGRES_LOCAL_USER:?POSTGRES_LOCAL_USER requerido en .env.local}
+      POSTGRES_PASSWORD: ${POSTGRES_LOCAL_PASSWORD:?POSTGRES_LOCAL_PASSWORD requerido en .env.local}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - financespy_net
+    mem_limit: 640m
+    cpus: 0.5
+    cpu_shares: 512
+
 volumes:
   app-storage:
   redis-data:
+  postgres-data:
 
 networks:
   financespy_net:
