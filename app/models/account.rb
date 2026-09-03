@@ -82,7 +82,11 @@ class Account < ApplicationRecord
   # runs while family_id is still nil and fails its own belongs_to :family
   # check. (See family_id migration note on receivables for why accountable
   # needs family_id set at all.)
+  #
+  # Also registered on before_save as a backstop for any caller that stubs
+  # away #valid? (see the matching note on Entry) -- idempotent, safe twice.
   before_validation :propagate_family_id_to_accountable, prepend: true
+  before_save :propagate_family_id_to_accountable, prepend: true
 
   # Writer for subtype that delegates to the accountable
   # This allows forms to set subtype directly on the account

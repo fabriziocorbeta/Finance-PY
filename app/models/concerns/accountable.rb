@@ -22,6 +22,7 @@ module Accountable
     # their own pull, mirroring Account's own
     # propagate_family_id_to_accountable push callback.
     before_validation :assign_family_from_account, prepend: true
+    before_save :assign_family_from_account, prepend: true
   end
 
   class_methods do

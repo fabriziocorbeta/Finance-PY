@@ -20,6 +20,7 @@ module Entryable
     # the time this validates, even though Entry's own callback never ran
     # (this record is the outer one, not the associated one, in that call).
     before_validation :assign_family_from_entry, prepend: true
+    before_save :assign_family_from_entry, prepend: true
 
     scope :with_entry, -> { joins(:entry) }
 

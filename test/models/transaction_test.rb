@@ -142,6 +142,7 @@ class TransactionTest < ActiveSupport::TestCase
 
   test "exchange_rate validation allows positive values" do
     transaction = Transaction.new(
+      family: families(:dylan_family),
       category: categories(:income)
     )
     transaction.exchange_rate = 1.5

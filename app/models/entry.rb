@@ -31,7 +31,15 @@ class Entry < ApplicationRecord
   # while family_id is still nil and fails its own belongs_to :family check.
   # (See family_id migration note on transactions/valuations for why
   # entryable needs family_id set at all.)
+  #
+  # Also registered on before_save: a caller can stub away #valid? entirely
+  # (AndroidPurchase::WebhookProcessorTest does this deliberately, to force
+  # a DB-unique-index race past the app-level check) -- when that happens
+  # the whole validation phase, and every before_validation callback with
+  # it, never runs, but before_save still fires since it's independent of
+  # how validation was satisfied. Idempotent (||=), safe to run twice.
   before_validation :propagate_family_id_to_entryable, prepend: true
+  before_save :propagate_family_id_to_entryable, prepend: true
 
   after_commit :enqueue_recompute_budget_job, if: -> {
     destroyed? || saved_change_to_date? || saved_change_to_amount? || saved_change_to_excluded?
