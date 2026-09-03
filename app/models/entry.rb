@@ -320,7 +320,7 @@ class Entry < ApplicationRecord
   end
 
   def propagate_family_id_to_entryable
-    entryable.family_id = account.family_id if entryable && entryable.respond_to?(:family_id=)
+    entryable.family_id = account.family_id if account && entryable && entryable.respond_to?(:family_id=)
   end
 
   def entryable_name_short
