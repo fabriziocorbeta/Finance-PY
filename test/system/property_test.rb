@@ -15,6 +15,19 @@ class PropertiesEditTest < ApplicationSystemTestCase
     click_link "[system test] Property Account"
     find("[data-testid='account-menu']").click
     click_on "Edit"
+
+    # The edit form arrives inside a native <dialog> (DS::Dialog) that Turbo
+    # inserts already in the DOM but closed -- it only becomes visible once
+    # the "dialog" Stimulus controller connects and calls showModal(), a
+    # separate JS tick after the frame response lands. A closed <dialog> is
+    # invisible to Capybara's default (visible-only) finder, so drilling
+    # straight into the subtype field made the wait implicit and silent:
+    # if Stimulus connects slower than default_max_wait_time under CI load,
+    # this fails with ElementNotFound on the field with no clue that the
+    # dialog itself never opened. Asserting the open dialog first makes that
+    # wait explicit and this failure mode diagnosable.
+    assert_selector "dialog[open]"
+
     assert_equal "single_family_home", find("#account_accountable_attributes_subtype").value
   end
 
