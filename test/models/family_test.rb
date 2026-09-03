@@ -129,7 +129,7 @@ class FamilyTest < ActiveSupport::TestCase
 
     # Create transactions pointing to both categories
     account = family.accounts.first
-    txn1 = Transaction.create!(category: english_category)
+    txn1 = Transaction.create!(family: family, category: english_category)
     Entry.create!(
       account: account,
       entryable: txn1,
@@ -139,7 +139,7 @@ class FamilyTest < ActiveSupport::TestCase
       name: "Test 1"
     )
 
-    txn2 = Transaction.create!(category: spanish_category)
+    txn2 = Transaction.create!(family: family, category: spanish_category)
     Entry.create!(
       account: account,
       entryable: txn2,

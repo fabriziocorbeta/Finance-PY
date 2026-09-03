@@ -13,7 +13,7 @@ class RecurringTransaction::IdentifierTest < ActiveSupport::TestCase
 
     # Create 3 transactions on days 5, 6, 7 (clearly clustered)
     [ 5, 6, 7 ].each_with_index do |day, i|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         merchant: merchant,
         category: categories(:food_and_drink)
       )
@@ -49,7 +49,7 @@ class RecurringTransaction::IdentifierTest < ActiveSupport::TestCase
     ]
 
     dates.each do |date|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         merchant: merchant,
         category: categories(:food_and_drink)
       )
@@ -90,7 +90,7 @@ class RecurringTransaction::IdentifierTest < ActiveSupport::TestCase
     ]
 
     dates.each do |date|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         merchant: merchant,
         category: categories(:food_and_drink)
       )
@@ -122,7 +122,7 @@ class RecurringTransaction::IdentifierTest < ActiveSupport::TestCase
 
     # Create 3 transactions on days 1, 15, 30 (widely spread, should not cluster)
     [ 1, 15, 30 ].each_with_index do |day, i|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         merchant: merchant,
         category: categories(:food_and_drink)
       )
@@ -147,7 +147,7 @@ class RecurringTransaction::IdentifierTest < ActiveSupport::TestCase
 
     # Create only 2 transactions
     [ 5, 6 ].each_with_index do |day, i|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         merchant: merchant,
         category: categories(:food_and_drink)
       )
@@ -185,7 +185,7 @@ class RecurringTransaction::IdentifierTest < ActiveSupport::TestCase
 
     # Create 3 new transactions on similar clustered days
     [ 0, 1, 2 ].each do |months_ago|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         merchant: merchant,
         category: categories(:food_and_drink)
       )

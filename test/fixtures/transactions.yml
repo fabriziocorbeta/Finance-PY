@@ -1,8 +1,11 @@
 one:
+  family: dylan_family
   category: food_and_drink
   merchant: amazon
 
 transfer_out:
+  family: dylan_family
   kind: payment
 transfer_in:
+  family: dylan_family
   kind: transfer

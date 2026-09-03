@@ -5,7 +5,7 @@ class Transactions::MergedBadgeViewTest < ActionView::TestCase
   test "does not render merged badge after was_merged column removal" do
     account = accounts(:depository)
 
-    transaction = Transaction.create!
+    transaction = Transaction.create!(family: account.family)
     entry = Entry.create!(
       account: account,
       entryable: transaction,

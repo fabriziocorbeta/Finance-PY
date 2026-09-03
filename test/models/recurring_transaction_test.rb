@@ -46,7 +46,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     # Create a series of transactions with same merchant and amount on similar days
     # Use dates within the last 3 months: today, 1 month ago, 2 months ago
     [ 0, 1, 2 ].each do |months_ago|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         merchant: @merchant,
         category: categories(:food_and_drink)
       )
@@ -75,7 +75,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
   test "identify_patterns_for does not create recurring transaction for less than 3 occurrences" do
     # Create only 2 transactions
     2.times do |i|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         merchant: @merchant,
         category: categories(:food_and_drink)
       )
@@ -182,7 +182,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
   test "identify_patterns_for preserves sign for income transactions" do
     # Create recurring income transactions (negative amounts)
     [ 0, 1, 2 ].each do |months_ago|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         merchant: @merchant,
         category: categories(:income)
       )
@@ -211,7 +211,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
   test "identify_patterns_for creates name-based recurring transactions for transactions without merchants" do
     # Create transactions without merchants (e.g., from CSV imports or standard accounts)
     [ 0, 1, 2 ].each do |months_ago|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         category: categories(:food_and_drink)
       )
       @account.entries.create!(
@@ -242,7 +242,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
 
     # First pattern: Netflix Standard
     [ 0, 1, 2 ].each do |months_ago|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         merchant: @merchant,
         category: categories(:food_and_drink)
       )
@@ -257,7 +257,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
 
     # Second pattern: Netflix Premium
     [ 0, 1, 2 ].each do |months_ago|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         merchant: @merchant,
         category: categories(:food_and_drink)
       )
@@ -284,7 +284,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
 
     # Create transactions for pattern
     [ 0, 1, 2 ].each do |months_ago|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         category: categories(:food_and_drink)
       )
       @account.entries.create!(
@@ -327,7 +327,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
 
     # Create merchant-based pattern
     [ 0, 1, 2 ].each do |months_ago|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         merchant: @merchant,
         category: categories(:food_and_drink)
       )
@@ -342,7 +342,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
 
     # Create name-based pattern (no merchant)
     [ 0, 1, 2 ].each do |months_ago|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         category: categories(:one)
       )
       @account.entries.create!(
@@ -371,7 +371,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
 
   # Manual recurring transaction tests
   test "create_from_transaction creates a manual recurring transaction" do
-    transaction = Transaction.create!(
+    transaction = Transaction.create!(family: @family, 
       merchant: @merchant,
       category: categories(:food_and_drink)
     )
@@ -405,7 +405,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     # Create multiple historical transactions with varying amounts on the same day of month
     amounts = [ 90.00, 100.00, 110.00, 120.00 ]
     amounts.each_with_index do |amount, i|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         merchant: @merchant,
         category: categories(:food_and_drink)
       )
@@ -433,7 +433,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
   end
 
   test "create_from_transaction with single transaction sets fixed amount" do
-    transaction = Transaction.create!(
+    transaction = Transaction.create!(family: @family, 
       merchant: @merchant,
       category: categories(:food_and_drink)
     )
@@ -475,7 +475,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     )
 
     # Create transactions with varying amounts on day 14 (within +/-2 days of day 15)
-    transaction_within_range = Transaction.create!(merchant: @merchant, category: categories(:food_and_drink))
+    transaction_within_range = Transaction.create!(family: @family, merchant: @merchant, category: categories(:food_and_drink))
     entry_within = @account.entries.create!(
       date: Date.current.next_month.beginning_of_month + 13.days, # Day 14
       amount: 90.00,
@@ -484,7 +484,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
       entryable: transaction_within_range
     )
 
-    transaction_outside_range = Transaction.create!(merchant: @merchant, category: categories(:food_and_drink))
+    transaction_outside_range = Transaction.create!(family: @family, merchant: @merchant, category: categories(:food_and_drink))
     entry_outside = @account.entries.create!(
       date: Date.current.next_month.beginning_of_month + 14.days, # Day 15
       amount: 150.00,
@@ -583,7 +583,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     # Create new transactions with varying amounts that would match the pattern
     amounts = [ 45.00, 55.00, 60.00 ]
     amounts.each_with_index do |amount, i|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         merchant: @merchant,
         category: categories(:food_and_drink)
       )
@@ -699,7 +699,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
 
     # Create pattern on account A
     [ 0, 1, 2 ].each do |months_ago|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         merchant: @merchant,
         category: categories(:food_and_drink)
       )
@@ -714,7 +714,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
 
     # Create same pattern on account B
     [ 0, 1, 2 ].each do |months_ago|
-      transaction = Transaction.create!(
+      transaction = Transaction.create!(family: @family, 
         merchant: @merchant,
         category: categories(:food_and_drink)
       )

@@ -158,7 +158,7 @@ class TransactionTest < ActiveSupport::TestCase
   # RecurringTransaction.create_from_transaction).
   test "creating a transaction before attaching its entry does not poison the entry association cache" do
     account = accounts(:depository)
-    transaction = Transaction.create!(category: categories(:income))
+    transaction = Transaction.create!(family: account.family, category: categories(:income))
 
     entry = account.entries.create!(
       date: Date.current,

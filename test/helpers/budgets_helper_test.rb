@@ -44,7 +44,7 @@ class BudgetsHelperTest < ActionView::TestCase
   test "shows inheriting subcategory in on-track section when it has spending" do
     Entry.create!(
       account: accounts(:depository),
-      entryable: Transaction.create!(category: @child_category),
+      entryable: Transaction.create!(family: @family, category: @child_category),
       date: Date.current,
       name: "Helper Child Spending",
       amount: 25,
@@ -89,7 +89,7 @@ class BudgetsHelperTest < ActionView::TestCase
 
     Entry.create!(
       account: accounts(:depository),
-      entryable: Transaction.create!(category: child),
+      entryable: Transaction.create!(family: @family, category: child),
       date: Date.current,
       name: "Helper Child Over Budget",
       amount: 100,

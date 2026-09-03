@@ -164,7 +164,7 @@ class BudgetTest < ActiveSupport::TestCase
     # Create a $500 expense
     Entry.create!(
       account: account,
-      entryable: Transaction.create!(category: healthcare),
+      entryable: Transaction.create!(family: account.family, category: healthcare),
       date: Date.current,
       name: "Doctor visit",
       amount: 500,
@@ -174,7 +174,7 @@ class BudgetTest < ActiveSupport::TestCase
     # Create a $200 refund (negative amount = income classification in the SQL)
     Entry.create!(
       account: account,
-      entryable: Transaction.create!(category: healthcare),
+      entryable: Transaction.create!(family: account.family, category: healthcare),
       date: Date.current,
       name: "Insurance reimbursement",
       amount: -200,
@@ -210,7 +210,7 @@ class BudgetTest < ActiveSupport::TestCase
     # Only a refund, no expense
     Entry.create!(
       account: account,
-      entryable: Transaction.create!(category: category),
+      entryable: Transaction.create!(family: account.family, category: category),
       date: Date.current,
       name: "Full refund",
       amount: -50,
@@ -288,7 +288,7 @@ class BudgetTest < ActiveSupport::TestCase
     # Create an uncategorized expense
     Entry.create!(
       account: account,
-      entryable: Transaction.create!(category: nil),
+      entryable: Transaction.create!(family: account.family, category: nil),
       date: Date.current,
       name: "Uncategorized purchase",
       amount: 400,
@@ -298,7 +298,7 @@ class BudgetTest < ActiveSupport::TestCase
     # Create an uncategorized refund
     Entry.create!(
       account: account,
-      entryable: Transaction.create!(category: nil),
+      entryable: Transaction.create!(family: account.family, category: nil),
       date: Date.current,
       name: "Uncategorized refund",
       amount: -150,
@@ -436,7 +436,7 @@ class BudgetTest < ActiveSupport::TestCase
     # Create an uncategorized expense
     Entry.create!(
       account: account,
-      entryable: Transaction.create!(category: nil),
+      entryable: Transaction.create!(family: account.family, category: nil),
       date: Date.current,
       name: "Uncategorized lunch",
       amount: 75,
@@ -489,7 +489,7 @@ class BudgetTest < ActiveSupport::TestCase
     account = accounts(:depository)
     Entry.create!(
       account: account,
-      entryable: Transaction.create!(category: category),
+      entryable: Transaction.create!(family: account.family, category: category),
       date: Date.current,
       name: "Recompute values test expense",
       amount: 50,
