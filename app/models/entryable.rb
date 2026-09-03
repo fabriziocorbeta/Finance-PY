@@ -8,19 +8,18 @@ module Entryable
   end
 
   included do
-    include Enrichable
+    include Enrichable, FamilyIdPropagatable
 
     has_one :entry, as: :entryable, touch: true, dependent: :destroy
 
-    # Covers the OTHER construction direction from Entry's own
-    # propagate_family_id_to_entryable callback: importers (QifImport,
-    # bank-sync processors) build Transaction.new(entry: Entry.new(account:
-    # ..., ...)) instead of Entry.new(entryable: Transaction.new), so the
-    # entry association -- and its account -- is already in memory here by
-    # the time this validates, even though Entry's own callback never ran
+    # See FamilyIdPropagatable. Covers the OTHER construction direction from
+    # Entry's own propagate_family_id_to_entryable callback: importers
+    # (QifImport, bank-sync processors) build Transaction.new(entry:
+    # Entry.new(account: ..., ...)) instead of Entry.new(entryable:
+    # Transaction.new), so the entry association -- and its account -- is
+    # already in memory here even though Entry's own callback never ran
     # (this record is the outer one, not the associated one, in that call).
-    before_validation :assign_family_from_entry, prepend: true
-    before_save :assign_family_from_entry, prepend: true
+    pulls_family_id_from :entry, :account
 
     scope :with_entry, -> { joins(:entry) }
 
@@ -37,10 +36,5 @@ module Entryable
     scope :chronological, -> {
       with_entry.merge(Entry.chronological)
     }
-  end
-
-  def assign_family_from_entry
-    return unless respond_to?(:family_id=)
-    self.family_id ||= entry&.account&.family_id
   end
 end

@@ -1,5 +1,5 @@
 class Entry < ApplicationRecord
-  include Monetizable, Enrichable
+  include Monetizable, Enrichable, FamilyIdPropagatable
 
   attr_accessor :unsplitting
 
@@ -25,21 +25,11 @@ class Entry < ApplicationRecord
 
   before_destroy :prevent_individual_child_deletion, if: :split_child?
 
-  # Must run before the delegated_type belongs_to's autosave validation,
-  # which validates (and later saves) entryable BEFORE this Entry -- so this
-  # has to be before_validation, not before_save, or entryable.valid? runs
-  # while family_id is still nil and fails its own belongs_to :family check.
-  # (See family_id migration note on transactions/valuations for why
-  # entryable needs family_id set at all.)
-  #
-  # Also registered on before_save: a caller can stub away #valid? entirely
-  # (AndroidPurchase::WebhookProcessorTest does this deliberately, to force
-  # a DB-unique-index race past the app-level check) -- when that happens
-  # the whole validation phase, and every before_validation callback with
-  # it, never runs, but before_save still fires since it's independent of
-  # how validation was satisfied. Idempotent (||=), safe to run twice.
-  before_validation :propagate_family_id_to_entryable, prepend: true
-  before_save :propagate_family_id_to_entryable, prepend: true
+  # See FamilyIdPropagatable. Entry has no family_id of its own, so the
+  # real source is :account. AndroidPurchase::WebhookProcessorTest stubs
+  # away #valid? entirely to force a DB-unique-index race past the app
+  # check -- the before_save registration is what still fires in that case.
+  propagates_family_id_to :entryable, from: :account
 
   after_commit :enqueue_recompute_budget_job, if: -> {
     destroyed? || saved_change_to_date? || saved_change_to_amount? || saved_change_to_excluded?
@@ -317,10 +307,6 @@ class Entry < ApplicationRecord
       family_id: account.family_id,
       start_date: min_date&.to_s
     )
-  end
-
-  def propagate_family_id_to_entryable
-    entryable.family_id = account.family_id if account && entryable && entryable.respond_to?(:family_id=)
   end
 
   def entryable_name_short

@@ -1,5 +1,5 @@
 class Account < ApplicationRecord
-  include AASM, Syncable, Monetizable, Chartable, Linkable, Enrichable, Anchorable, Reconcileable, TaxTreatable
+  include AASM, Syncable, Monetizable, Chartable, Linkable, Enrichable, Anchorable, Reconcileable, TaxTreatable, FamilyIdPropagatable
 
   before_validation :assign_default_owner, if: -> { owner_id.blank? }
 
@@ -76,17 +76,9 @@ class Account < ApplicationRecord
   delegated_type :accountable, types: Accountable::TYPES, dependent: :destroy
   delegate :subtype, to: :accountable, allow_nil: true
 
-  # Must run before the delegated_type belongs_to's autosave validation,
-  # which validates (and later saves) accountable BEFORE this Account -- so
-  # this has to be before_validation, not before_save, or accountable.valid?
-  # runs while family_id is still nil and fails its own belongs_to :family
-  # check. (See family_id migration note on receivables for why accountable
-  # needs family_id set at all.)
-  #
-  # Also registered on before_save as a backstop for any caller that stubs
-  # away #valid? (see the matching note on Entry) -- idempotent, safe twice.
-  before_validation :propagate_family_id_to_accountable, prepend: true
-  before_save :propagate_family_id_to_accountable, prepend: true
+  # See FamilyIdPropagatable. Account has its own family_id column, so the
+  # default `from: :family_id` source applies.
+  propagates_family_id_to :accountable
 
   # Writer for subtype that delegates to the accountable
   # This allows forms to set subtype directly on the account
@@ -494,10 +486,6 @@ class Account < ApplicationRecord
   end
 
   private
-
-    def propagate_family_id_to_accountable
-      accountable.family_id = family_id if accountable && accountable.respond_to?(:family_id=)
-    end
 
     def assign_default_owner
       return if owner.present?

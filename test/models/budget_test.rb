@@ -1,6 +1,8 @@
 require "test_helper"
 
 class BudgetTest < ActiveSupport::TestCase
+  include EntriesTestHelper
+
   setup do
     @family = families(:empty)
   end
@@ -162,23 +164,23 @@ class BudgetTest < ActiveSupport::TestCase
     account = accounts(:depository)
 
     # Create a $500 expense
-    Entry.create!(
+    create_transaction(
       account: account,
-      entryable: Transaction.create!(family: account.family, category: healthcare),
       date: Date.current,
       name: "Doctor visit",
       amount: 500,
-      currency: "USD"
+      currency: "USD",
+      category: healthcare
     )
 
     # Create a $200 refund (negative amount = income classification in the SQL)
-    Entry.create!(
+    create_transaction(
       account: account,
-      entryable: Transaction.create!(family: account.family, category: healthcare),
       date: Date.current,
       name: "Insurance reimbursement",
       amount: -200,
-      currency: "USD"
+      currency: "USD",
+      category: healthcare
     )
 
     # Clear memoized values
@@ -208,13 +210,13 @@ class BudgetTest < ActiveSupport::TestCase
     account = accounts(:depository)
 
     # Only a refund, no expense
-    Entry.create!(
+    create_transaction(
       account: account,
-      entryable: Transaction.create!(family: account.family, category: category),
       date: Date.current,
       name: "Full refund",
       amount: -50,
-      currency: "USD"
+      currency: "USD",
+      category: category
     )
 
     budget = Budget.find(budget.id)
@@ -286,9 +288,8 @@ class BudgetTest < ActiveSupport::TestCase
     account = accounts(:depository)
 
     # Create an uncategorized expense
-    Entry.create!(
+    create_transaction(
       account: account,
-      entryable: Transaction.create!(family: account.family, category: nil),
       date: Date.current,
       name: "Uncategorized purchase",
       amount: 400,
@@ -296,9 +297,8 @@ class BudgetTest < ActiveSupport::TestCase
     )
 
     # Create an uncategorized refund
-    Entry.create!(
+    create_transaction(
       account: account,
-      entryable: Transaction.create!(family: account.family, category: nil),
       date: Date.current,
       name: "Uncategorized refund",
       amount: -150,
@@ -434,9 +434,8 @@ class BudgetTest < ActiveSupport::TestCase
     account = accounts(:depository)
 
     # Create an uncategorized expense
-    Entry.create!(
+    create_transaction(
       account: account,
-      entryable: Transaction.create!(family: account.family, category: nil),
       date: Date.current,
       name: "Uncategorized lunch",
       amount: 75,
@@ -487,13 +486,13 @@ class BudgetTest < ActiveSupport::TestCase
     )
 
     account = accounts(:depository)
-    Entry.create!(
+    create_transaction(
       account: account,
-      entryable: Transaction.create!(family: account.family, category: category),
       date: Date.current,
       name: "Recompute values test expense",
       amount: 50,
-      currency: "USD"
+      currency: "USD",
+      category: category
     )
 
     budget.recompute_values!
