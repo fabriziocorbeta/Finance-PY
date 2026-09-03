@@ -26,11 +26,24 @@
                          placeholder: t(".email_placeholder"),
                          value: @email %>
 
-    <%= form.password_field :password,
-                            label: t(".password"),
-                            required: "required",
-                            placeholder: t(".password_placeholder"),
-                            value: @password %>
+    <div data-controller="password-visibility" class="relative">
+      <%= form.password_field :password,
+                              label: t(".password"),
+                              required: "required",
+                              placeholder: t(".password_placeholder"),
+                              value: @password,
+                              data: { password_visibility_target: "input" } %>
+      <button type="button"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary focus:outline-none"
+              data-action="click->password-visibility#toggle">
+        <div data-password-visibility-target="showIcon">
+          <%= icon("eye") %>
+        </div>
+        <div data-password-visibility-target="hideIcon">
+          <%= icon("eye-off") %>
+        </div>
+      </button>
+    </div>
 
     <%= form.submit t(".submit") %>
   <% end %>
