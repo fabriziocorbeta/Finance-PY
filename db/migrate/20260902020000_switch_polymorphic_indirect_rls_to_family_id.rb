@@ -21,21 +21,17 @@ class SwitchPolymorphicIndirectRlsToFamilyId < ActiveRecord::Migration[7.2]
     end
   end
 
+  # No safe down: the join-based policy this would restore is the exact
+  # shape that made every insert into these 3 tables fail in production
+  # (see the class comment). Restoring it -- even temporarily, even by
+  # accident via a rollback of an unrelated later migration -- reintroduces
+  # that outage. If you actually need to undo this, do it by hand and
+  # decide deliberately what policy you want; don't let `db:rollback`
+  # silently put the broken one back.
   def down
-    original_conditions = {
-      transactions: "id IN (SELECT entryable_id FROM entries WHERE entryable_type = 'Transaction' AND account_id IN (SELECT id FROM accounts WHERE family_id = current_family_id()))",
-      valuations: "id IN (SELECT entryable_id FROM entries WHERE entryable_type = 'Valuation' AND account_id IN (SELECT id FROM accounts WHERE family_id = current_family_id()))",
-      receivables: "id IN (SELECT accountable_id FROM accounts WHERE accountable_type = 'Receivable' AND family_id = current_family_id())"
-    }
-
-    original_conditions.each do |table, policy_condition|
-      execute "DROP POLICY IF EXISTS #{table}_family_isolation_policy ON #{table};"
-      execute <<~SQL
-        CREATE POLICY #{table}_family_isolation_policy ON #{table}
-          FOR ALL
-          USING (#{policy_condition})
-          WITH CHECK (true);
-      SQL
-    end
+    raise ActiveRecord::IrreversibleMigration,
+      "SwitchPolymorphicIndirectRlsToFamilyId cannot be safely reverted: " \
+      "the old join-based RLS policy it would restore is what broke every " \
+      "insert into transactions/valuations/receivables in the first place."
   end
 end
