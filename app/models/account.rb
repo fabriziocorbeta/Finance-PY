@@ -76,6 +76,14 @@ class Account < ApplicationRecord
   delegated_type :accountable, types: Accountable::TYPES, dependent: :destroy
   delegate :subtype, to: :accountable, allow_nil: true
 
+  # Must run before the delegated_type belongs_to's autosave validation,
+  # which validates (and later saves) accountable BEFORE this Account -- so
+  # this has to be before_validation, not before_save, or accountable.valid?
+  # runs while family_id is still nil and fails its own belongs_to :family
+  # check. (See family_id migration note on receivables for why accountable
+  # needs family_id set at all.)
+  before_validation :propagate_family_id_to_accountable, prepend: true
+
   # Writer for subtype that delegates to the accountable
   # This allows forms to set subtype directly on the account
   def subtype=(value)
@@ -482,6 +490,10 @@ class Account < ApplicationRecord
   end
 
   private
+
+    def propagate_family_id_to_accountable
+      accountable.family_id = family_id if accountable && accountable.respond_to?(:family_id=)
+    end
 
     def assign_default_owner
       return if owner.present?

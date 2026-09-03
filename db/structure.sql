@@ -1731,7 +1731,8 @@ CREATE TABLE public.receivables (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     locked_attributes jsonb DEFAULT '{}'::jsonb,
-    subtype character varying
+    subtype character varying,
+    family_id uuid NOT NULL
 );
 
 ALTER TABLE ONLY public.receivables FORCE ROW LEVEL SECURITY;
@@ -2338,7 +2339,8 @@ CREATE TABLE public.transactions (
     kind character varying DEFAULT 'standard'::character varying NOT NULL,
     external_id character varying,
     extra jsonb DEFAULT '{}'::jsonb NOT NULL,
-    investment_activity_label character varying
+    investment_activity_label character varying,
+    family_id uuid NOT NULL
 );
 
 ALTER TABLE ONLY public.transactions FORCE ROW LEVEL SECURITY;
@@ -2408,7 +2410,8 @@ CREATE TABLE public.valuations (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     locked_attributes jsonb DEFAULT '{}'::jsonb,
-    kind character varying DEFAULT 'reconciliation'::character varying NOT NULL
+    kind character varying DEFAULT 'reconciliation'::character varying NOT NULL,
+    family_id uuid NOT NULL
 );
 
 ALTER TABLE ONLY public.valuations FORCE ROW LEVEL SECURITY;
@@ -4699,6 +4702,13 @@ CREATE UNIQUE INDEX index_purchase_orders_on_family_id_and_order_number ON publi
 
 
 --
+-- Name: index_receivables_on_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_receivables_on_family_id ON public.receivables USING btree (family_id);
+
+
+--
 -- Name: index_recurring_transactions_on_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5161,6 +5171,13 @@ CREATE INDEX index_transactions_on_extra ON public.transactions USING gin (extra
 
 
 --
+-- Name: index_transactions_on_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_transactions_on_family_id ON public.transactions USING btree (family_id);
+
+
+--
 -- Name: index_transactions_on_investment_activity_label; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5256,6 +5273,13 @@ CREATE INDEX index_users_on_preferences ON public.users USING gin (preferences);
 --
 
 CREATE UNIQUE INDEX index_users_on_webauthn_id ON public.users USING btree (webauthn_id) WHERE (webauthn_id IS NOT NULL);
+
+
+--
+-- Name: index_valuations_on_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_valuations_on_family_id ON public.valuations USING btree (family_id);
 
 
 --
@@ -5377,6 +5401,14 @@ ALTER TABLE ONLY public.binance_accounts
 
 
 --
+-- Name: receivables fk_rails_1f674cecf1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.receivables
+    ADD CONSTRAINT fk_rails_1f674cecf1 FOREIGN KEY (family_id) REFERENCES public.families(id);
+
+
+--
 -- Name: entries fk_rails_206562018a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5470,6 +5502,14 @@ ALTER TABLE ONLY public.users
 
 ALTER TABLE ONLY public.coinstats_accounts
     ADD CONSTRAINT fk_rails_34f42b2083 FOREIGN KEY (coinstats_item_id) REFERENCES public.coinstats_items(id);
+
+
+--
+-- Name: transactions fk_rails_362c33c1c4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT fk_rails_362c33c1c4 FOREIGN KEY (family_id) REFERENCES public.families(id);
 
 
 --
@@ -5694,6 +5734,14 @@ ALTER TABLE ONLY public.categories
 
 ALTER TABLE ONLY public.sessions
     ADD CONSTRAINT fk_rails_758836b4f0 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: valuations fk_rails_7ea832c5e0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.valuations
+    ADD CONSTRAINT fk_rails_7ea832c5e0 FOREIGN KEY (family_id) REFERENCES public.families(id);
 
 
 --
@@ -6428,9 +6476,7 @@ ALTER TABLE public.receivables ENABLE ROW LEVEL SECURITY;
 -- Name: receivables receivables_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY receivables_family_isolation_policy ON public.receivables USING ((id IN ( SELECT accounts.accountable_id
-   FROM public.accounts
-  WHERE (((accounts.accountable_type)::text = 'Receivable'::text) AND (accounts.family_id = public.current_family_id()))))) WITH CHECK (true);
+CREATE POLICY receivables_family_isolation_policy ON public.receivables USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
 
 
 --
@@ -6512,11 +6558,7 @@ ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 -- Name: transactions transactions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY transactions_family_isolation_policy ON public.transactions USING ((id IN ( SELECT entries.entryable_id
-   FROM public.entries
-  WHERE (((entries.entryable_type)::text = 'Transaction'::text) AND (entries.account_id IN ( SELECT accounts.id
-           FROM public.accounts
-          WHERE (accounts.family_id = public.current_family_id()))))))) WITH CHECK (true);
+CREATE POLICY transactions_family_isolation_policy ON public.transactions USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
 
 
 --
@@ -6529,11 +6571,7 @@ ALTER TABLE public.valuations ENABLE ROW LEVEL SECURITY;
 -- Name: valuations valuations_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY valuations_family_isolation_policy ON public.valuations USING ((id IN ( SELECT entries.entryable_id
-   FROM public.entries
-  WHERE (((entries.entryable_type)::text = 'Valuation'::text) AND (entries.account_id IN ( SELECT accounts.id
-           FROM public.accounts
-          WHERE (accounts.family_id = public.current_family_id()))))))) WITH CHECK (true);
+CREATE POLICY valuations_family_isolation_policy ON public.valuations USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
 
 
 --
@@ -6543,6 +6581,8 @@ CREATE POLICY valuations_family_isolation_policy ON public.valuations USING ((id
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260902020000'),
+('20260902010000'),
 ('20260831230000'),
 ('20260831100000'),
 ('20260828000000'),

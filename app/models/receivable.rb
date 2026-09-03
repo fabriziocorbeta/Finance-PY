@@ -1,6 +1,8 @@
 class Receivable < ApplicationRecord
   include Accountable
 
+  belongs_to :family
+
   validates :due_day, inclusion: { in: 1..31 }, allow_nil: true
 
   def original_balance
