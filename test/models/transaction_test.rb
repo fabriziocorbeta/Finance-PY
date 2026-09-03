@@ -172,4 +172,19 @@ class TransactionTest < ActiveSupport::TestCase
     assert_equal entry, transaction.entry
     assert_equal entry.account, transaction.entry.account
   end
+
+  # Regression test: pulls_family_id_from(:entry, :account) on Entryable
+  # only fires while the Transaction itself is being validated/saved, so it
+  # can't retroactively backfill family_id once the Transaction already
+  # exists and an Entry is attached afterward (the standalone-Transaction-
+  # then-attach-Entry pattern above). Every caller of that pattern
+  # (RecurringTransaction.create_from_transaction included) MUST pass
+  # `family:` explicitly at Transaction.create! time -- this asserts that
+  # requirement stays enforced instead of silently becoming optional.
+  test "creating a transaction without family fails validation" do
+    transaction = Transaction.new(category: categories(:income))
+
+    assert_not transaction.valid?
+    assert_includes transaction.errors[:family], "must exist"
+  end
 end

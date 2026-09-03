@@ -629,6 +629,20 @@ class SimplefinItemsController < ApplicationController
       target_account = @simplefin_item.accounts.find { |acct| acct.id.to_s == target_account_id.to_s }
       return false unless target_account
 
+      # update_all below bypasses Rails callbacks entirely, so it can't run
+      # the family_id propagation that keeps transactions/valuations/
+      # receivables in sync with their account (see FamilyIdPropagatable).
+      # Both accounts always belong to the same simplefin_item -> same
+      # family today, so this is a no-op guard, not a real constraint --
+      # but if that ever stops being true, this must become a real
+      # cross-family family_id backfill instead of update_all, or entries
+      # moved this way go invisible under RLS.
+      if source_account.family_id != target_account.family_id
+        raise "handle_stale_account_move: source and target accounts belong to different families " \
+          "(#{source_account.family_id} vs #{target_account.family_id}); update_all would leave " \
+          "moved entries' denormalized family_id stale"
+      end
+
       ActiveRecord::Base.transaction do
         # Handle transfers that would become invalid after moving entries.
         # Transfers linking source entries to target entries would end up with both

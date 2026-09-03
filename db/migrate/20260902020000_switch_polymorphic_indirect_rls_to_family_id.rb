@@ -1,8 +1,19 @@
 class SwitchPolymorphicIndirectRlsToFamilyId < ActiveRecord::Migration[7.2]
   # Replaces the join-based policies (broken for INSERT, see
   # FixPolymorphicIndirectInsertPolicies for the reverted attempt and why)
-  # with a direct family_id check -- exactly the same shape as every other
-  # FORCE RLS table in this schema (accounts, budgets, categories, entries).
+  # with a direct family_id check -- the same shape as accounts, budgets,
+  # and categories.
+  #
+  # entries deliberately keeps its join-based policy (account_id IN ...)
+  # and is NOT switched to this shape: unlike transactions/valuations/
+  # receivables, which are the delegated *child* half of a construction
+  # order where the parent (Entry) doesn't exist yet at INSERT time,
+  # entries.account is the parent side -- account_id is always already
+  # present and pointing at a real, already-committed account by the time
+  # an entry is inserted. There's no equivalent "parent not created yet"
+  # race to fix, so leave it alone; don't harmonize it just for
+  # consistency without a concrete bug driving it.
+  #
   # Safe to run only after app/models/entry.rb and app/models/account.rb's
   # before_validation callbacks are deployed and confirmed to populate
   # family_id on every new row (20260902010000 added and backfilled the

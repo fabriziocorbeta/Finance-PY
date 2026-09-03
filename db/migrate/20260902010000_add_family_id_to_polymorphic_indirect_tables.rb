@@ -13,6 +13,14 @@ class AddFamilyIdToPolymorphicIndirectTables < ActiveRecord::Migration[7.2]
   # before_save callback that copies family_id onto the entryable/accountable
   # before it's saved, so the column is always populated by the time the
   # INSERT runs -- no join, no ordering dependency, nothing to race.
+  # The three UPDATE...FROM backfills below assume each transaction/
+  # valuation/receivable has exactly ONE matching entries/accounts row
+  # (mirroring Entry's has_one :entryable and Account's has_one
+  # :accountable). Nothing at the DB level enforces that uniqueness, so if
+  # it were ever violated, Postgres would pick an arbitrary matching row
+  # rather than error -- this migration has already run successfully in
+  # production against real data with no duplicates, so this is a note for
+  # anyone reusing this pattern on a new table, not a live bug here.
   def up
     add_reference :transactions, :family, type: :uuid, foreign_key: true, null: true
     add_reference :valuations, :family, type: :uuid, foreign_key: true, null: true
