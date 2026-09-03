@@ -15,6 +15,13 @@ module Accountable
     include Enrichable
 
     has_one :account, as: :accountable, touch: true
+
+    # Covers Receivable.new(account: Account.new(...)) as well as any other
+    # construction where the accountable is built as the outer object --
+    # see Entryable#assign_family_from_entry for why both directions need
+    # their own pull, mirroring Account's own
+    # propagate_family_id_to_accountable push callback.
+    before_validation :assign_family_from_account, prepend: true
   end
 
   class_methods do
@@ -102,5 +109,10 @@ module Accountable
 
   def classification
     self.class.classification
+  end
+
+  def assign_family_from_account
+    return unless respond_to?(:family_id=)
+    self.family_id ||= account&.family_id
   end
 end
