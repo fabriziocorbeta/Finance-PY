@@ -6,12 +6,12 @@ class ReceivableTest < ActiveSupport::TestCase
   end
 
   test "accepts nil due_day" do
-    receivable = Receivable.new(due_day: nil)
+    receivable = Receivable.new(family: families(:dylan_family), due_day: nil)
     assert receivable.valid?
   end
 
   test "accepts due_day within 1..31" do
-    receivable = Receivable.new(due_day: 15)
+    receivable = Receivable.new(family: families(:dylan_family), due_day: 15)
     assert receivable.valid?
   end
 

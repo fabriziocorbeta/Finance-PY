@@ -27,7 +27,7 @@ class Api::V1::ReceivablesControllerTest < ActionDispatch::IntegrationTest
     Redis.new.del("api_rate_limit:#{@api_key.id}")
     Redis.new.del("api_rate_limit:#{@write_api_key.id}")
 
-    @receivable = Receivable.create!(total_amount: 500, due_day: 15)
+    @receivable = Receivable.create!(family: @family, total_amount: 500, due_day: 15)
     @account = @family.accounts.create!(
       name: "Test Receivable",
       balance: 500,
@@ -52,7 +52,7 @@ class Api::V1::ReceivablesControllerTest < ActionDispatch::IntegrationTest
   # family_member. Mismo bug que se corrigio antes en el controller web.
   test "should not list receivables of an account owned by another user in the same family" do
     other_user = users(:family_member)
-    private_receivable = Receivable.create!(total_amount: 999, due_day: 10)
+    private_receivable = Receivable.create!(family: @family, total_amount: 999, due_day: 10)
     @family.accounts.create!(
       name: "Privada de family_member",
       balance: 999,
@@ -71,7 +71,7 @@ class Api::V1::ReceivablesControllerTest < ActionDispatch::IntegrationTest
 
   test "should not list another family's receivables" do
     other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
-    other_receivable = Receivable.create!(total_amount: 1000)
+    other_receivable = Receivable.create!(family: other_family, total_amount: 1000)
     other_family.accounts.create!(
       name: "Other Receivable",
       balance: 1000,
@@ -151,7 +151,7 @@ class Api::V1::ReceivablesControllerTest < ActionDispatch::IntegrationTest
 
   test "should not show another family's receivable" do
     other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
-    other_receivable = Receivable.create!(total_amount: 1000)
+    other_receivable = Receivable.create!(family: other_family, total_amount: 1000)
     other_family.accounts.create!(
       name: "Other Receivable",
       balance: 1000,
@@ -250,7 +250,7 @@ class Api::V1::ReceivablesControllerTest < ActionDispatch::IntegrationTest
 
   test "should not update receivable of an account owned by another user in the same family" do
     other_user = users(:family_member)
-    private_receivable = Receivable.create!(total_amount: 999, due_day: 10)
+    private_receivable = Receivable.create!(family: @family, total_amount: 999, due_day: 10)
     @family.accounts.create!(
       name: "Privada de family_member",
       balance: 999,
@@ -273,7 +273,7 @@ class Api::V1::ReceivablesControllerTest < ActionDispatch::IntegrationTest
 
   test "should not update another family's receivable" do
     other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
-    other_receivable = Receivable.create!(total_amount: 1000)
+    other_receivable = Receivable.create!(family: other_family, total_amount: 1000)
     other_family.accounts.create!(
       name: "Other Receivable",
       balance: 1000,
@@ -311,7 +311,7 @@ class Api::V1::ReceivablesControllerTest < ActionDispatch::IntegrationTest
 
   test "should not destroy receivable of an account owned by another user in the same family" do
     other_user = users(:family_member)
-    private_receivable = Receivable.create!(total_amount: 999, due_day: 10)
+    private_receivable = Receivable.create!(family: @family, total_amount: 999, due_day: 10)
     @family.accounts.create!(
       name: "Privada de family_member",
       balance: 999,
@@ -331,7 +331,7 @@ class Api::V1::ReceivablesControllerTest < ActionDispatch::IntegrationTest
 
   test "should not destroy another family's receivable" do
     other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
-    other_receivable = Receivable.create!(total_amount: 1000)
+    other_receivable = Receivable.create!(family: other_family, total_amount: 1000)
     other_family.accounts.create!(
       name: "Other Receivable",
       balance: 1000,

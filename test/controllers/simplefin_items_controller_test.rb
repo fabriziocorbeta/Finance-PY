@@ -915,7 +915,7 @@ class SimplefinItemsControllerTest < ActionDispatch::IntegrationTest
       amount: 100,
       currency: "USD",
       date: Date.today,
-      entryable: Transaction.create!
+      entryable: Transaction.create!(family: @family)
     )
 
     # Set raw_payload without the stale account
@@ -977,7 +977,7 @@ class SimplefinItemsControllerTest < ActionDispatch::IntegrationTest
       amount: 300,
       currency: "USD",
       date: Date.today,
-      entryable: Transaction.create!
+      entryable: Transaction.create!(family: @family)
     )
     entry2 = Entry.create!(
       account: stale_account,
@@ -985,7 +985,7 @@ class SimplefinItemsControllerTest < ActionDispatch::IntegrationTest
       amount: 200,
       currency: "USD",
       date: Date.today - 1,
-      entryable: Transaction.create!
+      entryable: Transaction.create!(family: @family)
     )
 
     # Set raw_payload with only the target account (stale account missing)

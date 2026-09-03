@@ -1,6 +1,8 @@
 class Valuation < ApplicationRecord
   include Entryable
 
+  belongs_to :family
+
   enum :kind, {
     reconciliation: "reconciliation",
     opening_anchor: "opening_anchor",

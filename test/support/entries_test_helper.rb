@@ -53,8 +53,8 @@ module EntriesTestHelper
   end
 
   def create_transfer(from_account:, to_account:, amount:, date: Date.current, currency: "USD")
-    outflow_transaction = Transaction.create!(kind: "funds_movement")
-    inflow_transaction = Transaction.create!(kind: "funds_movement")
+    outflow_transaction = Transaction.create!(family: from_account.family, kind: "funds_movement")
+    inflow_transaction = Transaction.create!(family: to_account.family, kind: "funds_movement")
 
     transfer = Transfer.create!(
       outflow_transaction: outflow_transaction,

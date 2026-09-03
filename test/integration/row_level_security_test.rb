@@ -61,20 +61,20 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
         DROP POLICY IF EXISTS budget_categories_family_isolation_policy ON budget_categories;
         CREATE POLICY budget_categories_family_isolation_policy ON budget_categories FOR ALL USING (budget_id IN (SELECT id FROM budgets WHERE family_id = current_family_id())) WITH CHECK (budget_id IN (SELECT id FROM budgets WHERE family_id = current_family_id()));
 
-        ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
         ALTER TABLE transactions FORCE ROW LEVEL SECURITY;
         DROP POLICY IF EXISTS transactions_family_isolation_policy ON transactions;
-        CREATE POLICY transactions_family_isolation_policy ON transactions FOR ALL USING (id IN (SELECT entryable_id FROM entries WHERE entryable_type = 'Transaction' AND account_id IN (SELECT id FROM accounts WHERE family_id = current_family_id()))) WITH CHECK (true);
+        CREATE POLICY transactions_family_isolation_policy ON transactions FOR ALL USING (family_id = current_family_id()) WITH CHECK (family_id = current_family_id());
 
         ALTER TABLE valuations ENABLE ROW LEVEL SECURITY;
         ALTER TABLE valuations FORCE ROW LEVEL SECURITY;
         DROP POLICY IF EXISTS valuations_family_isolation_policy ON valuations;
-        CREATE POLICY valuations_family_isolation_policy ON valuations FOR ALL USING (id IN (SELECT entryable_id FROM entries WHERE entryable_type = 'Valuation' AND account_id IN (SELECT id FROM accounts WHERE family_id = current_family_id()))) WITH CHECK (true);
+        CREATE POLICY valuations_family_isolation_policy ON valuations FOR ALL USING (family_id = current_family_id()) WITH CHECK (family_id = current_family_id());
 
         ALTER TABLE receivables ENABLE ROW LEVEL SECURITY;
         ALTER TABLE receivables FORCE ROW LEVEL SECURITY;
         DROP POLICY IF EXISTS receivables_family_isolation_policy ON receivables;
-        CREATE POLICY receivables_family_isolation_policy ON receivables FOR ALL USING (id IN (SELECT accountable_id FROM accounts WHERE accountable_type = 'Receivable' AND family_id = current_family_id())) WITH CHECK (true);
+        CREATE POLICY receivables_family_isolation_policy ON receivables FOR ALL USING (family_id = current_family_id()) WITH CHECK (family_id = current_family_id());
 
         ALTER TABLE fuel_logs ENABLE ROW LEVEL SECURITY;
         ALTER TABLE fuel_logs FORCE ROW LEVEL SECURITY;
@@ -129,9 +129,9 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     @goal_b.save!
     @rule_b = Rule.create!(family: @family_b, resource_type: "Transaction", name: "Other Rule", actions: [ Rule::Action.new(action_type: "exclude_transaction") ])
     @merchant_b = FamilyMerchant.create!(family: @family_b, name: "Other Merchant")
-    @valuation_b = Valuation.create!(kind: "reconciliation")
+    @valuation_b = Valuation.create!(family: @family_b, kind: "reconciliation")
     @valuation_entry_b = Entry.create!(account: @account_b, amount: 1000, date: Date.current, name: "Valuation Entry", currency: @account_b.currency, entryable: @valuation_b)
-    @receivable_b = Receivable.create!(total_amount: 500)
+    @receivable_b = Receivable.create!(family: @family_b, total_amount: 500)
     @receivable_account_b = Account.create!(family: @family_b, accountable: @receivable_b, name: "Receivable Account", currency: "USD", balance: 500)
     @fleet_vehicle_b = FleetVehicle.create!(family: @family_b, plate: "ABC-123", brand: "Toyota", model: "Corolla", year: 2020, status: "active")
     @fuel_log_b = FuelLog.create!(fleet_vehicle: @fleet_vehicle_b, account: @account_b, logged_at: Date.current, fuel_log_lines_attributes: [ { fuel_type: "nafta", liters: 40, cost: 300000 } ])
@@ -240,6 +240,41 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
 
     raw_stock_movements = ActiveRecord::Base.connection.execute("SELECT * FROM product_stock_movements WHERE id = '#{@product_stock_movement_b.id}'")
     assert_equal 0, raw_stock_movements.count
+  ensure
+    ActiveRecord::Base.connection.execute("RESET app.current_family_id") rescue nil
+    ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
+  end
+
+  test "inserting a new transaction, valuation, or receivable succeeds under the restricted role with RLS family context set" do
+    # Regression test: transactions/valuations/receivables are inserted before
+    # the row that links them to a family exists yet (Rails saves a
+    # delegated_type's entryable/accountable before its owner). A prior
+    # policy shape (id IN (SELECT ... FROM entries/accounts WHERE ...))
+    # let the INSERT itself through via WITH CHECK (true), but Postgres also
+    # requires the SELECT policy to pass for INSERT ... RETURNING (which the
+    # pg adapter always uses to learn generated columns) -- and that join
+    # could never match yet, so every insert into these 3 tables failed in
+    # production the moment the app stopped connecting as a role that
+    # bypasses RLS. See app/models/entry.rb and app/models/account.rb for
+    # the family_id propagation that fixes this.
+    ActiveRecord::Base.connection.execute("SET ROLE app_user")
+    ActiveRecord::Base.connection.execute(
+      ActiveRecord::Base.sanitize_sql([ "SET app.current_family_id = ?", @family_a.id ])
+    )
+
+    account_a = Account.create!(family: @family_a, name: "RLS insert test account", currency: "USD", balance: 0, accountable: Depository.new)
+
+    entry = account_a.entries.new(name: "RLS insert test transaction", date: Date.current, amount: 42, currency: "USD", entryable: Transaction.new)
+    assert entry.save, entry.errors.full_messages.to_s
+    assert_equal @family_a.id, entry.entryable.family_id
+
+    valuation_entry = account_a.entries.new(name: "RLS insert test valuation", date: Date.current, amount: 100, currency: "USD", entryable: Valuation.new(kind: "reconciliation"))
+    assert valuation_entry.save, valuation_entry.errors.full_messages.to_s
+    assert_equal @family_a.id, valuation_entry.entryable.family_id
+
+    receivable_account = @family_a.accounts.new(name: "RLS insert test receivable", currency: "USD", balance: 0, accountable: Receivable.new(total_amount: 100))
+    assert receivable_account.save, receivable_account.errors.full_messages.to_s
+    assert_equal @family_a.id, receivable_account.accountable.family_id
   ensure
     ActiveRecord::Base.connection.execute("RESET app.current_family_id") rescue nil
     ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
