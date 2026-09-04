@@ -97,6 +97,27 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
       end
     end
 
+    # Diagnostic instrumentation for the recurring, environment-sensitive
+    # system-test flakes (turbo frame / Stimulus controller connect races --
+    # see PRs #209, #210, #211). Capybara's finders retry silently for up to
+    # default_max_wait_time before raising, so a bare ElementNotFound gives
+    # no signal on whether something was merely slow (found just under the
+    # wire) or never happening at all (pegged at the full wait every time).
+    # Wrapping the wait in this logs the real elapsed time to CI's stdout on
+    # every run, pass or fail, so the next flake comes with an actual number
+    # instead of another guess. Not meant to stay forever -- remove once
+    # enough data narrows down (or rules out) CI resource contention as the
+    # cause.
+    def with_timing(label)
+      started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      begin
+        yield
+      ensure
+        elapsed_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
+        puts "[TIMING] #{label}: #{elapsed_ms}ms"
+      end
+    end
+
     # Interact with DS::Select custom dropdown components.
     # DS::Select renders as a button + listbox — not a native <select> — so
     # Capybara's built-in `select(value, from:)` does not work with it.
@@ -107,7 +128,9 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
       if container.has_selector?("input[type='search']", visible: true)
         container.find("input[type='search']", visible: true).set(record.name)
       end
-      listbox = container.find("[role='listbox']", visible: true)
+      listbox = with_timing("select_ds(#{label_text.inspect}) listbox visible") do
+        container.find("[role='listbox']", visible: true)
+      end
       listbox.find("[role='option'][data-value='#{record.id}']", visible: true).click
     end
 end
