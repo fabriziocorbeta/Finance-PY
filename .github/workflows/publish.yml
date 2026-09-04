@@ -37,7 +37,11 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  # Docker/OCI registry names must be lowercase; github.repository preserves
+  # the repo's actual casing (Finance-PY, since the 2026-08-28 rename), so
+  # every push to main failed at "invalid reference format: repository name
+  # ... must be lowercase" until this was hardcoded.
+  IMAGE_NAME: fabriziocorbeta/finance-py
 
 permissions:
   contents: write
