@@ -8,6 +8,7 @@ es:
       target_by: "Objetivo para %{date}"
       archived_section: "%{count} meta(s) archivada(s)"
     status:
+      active: "Activa"
       on_track: "A tiempo"
       behind: "Atrasada"
       reached: "Alcanzada"

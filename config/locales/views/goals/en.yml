@@ -8,6 +8,7 @@ en:
       target_by: "Target by %{date}"
       archived_section: "%{count} archived goal(s)"
     status:
+      active: "Active"
       on_track: "On track"
       behind: "Behind"
       reached: "Reached"
