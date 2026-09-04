@@ -2,7 +2,7 @@ require "test_helper"
 
 class GoalsCardComponentTest < ViewComponent::TestCase
   setup do
-    @family = families(:default)
+    @family = families(:dylan_family)
     @account = accounts(:depository)
     @goal = Goal.create!(
       family: @family,
@@ -29,7 +29,7 @@ class GoalsCardComponentTest < ViewComponent::TestCase
       render_inline(Goals::CardComponent.new(goal: @goal))
       assert_no_match(/Translation missing/i, rendered_content)
       assert_text "1 account"
-      assert_text "Emergency Fund" rescue nil
+      assert_text "Fondo de emergencia"
     end
   end
 
