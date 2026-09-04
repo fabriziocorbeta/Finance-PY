@@ -23,3 +23,7 @@ json.original_balance_cents money_to_minor_units.call(original_balance_money)
 json.paid_amount paid_amount
 json.paid_amount_cents money_to_minor_units.call(paid_money)
 json.percent_paid percent_paid
+json.name receivable.account.name
+json.currency receivable.account.currency
+json.notes receivable.account.notes
+json.updated_at receivable.account.updated_at
