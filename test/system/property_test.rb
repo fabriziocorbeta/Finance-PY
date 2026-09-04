@@ -26,7 +26,7 @@ class PropertiesEditTest < ApplicationSystemTestCase
     # this fails with ElementNotFound on the field with no clue that the
     # dialog itself never opened. Asserting the open dialog first makes that
     # wait explicit and this failure mode diagnosable.
-    assert_selector "dialog[open]"
+    with_timing("dialog[open] visible after clicking Edit") { assert_selector "dialog[open]" }
 
     assert_equal "single_family_home", find("#account_accountable_attributes_subtype").value
   end
