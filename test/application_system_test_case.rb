@@ -83,12 +83,19 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
       sign_in(user)
     end
 
+    # NOTE: this helper was previously dead code (never called by any test)
+    # and had three separate bugs as a result: `#user-menu` is not an id
+    # anywhere in the app (only `data-testid="user-menu"`), the logout
+    # button reads "Log out" not "Logout", and there is no "Sign in" link
+    # on the login page to wait on (the submit button reads "Log in", and
+    # it's not an <a> tag at all). None of that surfaced until this was
+    # actually exercised.
     def sign_out
-      find("#user-menu").click
-      click_button "Logout"
+      find("[data-testid='user-menu'] button").click
+      click_button "Log out"
 
       # Trigger Capybara's wait mechanism to avoid timing issues with logout
-      find("a", text: "Sign in")
+      find_button "Log in"
     end
 
     def within_testid(testid)

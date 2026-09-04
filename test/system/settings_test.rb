@@ -44,6 +44,16 @@ class SettingsTest < ApplicationSystemTestCase
   end
 
   test "can update self hosting settings" do
+    # setup already signed in as family_admin; signing in again on top of
+    # that (rather than through a real logout first) left the settings
+    # sidebar rendering as if the ORIGINAL session were still active --
+    # confirmed via a CI failure screenshot showing family_admin's own
+    # settings nav (no "Self-Hosting" item) even though the dashboard's own
+    # "Welcome back" heading had already updated to the new user. A full
+    # sign_out exercises the app's real logout path (destroys the session
+    # server-side) before establishing the new one, instead of layering a
+    # second login on top of a session that was never actually torn down.
+    sign_out
     sign_in users(:sure_support_staff)
     Rails.application.config.app_mode.stubs(:self_hosted?).returns(true)
     Provider::Registry.stubs(:get_provider).with(:twelve_data).returns(nil)
