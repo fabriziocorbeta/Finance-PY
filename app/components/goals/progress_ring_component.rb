@@ -28,4 +28,8 @@ class Goals::ProgressRingComponent < ApplicationComponent
     else "text-primary"
     end
   end
+
+  def aria_label
+    I18n.t("goals.show.ring.aria_label", percent: percent, amount: amount_label, target: target_label)
+  end
 end
