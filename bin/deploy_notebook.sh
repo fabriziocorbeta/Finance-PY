@@ -47,14 +47,28 @@ docker restart "$CADDY_CONTAINER" || {
 }
 
 echo "=== 6. Running health checks ==="
-echo "Waiting 5 seconds for Rails to initialize..."
-sleep 5
+# Fixed 5s sleep was too short on this notebook (WSL2, 8GB host, RAM tight
+# under concurrent Docker builds) -- Rails cold boot has taken 15-20s+ during
+# this session's real deploys, so a single early check reported a false
+# "failed" on a deploy that was actually fine a few seconds later. Poll
+# instead: up to HEALTHCHECK_TIMEOUT (default 60s), checking every 3s.
+HEALTHCHECK_TIMEOUT="${HEALTHCHECK_TIMEOUT:-60}"
+elapsed=0
+UP_STATUS="000"
+while [ "$elapsed" -lt "$HEALTHCHECK_TIMEOUT" ]; do
+  UP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/up" || echo "000")
+  if [ "$UP_STATUS" = "200" ]; then
+    break
+  fi
+  sleep 3
+  elapsed=$((elapsed + 3))
+  echo "Waiting for Rails to initialize... (${elapsed}s / ${HEALTHCHECK_TIMEOUT}s, last status: $UP_STATUS)"
+done
 
-UP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/up" || echo "000")
 if [ "$UP_STATUS" = "200" ]; then
-  echo "✅ Health check passed: GET /up returned 200 OK"
+  echo "✅ Health check passed: GET /up returned 200 OK (after ${elapsed}s)"
 else
-  echo "❌ Health check failed: GET /up returned HTTP $UP_STATUS"
+  echo "❌ Health check failed: GET /up returned HTTP $UP_STATUS after ${HEALTHCHECK_TIMEOUT}s"
   exit 1
 fi
 
