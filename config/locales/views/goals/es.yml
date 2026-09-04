@@ -7,10 +7,38 @@ es:
       empty: "Todavía no tenés metas. Creá una para empezar a hacer seguimiento de tus objetivos financieros."
       target_by: "Objetivo para %{date}"
       archived_section: "%{count} meta(s) archivada(s)"
-      status:
-        paused: "Pausada"
-        completed: "Completada"
-        archived: "Archivada"
+    status:
+      on_track: "A tiempo"
+      behind: "Atrasada"
+      reached: "Alcanzada"
+      completed: "Completada"
+      no_target_date: "Sin fecha"
+      paused: "Pausada"
+      archived: "Archivada"
+    goal_card:
+      accounts:
+        one: "1 cuenta"
+        other: "%{count} cuentas"
+      aria_progress: "%{percent}%% alcanzado de %{target}"
+      days_left:
+        one: "queda 1 día"
+        other: "quedan %{count} días"
+      past_due: "Vencida"
+      pace_with_target: "%{avg}/mes (meta: %{target}/mes)"
+      pace_no_target: "%{avg}/mes"
+      footer_archived: "Archivada"
+      footer_paused: "Pausada"
+      footer_reached: "¡Meta alcanzada!"
+      footer_catch_up: "Aportá %{amount} para ponerte al día"
+      footer_no_deadline: "Sin fecha límite"
+      footer_no_pledges: "Sin aportes recientes"
+      footer_last_today: "Último aporte hoy"
+      footer_last_days:
+        one: "Último aporte hace 1 día"
+        other: "Último aporte hace %{count} días"
+      pending_count:
+        one: "1 pendiente"
+        other: "%{count} pendientes"
     new:
       title: "Nueva meta"
     edit:
@@ -64,6 +92,21 @@ es:
       cancel_pledge: "Cancelar"
       confirm_cancel_pledge: "¿Cancelar este compromiso?"
       no_pledges: "No hay compromisos abiertos."
+      notes: "Notas"
+      projection:
+        heading: "Proyección"
+      ring:
+        aria_label: "Progreso de la meta: %{percent}%%, %{amount} de %{target}"
+        saved: "Guardado"
+        to_go: "faltan %{amount}"
+      funding_accounts_heading: "Cuentas de financiamiento"
+      funding_accounts:
+        empty:
+          heading: "Sin cuentas de financiamiento"
+          body: "Vinculá cuentas a esta meta para hacer un seguimiento del saldo asignado."
+        earmarked_of: "%{earmarked} asignados de %{balance}"
+      funding_last_30d: "últimos 30d"
+      funding_last_90d: "últimos 90d"
     form:
       name: "Nombre"
       target_amount: "Monto objetivo"

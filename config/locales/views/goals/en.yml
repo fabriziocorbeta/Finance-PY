@@ -1,0 +1,123 @@
+---
+en:
+  goals:
+    index:
+      title: "Goals"
+      new: "New goal"
+      empty: "You don't have any goals yet. Create one to start tracking your financial targets."
+      target_by: "Target by %{date}"
+      archived_section: "%{count} archived goal(s)"
+    status:
+      on_track: "On track"
+      behind: "Behind"
+      reached: "Reached"
+      completed: "Completed"
+      no_target_date: "No target date"
+      paused: "Paused"
+      archived: "Archived"
+    goal_card:
+      accounts:
+        one: "1 account"
+        other: "%{count} accounts"
+      aria_progress: "%{percent}%% reached of %{target}"
+      days_left:
+        one: "1 day left"
+        other: "%{count} days left"
+      past_due: "Past due"
+      pace_with_target: "%{avg}/mo (target: %{target}/mo)"
+      pace_no_target: "%{avg}/mo"
+      footer_archived: "Archived"
+      footer_paused: "Paused"
+      footer_reached: "Goal reached!"
+      footer_catch_up: "Contribute %{amount} to catch up"
+      footer_no_deadline: "No target date"
+      footer_no_pledges: "No recent pledges"
+      footer_last_today: "Last pledge today"
+      footer_last_days:
+        one: "Last pledge 1 day ago"
+        other: "Last pledge %{count} days ago"
+      pending_count:
+        one: "1 pending"
+        other: "%{count} pending"
+    new:
+      title: "New goal"
+    edit:
+      title: "Edit goal"
+    create:
+      success: "Goal created successfully."
+    update:
+      success: "Goal updated successfully."
+    destroy:
+      archive_first: "Archive the goal before deleting it."
+      success: "Goal deleted successfully."
+    pause:
+      success: "Goal paused."
+      invalid_transition: "Cannot pause goal in its current state."
+    resume:
+      success: "Goal resumed."
+      invalid_transition: "Cannot resume goal in its current state."
+    complete:
+      success: "Goal completed!"
+      invalid_transition: "Cannot complete goal in its current state."
+    archive:
+      success: "Goal archived."
+      invalid_transition: "Cannot archive goal in its current state."
+    unarchive:
+      success: "Goal restored."
+      invalid_transition: "Cannot restore goal in its current state."
+    reopen:
+      success: "Goal reopened."
+      invalid_transition: "Cannot reopen goal in its current state."
+    show:
+      delete: "Delete"
+      confirm_delete: "Are you sure you want to delete this goal?"
+      pause: "Pause"
+      complete: "Complete"
+      confirm_complete: "Mark this goal as completed?"
+      resume: "Resume"
+      reopen: "Reopen"
+      unarchive: "Restore"
+      archive: "Archive"
+      confirm_archive: "Are you sure you want to archive this goal?"
+      edit: "Edit"
+      target_by: "Target by %{date}"
+      of_target: "of %{amount}"
+      linked_accounts: "Linked accounts"
+      pledges: "Pledges"
+      add_pledge: "Add pledge"
+      days_left:
+        one: "expires in 1 day"
+        other: "expires in %{count} days"
+      renew: "Renew"
+      cancel_pledge: "Cancel"
+      confirm_cancel_pledge: "Cancel this pledge?"
+      no_pledges: "No open pledges."
+      notes: "Notes"
+      projection:
+        heading: "Projection"
+      ring:
+        aria_label: "Goal progress: %{percent}%%, %{amount} of %{target}"
+        saved: "Saved"
+        to_go: "%{amount} to go"
+      funding_accounts_heading: "Funding accounts"
+      funding_accounts:
+        empty:
+          heading: "No funding accounts"
+          body: "Link accounts to this goal to track your allocated balance."
+        earmarked_of: "%{earmarked} earmarked of %{balance}"
+      funding_last_30d: "last 30d"
+      funding_last_90d: "last 90d"
+    form:
+      name: "Name"
+      target_amount: "Target amount"
+      target_date: "Target date"
+      color: "Color"
+      icon: "Icon"
+      no_icon: "No icon"
+      notes: "Notes"
+      linked_accounts: "Linked accounts"
+      no_linkable_accounts: "You don't have any cash or investment accounts available to link."
+      cancel: "Cancel"
+      submit: "Save"
+    errors:
+      not_found: "Goal not found."
