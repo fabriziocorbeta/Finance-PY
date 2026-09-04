@@ -93,11 +93,22 @@ if rails_env == "production"
         cookie_header = jar.to_header
 
         port = ENV.fetch("PORT") { 3000 }
+        # Every item in the main sidebar nav (layouts/application.html.erb's
+        # desktop_nav_items), so the FIRST real visitor to click any tab
+        # after a deploy never pays the one-time ActionView compile cost --
+        # /reports alone was measured at 33s+ in production for exactly this
+        # reason (compile cost stacked with several tabs' worth of Safari
+        # link-prefetch requests all queuing behind Puma's small thread pool
+        # right after a restart, before anything but the 4 originally-listed
+        # paths here had ever been rendered).
         paths = [
           "/",
           "/transactions",
-          "/accounts",
-          "/budgets/#{Budget.date_to_param(Date.current)}"
+          "/reports",
+          "/budgets/#{Budget.date_to_param(Date.current)}",
+          "/goals",
+          "/receivables",
+          "/accounts"
         ]
 
         total_t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
