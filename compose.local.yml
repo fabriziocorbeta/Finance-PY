@@ -49,6 +49,17 @@ x-rails-env: &rails_env
   OPENAI_MODEL: ${OPENAI_MODEL:-}
   ANDROID_WEBHOOK_TOKEN: ${ANDROID_WEBHOOK_TOKEN:?ANDROID_WEBHOOK_TOKEN requerido en .env.local}
   ANDROID_WEBHOOK_FAMILY_ID: ${ANDROID_WEBHOOK_FAMILY_ID:?ANDROID_WEBHOOK_FAMILY_ID requerido en .env.local}
+  # Fijadas explicitas 2026-09-04 (antes se derivaban de SECRET_KEY_BASE en
+  # cada boot, ver config/initializers/active_record_encryption.rb) -- que
+  # un solo secreto cubra sesiones/cookies Y cifrado de datos (otp_secret,
+  # client_secret SSO) es reusar una clave para dos propositos distintos.
+  # Vacio por default a proposito: si faltan, el initializer sigue derivando
+  # de SECRET_KEY_BASE como antes (mismo comportamiento, no un requerimiento
+  # nuevo) -- deben setearse en .env.local con los valores YA derivados
+  # (no valores nuevos, o se pierde acceso a datos ya cifrados).
+  ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY: ${ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY:-}
+  ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY: ${ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY:-}
+  ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT: ${ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT:-}
 
 services:
   caddy:
