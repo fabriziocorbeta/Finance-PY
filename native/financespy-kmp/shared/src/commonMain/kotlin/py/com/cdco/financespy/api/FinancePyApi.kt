@@ -25,7 +25,12 @@ import py.com.cdco.financespy.api.dto.CreateRuleRequest
 import py.com.cdco.financespy.api.dto.GoalDto
 import py.com.cdco.financespy.api.dto.GoalEnvelope
 import py.com.cdco.financespy.api.dto.GoalsEnvelope
+import py.com.cdco.financespy.api.dto.CreateReceivableBody
+import py.com.cdco.financespy.api.dto.CreateReceivableRequest
 import py.com.cdco.financespy.api.dto.MerchantDto
+import py.com.cdco.financespy.api.dto.ReceivableDto
+import py.com.cdco.financespy.api.dto.ReceivableEnvelope
+import py.com.cdco.financespy.api.dto.ReceivablesEnvelope
 import py.com.cdco.financespy.api.dto.RuleDto
 import py.com.cdco.financespy.api.dto.RuleEnvelope
 import py.com.cdco.financespy.api.dto.RuleRunDto
@@ -36,6 +41,8 @@ import py.com.cdco.financespy.api.dto.TransactionListItemDto
 import py.com.cdco.financespy.api.dto.TransactionsResponse
 import py.com.cdco.financespy.api.dto.UpdateGoalBody
 import py.com.cdco.financespy.api.dto.UpdateGoalRequest
+import py.com.cdco.financespy.api.dto.UpdateReceivableBody
+import py.com.cdco.financespy.api.dto.UpdateReceivableRequest
 import py.com.cdco.financespy.api.dto.UpdateRuleBody
 import py.com.cdco.financespy.api.dto.UpdateRuleRequest
 
@@ -165,6 +172,46 @@ open class FinancePyApi(private val http: HttpClient) {
 
     suspend fun deleteGoal(id: String) {
         http.delete("/api/v1/goals/$id")
+    }
+
+    suspend fun fetchAllReceivables(): List<ReceivableDto> {
+        val all = mutableListOf<ReceivableDto>()
+        var page = 1
+        while (true) {
+            val response: ReceivablesEnvelope = http.get("/api/v1/receivables") {
+                parameter("page", page)
+                parameter("per_page", 100)
+            }.body()
+            all += response.data
+            val nextPage = response.meta?.next_page ?: break
+            page = nextPage
+        }
+        return all
+    }
+
+    suspend fun fetchReceivable(id: String): ReceivableDto {
+        val response: ReceivableEnvelope = http.get("/api/v1/receivables/$id").body()
+        return response.data
+    }
+
+    suspend fun createReceivable(body: CreateReceivableBody): ReceivableDto {
+        val response: ReceivableEnvelope = http.post("/api/v1/receivables") {
+            contentType(ContentType.Application.Json)
+            setBody(CreateReceivableRequest(receivable = body))
+        }.body()
+        return response.data
+    }
+
+    suspend fun updateReceivable(id: String, body: UpdateReceivableBody): ReceivableDto {
+        val response: ReceivableEnvelope = http.patch("/api/v1/receivables/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(UpdateReceivableRequest(receivable = body))
+        }.body()
+        return response.data
+    }
+
+    suspend fun deleteReceivable(id: String) {
+        http.delete("/api/v1/receivables/$id")
     }
 
     open suspend fun fetchAllBudgets(): List<BudgetDto> {
