@@ -4,7 +4,7 @@ class GoalsCardComponentTest < ViewComponent::TestCase
   setup do
     @family = families(:dylan_family)
     @account = accounts(:depository)
-    @goal = Goal.create!(
+    @goal = Goal.new(
       family: @family,
       name: "Fondo de emergencia",
       target_amount: 10000,
@@ -12,7 +12,8 @@ class GoalsCardComponentTest < ViewComponent::TestCase
       currency: "USD",
       color: "#6471eb"
     )
-    @goal.goal_accounts.create!(account: @account)
+    @goal.goal_accounts.build(account: @account)
+    @goal.save!
   end
 
   test "renders card component in es without translation missing" do
