@@ -6,7 +6,15 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   DEFAULT_VIEWPORT_HEIGHT = 1400
 
   setup do
-    Capybara.default_max_wait_time = 5
+    # CI runs on a shared, resource-constrained ubuntu-latest runner (2 vCPU)
+    # alongside Postgres, Redis, and headless Chrome all competing for the
+    # same CPU -- local dev has none of that contention. Several different,
+    # unrelated system tests have flaked there (ChatsTest, PropertiesEditTest,
+    # SettingsTest) with no common code-level cause, which points at
+    # environment jitter rather than a shared bug. This is a wider safety
+    # margin for that, not a fix for any specific test -- see #209 and #210
+    # for the two flakes that DID have real, non-timing root causes.
+    Capybara.default_max_wait_time = ENV["CI"].present? ? 10 : 5
 
     if ENV["SELENIUM_REMOTE_URL"].present?
       server_port = ENV.fetch("CAPYBARA_SERVER_PORT", 30_000 + (Process.pid % 1000)).to_i
@@ -36,7 +44,16 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
 
     driven_by :selenium_remote_chrome, screen_size: [ 1400, 1400 ]
   else
-    driven_by :selenium, using: ENV["CI"].present? ? :headless_chrome : ENV.fetch("E2E_BROWSER", :chrome).to_sym, screen_size: [ 1400, 1400 ]
+    driven_by :selenium, using: ENV["CI"].present? ? :headless_chrome : ENV.fetch("E2E_BROWSER", :chrome).to_sym, screen_size: [ 1400, 1400 ] do |driver_option|
+      # Chrome's default /dev/shm is small on many CI containers; without
+      # this flag Chrome falls back to writing shared memory to disk under
+      # pressure instead of just refusing, which shows up as intermittent
+      # slowness/crashes rather than a clean error -- exactly the kind of
+      # cause that's invisible from a test failure alone. Guarded to CI only
+      # (a no-op locally) and a no-op on any CI runner that already has
+      # enough /dev/shm.
+      driver_option.add_argument("--disable-dev-shm-usage") if ENV["CI"].present?
+    end
   end
 
   def teardown
