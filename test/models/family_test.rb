@@ -2,6 +2,7 @@ require "test_helper"
 
 class FamilyTest < ActiveSupport::TestCase
   include SyncableInterfaceTest
+  include EntriesTestHelper
 
   def setup
     @syncable = families(:dylan_family)
@@ -129,25 +130,25 @@ class FamilyTest < ActiveSupport::TestCase
 
     # Create transactions pointing to both categories
     account = family.accounts.first
-    txn1 = Transaction.create!(family: family, category: english_category)
-    Entry.create!(
+    entry1 = create_transaction(
       account: account,
-      entryable: txn1,
+      category: english_category,
       amount: 100,
       currency: "USD",
       date: Date.current,
       name: "Test 1"
     )
+    txn1 = entry1.entryable
 
-    txn2 = Transaction.create!(family: family, category: spanish_category)
-    Entry.create!(
+    entry2 = create_transaction(
       account: account,
-      entryable: txn2,
+      category: spanish_category,
       amount: 200,
       currency: "USD",
       date: Date.current,
       name: "Test 2"
     )
+    txn2 = entry2.entryable
 
     # Should merge both categories into one, keeping the oldest
     assert_difference "Category.count", -1 do

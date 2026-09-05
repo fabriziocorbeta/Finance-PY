@@ -1,6 +1,8 @@
 require "test_helper"
 
 class RecurringTransaction::IdentifierTest < ActiveSupport::TestCase
+  include EntriesTestHelper
+
   def setup
     @family = families(:dylan_family)
     @identifier = RecurringTransaction::Identifier.new(@family)
@@ -13,16 +15,14 @@ class RecurringTransaction::IdentifierTest < ActiveSupport::TestCase
 
     # Create 3 transactions on days 5, 6, 7 (clearly clustered)
     [ 5, 6, 7 ].each_with_index do |day, i|
-      transaction = Transaction.create!(family: @family,
+      create_transaction(
+        account: account,
         merchant: merchant,
-        category: categories(:food_and_drink)
-      )
-      account.entries.create!(
+        category: categories(:food_and_drink),
         date: i.months.ago.beginning_of_month + (day - 1).days,
         amount: 15.99,
         currency: "USD",
-        name: "Netflix Subscription",
-        entryable: transaction
+        name: "Netflix Subscription"
       )
     end
 
@@ -49,16 +49,14 @@ class RecurringTransaction::IdentifierTest < ActiveSupport::TestCase
     ]
 
     dates.each do |date|
-      transaction = Transaction.create!(family: @family,
+      create_transaction(
+        account: account,
         merchant: merchant,
-        category: categories(:food_and_drink)
-      )
-      account.entries.create!(
+        category: categories(:food_and_drink),
         date: date,
         amount: 15.99,
         currency: "USD",
-        name: "Netflix Subscription",
-        entryable: transaction
+        name: "Netflix Subscription"
       )
     end
 
@@ -90,16 +88,14 @@ class RecurringTransaction::IdentifierTest < ActiveSupport::TestCase
     ]
 
     dates.each do |date|
-      transaction = Transaction.create!(family: @family,
+      create_transaction(
+        account: account,
         merchant: merchant,
-        category: categories(:food_and_drink)
-      )
-      account.entries.create!(
+        category: categories(:food_and_drink),
         date: date,
         amount: 15.99,
         currency: "USD",
-        name: "Netflix Subscription",
-        entryable: transaction
+        name: "Netflix Subscription"
       )
     end
 
@@ -122,16 +118,14 @@ class RecurringTransaction::IdentifierTest < ActiveSupport::TestCase
 
     # Create 3 transactions on days 1, 15, 30 (widely spread, should not cluster)
     [ 1, 15, 30 ].each_with_index do |day, i|
-      transaction = Transaction.create!(family: @family,
+      create_transaction(
+        account: account,
         merchant: merchant,
-        category: categories(:food_and_drink)
-      )
-      account.entries.create!(
+        category: categories(:food_and_drink),
         date: i.months.ago.beginning_of_month + (day - 1).days,
         amount: 15.99,
         currency: "USD",
-        name: "Netflix Subscription",
-        entryable: transaction
+        name: "Netflix Subscription"
       )
     end
 
@@ -147,16 +141,14 @@ class RecurringTransaction::IdentifierTest < ActiveSupport::TestCase
 
     # Create only 2 transactions
     [ 5, 6 ].each_with_index do |day, i|
-      transaction = Transaction.create!(family: @family,
+      create_transaction(
+        account: account,
         merchant: merchant,
-        category: categories(:food_and_drink)
-      )
-      account.entries.create!(
+        category: categories(:food_and_drink),
         date: i.months.ago.beginning_of_month + (day - 1).days,
         amount: 15.99,
         currency: "USD",
-        name: "Netflix Subscription",
-        entryable: transaction
+        name: "Netflix Subscription"
       )
     end
 
@@ -185,16 +177,14 @@ class RecurringTransaction::IdentifierTest < ActiveSupport::TestCase
 
     # Create 3 new transactions on similar clustered days
     [ 0, 1, 2 ].each do |months_ago|
-      transaction = Transaction.create!(family: @family,
+      create_transaction(
+        account: account,
         merchant: merchant,
-        category: categories(:food_and_drink)
-      )
-      account.entries.create!(
+        category: categories(:food_and_drink),
         date: months_ago.months.ago.beginning_of_month + 14.days,  # Day 15
         amount: 29.99,
         currency: "USD",
-        name: "Amazon Purchase",
-        entryable: transaction
+        name: "Amazon Purchase"
       )
     end
 
