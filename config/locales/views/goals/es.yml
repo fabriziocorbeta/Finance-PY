@@ -1,124 +1,129 @@
 ---
 es:
   goals:
-    index:
-      title: "Metas"
-      new: "Nueva meta"
-      empty: "Todavía no tenés metas. Creá una para empezar a hacer seguimiento de tus objetivos financieros."
-      target_by: "Objetivo para %{date}"
-      archived_section: "%{count} meta(s) archivada(s)"
-    status:
-      active: "Activa"
-      on_track: "A tiempo"
-      behind: "Atrasada"
-      reached: "Alcanzada"
-      completed: "Completada"
-      no_target_date: "Sin fecha"
-      paused: "Pausada"
-      archived: "Archivada"
+    perform_transition!:
+      success: Meta actualizada correctamente
+      invalid_transition: No se puede realizar esa transición en el estado actual de la meta
+    archive:
+      invalid_transition: No se puede archivar la meta en su estado actual.
+      success: Meta archivada.
+    complete:
+      invalid_transition: No se puede completar la meta en su estado actual.
+      success: "¡Meta completada!"
+    create:
+      success: Meta creada exitosamente.
+    destroy:
+      archive_first: Archivá la meta antes de eliminarla.
+      success: Meta eliminada exitosamente.
+    edit:
+      title: Editar meta
+    errors:
+      not_found: Meta no encontrada.
+    form:
+      cancel: Cancelar
+      color: Color
+      icon: Ícono
+      linked_accounts: Cuentas vinculadas
+      name: Nombre
+      no_icon: Sin ícono
+      no_linkable_accounts: No tenés cuentas de efectivo o inversión disponibles para
+        vincular.
+      notes: Notas
+      submit: Guardar
+      target_amount: Monto objetivo
+      target_date: Fecha objetivo
     goal_card:
       accounts:
-        one: "1 cuenta"
+        one: 1 cuenta
         other: "%{count} cuentas"
       aria_progress: "%{percent}%% alcanzado de %{target}"
       days_left:
-        one: "queda 1 día"
-        other: "quedan %{count} días"
-      past_due: "Vencida"
-      pace_with_target: "%{avg}/mes (meta: %{target}/mes)"
-      pace_no_target: "%{avg}/mes"
-      footer_archived: "Archivada"
-      footer_paused: "Pausada"
-      footer_reached: "¡Meta alcanzada!"
-      footer_catch_up: "Aportá %{amount} para ponerte al día"
-      footer_no_deadline: "Sin fecha límite"
-      footer_no_pledges: "Sin aportes recientes"
-      footer_last_today: "Último aporte hoy"
+        one: queda 1 día
+        other: quedan %{count} días
+      footer_archived: Archivada
+      footer_catch_up: Aportá %{amount} para ponerte al día
       footer_last_days:
-        one: "Último aporte hace 1 día"
-        other: "Último aporte hace %{count} días"
+        one: Último aporte hace 1 día
+        other: Último aporte hace %{count} días
+      footer_last_today: Último aporte hoy
+      footer_no_deadline: Sin fecha límite
+      footer_no_pledges: Sin aportes recientes
+      footer_paused: Pausada
+      footer_reached: "¡Meta alcanzada!"
+      pace_no_target: "%{avg}/mes"
+      pace_with_target: "%{avg}/mes (meta: %{target}/mes)"
+      past_due: Vencida
       pending_count:
-        one: "1 pendiente"
+        one: 1 pendiente
         other: "%{count} pendientes"
+    index:
+      archived_section: "%{count} meta(s) archivada(s)"
+      empty: Todavía no tenés metas. Creá una para empezar a hacer seguimiento de
+        tus objetivos financieros.
+      new: Nueva meta
+      target_by: Objetivo para %{date}
+      title: Metas
     new:
-      title: "Nueva meta"
-    edit:
-      title: "Editar meta"
-    create:
-      success: "Meta creada exitosamente."
-    update:
-      success: "Meta actualizada exitosamente."
-    destroy:
-      archive_first: "Archivá la meta antes de eliminarla."
-      success: "Meta eliminada exitosamente."
+      title: Nueva meta
     pause:
-      success: "Meta pausada."
-      invalid_transition: "No se puede pausar la meta en su estado actual."
-    resume:
-      success: "Meta reanudada."
-      invalid_transition: "No se puede reanudar la meta en su estado actual."
-    complete:
-      success: "¡Meta completada!"
-      invalid_transition: "No se puede completar la meta en su estado actual."
-    archive:
-      success: "Meta archivada."
-      invalid_transition: "No se puede archivar la meta en su estado actual."
-    unarchive:
-      success: "Meta restaurada."
-      invalid_transition: "No se puede restaurar la meta en su estado actual."
+      invalid_transition: No se puede pausar la meta en su estado actual.
+      success: Meta pausada.
     reopen:
-      success: "Meta reabierta."
-      invalid_transition: "No se puede reabrir la meta en su estado actual."
+      invalid_transition: No se puede reabrir la meta en su estado actual.
+      success: Meta reabierta.
+    resume:
+      invalid_transition: No se puede reanudar la meta en su estado actual.
+      success: Meta reanudada.
     show:
-      delete: "Eliminar"
-      confirm_delete: "¿Estás seguro de que querés eliminar esta meta?"
-      pause: "Pausar"
-      complete: "Completar"
-      confirm_complete: "¿Marcar esta meta como completada?"
-      resume: "Reanudar"
-      reopen: "Reabrir"
-      unarchive: "Restaurar"
-      archive: "Archivar"
+      add_pledge: Agregar compromiso
+      archive: Archivar
+      cancel_pledge: Cancelar
+      complete: Completar
       confirm_archive: "¿Estás seguro de que querés archivar esta meta?"
-      edit: "Editar"
-      target_by: "Objetivo para %{date}"
-      of_target: "de %{amount}"
-      linked_accounts: "Cuentas vinculadas"
-      pledges: "Compromisos"
-      add_pledge: "Agregar compromiso"
-      days_left:
-        one: "vence en 1 día"
-        other: "vence en %{count} días"
-      renew: "Renovar"
-      cancel_pledge: "Cancelar"
       confirm_cancel_pledge: "¿Cancelar este compromiso?"
-      no_pledges: "No hay compromisos abiertos."
-      notes: "Notas"
-      projection:
-        heading: "Proyección"
-      ring:
-        aria_label: "Progreso de la meta: %{percent}%%, %{amount} de %{target}"
-        saved: "Guardado"
-        to_go: "faltan %{amount}"
-      funding_accounts_heading: "Cuentas de financiamiento"
+      confirm_complete: "¿Marcar esta meta como completada?"
+      confirm_delete: "¿Estás seguro de que querés eliminar esta meta?"
+      days_left:
+        one: vence en 1 día
+        other: vence en %{count} días
+      delete: Eliminar
+      edit: Editar
       funding_accounts:
-        empty:
-          heading: "Sin cuentas de financiamiento"
-          body: "Vinculá cuentas a esta meta para hacer un seguimiento del saldo asignado."
         earmarked_of: "%{earmarked} asignados de %{balance}"
-      funding_last_30d: "últimos 30d"
-      funding_last_90d: "últimos 90d"
-    form:
-      name: "Nombre"
-      target_amount: "Monto objetivo"
-      target_date: "Fecha objetivo"
-      color: "Color"
-      icon: "Ícono"
-      no_icon: "Sin ícono"
-      notes: "Notas"
-      linked_accounts: "Cuentas vinculadas"
-      no_linkable_accounts: "No tenés cuentas de efectivo o inversión disponibles para vincular."
-      cancel: "Cancelar"
-      submit: "Guardar"
-    errors:
-      not_found: "Meta no encontrada."
+        empty:
+          body: Vinculá cuentas a esta meta para hacer un seguimiento del saldo asignado.
+          heading: Sin cuentas de financiamiento
+      funding_accounts_heading: Cuentas de financiamiento
+      funding_last_30d: últimos 30d
+      funding_last_90d: últimos 90d
+      linked_accounts: Cuentas vinculadas
+      no_pledges: No hay compromisos abiertos.
+      notes: Notas
+      of_target: de %{amount}
+      pause: Pausar
+      pledges: Compromisos
+      projection:
+        heading: Proyección
+      renew: Renovar
+      reopen: Reabrir
+      resume: Reanudar
+      ring:
+        aria_label: 'Progreso de la meta: %{percent}%%, %{amount} de %{target}'
+        saved: Guardado
+        to_go: faltan %{amount}
+      target_by: Objetivo para %{date}
+      unarchive: Restaurar
+    status:
+      active: Activa
+      archived: Archivada
+      behind: Atrasada
+      completed: Completada
+      no_target_date: Sin fecha
+      on_track: A tiempo
+      paused: Pausada
+      reached: Alcanzada
+    unarchive:
+      invalid_transition: No se puede restaurar la meta en su estado actual.
+      success: Meta restaurada.
+    update:
+      success: Meta actualizada exitosamente.

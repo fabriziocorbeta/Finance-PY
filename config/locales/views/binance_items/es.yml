@@ -1,0 +1,80 @@
+---
+es:
+  binance_item:
+    syncer:
+      accounts_need_setup:
+        one: "%{count} cuenta necesita configuración"
+        other: "%{count} cuentas necesitan configuración"
+      calculating_balances: Calculando saldos...
+      checking_configuration: Verificando configuración de la cuenta...
+      checking_credentials: Verificando credenciales...
+      credentials_invalid: Credenciales de API inválidas. Verificá tu clave y secreto
+        de API.
+      importing_accounts: Importando cuentas de Binance...
+      processing_accounts: Procesando datos de la cuenta...
+  binance_items:
+    binance_item:
+      delete: Eliminar
+      deletion_in_progress: Eliminando...
+      import_accounts_menu: Importar cuenta
+      no_accounts_message: Tu cartera de Binance aparecerá acá después de sincronizar.
+      no_accounts_title: No se encontraron cuentas
+      provider_name: Binance
+      reconnect: Las credenciales necesitan actualizarse
+      setup_action: Importar cuenta
+      setup_description: Seleccioná qué carteras de Binance querés seguir.
+      setup_needed: Cuenta lista para importar
+      stale_rate_warning: El saldo es aproximado — el tipo de cambio exacto para %{date}
+        no estaba disponible. Se actualizará en la próxima sincronización.
+      status: Última sincronización hace %{timestamp}
+      status_never: Nunca sincronizada
+      status_with_summary: Última sincronización hace %{timestamp} - %{summary}
+      sync_status:
+        all_synced:
+          one: "%{count} cuenta sincronizada"
+          other: "%{count} cuentas sincronizadas"
+        no_accounts: No se encontraron cuentas
+        partial_sync: "%{linked_count} sincronizadas, %{unlinked_count} necesitan
+          configuración"
+      syncing: Sincronizando...
+      update_credentials: Actualizar credenciales
+    complete_account_setup:
+      no_accounts: No hay cuentas para importar
+      none_selected: No se seleccionaron cuentas
+      success:
+        one: Se importó %{count} cuenta
+        other: Se importaron %{count} cuentas
+    create:
+      default_name: Binance
+      success: "¡Conectado a Binance correctamente! Tu cuenta se está sincronizando."
+    destroy:
+      success: Se programó la eliminación de la conexión con Binance.
+    link_existing_account:
+      errors:
+        invalid_binance_account: Cuenta de Binance inválida
+        only_manual: Solo se pueden vincular cuentas manuales a Binance
+      success: Vinculada correctamente a la cuenta de Binance
+    select_existing_account:
+      cancel: Cancelar
+      check_provider_health: Verificá que tus credenciales de la API de Binance sean
+        válidas
+      currently_linked_to: 'Vinculada actualmente a: %{account_name}'
+      link: Vincular
+      no_accounts_found: No se encontraron cuentas de Binance.
+      title: Vincular cuenta de Binance
+      wait_for_sync: Esperá a que Binance termine de sincronizar
+    setup_accounts:
+      accounts_count:
+        one: "%{count} cuenta disponible"
+        other: "%{count} cuentas disponibles"
+      cancel: Cancelar
+      creating: Importando...
+      import_selected: Importar seleccionadas
+      instructions: Seleccioná las carteras de Binance que querés importar. Solo se
+        muestran carteras con saldo.
+      no_accounts: Se importaron todas las cuentas.
+      select_all: Seleccionar todas
+      subtitle: Seleccioná qué carteras querés seguir
+      title: Importar cuenta de Binance
+    update:
+      success: Configuración de Binance actualizada correctamente.

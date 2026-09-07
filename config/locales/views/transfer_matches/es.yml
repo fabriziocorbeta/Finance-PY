@@ -1,0 +1,8 @@
+---
+es:
+  transfer_matches:
+    new:
+      header:
+        subtitle: Emparejá la transacción correspondiente en otra cuenta o creá una
+          si no existe.
+        title: Emparejar transferencia o pago

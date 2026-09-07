@@ -1,93 +1,100 @@
+---
 es:
   sales:
-    index:
-      title: "Ventas"
-      new: "Nueva venta"
-      empty: "No hay ventas registradas."
-      columns:
-        sale_number: "Número"
-        client_name: "Cliente"
-        status: "Estado"
-        total: "Total"
-        currency: "Moneda"
-    form:
-      client_name: "Cliente"
-      currency: "Moneda"
-      payment_method: "Método de pago"
-      invoice_number: "Número de factura"
-      condition: "Condición"
-      notes: "Notas"
-      delivery_address: "Dirección de entrega"
-      delivery_date: "Fecha de envío"
-      carrier: "Transportadora"
-      items: "Artículos"
-      items_help: "Agregue los artículos a vender. Los campos vacíos serán ignorados."
-      product: "Producto"
-      select_product: "Seleccione un producto"
-      quantity: "Cantidad"
-      unit_price: "Precio unitario"
-      cancel: "Cancelar"
-      submit: "Guardar"
-    new:
-      title: "Nueva venta"
-      success: "Venta creada exitosamente."
-    edit:
-      title: "Editar venta"
-      success: "Venta actualizada exitosamente."
-    destroy:
-      success: "Venta eliminada exitosamente."
-    complete:
-      success: "Venta completada exitosamente."
+    create:
+      success: Venta creada correctamente
+    update:
+      success: Venta actualizada correctamente
     cancel:
-      success: "Venta cancelada exitosamente."
-    show:
-      title: "Venta"
-      delete: "Eliminar"
-      edit: "Editar"
-      cancel_sale: "Cancelar venta"
-      complete_sale: "Completar venta"
-      confirm_cancel: "¿Estás seguro de que deseas cancelar esta venta?"
-      confirm_complete: "¿Estás seguro de que deseas completar esta venta? Esto descontará el stock."
-      confirm_cancel_completed: "¿Estás seguro de que deseas cancelar esta venta completada? El stock será restaurado."
-      print: "Descargar nota"
-      delivery_note: "Nota de entrega"
-      items: "Artículos"
-      no_items: "No hay artículos en esta venta."
-      columns:
-        product: "Producto"
-        quantity: "Cantidad"
-        unit_price: "Precio"
-        subtotal: "Subtotal"
-        total: "Total"
-    status:
-      draft: "Borrador"
-      completed: "Completada"
-      cancelled: "Cancelada"
-    print:
-      title: "Nota de Venta"
-      document_title: "Nota de venta"
-      sale_number: "N.º de venta"
-      client: "Cliente"
-      payment_method: "Método de pago"
-      invoice_number: "N.º de factura"
-      condition: "Condición"
-      product: "Producto"
-      quantity: "Cantidad"
-      unit_price: "Precio unitario"
-      subtotal: "Subtotal"
-      total: "Total"
-      notes: "Notas"
-      footer_thanks: "¡Gracias por su compra!"
-      generated_on: "Generado el %{date}"
+      success: Venta cancelada exitosamente.
+    complete:
+      success: Venta completada exitosamente.
     delivery_note:
-      title: "Nota de Entrega"
-      document_title: "Nota de entrega"
-      sale_number: "N.º de venta"
-      client: "Entregar a"
-      carrier: "Transportadora"
-      delivery_address: "Dirección de entrega"
-      product: "Producto"
-      quantity: "Cantidad"
-      delivery_date: "Fecha de envío prevista"
+      carrier: Transportadora
+      client: Entregar a
+      delivery_address: Dirección de entrega
+      delivery_date: Fecha de envío prevista
+      document_title: Nota de entrega
       footer_thanks: "¡Gracias por su compra!"
-      generated_on: "Generado el %{date}"
+      generated_on: Generado el %{date}
+      product: Producto
+      quantity: Cantidad
+      sale_number: N.º de venta
+      title: Nota de Entrega
+    destroy:
+      success: Venta eliminada exitosamente.
+    edit:
+      success: Venta actualizada exitosamente.
+      title: Editar venta
+    form:
+      cancel: Cancelar
+      carrier: Transportadora
+      client_name: Cliente
+      condition: Condición
+      currency: Moneda
+      delivery_address: Dirección de entrega
+      delivery_date: Fecha de envío
+      invoice_number: Número de factura
+      items: Artículos
+      items_help: Agregue los artículos a vender. Los campos vacíos serán ignorados.
+      notes: Notas
+      payment_method: Método de pago
+      product: Producto
+      quantity: Cantidad
+      select_product: Seleccione un producto
+      submit: Guardar
+      unit_price: Precio unitario
+    index:
+      columns:
+        client_name: Cliente
+        currency: Moneda
+        sale_number: Número
+        status: Estado
+        total: Total
+      empty: No hay ventas registradas.
+      new: Nueva venta
+      title: Ventas
+    new:
+      success: Venta creada exitosamente.
+      title: Nueva venta
+    print:
+      client: Cliente
+      condition: Condición
+      document_title: Nota de venta
+      footer_thanks: "¡Gracias por su compra!"
+      generated_on: Generado el %{date}
+      invoice_number: N.º de factura
+      notes: Notas
+      payment_method: Método de pago
+      product: Producto
+      quantity: Cantidad
+      sale_number: N.º de venta
+      subtotal: Subtotal
+      title: Nota de Venta
+      total: Total
+      unit_price: Precio unitario
+    show:
+      cancel_sale: Cancelar venta
+      columns:
+        product: Producto
+        quantity: Cantidad
+        subtotal: Subtotal
+        total: Total
+        unit_price: Precio
+      complete_sale: Completar venta
+      confirm_cancel: "¿Estás seguro de que deseas cancelar esta venta?"
+      confirm_cancel_completed: "¿Estás seguro de que deseas cancelar esta venta completada?
+        El stock será restaurado."
+      confirm_complete: "¿Estás seguro de que deseas completar esta venta? Esto descontará
+        el stock."
+      delete: Eliminar
+      delivery_note: Nota de entrega
+      edit: Editar
+      items: Artículos
+      no_items: No hay artículos en esta venta.
+      print: Descargar nota
+      title: Venta
+    status:
+      cancelled: Cancelada
+      completed: Completada
+      draft: Borrador

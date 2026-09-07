@@ -4,10 +4,13 @@ es:
     edit:
       edit: Editar %{account}
     form:
+      initial_balance: Saldo original del préstamo
       interest_rate: Tasa de interés
       interest_rate_placeholder: '5.25'
-      initial_balance: Saldo original del préstamo
       rate_type: Tipo de interés
+      none: Ninguno
+      subtype_none: Ninguno
+      subtype_prompt: Seleccioná el tipo de préstamo
       term_months: Plazo (meses)
       term_months_placeholder: '360'
     new:
@@ -21,3 +24,13 @@ es:
       term: Plazo
       type: Tipo
       unknown: Desconocido
+    tabs:
+      overview:
+        interest_rate: Tasa de interés
+        monthly_payment: Pago mensual
+        not_applicable: No aplica
+        original_principal: Capital original
+        remaining_principal: Capital restante
+        term: Plazo
+        type: Tipo
+        unknown: Desconocido

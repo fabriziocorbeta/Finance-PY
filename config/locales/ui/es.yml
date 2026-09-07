@@ -1,0 +1,6 @@
+---
+es:
+  UI:
+    account:
+      activity_feed:
+        toggle_selection_checkboxes: Mostrar u ocultar casillas de selección

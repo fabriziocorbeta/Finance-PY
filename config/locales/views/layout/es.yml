@@ -2,7 +2,6 @@
 es:
   layouts:
     application:
-      privacy_mode: Alternar modo de privacidad
       nav:
         assistant: Asistente
         budgets: Presupuestos
@@ -11,9 +10,10 @@ es:
         receivables: Cuentas a Cobrar
         reports: Informes
         transactions: Transacciones
+      privacy_mode: Alternar modo de privacidad
     auth:
-      existing_account: ¿Ya tienes una cuenta?
-      no_account: ¿Nuevo en %{product_name}?
+      existing_account: "¿Ya tienes una cuenta?"
+      no_account: "¿Nuevo en %{product_name}?"
       sign_in: Iniciar sesión
       sign_up: Crear cuenta
     shared:
@@ -21,6 +21,6 @@ es:
         privacy_policy: Política de privacidad
         terms_of_service: Términos de servicio
     trial:
-      open_demo: Demo pública
-      data_deleted_in_days: Los datos se eliminarán en %{days} días
       contribute: Contribuir
+      data_deleted_in_days: Los datos se eliminarán en %{days} días
+      open_demo: Demo pública

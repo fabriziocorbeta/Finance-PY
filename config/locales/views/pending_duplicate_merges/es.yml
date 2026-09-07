@@ -1,0 +1,16 @@
+---
+es:
+  pending_duplicate_merges:
+    new:
+      next: 10 siguientes →
+      no_candidates: No se encontraron transacciones confirmadas en esta cuenta.
+      pending_transaction: Transacción pendiente
+      previous: "← 10 anteriores"
+      select_posted: Seleccioná la transacción confirmada para combinar
+      showing_range: Mostrando %{start} - %{end}
+      submit_button: Combinar transacciones
+      title: Combinar con transacción confirmada
+      warning_description: Usá esto para combinar manualmente una transacción pendiente
+        con su versión confirmada. Esto eliminará la transacción pendiente y mantendrá
+        solo la confirmada.
+      warning_title: Combinación manual de duplicados

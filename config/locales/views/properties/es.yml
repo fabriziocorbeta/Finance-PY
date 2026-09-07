@@ -30,3 +30,27 @@ es:
       trend: Tendencia
       unknown: Desconocido
       year_built: Año de Construcción
+    subtypes:
+      agri_land:
+        long: Tierra agrícola
+        short: Tierra agrícola
+      apartment:
+        long: Departamento
+        short: Departamento
+      commercial:
+        long: Propiedad comercial
+        short: Comercial
+      plot:
+        long: Terreno / Lote
+        short: Terreno
+      rented:
+        long: Propiedad alquilada
+        short: Alquilada
+    tabs:
+      overview:
+        living_area: Superficie habitable
+        market_value: Valor de mercado
+        purchase_price: Precio de compra
+        trend: Tendencia
+        unknown: Desconocido
+        year_built: Año de construcción

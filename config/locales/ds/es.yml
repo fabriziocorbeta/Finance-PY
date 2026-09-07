@@ -1,0 +1,6 @@
+---
+es:
+  ds:
+    pill:
+      aria_label: "%{label}"
+      default_label: Insignia

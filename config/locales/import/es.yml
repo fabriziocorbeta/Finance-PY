@@ -1,0 +1,6 @@
+---
+es:
+  import:
+    uploads:
+      show:
+        csv_invalid: Debe ser un CSV válido con encabezados y al menos una fila de datos
