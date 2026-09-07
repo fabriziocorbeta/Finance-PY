@@ -113,6 +113,8 @@ end %>
             target: "_blank"
           ) %>
 
+          <%= render "layouts/shared/language_switcher" %>
+
           <%= render "users/user_menu", user: Current.user, intro_mode: intro_mode %>
         </div>
       </nav>
