@@ -16,6 +16,15 @@
   <%= render "layouts/privacy_mode_check" %>
   <%= turbo_refreshes_with method: :morph, scroll: :preserve %>
 
+  <%# Turbo Drive prefetches every visible link on hover/render by default.
+      This notebook host runs Puma with only 2 workers x 5 threads (2 CPU
+      cores, ~90MB free RAM under normal load) -- a burst of sidebar +
+      per-account sparkline links prefetching at once queues real navigation
+      behind them, measured at a genuine 7s wait for one visitor even with a
+      warm boot. Scaling Puma up isn't safe here (RAM headroom too thin);
+      disabling prefetch removes the self-inflicted burst instead. %>
+  <meta name="turbo-prefetch" content="false">
+
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 
   <%# Set --app-height synchronously (before layout) so the vertically-centered
