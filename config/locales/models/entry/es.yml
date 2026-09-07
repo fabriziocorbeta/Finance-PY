@@ -1,6 +1,9 @@
 ---
 es:
   activerecord:
+    attributes:
+      entry:
+        account: Cuenta
     errors:
       models:
         entry:
