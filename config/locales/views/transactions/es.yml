@@ -86,6 +86,9 @@ es:
       potential_duplicate_tooltip: Esto puede ser un duplicado de otra transacción
       review_recommended: Revisar
       review_recommended_tooltip: Gran diferencia de importe — se recomienda revisar para comprobar si es un duplicado
+      split: Dividida
+      split_tooltip: Esta transacción se dividió en varias entradas
+      split_child_tooltip: Parte de una transacción dividida
     merge_duplicate:
       success: Transacciones combinadas correctamente
       failure: No se pudieron combinar las transacciones
@@ -102,6 +105,39 @@ es:
       transaction: transacción
       transactions: transacciones
       import: Importar
+    categorizes:
+      show:
+        exit: "Salir"
+        skip: "Omitir"
+        remaining:
+          one: "Queda 1 transacción sin categorizar"
+          other: "Quedan %{count} transacciones sin categorizar"
+        transaction_count:
+          one: "1 transacción"
+          other: "%{count} transacciones"
+        transactions_hint: "Desmarcá para excluir una transacción, o asignale una categoría diferente directamente en su fila."
+        assign_category: "Asignar una categoría"
+        assign_category_prompt: "→ asignar"
+        filter_placeholder: "Buscar categorías..."
+        col_transaction: "Transacción"
+        col_date: "Fecha"
+        col_amount: "Monto"
+        col_category: "Categoría"
+        type_income: "Ingreso"
+        type_expense: "Gasto"
+        create_rule_label: "Crear regla de categorización"
+        rule_description_prefix: "Las futuras transacciones de %{type} cuyo nombre contenga"
+        rule_description_suffix: "también deberían recibir esta categoría."
+        no_categories: "No hay categorías coincidentes"
+        all_done: "Todas las transacciones están categorizadas"
+      create:
+        categorized:
+          one: "1 transacción categorizada"
+          other: "%{count} transacciones categorizadas"
+        rule_creation_failed: "Las transacciones se categorizaron, pero la regla no pudo crearse (puede que ya exista)."
+      entry_row:
+        include_checkbox: "Incluir %{name}"
+        assign_category_select: "Asignar categoría para %{name}"
     list:
       drag_drop_title: Suelta el CSV para importar
       drag_drop_subtitle: Sube transacciones directamente

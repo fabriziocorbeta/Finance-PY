@@ -40,6 +40,11 @@ es:
           member: "Acceso de usuario básico. Pueden gestionar sus propias cuentas, transacciones y ajustes."
           admin: "Administrador de la familia. Puede acceder a ajustes avanzados como claves API, importaciones e instrucciones de IA."
           super_admin: "Administrador de la instancia. Puede gestionar proveedores de SSO, roles de usuario y suplantar a usuarios para soporte."
+        invitations:
+          pending_label: "Invitado (pendiente)"
+          expires: "Caduca %{date}"
+          delete: "Eliminar"
+          delete_all: "Eliminar todo"
       update:
         success: "Rol de usuario actualizado correctamente."
         failure: "Error al actualizar el rol de usuario."
