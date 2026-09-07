@@ -1,0 +1,15 @@
+<%= render DS::Menu.new(variant: "button", placement: "right-end", offset: 12) do |menu| %>
+  <% menu.with_button do %>
+    <%= render DS::Button.new(variant: "icon", icon: "languages", data: { DS__menu_target: "button" }) %>
+  <% end %>
+
+  <% language_options.each do |label, locale| %>
+    <% menu.with_item(
+      variant: "button",
+      text: label,
+      method: :patch,
+      href: user_path(Current.user),
+      params: { user: { locale: locale } }
+    ) %>
+  <% end %>
+<% end %>

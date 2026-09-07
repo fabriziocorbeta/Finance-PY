@@ -88,7 +88,11 @@ class UsersController < ApplicationController
       when "ai_prompts"
         redirect_to settings_ai_prompts_path, notice: notice
       else
-        redirect_to settings_profile_path, notice: notice
+        # No explicit destination (e.g. the sidebar language switcher) --
+        # return to wherever the request came from instead of always
+        # bouncing to Profile settings, falling back to Profile when
+        # there's no referer (matches the old unconditional behavior).
+        redirect_back_or_to settings_profile_path, notice: notice
       end
     end
 
