@@ -17,5 +17,9 @@ en:
     syncing_notice:
       syncing: Syncing accounts data...
     require_admin: "Only admins can perform this action"
+    transaction_tabs:
+      expense: Expense
+      income: Income
+      transfer: Transfer
     trend_change:
       no_change: "no change"
