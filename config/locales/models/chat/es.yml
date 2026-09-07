@@ -1,0 +1,11 @@
+---
+es:
+  chat:
+    errors:
+      default: No se pudo generar una respuesta. Intentá de nuevo.
+      misconfigured: El proveedor de IA no está configurado correctamente. Contactá
+        a tu administrador.
+      rate_limited: El proveedor de IA tiene el límite de uso alcanzado en este momento.
+        Intentá de nuevo en unos minutos.
+      temporarily_unavailable: El proveedor de IA no está disponible temporalmente
+        en este momento. Intentá de nuevo en unos minutos.

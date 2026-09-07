@@ -1,0 +1,6 @@
+---
+en:
+  ds:
+    pill:
+      aria_label: "%{label}"
+      default_label: Badge

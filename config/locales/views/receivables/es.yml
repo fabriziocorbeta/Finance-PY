@@ -1,23 +1,26 @@
+---
 es:
   receivables:
-    form:
-      total_amount: Monto total
-      installment_count: Cantidad de cuotas (opcional)
-      installment_count_placeholder: '6'
-      due_day: Día de vencimiento (opcional)
-      due_day_placeholder: '13'
-    new:
-      title: Ingresá los datos de la cuenta a cobrar
-    edit:
-      edit: Editar %{account}
     dashboard:
-      title: Cuentas a Cobrar
-      new: Nueva cuenta a cobrar
-      empty: Todavía no tenés cuentas a cobrar. Creá una para empezar a hacer seguimiento de lo que te deben.
-      register_payment: Registrar Pago
       completed: Completadas (%{count})
       due_day: Vence el día
-    index:
-      title: Cuentas a Cobrar
+      empty: Todavía no tenés cuentas a cobrar. Creá una para empezar a hacer seguimiento
+        de lo que te deben.
       new: Nueva cuenta a cobrar
-      empty: Todavía no tenés cuentas a cobrar. Creá una para empezar a hacer seguimiento de lo que te deben.
+      register_payment: Registrar Pago
+      title: Cuentas a Cobrar
+    edit:
+      edit: Editar %{account}
+    form:
+      due_day: Día de vencimiento (opcional)
+      due_day_placeholder: '13'
+      installment_count: Cantidad de cuotas (opcional)
+      installment_count_placeholder: '6'
+      total_amount: Monto total
+    index:
+      empty: Todavía no tenés cuentas a cobrar. Creá una para empezar a hacer seguimiento
+        de lo que te deben.
+      new: Nueva cuenta a cobrar
+      title: Cuentas a Cobrar
+    new:
+      title: Ingresá los datos de la cuenta a cobrar

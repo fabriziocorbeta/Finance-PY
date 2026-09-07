@@ -14,6 +14,8 @@ es:
       valuations: Valor
       value: valor
     new:
+      amount: Importe
+      submit: Guardar
       title: Nuevo saldo
     show:
       amount: Importe

@@ -1,59 +1,66 @@
+---
 es:
   purchase_orders:
-    index:
-      title: "Pedidos a Proveedores"
-      new: "Nuevo pedido"
-      empty: "No hay pedidos a proveedores registrados."
-      columns:
-        order_number: "Número"
-        supplier_name: "Proveedor"
-        status: "Estado"
-        total: "Total"
-        currency: "Moneda"
-    form:
-      supplier_name: "Proveedor"
-      currency: "Moneda"
-      expected_date: "Fecha esperada"
-      notes: "Notas"
-      items: "Artículos"
-      items_help: "Agregue los artículos a pedir. Los campos vacíos serán ignorados."
-      product: "Producto"
-      select_product: "Seleccione un producto"
-      quantity: "Cantidad"
-      unit_cost: "Costo unitario"
-      cancel: "Cancelar"
-      submit: "Guardar"
-    new:
-      title: "Nuevo pedido a proveedor"
-      success: "Pedido creado exitosamente."
-    edit:
-      title: "Editar pedido a proveedor"
-      success: "Pedido actualizado exitosamente."
-    destroy:
-      success: "Pedido eliminado exitosamente."
-    receive:
-      success: "Pedido recibido exitosamente."
+    create:
+      success: Orden de compra creada correctamente
+    update:
+      success: Orden de compra actualizada correctamente
     cancel:
-      success: "Pedido cancelado exitosamente."
-    show:
-      title: "Pedido a Proveedor"
-      delete: "Eliminar"
-      edit: "Editar"
-      cancel_order: "Cancelar pedido"
-      receive_order: "Recibir pedido"
-      items: "Artículos"
-      no_items: "No hay artículos en este pedido."
-      confirm_delete: "¿Estás seguro de que quieres eliminar este pedido?"
-      confirm_cancel: "¿Estás seguro de que quieres cancelar este pedido?"
-      confirm_cancel_received: "¿Estás seguro de que quieres cancelar este pedido recibido? Se revertirá el stock."
-      confirm_receive: "¿Estás seguro de que quieres recibir este pedido? Esto incrementará el stock."
+      success: Pedido cancelado exitosamente.
+    destroy:
+      success: Pedido eliminado exitosamente.
+    edit:
+      success: Pedido actualizado exitosamente.
+      title: Editar pedido a proveedor
+    form:
+      cancel: Cancelar
+      currency: Moneda
+      expected_date: Fecha esperada
+      items: Artículos
+      items_help: Agregue los artículos a pedir. Los campos vacíos serán ignorados.
+      notes: Notas
+      product: Producto
+      quantity: Cantidad
+      select_product: Seleccione un producto
+      submit: Guardar
+      supplier_name: Proveedor
+      unit_cost: Costo unitario
+    index:
       columns:
-        product: "Producto"
-        quantity: "Cantidad"
-        unit_cost: "Costo"
-        subtotal: "Subtotal"
-        total: "Total"
+        currency: Moneda
+        order_number: Número
+        status: Estado
+        supplier_name: Proveedor
+        total: Total
+      empty: No hay pedidos a proveedores registrados.
+      new: Nuevo pedido
+      title: Pedidos a Proveedores
+    new:
+      success: Pedido creado exitosamente.
+      title: Nuevo pedido a proveedor
+    receive:
+      success: Pedido recibido exitosamente.
+    show:
+      cancel_order: Cancelar pedido
+      columns:
+        product: Producto
+        quantity: Cantidad
+        subtotal: Subtotal
+        total: Total
+        unit_cost: Costo
+      confirm_cancel: "¿Estás seguro de que quieres cancelar este pedido?"
+      confirm_cancel_received: "¿Estás seguro de que quieres cancelar este pedido
+        recibido? Se revertirá el stock."
+      confirm_delete: "¿Estás seguro de que quieres eliminar este pedido?"
+      confirm_receive: "¿Estás seguro de que quieres recibir este pedido? Esto incrementará
+        el stock."
+      delete: Eliminar
+      edit: Editar
+      items: Artículos
+      no_items: No hay artículos en este pedido.
+      receive_order: Recibir pedido
+      title: Pedido a Proveedor
     status:
-      draft: "Borrador"
-      received: "Recibido"
-      cancelled: "Cancelado"
+      cancelled: Cancelado
+      draft: Borrador
+      received: Recibido

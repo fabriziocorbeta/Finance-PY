@@ -1,6 +1,16 @@
 ---
 es:
   budgets:
+    copy_previous:
+      already_initialized: Este presupuesto ya se configuró
+      no_source: No se encontró un presupuesto anterior desde el cual copiar
+      success: Presupuesto copiado desde %{source_name}
+    copy_previous_prompt:
+      copy_button: Copiar desde %{source_name}
+      description: Podés copiar tu presupuesto desde %{source_name} o empezar desde
+        cero.
+      fresh_button: Empezar desde cero
+      title: Configurá tu presupuesto
     name:
       custom_range: "%{start} - %{end_date}"
       month_year: "%{month}"
@@ -9,16 +19,16 @@ es:
         amount: Importe
         edit: Editar
         title: Categorías
+      filter:
+        all: Todas
+        on_track: En camino
+        over_budget: Sobre presupuesto
       on_track_categories:
         short_title: En camino
         title: En camino
       over_budget_categories:
         short_title: Sobre presupuesto
         title: Sobre presupuesto
-      filter:
-        all: Todas
-        on_track: En camino
-        over_budget: Sobre presupuesto
       tabs:
         actual: Real
         budgeted: Presupuestado

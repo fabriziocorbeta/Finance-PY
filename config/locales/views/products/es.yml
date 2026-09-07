@@ -1,40 +1,41 @@
+---
 es:
   products:
-    index:
-      title: "Productos"
-      new: "Nuevo producto"
-      empty: "No hay productos registrados."
-      columns:
-        name: "Nombre"
-        sku: "SKU"
-        category: "Categoría"
-        stock: "Stock"
-        buy_price: "P. Costo"
-        sell_price: "P. Venta"
-        currency: "Moneda"
-    form:
-      name: "Nombre"
-      sku: "SKU"
-      category: "Categoría"
-      supplier: "Proveedor"
-      buy_price: "Precio de compra"
-      sell_price: "Precio de venta"
-      currency: "Moneda"
-      min_stock: "Stock mínimo"
-      initial_stock: "Stock inicial"
-      cancel: "Cancelar"
-      submit: "Guardar"
-    new:
-      title: "Nuevo producto"
     edit:
-      title: "Editar producto"
-    show:
-      edit: "Editar"
-      delete: "Eliminar"
-      stock_history: "Historial de stock"
-      no_history: "No hay movimientos de stock."
+      title: Editar producto
+    form:
+      buy_price: Precio de compra
+      cancel: Cancelar
+      category: Categoría
+      currency: Moneda
+      initial_stock: Stock inicial
+      min_stock: Stock mínimo
+      name: Nombre
+      sell_price: Precio de venta
+      sku: SKU
+      submit: Guardar
+      supplier: Proveedor
+    index:
       columns:
-        date: "Fecha"
-        reason: "Motivo"
-        quantity: "Cantidad"
-        note: "Nota"
+        buy_price: P. Costo
+        category: Categoría
+        currency: Moneda
+        name: Nombre
+        sell_price: P. Venta
+        sku: SKU
+        stock: Stock
+      empty: No hay productos registrados.
+      new: Nuevo producto
+      title: Productos
+    new:
+      title: Nuevo producto
+    show:
+      columns:
+        date: Fecha
+        note: Nota
+        quantity: Cantidad
+        reason: Motivo
+      delete: Eliminar
+      edit: Editar
+      no_history: No hay movimientos de stock.
+      stock_history: Historial de stock

@@ -11,116 +11,180 @@ es:
     show:
       chart_title: Valor total
     subtypes:
-      # Estados Unidos
-      brokerage:
-        short: Corretaje
-        long: Cuenta de corretaje (Brokerage)
       401k:
-        short: 401(k)
         long: Plan de jubilación 401(k)
-      roth_401k:
-        short: Roth 401(k)
-        long: Plan de jubilación Roth 401(k)
+        short: 401(k)
       403b:
-        short: 403(b)
         long: Plan de jubilación 403(b)
+        short: 403(b)
       457b:
-        short: 457(b)
         long: Plan de jubilación 457(b)
-      tsp:
-        short: TSP
-        long: Thrift Savings Plan (Plan de ahorro para empleados federales)
-      ira:
-        short: IRA
-        long: Cuenta de jubilación individual (Traditional IRA)
-      roth_ira:
-        short: Roth IRA
-        long: Cuenta de jubilación individual Roth (Roth IRA)
-      sep_ira:
-        short: SEP IRA
-        long: SEP IRA (Plan de pensión simplificado para empleados)
-      simple_ira:
-        short: SIMPLE IRA
-        long: SIMPLE IRA (Plan de incentivos para empleados)
+        short: 457(b)
       529_plan:
-        short: Plan 529
         long: Plan 529 de ahorro para educación
-      hsa:
-        short: HSA
-        long: Cuenta de ahorros para la salud (Health Savings Account)
-      ugma:
-        short: UGMA
-        long: Cuenta de custodia UGMA
-      utma:
-        short: UTMA
-        long: Cuenta de custodia UTMA
-      # Reino Unido
-      isa:
-        short: ISA
-        long: Cuenta de ahorro individual (ISA)
-      lisa:
-        short: LISA
-        long: ISA vitalicia (Lifetime ISA)
-      sipp:
-        short: SIPP
-        long: Pensión personal con gestión propia (SIPP)
-      workplace_pension_uk:
-        short: Pensión
-        long: Pensión del lugar de trabajo
-      # Canadá
-      rrsp:
-        short: RRSP
-        long: Plan registrado de ahorro para la jubilación (RRSP)
-      tfsa:
-        short: TFSA
-        long: Cuenta de ahorros libre de impuestos (TFSA)
-      resp:
-        short: RESP
-        long: Plan registrado de ahorros para educación (RESP)
-      lira:
-        short: LIRA
-        long: Cuenta de jubilación inmovilizada (LIRA)
-      rrif:
-        short: RRIF
-        long: Fondo registrado de ingresos para la jubilación (RRIF)
-      # Australia
-      super:
-        short: Super
-        long: Superannuation (Fondo de pensiones australiano)
-      smsf:
-        short: SMSF
-        long: Fondo de pensiones gestionado por uno mismo (SMSF)
-      # Europa
-      pea:
-        short: PEA
-        long: Plan de ahorro en acciones (PEA - Francia)
-      pillar_3a:
-        short: Pilar 3a
-        long: Pensión privada (Pilar 3a - Suiza)
-      riester:
-        short: Riester
-        long: Plan de pensiones Riester (Riester-Rente - Alemania)
-      # Genéricos
-      pension:
-        short: Pensión
-        long: Plan de pensiones
-      retirement:
-        short: Jubilación
-        long: Cuenta de jubilación
-      mutual_fund:
-        short: Fondo de inversión
-        long: Fondo de inversión (Mutual Fund)
+        short: Plan 529
       angel:
-        short: Angel
         long: Inversión Angel (Capital riesgo)
-      trust:
-        short: Fideicomiso
-        long: Fideicomiso (Trust)
+        short: Angel
+      apy:
+        long: Atal Pension Yojana
+        short: APY
+      brokerage:
+        long: Cuenta de corretaje (Brokerage)
+        short: Corretaje
+      corporate_bond:
+        long: Bono corporativo
+        short: Bono corporativo
+      fd:
+        long: Depósito a plazo fijo
+        short: DPF
+      g_sec:
+        long: Valores del gobierno (G-Secs)
+        short: G-Sec
+      gold:
+        long: Oro (físico o digital)
+        short: Oro
+      gold_etf:
+        long: ETF de oro
+        short: ETF de oro
+      gold_mf:
+        long: Fondo mutuo de oro
+        short: Fondo de oro
+      hsa:
+        long: Cuenta de ahorros para la salud (Health Savings Account)
+        short: HSA
+      indian_equity:
+        long: Renta variable india
+        short: Renta variable india
+      indian_etf:
+        long: ETF indio
+        short: ETF indio
+      indian_stocks:
+        long: Acciones indias (Demat)
+        short: Acciones indias
+      infrastructure_bond:
+        long: Bono de infraestructura
+        short: Bono de infraestructura
+      ira:
+        long: Cuenta de jubilación individual (Traditional IRA)
+        short: IRA
+      isa:
+        long: Cuenta de ahorro individual (ISA)
+        short: ISA
+      kvp:
+        long: Kisan Vikas Patra
+        short: KVP
+      life_insurance:
+        long: Seguro de vida
+        short: Seguro de vida
+      lira:
+        long: Cuenta de jubilación inmovilizada (LIRA)
+        short: LIRA
+      lisa:
+        long: ISA vitalicia (Lifetime ISA)
+        short: LISA
+      mutual_fund:
+        long: Fondo de inversión (Mutual Fund)
+        short: Fondo de inversión
+      nps:
+        long: Sistema Nacional de Pensiones
+        short: NPS
+      nsc:
+        long: Certificado Nacional de Ahorro
+        short: NSC
       other:
-        short: Otra
         long: Otra inversión
+        short: Otra
+      pea:
+        long: Plan de ahorro en acciones (PEA - Francia)
+        short: PEA
+      pension:
+        long: Plan de pensiones
+        short: Pensión
+      pillar_3a:
+        long: Pensión privada (Pilar 3a - Suiza)
+        short: Pilar 3a
+      pomis:
+        long: Plan de Ingreso Mensual del Correo
+        short: POMIS
+      ppf:
+        long: Fondo Público de Previsión
+        short: PPF
+      rd:
+        long: Depósito recurrente
+        short: DR
+      resp:
+        long: Plan registrado de ahorros para educación (RESP)
+        short: RESP
+      retirement:
+        long: Cuenta de jubilación
+        short: Jubilación
+      riester:
+        long: Plan de pensiones Riester (Riester-Rente - Alemania)
+        short: Riester
+      roth_401k:
+        long: Plan de jubilación Roth 401(k)
+        short: Roth 401(k)
+      roth_ira:
+        long: Cuenta de jubilación individual Roth (Roth IRA)
+        short: Roth IRA
+      rrif:
+        long: Fondo registrado de ingresos para la jubilación (RRIF)
+        short: RRIF
+      rrsp:
+        long: Plan registrado de ahorro para la jubilación (RRSP)
+        short: RRSP
+      scss:
+        long: Plan de Ahorro para Adultos Mayores
+        short: SCSS
+      sdl:
+        long: Préstamos de desarrollo estatal (SDLs)
+        short: SDL
+      sep_ira:
+        long: SEP IRA (Plan de pensión simplificado para empleados)
+        short: SEP IRA
+      sgb:
+        long: Bono soberano de oro
+        short: SGB
+      simple_ira:
+        long: SIMPLE IRA (Plan de incentivos para empleados)
+        short: SIMPLE IRA
+      sipp:
+        long: Pensión personal con gestión propia (SIPP)
+        short: SIPP
+      smsf:
+        long: Fondo de pensiones gestionado por uno mismo (SMSF)
+        short: SMSF
+      ssy:
+        long: Sukanya Samriddhi Yojana
+        short: SSY
+      super:
+        long: Superannuation (Fondo de pensiones australiano)
+        short: Super
+      tax_free_bond:
+        long: Bono libre de impuestos
+        short: Bono libre de impuestos
+      tfsa:
+        long: Cuenta de ahorros libre de impuestos (TFSA)
+        short: TFSA
+      trust:
+        long: Fideicomiso (Trust)
+        short: Fideicomiso
+      tsp:
+        long: Thrift Savings Plan (Plan de ahorro para empleados federales)
+        short: TSP
+      ugma:
+        long: Cuenta de custodia UGMA
+        short: UGMA
+      utma:
+        long: Cuenta de custodia UTMA
+        short: UTMA
+      workplace_pension_uk:
+        long: Pensión del lugar de trabajo
+        short: Pensión
     value_tooltip:
       cash: Efectivo
       holdings: Inversiones
       total: Saldo de la cartera
-      total_value_tooltip: El saldo total de la cartera es la suma del efectivo de corretaje (disponible para operar) y el valor de mercado actual de tus inversiones.
+      total_value_tooltip: El saldo total de la cartera es la suma del efectivo de
+        corretaje (disponible para operar) y el valor de mercado actual de tus inversiones.

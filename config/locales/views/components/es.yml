@@ -1,66 +1,67 @@
+---
 es:
   provider_sync_summary:
-    title: Resumen de sincronización
-    last_sync: "Última sincronización: hace %{time_ago}"
     accounts:
+      institutions: 'Instituciones: %{count}'
+      linked: 'Vinculadas: %{count}'
       title: Cuentas
-      total: "Total: %{count}"
-      linked: "Vinculadas: %{count}"
-      unlinked: "Desvinculadas: %{count}"
-      institutions: "Instituciones: %{count}"
-    transactions:
-      title: Transacciones
-      seen: "Detectadas: %{count}"
-      imported: "Importadas: %{count}"
-      updated: "Actualizadas: %{count}"
-      skipped: "Omitidas: %{count}"
-      fetching: "Obteniendo del bróker..."
-      protected:
-        one: "%{count} entrada protegida (no sobrescrita)"
-        other: "%{count} entradas protegidas (no sobrescritas)"
-      view_protected: Ver entradas protegidas
-    skip_reasons:
-      excluded: Excluida
-      user_modified: Modificada por el usuario
-      import_locked: Importación CSV
-      protected: Protegida
-    holdings:
-      title: Posiciones
-      found: "Encontradas: %{count}"
-      processed: "Procesadas: %{count}"
-    trades:
-      title: Operaciones
-      imported: "Importadas: %{count}"
-      skipped: "Omitidas: %{count}"
-      fetching: "Obteniendo actividades del bróker..."
+      total: 'Total: %{count}'
+      unlinked: 'Desvinculadas: %{count}'
     health:
-      title: Estado de salud
-      view_error_details: Ver detalles del error
-      rate_limited: "Límite de frecuencia alcanzado hace %{time_ago}"
-      recently: recientemente
-      errors: "Errores: %{count}"
-      pending_reconciled:
-        one: "%{count} transacción pendiente duplicada conciliada"
-        other: "%{count} transacciones pendientes duplicadas conciliadas"
-      view_reconciled: Ver transacciones conciliadas
+      data_warnings: 'Avisos de datos: %{count}'
       duplicate_suggestions:
         one: "%{count} posible duplicado necesita revisión"
         other: "%{count} posibles duplicados necesitan revisión"
-      view_duplicate_suggestions: Ver duplicados sugeridos
+      errors: 'Errores: %{count}'
+      notices: 'Avisos: %{count}'
+      pending_reconciled:
+        one: "%{count} transacción pendiente duplicada conciliada"
+        other: "%{count} transacciones pendientes duplicadas conciliadas"
+      rate_limited: Límite de frecuencia alcanzado hace %{time_ago}
+      recently: recientemente
       stale_pending:
         one: "%{count} transacción pendiente antigua (excluida de presupuestos)"
         other: "%{count} transacciones pendientes antiguas (excluidas de presupuestos)"
-      view_stale_pending: Ver cuentas afectadas
       stale_pending_count:
         one: "%{count} transacción"
         other: "%{count} transacciones"
       stale_unmatched:
         one: "%{count} transacción pendiente necesita revisión manual"
         other: "%{count} transacciones pendientes necesitan revisión manual"
-      view_stale_unmatched: Ver transacciones que necesitan revisión
       stale_unmatched_count:
         one: "%{count} transacción"
         other: "%{count} transacciones"
-      data_warnings: "Avisos de datos: %{count}"
-      notices: "Avisos: %{count}"
+      title: Estado de salud
       view_data_quality: Ver detalles de calidad de datos
+      view_duplicate_suggestions: Ver duplicados sugeridos
+      view_error_details: Ver detalles del error
+      view_reconciled: Ver transacciones conciliadas
+      view_stale_pending: Ver cuentas afectadas
+      view_stale_unmatched: Ver transacciones que necesitan revisión
+    holdings:
+      found: 'Encontradas: %{count}'
+      processed: 'Procesadas: %{count}'
+      title: Posiciones
+    last_sync: 'Última sincronización: hace %{time_ago}'
+    skip_reasons:
+      excluded: Excluida
+      import_locked: Importación CSV
+      protected: Protegida
+      user_modified: Modificada por el usuario
+    title: Resumen de sincronización
+    trades:
+      fetching: Obteniendo actividades del bróker...
+      imported: 'Importadas: %{count}'
+      skipped: 'Omitidas: %{count}'
+      title: Operaciones
+    transactions:
+      fetching: Obteniendo del bróker...
+      imported: 'Importadas: %{count}'
+      protected:
+        one: "%{count} entrada protegida (no sobrescrita)"
+        other: "%{count} entradas protegidas (no sobrescritas)"
+      seen: 'Detectadas: %{count}'
+      skipped: 'Omitidas: %{count}'
+      title: Transacciones
+      updated: 'Actualizadas: %{count}'
+      view_protected: Ver entradas protegidas
