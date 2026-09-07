@@ -15,8 +15,10 @@ es:
       date: Fecha
       description: Descripción
       description_placeholder: Describe la transacción
+      details: Detalles
       expense: Gasto
       income: Ingreso
+      merchant_label: Comerciante
       none: (ninguno)
       note_label: Notas
       note_placeholder: Introduce una nota

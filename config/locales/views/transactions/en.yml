@@ -18,6 +18,7 @@ en:
       date: Date
       description: Description
       description_placeholder: Describe transaction
+      details: Details
       expense: Expense
       income: Income
       merchant_label: Merchant
