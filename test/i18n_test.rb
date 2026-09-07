@@ -39,3 +39,121 @@ class I18nTest < ActiveSupport::TestCase
     assert_empty inconsistent_interpolations, error_message
   end
 end
+
+# Deliberately a separate class from I18nTest: that class's `setup` instantiates
+# I18n::Tasks::BaseTask, which mutates I18n's global default_locale/available_locales
+# for the rest of the process (i18n-tasks config uses base_locale: en) -- sharing
+# `setup` here corrupted this test's I18n.available_locales silently.
+#
+# 2026-09-07: a real user hit a genuinely broken "New transaction" form because
+# `t("helpers.select.search_placeholder")` was missing in Spanish (our default
+# locale). When `t()` is interpolated directly into an HTML attribute value and
+# the key is missing, Rails' translate helper returns an HTML-safe
+# `<span class="translation_missing">...</span>` -- which, spliced raw into
+# `placeholder="<%= t(...) %>"`, closes the attribute's quote early and dumps
+# the rest of the tag's real attributes as visible page text. I18nTest's other
+# tests stay skipped (870+ pre-existing missing keys, mostly rendered as element
+# content where a missing key is merely ugly, not corrupting markup -- not
+# something to mass-translate here without native review) -- this test targets
+# only that specific, markup-breaking failure mode going forward.
+class I18nAttributeInterpolationTest < ActiveSupport::TestCase
+  APP_ROOT = File.expand_path("..", __dir__)
+
+  # Mirrors config.i18n.available_locales / config.i18n.fallbacks in
+  # config/application.rb: each locale falls back through its own chain to
+  # :es (default_locale). Hardcoded, and this test reads translation YAML
+  # directly from disk instead of going through the `I18n` module, because
+  # I18n::Tasks::BaseTask (instantiated by I18nTest's `setup`, above) replaces
+  # I18n's backend/load_path/default_locale/Rails-constant wiring for the rest
+  # of this test process regardless of test order or class boundaries --
+  # resetting each of those pieces individually was tried and still left
+  # fallback resolution broken, so this test doesn't depend on global I18n
+  # state at all.
+  LOCALE_FALLBACK_CHAINS = {
+    "es" => [ "es" ],
+    "es-PY" => [ "es-PY", "es" ],
+    "en" => [ "en", "es" ]
+  }.freeze
+
+  def test_no_missing_keys_interpolated_into_html_attributes
+    translations = LOCALE_FALLBACK_CHAINS.keys.index_with { |locale| load_locale_tree(locale) }
+
+    attribute_pattern = /(?:placeholder|aria-label|title|alt|value)="<%=\s*t\(([^)]*)\)\s*%>"/
+    dangerous_calls = []
+
+    Dir.glob(File.join(APP_ROOT, "app", "{views,components}", "**", "*.erb")).each do |path|
+      File.readlines(path).each_with_index do |line, index|
+        line.scan(attribute_pattern) do |(raw_args)|
+          next if raw_args.include?("default:") # explicit fallback can't render a broken span
+          next if raw_args.include?('#{') # dynamic key, can't statically resolve
+
+          key_match = raw_args.match(/\A\s*["']([^"']+)["']/)
+          next unless key_match
+
+          dangerous_calls << { path: path, line: index + 1, raw_key: key_match[1] }
+        end
+      end
+    end
+
+    failures = dangerous_calls.filter_map do |call|
+      resolved_key = resolve_view_relative_key(call[:raw_key], call[:path])
+      key_parts = resolved_key.split(".")
+
+      broken_locales = LOCALE_FALLBACK_CHAINS.reject do |_locale, chain|
+        chain.any? { |fallback_locale| key_exists?(translations[fallback_locale], key_parts) }
+      end.keys
+      next if broken_locales.empty?
+
+      relative_path = call[:path].delete_prefix("#{APP_ROOT}/")
+      "#{relative_path}:#{call[:line]} (#{resolved_key}) missing for #{broken_locales.join(', ')}"
+    end
+
+    assert_empty failures,
+      "The following i18n keys are interpolated directly into an HTML attribute and are missing " \
+      "for at least one available locale. A missing key there renders as a raw HTML span inside " \
+      "the attribute value and breaks the surrounding tag:\n\n#{failures.join("\n")}"
+  end
+
+  private
+
+    def resolve_view_relative_key(raw_key, path)
+      return raw_key unless raw_key.start_with?(".")
+
+      base = path.delete_prefix("#{APP_ROOT}/app/views/").delete_prefix("#{APP_ROOT}/app/components/")
+      base = base.sub(/\.[a-z]+\.erb\z/, "")
+      segments = base.split("/")
+      segments[-1] = segments[-1].sub(/\A_/, "")
+      "#{segments.join('.')}#{raw_key}"
+    end
+
+    def load_locale_tree(locale)
+      paths = Dir.glob(File.join(APP_ROOT, "config", "locales", "**", "*.yml"))
+        .select { |path| File.basename(path, ".yml") == locale }
+
+      paths.each_with_object({}) do |path, tree|
+        data = YAML.load_file(path) || {}
+        locale_data = data[locale] || {}
+        deep_merge!(tree, locale_data)
+      end
+    end
+
+    def deep_merge!(base, other)
+      other.each do |key, value|
+        if value.is_a?(Hash) && base[key].is_a?(Hash)
+          deep_merge!(base[key], value)
+        else
+          base[key] = value
+        end
+      end
+      base
+    end
+
+    def key_exists?(tree, key_parts)
+      node = tree
+      key_parts.each do |part|
+        return false unless node.is_a?(Hash) && node.key?(part)
+        node = node[part]
+      end
+      true
+    end
+end
