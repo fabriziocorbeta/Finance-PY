@@ -185,4 +185,44 @@ class FleetVehicleTest < ActiveSupport::TestCase
     assert_equal 10.0, efficiency["mixto"]
     assert_equal 10.0, efficiency["nafta"]
   end
+
+  test "monthly_metrics_series builds one point per month, oldest to newest, with real trends" do
+    current_month = Date.current
+
+    @vehicle.fuel_logs.create!(
+      account: @account,
+      odometer: 10000,
+      logged_at: current_month.prev_month.end_of_month,
+      fuel_log_lines_attributes: [
+        { fuel_type: "nafta", liters: 50, cost: 350000 }
+      ]
+    )
+
+    @vehicle.fuel_logs.create!(
+      account: @account,
+      odometer: 11000,
+      logged_at: current_month.beginning_of_month + 10.days,
+      fuel_log_lines_attributes: [
+        { fuel_type: "nafta", liters: 60, cost: 420000 }
+      ]
+    )
+
+    series = @vehicle.monthly_metrics_series(metric: "efficiency", months_back: 3)
+
+    assert_equal 3, series.values.size
+    assert_equal current_month.beginning_of_month, series.values.last.date
+    # 1000 km / 60 L = 16.67 km/L for the current month, 0 for the two empty months before it
+    assert_equal 0.0, series.values.first.value
+    assert_in_delta 16.67, series.values.last.value, 0.01
+
+    distance_series = @vehicle.monthly_metrics_series(metric: "distance", months_back: 3)
+    assert_equal 1000.0, distance_series.values.last.value
+
+    consumption_series = @vehicle.monthly_metrics_series(metric: "consumption", months_back: 3)
+    assert_equal 60.0, consumption_series.values.last.value
+
+    # Consumption is unfavorable when it goes up -- direction "up" should read as unfavorable, not a win.
+    assert_equal "down", consumption_series.favorable_direction
+    assert_equal "up", distance_series.favorable_direction
+  end
 end
