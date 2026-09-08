@@ -1,0 +1,6 @@
+---
+es:
+  balance_sheet:
+    classifications:
+      asset: Activos
+      liability: Pasivos

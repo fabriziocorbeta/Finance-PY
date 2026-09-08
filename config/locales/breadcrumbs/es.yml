@@ -1,8 +1,27 @@
 ---
 es:
   breadcrumbs:
+    ai_prompts: Indicaciones de IA
+    api_keys: Clave de API
+    budgets: Presupuestos
     categorize: Categorizar
+    dashboard: Panel
     exports: Exportaciones
+    fleet_vehicles: Flota
+    goals: Metas
+    guides: Guías
     home: Inicio
+    hostings: Auto-alojamiento
     imports: Importaciones
+    intro: Introducción
+    llm_usages: Uso de LLM
+    merchants: Comercios
+    products: Inventario
+    profiles: Información del Perfil
+    providers: Proveedores de Sincronización Bancaria
+    purchase_orders: Pedidos
+    receivables: Cuentas a Cobrar
+    reports: Informes
+    sales: Ventas
+    security: Seguridad
     transactions: Transacciones

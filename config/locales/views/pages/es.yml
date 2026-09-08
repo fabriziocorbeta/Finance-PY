@@ -8,8 +8,11 @@ es:
     dashboard:
       balance_sheet:
         add_accounts: Añade tus cuentas de %{name} para ver un desglose completo
+        name: Nombre
         no_items: Aún no hay %{name}
         title: Balance de situación
+        value: Valor
+        weight: Peso
       cashflow_sankey:
         add_transaction: Añadir transacción
         no_data_description: Añade transacciones para mostrar datos de flujo de caja
