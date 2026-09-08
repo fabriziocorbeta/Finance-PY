@@ -49,6 +49,7 @@ fun BudgetDashboardScreen(
         BudgetMonthNavigator(
             year = uiState.year,
             month = uiState.month,
+            budgetName = uiState.budgetName,
             onPreviousMonth = { viewModel.selectPreviousMonth() },
             onNextMonth = { viewModel.selectNextMonth() },
             onJumpToToday = { viewModel.jumpToToday() },

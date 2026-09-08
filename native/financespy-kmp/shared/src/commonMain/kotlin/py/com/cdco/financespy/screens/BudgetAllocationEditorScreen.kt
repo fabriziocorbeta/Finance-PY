@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -34,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.screens.components.parseHexColor
 import py.com.cdco.financespy.theme.FinancePyColors
@@ -42,6 +40,7 @@ import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.theme.components.AppTextField
 import py.com.cdco.financespy.theme.components.ButtonVariant
+import py.com.cdco.financespy.utils.formatMoney
 
 @Composable
 fun BudgetAllocationEditorScreen(
@@ -130,16 +129,16 @@ fun BudgetAllocationEditorScreen(
                             ) {
                                 Text(
                                     text = if (uiState.availableToAllocate < 0) {
-                                        "Superaste el presupuesto por ${uiState.currency} ${(-uiState.availableToAllocate).toInt()}"
+                                        "Superaste el presupuesto por ${formatMoney(-uiState.availableToAllocate, uiState.currency)}"
                                     } else {
-                                        "${uiState.allocatedPercent.toInt()}% asignado (${uiState.currency} ${uiState.totalAllocated.toInt()} / ${uiState.expectedIncome.toInt()})"
+                                        "${uiState.allocatedPercent.toInt()}% asignado (${formatMoney(uiState.totalAllocated, uiState.currency)} / ${formatMoney(uiState.expectedIncome, uiState.currency)})"
                                     },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = if (uiState.availableToAllocate < 0) FinancePyColors.destructive() else FinancePyColors.textSecondary()
                                 )
 
                                 Text(
-                                    text = "Disponible: ${uiState.currency} ${uiState.availableToAllocate.toInt()}",
+                                    text = "Disponible: ${formatMoney(uiState.availableToAllocate, uiState.currency)}",
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                                     color = if (uiState.availableToAllocate < 0) FinancePyColors.destructive() else FinancePyColors.textPrimary()
                                 )

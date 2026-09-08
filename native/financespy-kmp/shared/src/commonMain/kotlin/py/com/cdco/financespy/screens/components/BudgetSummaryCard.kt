@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppCard
+import py.com.cdco.financespy.utils.formatMoney
 
 @Composable
 fun BudgetSummaryCard(
@@ -78,11 +79,11 @@ fun BudgetSummaryCard(
             if (showTabs && activeTab == "budgeted") {
                 SummaryRow(
                     label = "Ingreso esperado",
-                    amountText = "$currency ${expectedIncome.toInt()}"
+                    amountText = formatMoney(expectedIncome, currency)
                 )
                 SummaryRow(
                     label = "Presupuestado",
-                    amountText = "$currency ${budgetedSpending.toInt()}"
+                    amountText = formatMoney(budgetedSpending, currency)
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -101,20 +102,20 @@ fun BudgetSummaryCard(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 SummaryRow(
-                    label = "Disponible para asignar",
-                    amountText = "$currency ${availableToAllocate.toInt()}",
+                    label = if (availableToAllocate < 0) "Superaste el presupuesto por" else "Disponible para asignar",
+                    amountText = formatMoney(if (availableToAllocate < 0) -availableToAllocate else availableToAllocate, currency),
                     isHighlight = true,
                     isNegativeWarning = availableToAllocate < 0
                 )
             } else {
                 SummaryRow(
-                    label = "Ingreso real",
-                    amountText = "$currency ${actualIncome.toInt()}",
+                    label = "Ingresos",
+                    amountText = formatMoney(actualIncome, currency),
                     subtitle = if (expectedIncome > 0) "${actualIncomePercent.toInt()}% del esperado" else null
                 )
                 SummaryRow(
-                    label = "Gasto real",
-                    amountText = "$currency ${actualSpending.toInt()}",
+                    label = "Gastos",
+                    amountText = formatMoney(actualSpending, currency),
                     subtitle = if (budgetedSpending > 0) "${percentOfBudgetSpent.toInt()}% del presupuestado" else null
                 )
 
@@ -142,7 +143,7 @@ fun BudgetSummaryCard(
 
                 SummaryRow(
                     label = if (availableToSpend < 0) "Sobre presupuesto" else "Disponible",
-                    amountText = "$currency ${availableToSpend.toInt()}",
+                    amountText = formatMoney(availableToSpend, currency),
                     isHighlight = true,
                     isNegativeWarning = availableToSpend < 0
                 )

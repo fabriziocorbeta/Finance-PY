@@ -38,6 +38,7 @@ import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.theme.components.ButtonVariant
+import py.com.cdco.financespy.utils.formatMoney
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -117,13 +118,13 @@ fun BudgetCategoryDetailSheet(
 
                     DetailRow(
                         label = "Gasto del mes",
-                        value = "$currency ${category.actualSpending.toInt()}"
+                        value = formatMoney(category.actualSpending, currency)
                     )
 
                     val (badgeBg, badgeFg, badgeText) = when (category.status) {
-                        BudgetCategoryStatus.OVER_BUDGET -> Triple(FinancePyColors.destructive().copy(alpha = 0.15f), FinancePyColors.destructive(), "Sobre presupuesto")
-                        BudgetCategoryStatus.NEAR_LIMIT -> Triple(FinancePyColors.warning().copy(alpha = 0.15f), FinancePyColors.warning(), "Alerta")
-                        BudgetCategoryStatus.ON_TRACK -> Triple(FinancePyColors.success().copy(alpha = 0.15f), FinancePyColors.success(), "En camino")
+                        BudgetCategoryStatus.OVER_BUDGET -> Triple(FinancePyColors.destructive().copy(alpha = 0.15f), FinancePyColors.destructive(), "Presupuesto excedido")
+                        BudgetCategoryStatus.NEAR_LIMIT -> Triple(FinancePyColors.warning().copy(alpha = 0.15f), FinancePyColors.warning(), "Cerca del límite")
+                        BudgetCategoryStatus.ON_TRACK -> Triple(FinancePyColors.success().copy(alpha = 0.15f), FinancePyColors.success(), "Correcto")
                     }
 
                     Row(
@@ -163,17 +164,17 @@ fun BudgetCategoryDetailSheet(
 
                     DetailRow(
                         label = "Presupuestado",
-                        value = "$currency ${category.budgetedSpending.toInt()}"
+                        value = formatMoney(category.budgetedSpending, currency)
                     )
 
                     DetailRow(
                         label = "Gasto mensual promedio",
-                        value = "$currency ${category.avgMonthlyExpense.toInt()}"
+                        value = formatMoney(category.avgMonthlyExpense, currency)
                     )
 
                     DetailRow(
                         label = "Gasto mensual mediano",
-                        value = "$currency ${category.medianMonthlyExpense.toInt()}"
+                        value = formatMoney(category.medianMonthlyExpense, currency)
                     )
                 }
             }
@@ -233,7 +234,7 @@ fun BudgetCategoryDetailSheet(
                                 }
 
                                 Text(
-                                    text = "$currency ${(tx.amount_cents / 100.0).toInt()}",
+                                    text = formatMoney(tx.amount_cents, tx.currency),
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                     color = FinancePyColors.textPrimary()
                                 )

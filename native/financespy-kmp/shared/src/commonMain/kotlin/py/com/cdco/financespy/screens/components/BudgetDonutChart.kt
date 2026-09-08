@@ -31,6 +31,7 @@ import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.theme.components.ButtonVariant
+import py.com.cdco.financespy.utils.formatMoney
 
 fun parseHexColor(hex: String): Color {
     val cleanHex = hex.removePrefix("#")
@@ -153,7 +154,7 @@ fun BudgetDonutChart(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Superaste el presupuesto por $currency ${(-availableToAllocate).toInt()}",
+                            text = "Superaste el presupuesto por ${formatMoney(-availableToAllocate, currency)}",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = FinancePyColors.destructive(),
                             textAlign = TextAlign.Center
@@ -218,7 +219,7 @@ fun BudgetDonutChart(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "$currency ${actualSpending.toInt()}",
+                                text = formatMoney(actualSpending, currency),
                                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                                 color = if (actualSpending > budgetedSpending && budgetedSpending > 0) {
                                     FinancePyColors.destructive()
@@ -228,7 +229,7 @@ fun BudgetDonutChart(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = if (budgetedSpending > 0) "de $currency ${budgetedSpending.toInt()}" else "Nuevo presupuesto",
+                                text = if (budgetedSpending > 0) "de ${formatMoney(budgetedSpending, currency)}" else "Nuevo presupuesto",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = FinancePyColors.textSecondary()
                             )

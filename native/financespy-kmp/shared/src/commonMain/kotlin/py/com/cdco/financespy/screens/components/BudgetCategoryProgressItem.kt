@@ -30,6 +30,7 @@ import py.com.cdco.financespy.screens.BudgetCategoryStatus
 import py.com.cdco.financespy.screens.BudgetCategoryUiModel
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppCard
+import py.com.cdco.financespy.utils.formatMoney
 
 @Composable
 fun BudgetCategoryProgressItem(
@@ -86,11 +87,11 @@ fun BudgetCategoryProgressItem(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Status Badge
+                    // Status Badge (3 states)
                     val (badgeBg, badgeFg, badgeText) = when (category.status) {
-                        BudgetCategoryStatus.OVER_BUDGET -> Triple(FinancePyColors.destructive().copy(alpha = 0.15f), FinancePyColors.destructive(), "Sobre presupuesto")
-                        BudgetCategoryStatus.NEAR_LIMIT -> Triple(FinancePyColors.warning().copy(alpha = 0.15f), FinancePyColors.warning(), "Alerta")
-                        BudgetCategoryStatus.ON_TRACK -> Triple(FinancePyColors.success().copy(alpha = 0.15f), FinancePyColors.success(), "En camino")
+                        BudgetCategoryStatus.OVER_BUDGET -> Triple(FinancePyColors.destructive().copy(alpha = 0.15f), FinancePyColors.destructive(), "Presupuesto excedido")
+                        BudgetCategoryStatus.NEAR_LIMIT -> Triple(FinancePyColors.warning().copy(alpha = 0.15f), FinancePyColors.warning(), "Cerca del límite")
+                        BudgetCategoryStatus.ON_TRACK -> Triple(FinancePyColors.success().copy(alpha = 0.15f), FinancePyColors.success(), "Correcto")
                     }
 
                     Box(
@@ -111,9 +112,9 @@ fun BudgetCategoryProgressItem(
 
                 Text(
                     text = if (category.budgetedSpending > 0) {
-                        "$currency ${category.actualSpending.toInt()} / ${category.budgetedSpending.toInt()}"
+                        "${formatMoney(category.actualSpending, currency)} / ${formatMoney(category.budgetedSpending, currency)}"
                     } else {
-                        "$currency ${category.actualSpending.toInt()}"
+                        formatMoney(category.actualSpending, currency)
                     },
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                     color = if (isOverBudget) FinancePyColors.destructive() else FinancePyColors.textSecondary()
@@ -140,7 +141,11 @@ fun BudgetCategoryProgressItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = category.statusAmountText,
+                    text = if (isOverBudget) {
+                        "Exceso de: ${formatMoney(category.actualSpending - category.budgetedSpending, currency)}"
+                    } else {
+                        "Restante: ${formatMoney(category.availableToSpend, currency)}"
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = if (isOverBudget) FinancePyColors.destructive() else FinancePyColors.textSecondary()
                 )
@@ -148,7 +153,7 @@ fun BudgetCategoryProgressItem(
                 if (category.suggestedDailySpending != null) {
                     val daily = category.suggestedDailySpending
                     Text(
-                        text = "$currency ${daily.amount.toInt()}/día (${daily.daysRemaining}d)",
+                        text = "${formatMoney(daily.amount, currency)}/día (${daily.daysRemaining}d)",
                         style = MaterialTheme.typography.labelSmall,
                         color = FinancePyColors.textSecondary()
                     )

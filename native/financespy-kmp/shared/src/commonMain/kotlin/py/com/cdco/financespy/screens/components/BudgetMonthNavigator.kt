@@ -32,21 +32,25 @@ import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.ButtonVariant
 
 private val MONTH_NAMES_ES = listOf(
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
 )
 
 @Composable
 fun BudgetMonthNavigator(
     year: Int,
     month: Int,
+    budgetName: String? = null,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onJumpToToday: () -> Unit,
     onSelectMonthYear: (Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val monthName = if (month in 1..12) MONTH_NAMES_ES[month - 1] else "Mes $month"
+    val displayTitle = if (!budgetName.isNullOrBlank()) budgetName!! else {
+        val mName = if (month in 1..12) MONTH_NAMES_ES[month - 1] else "mes $month"
+        "$mName $year"
+    }
     var showMenu by remember { mutableStateOf(false) }
 
     Row(
@@ -73,7 +77,7 @@ fun BudgetMonthNavigator(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "$monthName $year",
+                        text = displayTitle,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = FinancePyColors.textPrimary()
                     )
