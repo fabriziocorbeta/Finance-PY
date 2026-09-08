@@ -3,6 +3,7 @@ package py.com.cdco.financespy.screens.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -97,20 +98,43 @@ fun BudgetDonutChart(
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            AppButton(
-                                text = "Copiar de $sourceBudgetName",
-                                onClick = onCopyPrevious,
-                                variant = ButtonVariant.Primary
-                            )
-                            AppButton(
-                                text = "Empezar desde cero",
-                                onClick = onStartFromScratch,
-                                variant = ButtonVariant.Secondary
-                            )
+                        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                            if (maxWidth < 640.dp) {
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    AppButton(
+                                        text = "Copiar de $sourceBudgetName",
+                                        onClick = onCopyPrevious,
+                                        variant = ButtonVariant.Primary,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    AppButton(
+                                        text = "Empezar desde cero",
+                                        onClick = onStartFromScratch,
+                                        variant = ButtonVariant.Secondary,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            } else {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    AppButton(
+                                        text = "Copiar de $sourceBudgetName",
+                                        onClick = onCopyPrevious,
+                                        variant = ButtonVariant.Primary
+                                    )
+                                    AppButton(
+                                        text = "Empezar desde cero",
+                                        onClick = onStartFromScratch,
+                                        variant = ButtonVariant.Secondary
+                                    )
+                                }
+                            }
                         }
                     }
                 }
