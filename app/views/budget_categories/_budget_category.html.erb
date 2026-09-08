@@ -125,7 +125,7 @@
         <div class="min-w-0 flex-1">
           <p class="text-sm font-medium text-primary truncate"><%= budget_category.category.name %></p>
           <p class="text-sm text-secondary font-medium privacy-sensitive">
-            <%= budget_category.median_monthly_expense_money.format %> avg
+            <%= t("budget_categories.avg_spending", amount: budget_category.median_monthly_expense_money.format) %>
           </p>
         </div>
 

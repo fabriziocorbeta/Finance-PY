@@ -5,13 +5,33 @@ en:
       custom_range: "%{start} - %{end_date}"
       month_year: "%{month}"
     show:
+      actuals:
+        expenses: Expenses
+        income: Income
+      budgeted_summary:
+        budgeted: Budgeted
+        earned: "%{amount} earned"
+        expected_income: Expected income
+        left: "%{amount} left"
+        over: "%{amount} over"
+        spent: "%{amount} spent"
       categories:
         amount: Amount
         edit: Edit
         title: Categories
+      donut:
+        new_budget: New budget
+        of: "of %{amount}"
+        spent: Spent
+        unused: Unused
+      nav:
+        setup: Setup
       on_track_categories:
         short_title: On Track
         title: On Track
+      over_allocation:
+        fix_button: Fix allocations
+        message: "You have over-allocated your budget. Please fix your allocations."
       over_budget_categories:
         short_title: Over Budget
         title: Over Budget
@@ -22,6 +42,7 @@ en:
       tabs:
         actual: Actual
         budgeted: Budgeted
+      today: Today
     copy_previous_prompt:
       title: "Set up your budget"
       description: "You can copy your budget from %{source_name} or start fresh."

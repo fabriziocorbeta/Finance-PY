@@ -15,20 +15,41 @@ es:
       custom_range: "%{start} - %{end_date}"
       month_year: "%{month}"
     show:
+      actuals:
+        expenses: Gastos
+        income: Ingresos
+      budgeted_summary:
+        budgeted: Presupuestado
+        earned: "%{amount} ganado"
+        expected_income: Ingreso esperado
+        left: "%{amount} disponible"
+        over: "%{amount} de más"
+        spent: "%{amount} gastado"
       categories:
         amount: Importe
         edit: Editar
         title: Categorías
+      donut:
+        new_budget: Nuevo presupuesto
+        of: "de %{amount}"
+        spent: Gastado
+        unused: Sin usar
       filter:
         all: Todas
         on_track: En camino
         over_budget: Sobre presupuesto
+      nav:
+        setup: Configuración
       on_track_categories:
         short_title: En camino
         title: En camino
+      over_allocation:
+        fix_button: Corregir asignaciones
+        message: Asignaste más de lo que tenés presupuestado. Corregí las asignaciones.
       over_budget_categories:
         short_title: Sobre presupuesto
         title: Sobre presupuesto
       tabs:
         actual: Real
         budgeted: Presupuestado
+      today: Hoy
