@@ -13,6 +13,8 @@ import io.ktor.http.contentType
 import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.AccountsResponse
 import py.com.cdco.financespy.api.dto.BalanceSheetResponse
+import py.com.cdco.financespy.api.dto.BudgetCategoryDto
+import py.com.cdco.financespy.api.dto.BudgetCategoryEnvelope
 import py.com.cdco.financespy.api.dto.BudgetDto
 import py.com.cdco.financespy.api.dto.BudgetEnvelope
 import py.com.cdco.financespy.api.dto.BudgetsEnvelope
@@ -20,13 +22,13 @@ import py.com.cdco.financespy.api.dto.CategoriesResponse
 import py.com.cdco.financespy.api.dto.CategoryDto
 import py.com.cdco.financespy.api.dto.CreateGoalBody
 import py.com.cdco.financespy.api.dto.CreateGoalRequest
+import py.com.cdco.financespy.api.dto.CreateReceivableBody
+import py.com.cdco.financespy.api.dto.CreateReceivableRequest
 import py.com.cdco.financespy.api.dto.CreateRuleBody
 import py.com.cdco.financespy.api.dto.CreateRuleRequest
 import py.com.cdco.financespy.api.dto.GoalDto
 import py.com.cdco.financespy.api.dto.GoalEnvelope
 import py.com.cdco.financespy.api.dto.GoalsEnvelope
-import py.com.cdco.financespy.api.dto.CreateReceivableBody
-import py.com.cdco.financespy.api.dto.CreateReceivableRequest
 import py.com.cdco.financespy.api.dto.MerchantDto
 import py.com.cdco.financespy.api.dto.ReceivableDto
 import py.com.cdco.financespy.api.dto.ReceivableEnvelope
@@ -39,6 +41,8 @@ import py.com.cdco.financespy.api.dto.RulesEnvelope
 import py.com.cdco.financespy.api.dto.TagDto
 import py.com.cdco.financespy.api.dto.TransactionListItemDto
 import py.com.cdco.financespy.api.dto.TransactionsResponse
+import py.com.cdco.financespy.api.dto.UpdateBudgetCategoryBody
+import py.com.cdco.financespy.api.dto.UpdateBudgetCategoryRequest
 import py.com.cdco.financespy.api.dto.UpdateGoalBody
 import py.com.cdco.financespy.api.dto.UpdateGoalRequest
 import py.com.cdco.financespy.api.dto.UpdateReceivableBody
@@ -47,7 +51,7 @@ import py.com.cdco.financespy.api.dto.UpdateRuleBody
 import py.com.cdco.financespy.api.dto.UpdateRuleRequest
 
 open class FinancePyApi(private val http: HttpClient) {
-    suspend fun fetchAllAccounts(): List<AccountDto> {
+    open suspend fun fetchAllAccounts(): List<AccountDto> {
         val all = mutableListOf<AccountDto>()
         var page = 1
         while (true) {
@@ -62,14 +66,24 @@ open class FinancePyApi(private val http: HttpClient) {
         return all
     }
 
-    suspend fun fetchRecentTransactions(startDate: String): List<TransactionListItemDto> {
+    open suspend fun fetchRecentTransactions(startDate: String): List<TransactionListItemDto> {
+        return fetchTransactions(startDate = startDate)
+    }
+
+    open suspend fun fetchTransactions(
+        startDate: String? = null,
+        endDate: String? = null,
+        categoryId: String? = null
+    ): List<TransactionListItemDto> {
         val all = mutableListOf<TransactionListItemDto>()
         var page = 1
         while (true) {
             val response: TransactionsResponse = http.get("/api/v1/transactions") {
                 parameter("page", page)
                 parameter("per_page", 100)
-                parameter("start_date", startDate)
+                if (startDate != null) parameter("start_date", startDate)
+                if (endDate != null) parameter("end_date", endDate)
+                if (categoryId != null) parameter("category_id", categoryId)
             }.body()
             all += response.transactions
             if (page >= response.pagination.total_pages) break
@@ -78,9 +92,9 @@ open class FinancePyApi(private val http: HttpClient) {
         return all
     }
 
-    suspend fun fetchBalanceSheet(): BalanceSheetResponse = http.get("/api/v1/balance_sheet").body()
+    open suspend fun fetchBalanceSheet(): BalanceSheetResponse = http.get("/api/v1/balance_sheet").body()
 
-    suspend fun fetchAllRules(): List<RuleDto> {
+    open suspend fun fetchAllRules(): List<RuleDto> {
         val all = mutableListOf<RuleDto>()
         var page = 1
         while (true) {
@@ -95,7 +109,7 @@ open class FinancePyApi(private val http: HttpClient) {
         return all
     }
 
-    suspend fun fetchRuleRuns(ruleId: String): List<RuleRunDto> {
+    open suspend fun fetchRuleRuns(ruleId: String): List<RuleRunDto> {
         val response: RuleRunsEnvelope = http.get("/api/v1/rule_runs") {
             parameter("rule_id", ruleId)
             parameter("per_page", 100)
@@ -103,18 +117,18 @@ open class FinancePyApi(private val http: HttpClient) {
         return response.data
     }
 
-    suspend fun fetchCategories(): List<CategoryDto> {
+    open suspend fun fetchCategories(): List<CategoryDto> {
         val response: CategoriesResponse = http.get("/api/v1/categories") {
             parameter("per_page", 100)
         }.body()
         return response.categories
     }
 
-    suspend fun fetchMerchants(): List<MerchantDto> = http.get("/api/v1/merchants").body()
+    open suspend fun fetchMerchants(): List<MerchantDto> = http.get("/api/v1/merchants").body()
 
-    suspend fun fetchTags(): List<TagDto> = http.get("/api/v1/tags").body()
+    open suspend fun fetchTags(): List<TagDto> = http.get("/api/v1/tags").body()
 
-    suspend fun createRule(body: CreateRuleBody): RuleDto {
+    open suspend fun createRule(body: CreateRuleBody): RuleDto {
         val response: RuleEnvelope = http.post("/api/v1/rules") {
             contentType(ContentType.Application.Json)
             setBody(CreateRuleRequest(rule = body))
@@ -122,7 +136,7 @@ open class FinancePyApi(private val http: HttpClient) {
         return response.data
     }
 
-    suspend fun updateRule(id: String, body: UpdateRuleBody): RuleDto {
+    open suspend fun updateRule(id: String, body: UpdateRuleBody): RuleDto {
         val response: RuleEnvelope = http.patch("/api/v1/rules/$id") {
             contentType(ContentType.Application.Json)
             setBody(UpdateRuleRequest(rule = body))
@@ -130,11 +144,11 @@ open class FinancePyApi(private val http: HttpClient) {
         return response.data
     }
 
-    suspend fun deleteRule(id: String) {
+    open suspend fun deleteRule(id: String) {
         http.delete("/api/v1/rules/$id")
     }
 
-    suspend fun fetchAllGoals(): List<GoalDto> {
+    open suspend fun fetchAllGoals(): List<GoalDto> {
         val all = mutableListOf<GoalDto>()
         var page = 1
         while (true) {
@@ -149,12 +163,12 @@ open class FinancePyApi(private val http: HttpClient) {
         return all
     }
 
-    suspend fun fetchGoal(id: String): GoalDto {
+    open suspend fun fetchGoal(id: String): GoalDto {
         val response: GoalEnvelope = http.get("/api/v1/goals/$id").body()
         return response.data
     }
 
-    suspend fun createGoal(body: CreateGoalBody): GoalDto {
+    open suspend fun createGoal(body: CreateGoalBody): GoalDto {
         val response: GoalEnvelope = http.post("/api/v1/goals") {
             contentType(ContentType.Application.Json)
             setBody(CreateGoalRequest(goal = body))
@@ -162,7 +176,7 @@ open class FinancePyApi(private val http: HttpClient) {
         return response.data
     }
 
-    suspend fun updateGoal(id: String, body: UpdateGoalBody): GoalDto {
+    open suspend fun updateGoal(id: String, body: UpdateGoalBody): GoalDto {
         val response: GoalEnvelope = http.patch("/api/v1/goals/$id") {
             contentType(ContentType.Application.Json)
             setBody(UpdateGoalRequest(goal = body))
@@ -170,11 +184,11 @@ open class FinancePyApi(private val http: HttpClient) {
         return response.data
     }
 
-    suspend fun deleteGoal(id: String) {
+    open suspend fun deleteGoal(id: String) {
         http.delete("/api/v1/goals/$id")
     }
 
-    suspend fun fetchAllReceivables(): List<ReceivableDto> {
+    open suspend fun fetchAllReceivables(): List<ReceivableDto> {
         val all = mutableListOf<ReceivableDto>()
         var page = 1
         while (true) {
@@ -189,12 +203,12 @@ open class FinancePyApi(private val http: HttpClient) {
         return all
     }
 
-    suspend fun fetchReceivable(id: String): ReceivableDto {
+    open suspend fun fetchReceivable(id: String): ReceivableDto {
         val response: ReceivableEnvelope = http.get("/api/v1/receivables/$id").body()
         return response.data
     }
 
-    suspend fun createReceivable(body: CreateReceivableBody): ReceivableDto {
+    open suspend fun createReceivable(body: CreateReceivableBody): ReceivableDto {
         val response: ReceivableEnvelope = http.post("/api/v1/receivables") {
             contentType(ContentType.Application.Json)
             setBody(CreateReceivableRequest(receivable = body))
@@ -202,7 +216,7 @@ open class FinancePyApi(private val http: HttpClient) {
         return response.data
     }
 
-    suspend fun updateReceivable(id: String, body: UpdateReceivableBody): ReceivableDto {
+    open suspend fun updateReceivable(id: String, body: UpdateReceivableBody): ReceivableDto {
         val response: ReceivableEnvelope = http.patch("/api/v1/receivables/$id") {
             contentType(ContentType.Application.Json)
             setBody(UpdateReceivableRequest(receivable = body))
@@ -210,7 +224,7 @@ open class FinancePyApi(private val http: HttpClient) {
         return response.data
     }
 
-    suspend fun deleteReceivable(id: String) {
+    open suspend fun deleteReceivable(id: String) {
         http.delete("/api/v1/receivables/$id")
     }
 
@@ -230,8 +244,20 @@ open class FinancePyApi(private val http: HttpClient) {
         return all
     }
 
-    suspend fun fetchBudget(id: String): BudgetDto {
-        val response: BudgetEnvelope = http.get("/api/v1/budgets/$id").body()
+    open suspend fun fetchBudget(idOrParam: String): BudgetDto {
+        val response: BudgetEnvelope = http.get("/api/v1/budgets/$idOrParam").body()
+        return response.data
+    }
+
+    open suspend fun updateBudgetCategory(
+        budgetId: String,
+        categoryId: String,
+        budgetedSpending: Double?
+    ): BudgetCategoryDto {
+        val response: BudgetCategoryEnvelope = http.patch("/api/v1/budgets/$budgetId/budget_categories/$categoryId") {
+            contentType(ContentType.Application.Json)
+            setBody(UpdateBudgetCategoryRequest(budget_category = UpdateBudgetCategoryBody(budgeted_spending = budgetedSpending)))
+        }.body()
         return response.data
     }
 }

@@ -23,10 +23,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import py.com.cdco.financespy.navigation.Routes
-import py.com.cdco.financespy.screens.BudgetDashboardScreen
-import py.com.cdco.financespy.screens.BudgetDashboardViewModel
 import py.com.cdco.financespy.screens.AccountDetailScreen
 import py.com.cdco.financespy.screens.AccountDetailViewModel
+import py.com.cdco.financespy.screens.BudgetAllocationEditorScreen
+import py.com.cdco.financespy.screens.BudgetAllocationEditorViewModel
+import py.com.cdco.financespy.screens.BudgetDashboardScreen
+import py.com.cdco.financespy.screens.BudgetDashboardViewModel
 import py.com.cdco.financespy.screens.DashboardScreen
 import py.com.cdco.financespy.screens.DashboardViewModel
 import py.com.cdco.financespy.screens.GoalDetailScreen
@@ -59,6 +61,7 @@ fun App(
     onLoginClick: () -> Unit,
     dashboardViewModelFactory: () -> DashboardViewModel,
     budgetDashboardViewModelFactory: () -> BudgetDashboardViewModel,
+    budgetAllocationEditorViewModelFactory: (String) -> BudgetAllocationEditorViewModel,
     transactionsViewModelFactory: () -> TransactionsViewModel,
     rulesListViewModelFactory: () -> RulesListViewModel,
     ruleDetailViewModelFactory: (String) -> RuleDetailViewModel,
@@ -204,8 +207,27 @@ fun App(
                             )
                         }
                         composable(Routes.BUDGETS) {
+                            val budgetDashboardVm = remember { budgetDashboardViewModelFactory() }
                             BudgetDashboardScreen(
-                                viewModel = remember { budgetDashboardViewModelFactory() }
+                                viewModel = budgetDashboardVm,
+                                onNavigateToEditor = { budgetId ->
+                                    navController.navigate(Routes.budgetAllocationEditor(budgetId))
+                                },
+                                onNavigateToCategoryTransactions = { _, _, _ ->
+                                    navController.navigate(Routes.TRANSACTIONS)
+                                }
+                            )
+                        }
+                        composable(Routes.BUDGET_ALLOCATION_EDITOR) { entry ->
+                            val budgetId = entry.arguments?.getString("budgetId") ?: return@composable
+                            val editorVm = remember(budgetId) { budgetAllocationEditorViewModelFactory(budgetId) }
+                            BudgetAllocationEditorScreen(
+                                viewModel = editorVm,
+                                onSaved = {
+                                    budgetDashboardViewModelFactory().refresh()
+                                    navController.popBackStack()
+                                },
+                                onBack = { navController.popBackStack() }
                             )
                         }
                         composable(Routes.TRANSACTIONS) {
