@@ -24,6 +24,7 @@ import py.com.cdco.financespy.theme.components.AppCard
 
 @Composable
 fun BudgetSummaryCard(
+    showTabs: Boolean = true,
     activeTab: String,
     onTabSelected: (String) -> Unit,
     expectedIncome: Double,
@@ -41,38 +42,40 @@ fun BudgetSummaryCard(
 ) {
     AppCard(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            TabRow(
-                selectedTabIndex = if (activeTab == "budgeted") 0 else 1,
-                containerColor = FinancePyColors.container(),
-                contentColor = FinancePyColors.textPrimary()
-            ) {
-                Tab(
-                    selected = activeTab == "budgeted",
-                    onClick = { onTabSelected("budgeted") },
-                    text = {
-                        Text(
-                            "Presupuestado",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = if (activeTab == "budgeted") FinancePyColors.textPrimary() else FinancePyColors.textSecondary()
-                        )
-                    }
-                )
-                Tab(
-                    selected = activeTab == "actuals",
-                    onClick = { onTabSelected("actuals") },
-                    text = {
-                        Text(
-                            "Real",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = if (activeTab == "actuals") FinancePyColors.textPrimary() else FinancePyColors.textSecondary()
-                        )
-                    }
-                )
+            if (showTabs) {
+                TabRow(
+                    selectedTabIndex = if (activeTab == "budgeted") 0 else 1,
+                    containerColor = FinancePyColors.container(),
+                    contentColor = FinancePyColors.textPrimary()
+                ) {
+                    Tab(
+                        selected = activeTab == "budgeted",
+                        onClick = { onTabSelected("budgeted") },
+                        text = {
+                            Text(
+                                "Presupuestado",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = if (activeTab == "budgeted") FinancePyColors.textPrimary() else FinancePyColors.textSecondary()
+                            )
+                        }
+                    )
+                    Tab(
+                        selected = activeTab == "actuals",
+                        onClick = { onTabSelected("actuals") },
+                        text = {
+                            Text(
+                                "Real",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = if (activeTab == "actuals") FinancePyColors.textPrimary() else FinancePyColors.textSecondary()
+                            )
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (activeTab == "budgeted") {
+            if (showTabs && activeTab == "budgeted") {
                 SummaryRow(
                     label = "Ingreso esperado",
                     amountText = "$currency ${expectedIncome.toInt()}"

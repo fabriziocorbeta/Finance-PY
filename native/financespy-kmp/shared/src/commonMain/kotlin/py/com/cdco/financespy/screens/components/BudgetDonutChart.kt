@@ -85,14 +85,14 @@ fun BudgetDonutChart(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                     ) {
                         Text(
-                            text = "Tenés presupuestos en meses anteriores",
+                            text = "Configurá tu presupuesto",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = FinancePyColors.textPrimary(),
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Podés copiar las asignaciones de $sourceBudgetName o empezar con un presupuesto limpio.",
+                            text = "Podés copiar tu presupuesto desde $sourceBudgetName o empezar desde cero.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = FinancePyColors.textSecondary(),
                             textAlign = TextAlign.Center
@@ -106,7 +106,7 @@ fun BudgetDonutChart(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     AppButton(
-                                        text = "Copiar de $sourceBudgetName",
+                                        text = "Copiar desde $sourceBudgetName",
                                         onClick = onCopyPrevious,
                                         variant = ButtonVariant.Primary,
                                         modifier = Modifier.fillMaxWidth()
@@ -124,7 +124,7 @@ fun BudgetDonutChart(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     AppButton(
-                                        text = "Copiar de $sourceBudgetName",
+                                        text = "Copiar desde $sourceBudgetName",
                                         onClick = onCopyPrevious,
                                         variant = ButtonVariant.Primary
                                     )

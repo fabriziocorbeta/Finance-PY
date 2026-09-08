@@ -71,6 +71,7 @@ fun BudgetDashboardScreen(
             ) {
                 // Responsive Top Block: Donut + Summary
                 item {
+                    val showSummaryTabs = uiState.initialized && uiState.availableToAllocate > 0
                     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                         if (maxWidth < 640.dp) {
                             Column(
@@ -93,6 +94,7 @@ fun BudgetDashboardScreen(
                                 )
 
                                 BudgetSummaryCard(
+                                    showTabs = showSummaryTabs,
                                     activeTab = uiState.activeTab,
                                     onTabSelected = { viewModel.setTab(it) },
                                     expectedIncome = uiState.expectedIncome,
@@ -132,6 +134,7 @@ fun BudgetDashboardScreen(
 
                                 Box(modifier = Modifier.weight(1f)) {
                                     BudgetSummaryCard(
+                                        showTabs = showSummaryTabs,
                                         activeTab = uiState.activeTab,
                                         onTabSelected = { viewModel.setTab(it) },
                                         expectedIncome = uiState.expectedIncome,
