@@ -120,6 +120,57 @@ class FleetVehicle < ApplicationRecord
     result
   end
 
+  METRICS = %w[efficiency consumption distance].freeze
+
+  # Builds a Series (same shape used by the account balance chart) of one
+  # value per month for the requested metric, oldest to newest, so the
+  # existing time-series-chart controller and trend_change partial can be
+  # reused as-is instead of writing a second charting stack for fleet data.
+  def monthly_metrics_series(metric: "efficiency", months_back: 6)
+    months = (months_back - 1).downto(0).map { |n| n.months.ago.to_date.beginning_of_month }
+
+    raw_values = months.map do |month|
+      value = case metric
+      when "consumption"
+        monthly_fuel_consumed(month).values.sum
+      when "distance"
+        monthly_distance(month).values.sum
+      else
+        monthly_average_efficiency(month)["overall"] || 0.0
+      end
+
+      # .to_f before .round(2): monthly_average_efficiency's "overall" divides
+      # a decimal-column liters sum, so it comes back as BigDecimal -- which
+      # Rails' default JSON encoder renders as a quoted string ("21.42"), not
+      # a number. That's silently wrong for a chart's numeric axis/tooltip.
+      { date: month, value: value.to_f.round(2) }
+    end
+
+    favorable_direction = metric == "consumption" ? "down" : "up"
+    ordered = raw_values.sort_by { |v| v[:date] }
+
+    values = [ nil, *ordered ].each_cons(2).map do |prev_value, curr_value|
+      Series::Value.new(
+        date: curr_value[:date],
+        date_formatted: I18n.l(curr_value[:date], format: :long),
+        value: curr_value[:value],
+        trend: Trend.new(
+          current: curr_value[:value],
+          previous: prev_value&.[](:value),
+          favorable_direction: favorable_direction
+        )
+      )
+    end
+
+    Series.new(
+      start_date: ordered.first[:date],
+      end_date: ordered.last[:date],
+      interval: "1 month",
+      values: values,
+      favorable_direction: favorable_direction
+    )
+  end
+
   private
 
     def interval_category(log)

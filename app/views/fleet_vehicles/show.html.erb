@@ -119,6 +119,66 @@
     <% end %>
   </div>
 
+  <div class="bg-container rounded-xl shadow-border-xs space-y-2">
+    <div class="flex justify-between flex-col-reverse lg:flex-row gap-2 px-4 pt-4 mb-2">
+      <div class="space-y-2 w-full">
+        <p class="text-sm font-medium text-secondary"><%= t("fleet_vehicles.show.trend_title") %></p>
+        <% if @monthly_series.trend %>
+          <%= render "shared/trend_change", trend: @monthly_series.trend, comparison_label: t("fleet_vehicles.show.trend_comparison_label", months: @months_back) %>
+        <% end %>
+      </div>
+
+      <%= form_with url: fleet_vehicle_path(@fleet_vehicle), method: :get, data: { controller: "auto-submit-form" } do |form| %>
+        <div class="flex items-center gap-2">
+          <%= form.select :metric,
+            FleetVehicle::METRICS.map { |m| [ t("fleet_vehicles.show.metrics.#{m}"), m ] },
+            { selected: @metric },
+            class: "bg-container border border-secondary rounded-lg px-3 py-2 text-sm pr-7 cursor-pointer text-primary focus:outline-hidden focus:ring-0",
+            data: { "auto-submit-form-target": "auto" } %>
+
+          <%= form.select :months_back,
+            [ 3, 6, 12, 24 ].map { |n| [ t("fleet_vehicles.show.months_option", count: n), n ] },
+            { selected: @months_back },
+            class: "bg-container border border-secondary rounded-lg px-3 py-2 text-sm pr-7 cursor-pointer text-primary focus:outline-hidden focus:ring-0",
+            data: { "auto-submit-form-target": "auto" } %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="h-64 pb-4 px-4">
+      <% if @monthly_series.values.any? { |v| v.value > 0 } %>
+        <div
+          id="<%= dom_id(@fleet_vehicle, :trend_chart) %>"
+          class="w-full h-full"
+          data-controller="time-series-chart"
+          data-time-series-chart-data-value="<%= @monthly_series.to_json %>"></div>
+      <% else %>
+        <div class="w-full h-full flex items-center justify-center">
+          <p class="text-secondary text-sm"><%= t("fleet_vehicles.show.no_chart_data") %></p>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="overflow-x-auto px-4 pb-4">
+      <table class="w-full text-left">
+        <thead>
+          <tr class="border-b border-gray-100">
+            <% @monthly_series.values.each do |point| %>
+              <th class="px-4 py-2 text-xs font-medium text-secondary uppercase tracking-wider text-right"><%= l(point.date, format: "%b %Y") %></th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <% @monthly_series.values.each do |point| %>
+              <td class="px-4 py-2 text-sm text-right text-primary font-medium"><%= number_with_precision(point.value, precision: 2) %></td>
+            <% end %>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <h2 class="text-lg font-medium text-primary"><%= t("fleet_vehicles.show.fuel_logs_history") %></h2>
 
   <div class="bg-container rounded-xl shadow-border-xs p-4">

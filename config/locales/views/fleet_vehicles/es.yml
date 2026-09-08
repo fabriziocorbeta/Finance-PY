@@ -43,6 +43,16 @@ es:
       monthly_distance: Recorrido del mes
       monthly_efficiency: Rendimiento del mes
       no_fuel_logs: No hay registros de combustible todavía.
+      no_chart_data: No hay datos suficientes para graficar todavía.
+      trend_title: Tendencia
+      trend_comparison_label: "vs. hace %{months} meses"
+      months_option:
+        one: "Último mes"
+        other: "Últimos %{count} meses"
+      metrics:
+        efficiency: Rendimiento
+        consumption: Consumo
+        distance: Recorrido
       save_fuel_log: Guardar
       select_account: Seleccione una cuenta
       select_brand: Seleccionar marca

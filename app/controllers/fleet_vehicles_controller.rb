@@ -8,6 +8,10 @@ class FleetVehiclesController < ApplicationController
   end
 
   def show
+    @metric = FleetVehicle::METRICS.include?(params[:metric]) ? params[:metric] : "efficiency"
+    @months_back = params[:months_back].to_i.clamp(3, 24)
+    @months_back = 6 if params[:months_back].blank?
+    @monthly_series = @fleet_vehicle.monthly_metrics_series(metric: @metric, months_back: @months_back)
   end
 
   def new
