@@ -36,10 +36,6 @@ fr:
         theme_system: Système
         transactions_title: Transactions
         transactions_subtitle: Personnalisez l'affichage des transactions
-        dashboard_title: Tableau de bord
-        dashboard_subtitle: Personnalisez l'affichage du tableau de bord
-        dashboard_two_column_title: Mise en page à deux colonnes
-        dashboard_two_column_description: Affiche les widgets du tableau de bord sur deux colonnes sur les grands écrans. Lorsque cette option est désactivée, les widgets sont empilés dans une seule colonne.
         split_grouped_title: Grouper les transactions fractionnées
         split_grouped_description: Affiche les transactions fractionnées groupées sous leur parent dans la liste des transactions. Lorsque cette option est désactivée, les enfants fractionnés apparaissent comme des lignes individuelles.
     preferences:
