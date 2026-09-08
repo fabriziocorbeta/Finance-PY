@@ -22,6 +22,7 @@ import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.theme.components.ButtonVariant
+import py.com.cdco.financespy.utils.formatMoney
 
 @Composable
 fun GoalDetailScreen(
@@ -49,21 +50,22 @@ fun GoalDetailScreen(
                         )
 
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            val targetDouble = goal.targetAmount.toDoubleOrNull() ?: 0.0
                             Text(
-                                text = "Monto objetivo: ${goal.targetAmount} ${goal.currency}",
+                                text = "Monto objetivo: ${formatMoney(targetDouble, goal.currency)}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = FinancePyColors.textSecondary()
                             )
                             goal.currentBalance?.let { bal ->
                                 Text(
-                                    text = "Balance actual: $bal ${goal.currency}",
+                                    text = "Balance actual: ${formatMoney(bal, goal.currency)}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = FinancePyColors.textSecondary()
                                 )
                             }
                             goal.remainingAmount?.let { rem ->
                                 Text(
-                                    text = "Monto restante: $rem ${goal.currency}",
+                                    text = "Monto restante: ${formatMoney(rem, goal.currency)}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = FinancePyColors.textSecondary()
                                 )
@@ -89,7 +91,7 @@ fun GoalDetailScreen(
                                     color = FinancePyColors.textSecondary()
                                 )
                                 Text(
-                                    text = goal.state ?: "active",
+                                    text = formatGoalState(goal.state),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = if (goal.state == "active" || goal.state == null) FinancePyColors.success() else FinancePyColors.textSubdued()
                                 )
