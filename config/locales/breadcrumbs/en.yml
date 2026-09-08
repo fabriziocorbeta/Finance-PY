@@ -1,8 +1,27 @@
 ---
 en:
   breadcrumbs:
+    ai_prompts: AI Prompts
+    api_keys: API Key
+    budgets: Budgets
     categorize: Categorize
+    dashboard: Dashboard
     exports: Exports
+    fleet_vehicles: Fleet Vehicles
+    goals: Goals
+    guides: Guides
     home: Home
+    hostings: Self-Hosting
     imports: Imports
+    intro: Intro
+    llm_usages: LLM Usage
+    merchants: Merchants
+    products: Inventory
+    profiles: Profile Info
+    providers: Bank Sync Providers
+    purchase_orders: Purchase Orders
+    receivables: Receivables
+    reports: Reports
+    sales: Sales
+    security: Security
     transactions: Transactions

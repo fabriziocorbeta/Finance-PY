@@ -26,11 +26,11 @@ class PagesController < ApplicationController
 
     @dashboard_sections = build_dashboard_sections
 
-    @breadcrumbs = [ [ "Home", root_path ], [ "Dashboard", nil ] ]
+    @breadcrumbs = [ [ t("breadcrumbs.home"), root_path ], [ t("breadcrumbs.dashboard"), nil ] ]
   end
 
   def intro
-    @breadcrumbs = [ [ "Home", chats_path ], [ "Intro", nil ] ]
+    @breadcrumbs = [ [ t("breadcrumbs.home"), chats_path ], [ t("breadcrumbs.intro"), nil ] ]
   end
 
   def update_preferences
@@ -161,7 +161,7 @@ class PagesController < ApplicationController
       total_expense = net_totals.total_net_expense.to_f.round(2)
 
       # Central Cash Flow node
-      cash_flow_idx = add_node.call("cash_flow_node", "Cash Flow", total_income, 100.0, "var(--color-success)")
+      cash_flow_idx = add_node.call("cash_flow_node", t("pages.dashboard.cashflow_sankey.title"), total_income, 100.0, "var(--color-success)")
 
       # Build netted subcategory data from raw totals
       net_subcategories_by_parent = build_net_subcategories(expense_totals, income_totals)
