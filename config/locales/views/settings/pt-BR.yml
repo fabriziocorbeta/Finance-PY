@@ -36,10 +36,6 @@ pt-BR:
         theme_system: Sistema
         transactions_title: Transações
         transactions_subtitle: Personalize como as transações são exibidas
-        dashboard_title: Painel
-        dashboard_subtitle: Personalize como o painel é exibido
-        dashboard_two_column_title: Layout de duas colunas
-        dashboard_two_column_description: Exibe os widgets do painel em duas colunas em telas grandes. Quando desativado, os widgets ficam empilhados em uma única coluna.
         split_grouped_title: Agrupar transações divididas
         split_grouped_description: Mostra as transações divididas agrupadas sob o registro principal na lista de transações. Quando desativado, as subdivisões aparecem como linhas individuais.
     preferences:

@@ -361,10 +361,6 @@ class User < ApplicationRecord
     preferences&.dig("show_split_grouped") != false
   end
 
-  def dashboard_two_column?
-    preferences&.dig("dashboard_two_column") == true
-  end
-
   def update_transactions_preferences(prefs)
     transaction do
       lock!

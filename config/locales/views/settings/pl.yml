@@ -36,10 +36,6 @@ pl:
         theme_system: Systemowy
         transactions_title: Transakcje
         transactions_subtitle: Dostosuj sposób wyświetlania transakcji
-        dashboard_title: Pulpit
-        dashboard_subtitle: Dostosuj sposób wyświetlania pulpitu
-        dashboard_two_column_title: Układ dwukolumnowy
-        dashboard_two_column_description: Wyświetlaj widżety pulpitu w dwóch kolumnach na dużych ekranach. Gdy opcja jest wyłączona, widżety układają się w jednej kolumnie.
         split_grouped_title: Grupuj podzielone transakcje
         split_grouped_description: Pokazuj podzielone transakcje zgrupowane pod transakcją nadrzędną na liście transakcji. Gdy opcja jest wyłączona, pozycje podrzędne pojawiają się jako osobne wiersze.
     preferences:

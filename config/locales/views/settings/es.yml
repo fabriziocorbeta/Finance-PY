@@ -21,12 +21,6 @@ es:
           title: Categorizador de Transacciones
     appearances:
       show:
-        dashboard_subtitle: Personalizá cómo se muestra el panel principal
-        dashboard_title: Panel principal
-        dashboard_two_column_description: Mostrá los widgets del panel principal en
-          dos columnas en pantallas grandes. Si está desactivado, los widgets se apilan
-          en una sola columna.
-        dashboard_two_column_title: Diseño de dos columnas
         page_title: Apariencia
         split_grouped_description: Mostrá las transacciones divididas agrupadas bajo
           su transacción principal en la lista. Si está desactivado, las divisiones
