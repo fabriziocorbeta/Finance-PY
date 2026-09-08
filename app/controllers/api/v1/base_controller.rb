@@ -306,6 +306,12 @@ class Api::V1::BaseController < ApplicationController
           )
           Current.session = session
         end
+
+        # Current.session= alone doesn't touch Postgres -- the session-based auth
+        # path (Authentication#authenticate_user!) sets the RLS session variable
+        # explicitly, and this API path bypasses that entirely (skip_authentication).
+        # Without this, every family-scoped query below silently returns zero rows.
+        RlsContext.set_family(Current.family&.id)
       end
     end
 
