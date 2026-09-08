@@ -1,6 +1,8 @@
 package py.com.cdco.financespy.screens.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,8 +19,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import py.com.cdco.financespy.screens.BudgetCategoryUiModel
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.utils.formatMoney
@@ -39,6 +43,7 @@ fun BudgetSummaryCard(
     percentOfBudgetSpent: Double,
     availableToSpend: Double,
     currency: String,
+    categories: List<BudgetCategoryUiModel> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     AppCard(modifier = modifier.fillMaxWidth()) {
@@ -88,16 +93,24 @@ fun BudgetSummaryCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                val progressFraction = (allocatedPercent / 100.0).toFloat().coerceIn(0f, 1f)
-                LinearProgressIndicator(
-                    progress = { progressFraction },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
-                    color = if (availableToAllocate < 0) FinancePyColors.destructive() else FinancePyColors.buttonBgPrimary(),
-                    trackColor = FinancePyColors.borderSecondary()
-                )
+                val budgetedSegments = categories
+                    .filter { !it.isSubcategory && it.budgetedSpending > 0 }
+                    .map { parseHexColor(it.color) to it.budgetedSpending.toFloat() }
+
+                if (budgetedSegments.isNotEmpty()) {
+                    MultiSegmentProgressBar(segments = budgetedSegments)
+                } else {
+                    val progressFraction = (allocatedPercent / 100.0).toFloat().coerceIn(0f, 1f)
+                    LinearProgressIndicator(
+                        progress = { progressFraction },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = if (availableToAllocate < 0) FinancePyColors.destructive() else FinancePyColors.buttonBgPrimary(),
+                        trackColor = FinancePyColors.borderSecondary()
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -121,23 +134,31 @@ fun BudgetSummaryCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                val spentFraction = if (budgetedSpending > 0) {
-                    (actualSpending / budgetedSpending).toFloat().coerceIn(0f, 1f)
-                } else 0f
+                val actualSegments = categories
+                    .filter { !it.isSubcategory && it.actualSpending > 0 }
+                    .map { parseHexColor(it.color) to it.actualSpending.toFloat() }
 
-                LinearProgressIndicator(
-                    progress = { spentFraction },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
-                    color = if (actualSpending > budgetedSpending && budgetedSpending > 0) {
-                        FinancePyColors.destructive()
-                    } else {
-                        FinancePyColors.success()
-                    },
-                    trackColor = FinancePyColors.borderSecondary()
-                )
+                if (actualSegments.isNotEmpty()) {
+                    MultiSegmentProgressBar(segments = actualSegments)
+                } else {
+                    val spentFraction = if (budgetedSpending > 0) {
+                        (actualSpending / budgetedSpending).toFloat().coerceIn(0f, 1f)
+                    } else 0f
+
+                    LinearProgressIndicator(
+                        progress = { spentFraction },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = if (actualSpending > budgetedSpending && budgetedSpending > 0) {
+                            FinancePyColors.destructive()
+                        } else {
+                            FinancePyColors.success()
+                        },
+                        trackColor = FinancePyColors.borderSecondary()
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -147,6 +168,42 @@ fun BudgetSummaryCard(
                     isHighlight = true,
                     isNegativeWarning = availableToSpend < 0
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MultiSegmentProgressBar(
+    segments: List<Pair<Color, Float>>,
+    modifier: Modifier = Modifier
+) {
+    val totalWeight = segments.sumOf { it.second.toDouble() }.toFloat()
+    if (totalWeight <= 0f) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(FinancePyColors.borderSecondary())
+        )
+    } else {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(FinancePyColors.borderSecondary())
+        ) {
+            segments.forEach { (color, weight) ->
+                if (weight > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .weight(weight / totalWeight)
+                            .height(8.dp)
+                            .background(color)
+                    )
+                }
             }
         }
     }

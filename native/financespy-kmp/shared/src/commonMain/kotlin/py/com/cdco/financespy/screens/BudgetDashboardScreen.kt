@@ -108,7 +108,8 @@ fun BudgetDashboardScreen(
                                     actualSpending = uiState.actualSpending,
                                     percentOfBudgetSpent = uiState.percentOfBudgetSpent,
                                     availableToSpend = uiState.availableToSpend,
-                                    currency = uiState.currency
+                                    currency = uiState.currency,
+                                    categories = uiState.categories
                                 )
                             }
                         } else {
@@ -148,7 +149,8 @@ fun BudgetDashboardScreen(
                                         actualSpending = uiState.actualSpending,
                                         percentOfBudgetSpent = uiState.percentOfBudgetSpent,
                                         availableToSpend = uiState.availableToSpend,
-                                        currency = uiState.currency
+                                        currency = uiState.currency,
+                                        categories = uiState.categories
                                     )
                                 }
                             }
