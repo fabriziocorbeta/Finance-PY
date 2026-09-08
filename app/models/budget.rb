@@ -340,7 +340,7 @@ class Budget < ApplicationRecord
   end
 
   def percent_of_budget_spent
-    return 0 unless budgeted_spending > 0
+    return 0 unless budgeted_spending && budgeted_spending > 0
 
     (actual_spending / budgeted_spending.to_f) * 100
   end
@@ -384,17 +384,17 @@ class Budget < ApplicationRecord
   end
 
   def actual_income_percent
-    return 0 unless expected_income > 0
+    return 0 unless expected_income && expected_income > 0
 
     (actual_income / expected_income.to_f) * 100
   end
 
   def remaining_expected_income
-    expected_income - actual_income
+    (expected_income || 0) - actual_income
   end
 
   def surplus_percent
-    return 0 unless remaining_expected_income.negative?
+    return 0 unless expected_income && expected_income > 0 && remaining_expected_income.negative?
 
     remaining_expected_income.abs / expected_income.to_f * 100
   end

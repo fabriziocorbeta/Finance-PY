@@ -479,7 +479,9 @@ Rails.application.routes.draw do
       resources :security_prices, only: [ :index, :show ]
       resources :tags, only: %i[index show create update destroy]
 
-      resources :budgets, only: %i[index show create update destroy]
+      resources :budgets, only: %i[index show create update destroy] do
+        resources :budget_categories, only: %i[index show update]
+      end
       resources :goals, only: %i[index show create update destroy]
       resources :receivables, only: %i[index show create update destroy]
 
