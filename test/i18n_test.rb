@@ -72,7 +72,8 @@ class I18nAttributeInterpolationTest < ActiveSupport::TestCase
   LOCALE_FALLBACK_CHAINS = {
     "es" => [ "es" ],
     "es-PY" => [ "es-PY", "es" ],
-    "en" => [ "en", "es" ]
+    "en" => [ "en", "es" ],
+    "pt-BR" => [ "pt-BR", "pt", "es" ]
   }.freeze
 
   def test_no_missing_keys_interpolated_into_html_attributes
