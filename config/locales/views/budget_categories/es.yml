@@ -1,0 +1,31 @@
+---
+es:
+  budget_categories:
+    allocation_progress:
+      exceeded_by: Superaste el presupuesto por
+      left_to_allocate: por asignar
+      over_100: "> 100% asignado"
+      set: "%{percent} asignado"
+    avg_spending: "%{amount} prom."
+    confirm_button:
+      confirm: Confirmar
+    form:
+      avg_per_month: "%{amount}/mes prom."
+      shared_placeholder: Compartido
+      shared_tooltip: Dejá vacío para compartir el presupuesto de la categoría principal
+    index:
+      description: Ajustá los presupuestos por categoría para fijar límites de gasto.
+        Los fondos sin asignar se destinan automáticamente a categorías sin clasificar.
+      title: Editá los presupuestos por categoría
+    show:
+      budgeted: Presupuestado
+      category_label: Categoría
+      left: disponible
+      monthly_average: Gasto mensual promedio
+      monthly_median: Gasto mensual mediano
+      no_transactions: No se encontraron transacciones para este período.
+      overspent: de más
+      overview: Resumen
+      recent_transactions: Transacciones recientes
+      status: Estado
+      view_all: Ver todas las transacciones de la categoría
