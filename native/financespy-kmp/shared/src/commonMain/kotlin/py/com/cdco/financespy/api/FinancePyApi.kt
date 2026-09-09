@@ -19,6 +19,7 @@ import py.com.cdco.financespy.api.dto.BudgetsEnvelope
 import py.com.cdco.financespy.api.dto.CategoriesResponse
 import py.com.cdco.financespy.api.dto.CategoryDto
 import py.com.cdco.financespy.api.dto.CreateGoalBody
+import py.com.cdco.financespy.api.dto.DashboardDto
 import py.com.cdco.financespy.api.dto.CreateGoalRequest
 import py.com.cdco.financespy.api.dto.CreateRuleBody
 import py.com.cdco.financespy.api.dto.CreateRuleRequest
@@ -47,7 +48,7 @@ import py.com.cdco.financespy.api.dto.UpdateRuleBody
 import py.com.cdco.financespy.api.dto.UpdateRuleRequest
 
 open class FinancePyApi(private val http: HttpClient) {
-    suspend fun fetchAllAccounts(): List<AccountDto> {
+    open suspend fun fetchAllAccounts(): List<AccountDto> {
         val all = mutableListOf<AccountDto>()
         var page = 1
         while (true) {
@@ -62,7 +63,7 @@ open class FinancePyApi(private val http: HttpClient) {
         return all
     }
 
-    suspend fun fetchRecentTransactions(startDate: String): List<TransactionListItemDto> {
+    open suspend fun fetchRecentTransactions(startDate: String): List<TransactionListItemDto> {
         val all = mutableListOf<TransactionListItemDto>()
         var page = 1
         while (true) {
@@ -80,7 +81,15 @@ open class FinancePyApi(private val http: HttpClient) {
 
     suspend fun fetchBalanceSheet(): BalanceSheetResponse = http.get("/api/v1/balance_sheet").body()
 
-    suspend fun fetchAllRules(): List<RuleDto> {
+    open suspend fun fetchDashboard(period: String? = null): DashboardDto {
+        return http.get("/api/v1/dashboard") {
+            if (period != null) {
+                parameter("period", period)
+            }
+        }.body()
+    }
+
+    open suspend fun fetchAllRules(): List<RuleDto> {
         val all = mutableListOf<RuleDto>()
         var page = 1
         while (true) {
@@ -134,7 +143,7 @@ open class FinancePyApi(private val http: HttpClient) {
         http.delete("/api/v1/rules/$id")
     }
 
-    suspend fun fetchAllGoals(): List<GoalDto> {
+    open suspend fun fetchAllGoals(): List<GoalDto> {
         val all = mutableListOf<GoalDto>()
         var page = 1
         while (true) {
@@ -174,7 +183,7 @@ open class FinancePyApi(private val http: HttpClient) {
         http.delete("/api/v1/goals/$id")
     }
 
-    suspend fun fetchAllReceivables(): List<ReceivableDto> {
+    open suspend fun fetchAllReceivables(): List<ReceivableDto> {
         val all = mutableListOf<ReceivableDto>()
         var page = 1
         while (true) {
