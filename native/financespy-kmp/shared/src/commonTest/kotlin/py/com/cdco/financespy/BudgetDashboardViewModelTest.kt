@@ -19,8 +19,27 @@ import kotlin.test.assertFalse
 
 class FakeFinancePyApi : FinancePyApi(io.ktor.client.HttpClient()) {
     var budgetsToReturn = listOf<BudgetDto>()
+    var singleBudgetToReturn: BudgetDto? = null
+    var updatedCategoryToReturn: BudgetCategoryDto? = null
 
     override suspend fun fetchAllBudgets(): List<BudgetDto> = budgetsToReturn
+
+    override suspend fun fetchBudget(idOrParam: String): BudgetDto {
+        return singleBudgetToReturn ?: budgetsToReturn.firstOrNull { it.id == idOrParam || it.param == idOrParam }
+            ?: BudgetDto(id = idOrParam, start_date = "$idOrParam-01")
+    }
+
+    override suspend fun updateBudgetCategory(
+        budgetId: String,
+        categoryId: String,
+        budgetedSpending: Double?
+    ): BudgetCategoryDto {
+        return updatedCategoryToReturn ?: BudgetCategoryDto(
+            id = categoryId,
+            budget_id = budgetId,
+            budgeted_spending = budgetedSpending
+        )
+    }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -71,8 +90,8 @@ class BudgetDashboardViewModelTest {
                 id = "budget-1",
                 start_date = "2026-08-01",
                 end_date = "2026-08-31",
-                budgeted_spending = "5000.0",
-                expected_income = "6000.0",
+                budgeted_spending = 5000.0,
+                expected_income = 6000.0,
                 currency = "USD",
                 actual_spending = 1500.0,
                 available_to_spend = 3500.0,
@@ -85,7 +104,9 @@ class BudgetDashboardViewModelTest {
                         budgeted_spending = 1000.0,
                         actual_spending = 500.0,
                         available_to_spend = 500.0,
-                        percent_spent = 50.0
+                        percent_spent = 50.0,
+                        percent_of_budget_spent = 50.0,
+                        bar_width_percent = 50.0
                     )
                 )
             )

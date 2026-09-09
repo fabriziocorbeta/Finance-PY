@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppCard
+import py.com.cdco.financespy.utils.formatMoney
 
 @Composable
 fun TransactionsScreen(viewModel: TransactionsViewModel) {
@@ -51,7 +52,7 @@ fun TransactionsScreen(viewModel: TransactionsViewModel) {
                         )
                     }
                     Text(
-                        text = "${entry.amountCents / 100.0} ${entry.currency}",
+                        text = formatMoney(entry.amountCents, entry.currency),
                         style = MaterialTheme.typography.bodyMedium,
                         color = FinancePyColors.textSecondary()
                     )
