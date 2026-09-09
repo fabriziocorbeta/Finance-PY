@@ -25,6 +25,7 @@ import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.theme.components.ButtonVariant
+import py.com.cdco.financespy.utils.formatMoney
 
 @Composable
 fun ReceivableDetailScreen(
@@ -52,10 +53,10 @@ fun ReceivableDetailScreen(
                         )
 
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            DetailRow(label = "Monto Total", value = "${receivable.currency} ${receivable.totalAmount}")
-                            DetailRow(label = "Saldo Original", value = "${receivable.currency} ${receivable.originalBalance}")
-                            DetailRow(label = "Saldo Actual", value = "${receivable.currency} ${receivable.balance}")
-                            DetailRow(label = "Monto Pagado", value = "${receivable.currency} ${receivable.paidAmount}")
+                            DetailRow(label = "Monto Total", value = formatMoney(receivable.totalAmount, receivable.currency))
+                            DetailRow(label = "Saldo Original", value = formatMoney(receivable.originalBalance, receivable.currency))
+                            DetailRow(label = "Saldo Actual", value = formatMoney(receivable.balance, receivable.currency))
+                            DetailRow(label = "Monto Pagado", value = formatMoney(receivable.paidAmount, receivable.currency))
                             DetailRow(label = "Porcentaje Cobrado", value = "${receivable.percentPaid.toInt()}%")
 
                             val progress = (receivable.percentPaid / 100.0).coerceIn(0.0, 1.0).toFloat()

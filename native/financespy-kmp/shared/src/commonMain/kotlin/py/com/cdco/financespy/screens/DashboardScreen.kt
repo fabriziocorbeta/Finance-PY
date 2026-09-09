@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
+import py.com.cdco.financespy.utils.formatMoney
 
 @Composable
 fun DashboardScreen(viewModel: DashboardViewModel, onAccountClick: (String) -> Unit) {
@@ -38,13 +39,18 @@ fun DashboardScreen(viewModel: DashboardViewModel, onAccountClick: (String) -> U
         state.balanceSheet?.let { bs ->
             item {
                 AppCard(modifier = Modifier.fillMaxWidth()) {
+                    val netWorthFormatted = when {
+                        bs.net_worth.cents != null -> formatMoney(bs.net_worth.cents, bs.net_worth.currency ?: bs.currency)
+                        bs.net_worth.amount != null -> formatMoney(bs.net_worth.amount.toDoubleOrNull() ?: 0.0, bs.net_worth.currency ?: bs.currency)
+                        else -> formatMoney(0L, bs.currency)
+                    }
                     Text(
                         text = "Patrimonio neto",
                         style = MaterialTheme.typography.labelMedium,
                         color = FinancePyColors.textSecondary()
                     )
                     Text(
-                        text = "${bs.net_worth.cents ?: bs.net_worth.amount} ${bs.currency}",
+                        text = netWorthFormatted,
                         style = MaterialTheme.typography.headlineSmall,
                         color = FinancePyColors.textPrimary(),
                         modifier = Modifier.padding(top = 4.dp)
@@ -100,7 +106,7 @@ fun DashboardScreen(viewModel: DashboardViewModel, onAccountClick: (String) -> U
                         color = FinancePyColors.textPrimary()
                     )
                     Text(
-                        text = "${account.balanceCents / 100.0} ${account.currency}",
+                        text = formatMoney(account.balanceCents, account.currency),
                         style = MaterialTheme.typography.bodyMedium,
                         color = FinancePyColors.textSecondary()
                     )
@@ -137,7 +143,7 @@ fun DashboardScreen(viewModel: DashboardViewModel, onAccountClick: (String) -> U
                         )
                     }
                     Text(
-                        text = "${entry.amountCents / 100.0} ${entry.currency}",
+                        text = formatMoney(entry.amountCents, entry.currency),
                         style = MaterialTheme.typography.bodyMedium,
                         color = FinancePyColors.textSecondary()
                     )
