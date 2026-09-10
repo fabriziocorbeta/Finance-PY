@@ -159,12 +159,15 @@ es:
       edit_categories: Editar categorías
       edit_imports: Editar importaciones
       edit_merchants: Editar comerciantes
+      edit_rules: Editar reglas
       edit_tags: Editar etiquetas
       import: Importar
+      new_rule: Nueva regla
     index:
       categorize_button:
         one: Categorizar (1)
         other: Categorizar (%{count})
+      title: Transacciones
       import: Importar
       transaction: transacción
       transactions: transacciones
