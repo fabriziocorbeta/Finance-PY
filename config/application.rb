@@ -21,7 +21,9 @@ module Sure
     # These settings can be overridden in specific environments using the files
     # in config/environments, which are processed later.
     #
-    # config.time_zone = "Central Time (US & Canada)"
+    # Paraguay isn't in Rails' built-in TimeZone::MAPPING - register it before setting config.time_zone.
+    ActiveSupport::TimeZone::MAPPING["Asuncion"] = "America/Asuncion"
+    config.time_zone = "Asuncion"
     # config.eager_load_paths << Rails.root.join("extras")
 
     # TODO: This is here for incremental adoption of localization.  This can be removed when all translations are implemented.

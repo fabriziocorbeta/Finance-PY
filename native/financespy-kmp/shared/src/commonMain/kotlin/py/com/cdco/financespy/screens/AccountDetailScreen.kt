@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppCard
+import py.com.cdco.financespy.utils.formatMoney
 
 @Composable
 fun AccountDetailScreen(viewModel: AccountDetailViewModel) {
@@ -43,12 +44,12 @@ fun AccountDetailScreen(viewModel: AccountDetailViewModel) {
                         )
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
-                                text = "Saldo: ${account.balanceCents / 100.0} ${account.currency}",
+                                text = "Saldo: ${formatMoney(account.balanceCents, account.currency)}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = FinancePyColors.textSecondary()
                             )
                             Text(
-                                text = "Saldo efectivo: ${account.cashBalanceCents / 100.0} ${account.currency}",
+                                text = "Saldo efectivo: ${formatMoney(account.cashBalanceCents, account.currency)}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = FinancePyColors.textSecondary()
                             )
@@ -92,7 +93,7 @@ fun AccountDetailScreen(viewModel: AccountDetailViewModel) {
                         )
                     }
                     Text(
-                        text = "${entry.amountCents / 100.0} ${entry.currency}",
+                        text = formatMoney(entry.amountCents, entry.currency),
                         style = MaterialTheme.typography.bodyMedium,
                         color = FinancePyColors.textSecondary()
                     )

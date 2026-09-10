@@ -19,6 +19,7 @@ import py.com.cdco.financespy.db.buildDatabase
 import py.com.cdco.financespy.db.initDatabaseBuilder
 import py.com.cdco.financespy.network.ApiClient
 import py.com.cdco.financespy.screens.AccountDetailViewModel
+import py.com.cdco.financespy.screens.BudgetAllocationEditorViewModel
 import py.com.cdco.financespy.screens.BudgetDashboardViewModel
 import py.com.cdco.financespy.screens.DashboardViewModel
 import py.com.cdco.financespy.screens.GoalDetailViewModel
@@ -133,6 +134,13 @@ class MainActivity : ComponentActivity() {
                 },
                 dashboardViewModelFactory = { dashboardViewModel },
                 budgetDashboardViewModelFactory = { budgetDashboardViewModel },
+                budgetAllocationEditorViewModelFactory = { budgetId ->
+                    BudgetAllocationEditorViewModel(
+                        scope = lifecycleScope,
+                        api = api,
+                        budgetId = budgetId
+                    )
+                },
                 transactionsViewModelFactory = { transactionsViewModel },
                 rulesListViewModelFactory = { rulesListViewModel },
                 ruleDetailViewModelFactory = { ruleId ->

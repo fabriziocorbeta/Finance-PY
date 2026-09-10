@@ -2,12 +2,23 @@ class FuelLogsController < ApplicationController
   include RequireBusinessMode
 
   before_action :set_fleet_vehicle
-  before_action :set_fuel_log, only: %i[destroy]
+  before_action :set_fuel_log, only: %i[edit update destroy]
 
   def create
     @fuel_log = @fleet_vehicle.fuel_logs.new(fuel_log_params)
 
     if @fuel_log.save
+      redirect_to @fleet_vehicle, notice: t(".success")
+    else
+      redirect_to @fleet_vehicle, alert: t(".error")
+    end
+  end
+
+  def edit
+  end
+
+  def update
+    if @fuel_log.update(fuel_log_params)
       redirect_to @fleet_vehicle, notice: t(".success")
     else
       redirect_to @fleet_vehicle, alert: t(".error")

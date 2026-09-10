@@ -1,0 +1,6 @@
+<%= render DS::Dialog.new do |dialog| %>
+  <% dialog.with_header(title: t(".title")) %>
+  <% dialog.with_body do %>
+    <%= render "fuel_logs/form", fleet_vehicle: @fleet_vehicle, fuel_log: @fuel_log, url: fleet_vehicle_fuel_log_path(@fleet_vehicle, @fuel_log) %>
+  <% end %>
+<% end %>

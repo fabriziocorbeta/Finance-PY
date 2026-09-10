@@ -219,8 +219,10 @@ class Account::ProviderImportAdapterTest < ActiveSupport::TestCase
     adapter = Account::ProviderImportAdapter.new(investment_account)
     security = securities(:aapl)
 
-    # Use a date that doesn't conflict with fixtures (fixtures use today and 1.day.ago)
-    holding_date = Date.today - 2.days
+    # Use a date that doesn't conflict with fixtures (fixtures use today and 1.day.ago).
+    # Must use Date.current (timezone-aware), not Date.today (system clock) - they can
+    # differ by a day depending on time of day vs UTC, which would collide with fixtures.
+    holding_date = Date.current - 2.days
 
     assert_difference "investment_account.holdings.count", 1 do
       holding = adapter.import_holding(

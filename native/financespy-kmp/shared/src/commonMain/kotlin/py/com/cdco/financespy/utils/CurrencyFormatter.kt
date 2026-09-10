@@ -1,63 +1,53 @@
 package py.com.cdco.financespy.utils
 
-import kotlin.math.abs
-import kotlin.math.roundToLong
-
-object CurrencyFormatter {
-    fun formatMoney(amountCents: Long, currency: String? = null): String {
-        val amount = amountCents / 100.0
-        return formatMoney(amount, currency)
+fun formatMoney(amountCents: Long, currency: String?): String {
+    val symbol = when (currency?.uppercase()) {
+        "PYG", "GUARANI", "GUARANIES" -> "₲"
+        "USD" -> "$"
+        "EUR" -> "€"
+        "BRL" -> "R$"
+        "ARS" -> "$"
+        null -> "$"
+        else -> currency
     }
 
-    fun formatMoney(amount: Double, currency: String? = null): String {
-        val curr = currency?.trim()
-        val isPyg = curr.equals("PYG", ignoreCase = true) || curr == "₲"
+    val isNegative = amountCents < 0
+    val absCents = if (isNegative) -amountCents else amountCents
 
-        val formattedNumber = if (isPyg) {
-            formatIntegerWithSeparators(amount.roundToLong())
-        } else {
-            formatDecimalWithSeparators(amount)
-        }
+    val isZeroMinorUnit = currency?.uppercase() in listOf("PYG", "GUARANI", "GUARANIES")
 
-        return when {
-            curr.isNullOrBlank() -> formattedNumber
-            curr == "₲" || curr == "$" || curr == "€" -> "$curr $formattedNumber"
-            else -> "$formattedNumber $curr"
-        }
+    val formattedNumber = if (isZeroMinorUnit) {
+        formatWithThousandsSeparator(absCents)
+    } else {
+        val units = absCents / 100
+        val cents = absCents % 100
+        val centsStr = if (cents < 10) "0$cents" else "$cents"
+        "${formatWithThousandsSeparator(units)},$centsStr"
     }
 
-    private fun formatIntegerWithSeparators(value: Long): String {
-        val isNegative = value < 0
-        val absStr = abs(value).toString()
-        val sb = StringBuilder()
-        var count = 0
-        for (i in absStr.length - 1 downTo 0) {
-            if (count > 0 && count % 3 == 0) {
-                sb.append('.')
-            }
-            sb.append(absStr[i])
-            count++
-        }
-        val result = sb.reverse().toString()
-        return if (isNegative) "-$result" else result
-    }
-
-    private fun formatDecimalWithSeparators(value: Double): String {
-        val isNegative = value < 0
-        val absValue = abs(value)
-        val cents = (absValue * 100).roundToLong()
-        val wholePart = cents / 100
-        val decimalPart = cents % 100
-
-        val formattedWhole = formatIntegerWithSeparators(wholePart)
-        val decimalStr = if (decimalPart < 10) "0$decimalPart" else "$decimalPart"
-
-        return if (isNegative) "-$formattedWhole.$decimalStr" else "$formattedWhole.$decimalStr"
-    }
+    val sign = if (isNegative) "-" else ""
+    return "$sign$symbol $formattedNumber"
 }
 
-fun formatMoney(amountCents: Long, currency: String? = null): String =
-    CurrencyFormatter.formatMoney(amountCents, currency)
-
-fun formatMoney(amount: Double, currency: String? = null): String =
-    CurrencyFormatter.formatMoney(amount, currency)
+fun formatMoney(amount: Double, currency: String?): String {
+    val isZeroMinorUnit = currency?.uppercase() in listOf("PYG", "GUARANI", "GUARANIES")
+    val cents = if (isZeroMinorUnit) {
+        amount.toLong()
+    } else {
+        (amount * 100.0).toLong()
+    }
+    return formatMoney(cents, currency)
+}
+private fun formatWithThousandsSeparator(number: Long): String {
+    val str = number.toString()
+    val sb = StringBuilder()
+    var count = 0
+    for (i in str.length - 1 downTo 0) {
+        sb.append(str[i])
+        count++
+        if (count % 3 == 0 && i > 0) {
+            sb.append(".")
+        }
+    }
+    return sb.reverse().toString()
+}

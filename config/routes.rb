@@ -229,7 +229,7 @@ Rails.application.routes.draw do
 
   resources :products
   resources :fleet_vehicles do
-    resources :fuel_logs, only: [ :create, :destroy ]
+    resources :fuel_logs, only: [ :create, :edit, :update, :destroy ]
   end
   resources :sales do
     member do

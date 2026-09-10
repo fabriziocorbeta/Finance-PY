@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
+import py.com.cdco.financespy.utils.formatMoney
 
 @Composable
 fun ReceivablesListScreen(
@@ -85,7 +86,7 @@ fun ReceivablesListScreen(
                                     color = FinancePyColors.textPrimary()
                                 )
                                 Text(
-                                    text = "${receivable.currency} ${receivable.totalAmount}",
+                                    text = formatMoney(receivable.totalAmount, receivable.currency),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = FinancePyColors.textPrimary()
                                 )
@@ -97,7 +98,7 @@ fun ReceivablesListScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Saldo: ${receivable.currency} ${receivable.balance}",
+                                    text = "Saldo: ${formatMoney(receivable.balance, receivable.currency)}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = FinancePyColors.textSecondary()
                                 )
