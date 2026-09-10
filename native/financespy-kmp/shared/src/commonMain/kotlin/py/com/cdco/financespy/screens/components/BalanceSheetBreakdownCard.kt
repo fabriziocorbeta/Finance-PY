@@ -50,6 +50,7 @@ import py.com.cdco.financespy.utils.formatMoney
 @Composable
 fun BalanceSheetBreakdownCard(
     balanceSheet: DashboardBalanceSheetDto?,
+    currency: String = "PYG",
     onAccountClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -71,6 +72,7 @@ fun BalanceSheetBreakdownCard(
                 }
                 ClassificationGroupSection(
                     classificationGroup = cg,
+                    currency = currency,
                     onAccountClick = onAccountClick
                 )
             }
@@ -81,6 +83,7 @@ fun BalanceSheetBreakdownCard(
 @Composable
 private fun ClassificationGroupSection(
     classificationGroup: ClassificationGroupDto,
+    currency: String,
     onAccountClick: (String) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -95,7 +98,7 @@ private fun ClassificationGroupSection(
                 color = FinancePyColors.textPrimary()
             )
             Text(
-                text = formatMoney(classificationGroup.total),
+                text = formatMoney(classificationGroup.total, currency),
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = FinancePyColors.textPrimary()
             )
@@ -119,6 +122,7 @@ private fun ClassificationGroupSection(
             classificationGroup.account_groups.forEach { group ->
                 AccountGroupExpandableItem(
                     accountGroup = group,
+                    currency = currency,
                     onAccountClick = onAccountClick
                 )
             }
@@ -169,6 +173,7 @@ private fun MultiSegmentWeightBar(
 @Composable
 private fun AccountGroupExpandableItem(
     accountGroup: AccountGroupDto,
+    currency: String,
     onAccountClick: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -223,7 +228,7 @@ private fun AccountGroupExpandableItem(
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = formatMoney(accountGroup.total),
+                    text = formatMoney(accountGroup.total, currency),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                     color = FinancePyColors.textPrimary()
                 )

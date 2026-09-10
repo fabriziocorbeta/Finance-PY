@@ -57,6 +57,7 @@ fun parseColorString(
 @Composable
 fun SankeyFlowChart(
     sankeyDto: CashflowSankeyDto?,
+    currency: String = "PYG",
     modifier: Modifier = Modifier
 ) {
     AppCard(modifier = modifier.fillMaxWidth()) {
@@ -94,6 +95,7 @@ fun SankeyFlowChart(
                 Spacer(modifier = Modifier.height(16.dp))
                 SankeyCanvasLayout(
                     sankeyDto = sankeyDto!!,
+                    currency = currency,
                     modifier = Modifier.fillMaxWidth().height(280.dp)
                 )
             }
@@ -104,11 +106,11 @@ fun SankeyFlowChart(
 @Composable
 private fun SankeyCanvasLayout(
     sankeyDto: CashflowSankeyDto,
+    currency: String,
     modifier: Modifier = Modifier
 ) {
     val nodes = sankeyDto.nodes
     val links = sankeyDto.links
-    val currencySymbol = sankeyDto.currency_symbol ?: "₲"
 
     val successColor = FinancePyColors.success()
     val destructiveColor = FinancePyColors.destructive()
@@ -264,7 +266,7 @@ private fun SankeyCanvasLayout(
                 incomeNodesWithLinks.forEach { (node, _) ->
                     SankeyNodeLabel(
                         node = node,
-                        currencySymbol = currencySymbol,
+                        currency = currency,
                         successColor = successColor,
                         destructiveColor = destructiveColor,
                         warningColor = warningColor,
@@ -283,7 +285,7 @@ private fun SankeyCanvasLayout(
             ) {
                 SankeyNodeLabel(
                     node = centerNode,
-                    currencySymbol = currencySymbol,
+                    currency = currency,
                     isCenter = true,
                     successColor = successColor,
                     destructiveColor = destructiveColor,
@@ -303,7 +305,7 @@ private fun SankeyCanvasLayout(
                 expenseNodesWithLinks.forEach { (node, _) ->
                     SankeyNodeLabel(
                         node = node,
-                        currencySymbol = currencySymbol,
+                        currency = currency,
                         successColor = successColor,
                         destructiveColor = destructiveColor,
                         warningColor = warningColor,
@@ -319,7 +321,7 @@ private fun SankeyCanvasLayout(
 @Composable
 private fun SankeyNodeLabel(
     node: SankeyNodeDto,
-    currencySymbol: String,
+    currency: String,
     isCenter: Boolean = false,
     successColor: Color,
     destructiveColor: Color,
@@ -350,7 +352,7 @@ private fun SankeyNodeLabel(
                 color = FinancePyColors.textPrimary()
             )
             Text(
-                text = formatMoney(node.value, currencySymbol),
+                text = formatMoney(node.value, currency),
                 style = MaterialTheme.typography.bodySmall,
                 color = FinancePyColors.textSecondary()
             )

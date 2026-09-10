@@ -142,7 +142,7 @@ fun DashboardScreen(
         }
 
         item {
-            SankeyFlowChart(sankeyDto = dashboard?.cashflow_sankey)
+            SankeyFlowChart(sankeyDto = dashboard?.cashflow_sankey, currency = dashboard?.currency ?: "PYG")
         }
 
         item {
@@ -156,6 +156,7 @@ fun DashboardScreen(
         item {
             BalanceSheetBreakdownCard(
                 balanceSheet = dashboard?.balance_sheet,
+                currency = dashboard?.currency ?: "PYG",
                 onAccountClick = onAccountClick
             )
         }

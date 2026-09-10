@@ -47,7 +47,8 @@ fun OutflowsDonutCard(
 
             val categories = outflowsDonut?.categories ?: emptyList()
             val total = outflowsDonut?.total ?: 0.0
-            val currencySymbol = outflowsDonut?.currency_symbol ?: outflowsDonut?.currency ?: "₲"
+            // formatMoney expects a currency CODE (e.g. "PYG"), not the pre-resolved symbol.
+            val currency = outflowsDonut?.currency ?: "PYG"
 
             val successColor = FinancePyColors.success()
             val destructiveColor = FinancePyColors.destructive()
@@ -101,7 +102,7 @@ fun OutflowsDonutCard(
                             color = FinancePyColors.textSecondary()
                         )
                         Text(
-                            text = formatMoney(total, currencySymbol),
+                            text = formatMoney(total, currency),
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             color = FinancePyColors.textPrimary()
                         )
@@ -117,7 +118,7 @@ fun OutflowsDonutCard(
                     categories.forEach { cat ->
                         OutflowCategoryRow(
                             category = cat,
-                            currencySymbol = currencySymbol,
+                            currency = currency,
                             successColor = successColor,
                             destructiveColor = destructiveColor,
                             warningColor = warningColor,
@@ -134,7 +135,7 @@ fun OutflowsDonutCard(
 @Composable
 private fun OutflowCategoryRow(
     category: DonutCategoryDto,
-    currencySymbol: String,
+    currency: String,
     successColor: Color,
     destructiveColor: Color,
     warningColor: Color,
@@ -172,7 +173,7 @@ private fun OutflowCategoryRow(
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = formatMoney(category.amount, currencySymbol),
+                text = formatMoney(category.amount, currency),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = FinancePyColors.textPrimary()
             )
