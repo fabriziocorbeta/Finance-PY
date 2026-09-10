@@ -9,7 +9,7 @@ class TransfersTest < ApplicationSystemTestCase
   test "can create a transfer" do
     transfer_date = Date.current
 
-    click_on "New transaction"
+    click_on I18n.t("transactions.new.new_transaction")
     click_on "Transfer"
     assert_text "New transfer"
 
@@ -46,7 +46,7 @@ class TransfersTest < ApplicationSystemTestCase
 
     transfer_date = Date.current
 
-    click_on "New transaction"
+    click_on I18n.t("transactions.new.new_transaction")
     click_on "Transfer"
     assert_text "New transfer"
 

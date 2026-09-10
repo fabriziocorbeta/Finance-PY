@@ -30,10 +30,10 @@ class TransactionsTest < ApplicationSystemTestCase
   end
 
   test "can search for a transaction" do
-    assert_selector "h1", text: "Transactions"
+    assert_selector "h1", text: I18n.t("transactions.index.title")
 
     within "form#transactions-search" do
-      fill_in "Search transactions ...", with: @transaction.name
+      find("#q_search").fill_in with: @transaction.name
       find("#q_search").send_keys(:tab) # Trigger blur to submit form
     end
 

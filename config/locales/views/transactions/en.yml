@@ -124,12 +124,15 @@ en:
       edit_categories: Edit categories
       edit_imports: Edit imports
       edit_merchants: Edit merchants
+      edit_rules: Edit rules
       edit_tags: Edit tags
       import: Import
+      new_rule: New rule
     index:
       transaction: transaction
       transactions: transactions
       import: Import
+      title: Transactions
       categorize_button:
         one: "Categorize (1)"
         other: "Categorize (%{count})"
@@ -263,6 +266,8 @@ en:
         greater_than: greater than
         less_than: less than
       form:
+        filter_button: Filter
+        search_placeholder: "Search transactions..."
         toggle_selection_checkboxes: Toggle all checkboxes
     attachments:
       cannot_exceed: "Cannot exceed %{count} attachments per transaction"
