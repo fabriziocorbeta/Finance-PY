@@ -1,0 +1,47 @@
+---
+en:
+  rules:
+    condition_filters:
+      transaction_account:
+        label: Account
+      transaction_amount:
+        label: Amount
+      transaction_category:
+        label: Category
+      transaction_details:
+        label: Details
+      transaction_merchant:
+        label: Merchant
+      transaction_name:
+        label: Transaction name
+      transaction_notes:
+        label: Notes
+      transaction_type:
+        label: Type
+    action_executors:
+      auto_categorize:
+        label: Auto-categorize (AI)
+      auto_detect_merchants:
+        label: Auto-detect merchant (AI)
+      exclude_transaction:
+        label: Exclude transaction
+      set_as_transfer_or_payment:
+        label: Mark as transfer/payment
+      set_investment_activity_label:
+        label: Set investment activity type
+      set_transaction_category:
+        label: Set category
+      set_transaction_merchant:
+        label: Set merchant
+      set_transaction_name:
+        label: Rename transaction
+      set_transaction_tags:
+        label: Set tags
+    operators:
+      like: Contains
+      "=": Equal to
+      is_null: Is empty
+      ">": Greater than
+      ">=": Greater or equal to
+      "<": Less than
+      "<=": Less than or equal to
