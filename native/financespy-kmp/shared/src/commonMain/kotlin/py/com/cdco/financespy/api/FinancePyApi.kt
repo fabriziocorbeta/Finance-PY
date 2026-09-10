@@ -27,6 +27,8 @@ import py.com.cdco.financespy.api.dto.CreateReceivableBody
 import py.com.cdco.financespy.api.dto.CreateReceivableRequest
 import py.com.cdco.financespy.api.dto.CreateRuleBody
 import py.com.cdco.financespy.api.dto.CreateRuleRequest
+import py.com.cdco.financespy.api.dto.CreateTransactionBody
+import py.com.cdco.financespy.api.dto.CreateTransactionRequest
 import py.com.cdco.financespy.api.dto.GoalDto
 import py.com.cdco.financespy.api.dto.GoalEnvelope
 import py.com.cdco.financespy.api.dto.GoalsEnvelope
@@ -40,6 +42,7 @@ import py.com.cdco.financespy.api.dto.RuleRunDto
 import py.com.cdco.financespy.api.dto.RuleRunsEnvelope
 import py.com.cdco.financespy.api.dto.RulesEnvelope
 import py.com.cdco.financespy.api.dto.TagDto
+import py.com.cdco.financespy.api.dto.TransactionDetailDto
 import py.com.cdco.financespy.api.dto.TransactionListItemDto
 import py.com.cdco.financespy.api.dto.TransactionsResponse
 import py.com.cdco.financespy.api.dto.UpdateBudgetCategoryBody
@@ -50,6 +53,8 @@ import py.com.cdco.financespy.api.dto.UpdateReceivableBody
 import py.com.cdco.financespy.api.dto.UpdateReceivableRequest
 import py.com.cdco.financespy.api.dto.UpdateRuleBody
 import py.com.cdco.financespy.api.dto.UpdateRuleRequest
+import py.com.cdco.financespy.api.dto.UpdateTransactionBody
+import py.com.cdco.financespy.api.dto.UpdateTransactionRequest
 
 open class FinancePyApi(private val http: HttpClient) {
     open suspend fun fetchAllAccounts(): List<AccountDto> {
@@ -74,7 +79,10 @@ open class FinancePyApi(private val http: HttpClient) {
     open suspend fun fetchTransactions(
         startDate: String? = null,
         endDate: String? = null,
-        categoryId: String? = null
+        categoryId: String? = null,
+        search: String? = null,
+        accountId: String? = null,
+        type: String? = null
     ): List<TransactionListItemDto> {
         val all = mutableListOf<TransactionListItemDto>()
         var page = 1
@@ -85,12 +93,62 @@ open class FinancePyApi(private val http: HttpClient) {
                 if (startDate != null) parameter("start_date", startDate)
                 if (endDate != null) parameter("end_date", endDate)
                 if (categoryId != null) parameter("category_id", categoryId)
+                if (search != null) parameter("search", search)
+                if (accountId != null) parameter("account_id", accountId)
+                if (type != null) parameter("type", type)
             }.body()
             all += response.transactions
             if (page >= response.pagination.total_pages) break
             page++
         }
         return all
+    }
+
+    /**
+     * Single-page fetch of /api/v1/transactions (does NOT auto-paginate through every page
+     * like fetchTransactions does) - lets callers page through results N-at-a-time.
+     */
+    open suspend fun fetchTransactionsPage(
+        page: Int,
+        perPage: Int = 25,
+        startDate: String? = null,
+        endDate: String? = null,
+        categoryId: String? = null,
+        search: String? = null,
+        accountId: String? = null,
+        type: String? = null
+    ): TransactionsResponse {
+        return http.get("/api/v1/transactions") {
+            parameter("page", page)
+            parameter("per_page", perPage)
+            if (startDate != null) parameter("start_date", startDate)
+            if (endDate != null) parameter("end_date", endDate)
+            if (categoryId != null) parameter("category_id", categoryId)
+            if (search != null) parameter("search", search)
+            if (accountId != null) parameter("account_id", accountId)
+            if (type != null) parameter("type", type)
+        }.body()
+    }
+
+    open suspend fun fetchTransaction(id: String): TransactionDetailDto =
+        http.get("/api/v1/transactions/$id").body()
+
+    open suspend fun createTransaction(body: CreateTransactionBody): TransactionDetailDto {
+        return http.post("/api/v1/transactions") {
+            contentType(ContentType.Application.Json)
+            setBody(CreateTransactionRequest(transaction = body))
+        }.body()
+    }
+
+    open suspend fun updateTransaction(id: String, body: UpdateTransactionBody): TransactionDetailDto {
+        return http.patch("/api/v1/transactions/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(UpdateTransactionRequest(transaction = body))
+        }.body()
+    }
+
+    open suspend fun deleteTransaction(id: String) {
+        http.delete("/api/v1/transactions/$id")
     }
 
     open suspend fun fetchBalanceSheet(): BalanceSheetResponse = http.get("/api/v1/balance_sheet").body()
