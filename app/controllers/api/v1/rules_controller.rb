@@ -11,9 +11,25 @@ class Api::V1::RulesController < Api::V1::BaseController
   }.freeze
   RESOURCE_TYPES = %w[transaction].freeze
 
-  before_action :ensure_read_scope, only: %i[index show]
+  before_action :ensure_read_scope, only: %i[index show registry]
   before_action :ensure_write_scope, only: %i[create update destroy]
   before_action :set_rule, only: %i[show update destroy]
+
+  # GET /api/v1/rules/registry?resource_type=transaction
+  # Returns the available condition filters and action executors (with their
+  # operators/options and Spanish labels) so clients can build a picker UI
+  # instead of hardcoding this registry, which is Ruby-class-driven.
+  def registry
+    return render_invalid_resource_type_filter if invalid_resource_type_filter?
+
+    resource_type = params[:resource_type].presence || "transaction"
+    transient_rule = current_resource_owner.family.rules.build(resource_type: resource_type)
+
+    render json: {
+      filters: transient_rule.registry.condition_filters.map { |filter| localized_filter_json(filter) },
+      executors: transient_rule.registry.action_executors.map { |executor| localized_executor_json(executor) }
+    }
+  end
 
   def index
     return render_invalid_resource_type_filter if invalid_resource_type_filter?
@@ -117,10 +133,38 @@ class Api::V1::RulesController < Api::V1::BaseController
 
     def rule_params
       params.require(:rule).permit(
-        :name, :resource_type, :active,
-        conditions_attributes: [ :id, :condition_type, :operator, :value, :_destroy ],
+        :name, :resource_type, :active, :effective_date,
+        conditions_attributes: [
+          :id, :condition_type, :operator, :value, :_destroy,
+          sub_conditions_attributes: [ :id, :condition_type, :operator, :value, :_destroy ]
+        ],
         actions_attributes: [ :id, :action_type, :value, :_destroy ]
       )
+    end
+
+    # NOTE: never pass filter.label/executor.label as an I18n `default:` -
+    # Rails evaluates that argument eagerly even when the translation is
+    # found, and Rule::ActionExecutor::AutoCategorize#label makes a real
+    # (billed) OpenAI call to estimate a per-run cost estimate. Use a plain
+    # humanized key as the fallback instead - it never touches the model.
+    def localized_filter_json(filter)
+      {
+        type: filter.type,
+        key: filter.key,
+        label: I18n.t("rules.condition_filters.#{filter.key}.label", default: filter.key.humanize),
+        operators: (filter.operators || []).map { |(_label, value)| [ I18n.t("rules.operators.#{value}", default: _label), value ] },
+        options: filter.options,
+        number_step: filter.number_step
+      }
+    end
+
+    def localized_executor_json(executor)
+      {
+        type: executor.type,
+        key: executor.key,
+        label: I18n.t("rules.action_executors.#{executor.key}.label", default: executor.key.humanize),
+        options: executor.options
+      }
     end
 
     def parse_boolean_filter(value)

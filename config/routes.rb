@@ -473,7 +473,9 @@ Rails.application.routes.draw do
       resources :accounts, only: [ :index, :show ]
       resources :categories, only: [ :index, :show ]
       resources :merchants, only: %i[index show]
-      resources :rules, only: %i[index show create update destroy]
+      resources :rules, only: %i[index show create update destroy] do
+        collection { get :registry }
+      end
       resources :rule_runs, only: [ :index, :show ]
       resources :securities, only: [ :index, :show ]
       resources :security_prices, only: [ :index, :show ]

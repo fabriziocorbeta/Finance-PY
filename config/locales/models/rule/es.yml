@@ -1,0 +1,47 @@
+---
+es:
+  rules:
+    condition_filters:
+      transaction_account:
+        label: Cuenta
+      transaction_amount:
+        label: Importe
+      transaction_category:
+        label: Categoría
+      transaction_details:
+        label: Detalles
+      transaction_merchant:
+        label: Comerciante
+      transaction_name:
+        label: Nombre de la transacción
+      transaction_notes:
+        label: Notas
+      transaction_type:
+        label: Tipo
+    action_executors:
+      auto_categorize:
+        label: Categorizar automáticamente (IA)
+      auto_detect_merchants:
+        label: Detectar comerciante automáticamente (IA)
+      exclude_transaction:
+        label: Excluir transacción
+      set_as_transfer_or_payment:
+        label: Marcar como transferencia/pago
+      set_investment_activity_label:
+        label: Asignar tipo de actividad de inversión
+      set_transaction_category:
+        label: Asignar categoría
+      set_transaction_merchant:
+        label: Asignar comerciante
+      set_transaction_name:
+        label: Renombrar transacción
+      set_transaction_tags:
+        label: Asignar etiquetas
+    operators:
+      like: Contiene
+      "=": Igual a
+      is_null: Está vacío
+      ">": Mayor que
+      ">=": Mayor o igual a
+      "<": Menor que
+      "<=": Menor o igual a
