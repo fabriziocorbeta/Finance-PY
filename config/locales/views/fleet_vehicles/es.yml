@@ -75,6 +75,11 @@ es:
     create:
       error: Error al agregar el registro de combustible. Revisa los datos.
       success: Registro de combustible agregado exitosamente.
+    edit:
+      title: Editar Registro de Combustible
+    update:
+      error: Error al actualizar el registro de combustible. Revisa los datos.
+      success: Registro de combustible actualizado exitosamente.
     destroy:
       success: Registro de combustible eliminado exitosamente.
     fuel_types:

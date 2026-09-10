@@ -57,6 +57,31 @@ class FuelLogsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to fleet_vehicle_url(@fleet_vehicle)
   end
 
+  test "should get edit" do
+    get edit_fleet_vehicle_fuel_log_url(@fleet_vehicle, @fuel_log)
+    assert_response :success
+  end
+
+  test "should update fuel log" do
+    patch fleet_vehicle_fuel_log_url(@fleet_vehicle, @fuel_log), params: {
+      fuel_log: {
+        account_id: @account.id,
+        odometer: 15000,
+        logged_at: Date.current,
+        notes: "Corregido",
+        fuel_log_lines_attributes: {
+          "0" => { id: @fuel_log.fuel_log_lines.first.id, fuel_type: "nafta", brand: "Podium", liters: "33.0", cost: "150000" }
+        }
+      }
+    }
+
+    @fuel_log.reload
+    assert_equal 33.0, @fuel_log.liters
+    assert_equal 15000, @fuel_log.odometer
+    assert_equal "Corregido", @fuel_log.notes
+    assert_redirected_to fleet_vehicle_url(@fleet_vehicle)
+  end
+
   test "should destroy fuel log" do
     assert_difference("FuelLog.count", -1) do
       delete fleet_vehicle_fuel_log_url(@fleet_vehicle, @fuel_log)
