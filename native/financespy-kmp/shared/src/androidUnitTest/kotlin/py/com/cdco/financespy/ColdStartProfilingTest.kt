@@ -65,7 +65,8 @@ class ColdStartProfilingTest {
                 )
                 RulesListViewModel(
                     scope = scope,
-                    ruleDao = database.ruleDao()
+                    ruleDao = database.ruleDao(),
+                    api = api
                 )
                 GoalsListViewModel(
                     scope = scope,
@@ -130,7 +131,8 @@ class ColdStartProfilingTest {
                 val rulesListViewModel by lazy {
                     RulesListViewModel(
                         scope = scope,
-                        ruleDao = database.ruleDao()
+                        ruleDao = database.ruleDao(),
+                        api = api
                     )
                 }
                 val goalsListViewModel by lazy {

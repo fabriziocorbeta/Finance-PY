@@ -85,7 +85,8 @@ class MainActivity : ComponentActivity() {
     private val rulesListViewModel by lazy {
         RulesListViewModel(
             scope = lifecycleScope,
-            ruleDao = database.ruleDao()
+            ruleDao = database.ruleDao(),
+            api = api
         )
     }
     private val goalsListViewModel by lazy {
@@ -154,7 +155,7 @@ class MainActivity : ComponentActivity() {
                     )
                 },
                 ruleFormViewModelFactory = { ruleId ->
-                    RuleFormViewModel(scope = lifecycleScope, ruleId = ruleId, api = api, ruleDao = database.ruleDao())
+                    RuleFormViewModel(scope = lifecycleScope, ruleId = ruleId, api = api)
                 },
                 goalsListViewModelFactory = { goalsListViewModel },
                 goalDetailViewModelFactory = { goalId ->

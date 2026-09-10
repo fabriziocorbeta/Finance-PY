@@ -281,7 +281,8 @@ fun App(
                             val ruleId = entry.arguments?.getString("ruleId")
                             RuleFormScreen(
                                 viewModel = remember(ruleId) { ruleFormViewModelFactory(ruleId) },
-                                onSaved = { navController.popBackStack() }
+                                onSaved = { navController.popBackStack() },
+                                onCancel = { navController.popBackStack() }
                             )
                         }
                         composable(Routes.GOAL_DETAIL) { entry ->

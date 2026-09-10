@@ -38,7 +38,8 @@ data class RuleConditionDto(
     val id: String,
     val condition_type: String,
     val operator: String,
-    val value: String? = null
+    val value: String? = null,
+    val sub_conditions: List<RuleConditionDto> = emptyList()
 )
 
 @Serializable
@@ -46,6 +47,30 @@ data class RuleActionDto(
     val id: String,
     val action_type: String,
     val value: String? = null
+)
+
+@Serializable
+data class RuleFilterDto(
+    val type: String,
+    val key: String,
+    val label: String,
+    val operators: List<List<String>>? = null,
+    val options: List<List<String>>? = null,
+    val number_step: Double? = null
+)
+
+@Serializable
+data class RuleExecutorDto(
+    val type: String,
+    val key: String,
+    val label: String,
+    val options: List<List<String>>? = null
+)
+
+@Serializable
+data class RuleRegistryDto(
+    val filters: List<RuleFilterDto>,
+    val executors: List<RuleExecutorDto>
 )
 
 @Serializable
@@ -71,6 +96,7 @@ data class CreateRuleBody(
     val name: String?,
     @EncodeDefault val resource_type: String = "transaction",
     @EncodeDefault val active: Boolean = true,
+    val effective_date: String? = null,
     val conditions_attributes: List<ConditionAttributes>,
     val actions_attributes: List<ActionAttributes>
 )
@@ -79,17 +105,26 @@ data class CreateRuleBody(
 data class ConditionAttributes(
     val condition_type: String,
     val operator: String,
-    val value: String
+    val value: String? = null,
+    val sub_conditions_attributes: List<ConditionAttributes>? = null
 )
 
 @Serializable
 data class ActionAttributes(
     val action_type: String,
-    val value: String
+    val value: String,
+    val id: String? = null,
+    val _destroy: Boolean? = null
 )
 
 @Serializable
 data class UpdateRuleRequest(val rule: UpdateRuleBody)
 
 @Serializable
-data class UpdateRuleBody(val active: Boolean? = null, val name: String? = null)
+data class UpdateRuleBody(
+    val name: String? = null,
+    val active: Boolean? = null,
+    val effective_date: String? = null,
+    val conditions_attributes: List<ConditionAttributes>? = null,
+    val actions_attributes: List<ActionAttributes>? = null
+)

@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
+import py.com.cdco.financespy.api.dto.RuleDto
+import py.com.cdco.financespy.api.dto.RuleRegistryDto
 import py.com.cdco.financespy.api.dto.UpdateRuleBody
 import py.com.cdco.financespy.db.RuleDao
 import py.com.cdco.financespy.db.RuleEntity
@@ -17,6 +19,11 @@ import py.com.cdco.financespy.db.RuleRunEntity
 data class RuleDetailState(
     val rule: RuleEntity? = null,
     val runs: List<RuleRunEntity> = emptyList(),
+    val registry: RuleRegistryDto? = null,
+    // Full remote rule (all conditions/actions/sub_conditions + effective_date) - RuleEntity is
+    // a flattened single-condition/single-action schema (see SyncEngine.toEntityOrNull) and
+    // can't carry this, so it's fetched separately here just for display purposes.
+    val ruleDetail: RuleDto? = null,
     val isDeleting: Boolean = false,
     val isTogglingActive: Boolean = false,
     val deleteError: String? = null,
@@ -37,6 +44,15 @@ class RuleDetailViewModel(
         combine(ruleDao.observeAll(), ruleRunDao.observeByRuleId(ruleId)) { rules, runs ->
             _state.value.copy(rule = rules.firstOrNull { it.id == ruleId }, runs = runs)
         }.onEach { _state.value = it }.launchIn(scope)
+
+        scope.launch {
+            runCatching { api.fetchRuleRegistry() }
+                .onSuccess { registry -> _state.value = _state.value.copy(registry = registry) }
+        }
+        scope.launch {
+            runCatching { api.fetchRule(ruleId) }
+                .onSuccess { detail -> _state.value = _state.value.copy(ruleDetail = detail) }
+        }
     }
 
     fun toggleActive() {
@@ -46,7 +62,7 @@ class RuleDetailViewModel(
             runCatching {
                 api.updateRule(ruleId, UpdateRuleBody(active = !current.active))
             }
-                .onSuccess { _state.value = _state.value.copy(isTogglingActive = false) }
+                .onSuccess { detail -> _state.value = _state.value.copy(isTogglingActive = false, ruleDetail = detail) }
                 .onFailure { e -> _state.value = _state.value.copy(isTogglingActive = false, toggleError = e.message ?: "Error al cambiar estado") }
         }
     }
