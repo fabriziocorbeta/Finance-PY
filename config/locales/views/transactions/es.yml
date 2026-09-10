@@ -228,6 +228,8 @@ es:
           income: Ingreso
           transfer: Transferencia
       form:
+        filter_button: Filtrar
+        search_placeholder: Buscar transacciones...
         toggle_selection_checkboxes: Alternar todas las casillas
       menu:
         account_filter: Cuenta

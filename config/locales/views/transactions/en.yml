@@ -263,6 +263,8 @@ en:
         greater_than: greater than
         less_than: less than
       form:
+        filter_button: Filter
+        search_placeholder: "Search transactions..."
         toggle_selection_checkboxes: Toggle all checkboxes
     attachments:
       cannot_exceed: "Cannot exceed %{count} attachments per transaction"
