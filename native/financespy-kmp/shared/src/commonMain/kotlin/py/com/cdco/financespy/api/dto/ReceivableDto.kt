@@ -61,6 +61,7 @@ data class ReceivablesMetaDto(
 @Serializable
 data class ReceivableDto(
     val id: String,
+    val account_id: String? = null,
     val name: String? = null,
     @Serializable(with = FlexibleDoubleSerializer::class) val total_amount: Double? = null,
     @Serializable(with = FlexibleDoubleSerializer::class) val balance: Double? = null,
