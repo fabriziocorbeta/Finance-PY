@@ -22,6 +22,17 @@ import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
+import py.com.cdco.financespy.utils.formatMoney
+
+fun formatGoalState(state: String?): String {
+    return when (state) {
+        "active" -> "Activa"
+        "paused" -> "Pausada"
+        "completed" -> "Completada"
+        "archived" -> "Archivada"
+        else -> "Activa"
+    }
+}
 
 @Composable
 fun GoalsListScreen(
@@ -78,7 +89,7 @@ fun GoalsListScreen(
                                     color = FinancePyColors.textPrimary()
                                 )
                                 Text(
-                                    text = goal.state ?: "active",
+                                    text = formatGoalState(goal.state),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = if (goal.state == "active" || goal.state == null) FinancePyColors.success() else FinancePyColors.textSubdued()
                                 )
@@ -89,8 +100,9 @@ fun GoalsListScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                val targetDouble = goal.targetAmount.toDoubleOrNull() ?: 0.0
                                 Text(
-                                    text = "Objetivo: ${goal.targetAmount} ${goal.currency}",
+                                    text = "Objetivo: ${formatMoney(targetDouble, goal.currency)}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = FinancePyColors.textSecondary()
                                 )
