@@ -31,6 +31,7 @@ import py.com.cdco.financespy.screens.ReceivablesListViewModel
 import py.com.cdco.financespy.screens.RuleDetailViewModel
 import py.com.cdco.financespy.screens.RuleFormViewModel
 import py.com.cdco.financespy.screens.RulesListViewModel
+import py.com.cdco.financespy.screens.TransactionFormViewModel
 import py.com.cdco.financespy.screens.TransactionsViewModel
 import py.com.cdco.financespy.sync.SyncEngine
 import py.com.cdco.financespy.sync.currentIsoDate
@@ -78,7 +79,7 @@ class MainActivity : ComponentActivity() {
     private val transactionsViewModel by lazy {
         TransactionsViewModel(
             scope = lifecycleScope,
-            entryDao = database.entryDao()
+            api = api
         )
     }
     private val rulesListViewModel by lazy {
@@ -142,6 +143,9 @@ class MainActivity : ComponentActivity() {
                     )
                 },
                 transactionsViewModelFactory = { transactionsViewModel },
+                transactionFormViewModelFactory = { transactionId ->
+                    TransactionFormViewModel(scope = lifecycleScope, api = api, transactionId = transactionId)
+                },
                 rulesListViewModelFactory = { rulesListViewModel },
                 ruleDetailViewModelFactory = { ruleId ->
                     RuleDetailViewModel(

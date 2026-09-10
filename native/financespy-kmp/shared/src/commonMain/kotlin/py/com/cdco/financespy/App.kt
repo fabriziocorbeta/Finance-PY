@@ -50,6 +50,8 @@ import py.com.cdco.financespy.screens.RuleFormScreen
 import py.com.cdco.financespy.screens.RuleFormViewModel
 import py.com.cdco.financespy.screens.RulesListScreen
 import py.com.cdco.financespy.screens.RulesListViewModel
+import py.com.cdco.financespy.screens.TransactionFormScreen
+import py.com.cdco.financespy.screens.TransactionFormViewModel
 import py.com.cdco.financespy.screens.TransactionsScreen
 import py.com.cdco.financespy.screens.TransactionsViewModel
 import py.com.cdco.financespy.theme.FinancePyColors
@@ -63,6 +65,7 @@ fun App(
     budgetDashboardViewModelFactory: () -> BudgetDashboardViewModel,
     budgetAllocationEditorViewModelFactory: (String) -> BudgetAllocationEditorViewModel,
     transactionsViewModelFactory: () -> TransactionsViewModel,
+    transactionFormViewModelFactory: (String?) -> TransactionFormViewModel,
     rulesListViewModelFactory: () -> RulesListViewModel,
     ruleDetailViewModelFactory: (String) -> RuleDetailViewModel,
     ruleFormViewModelFactory: (String?) -> RuleFormViewModel,
@@ -231,7 +234,22 @@ fun App(
                             )
                         }
                         composable(Routes.TRANSACTIONS) {
-                            TransactionsScreen(viewModel = remember { transactionsViewModelFactory() })
+                            TransactionsScreen(
+                                viewModel = remember { transactionsViewModelFactory() },
+                                onTransactionClick = { transactionId -> navController.navigate(Routes.transactionFormEdit(transactionId)) },
+                                onCreateClick = { navController.navigate(Routes.transactionFormCreate()) }
+                            )
+                        }
+                        composable(Routes.TRANSACTION_FORM) { entry ->
+                            val transactionId = entry.arguments?.getString("transactionId")
+                            TransactionFormScreen(
+                                viewModel = remember(transactionId) { transactionFormViewModelFactory(transactionId) },
+                                onSaved = {
+                                    transactionsViewModelFactory().refresh()
+                                    navController.popBackStack()
+                                },
+                                onCancel = { navController.popBackStack() }
+                            )
                         }
                         composable(Routes.RULES) {
                             RulesListScreen(
