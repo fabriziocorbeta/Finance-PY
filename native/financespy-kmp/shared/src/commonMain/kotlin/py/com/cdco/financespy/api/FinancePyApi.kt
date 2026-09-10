@@ -21,6 +21,7 @@ import py.com.cdco.financespy.api.dto.BudgetsEnvelope
 import py.com.cdco.financespy.api.dto.CategoriesResponse
 import py.com.cdco.financespy.api.dto.CategoryDto
 import py.com.cdco.financespy.api.dto.CreateGoalBody
+import py.com.cdco.financespy.api.dto.DashboardDto
 import py.com.cdco.financespy.api.dto.CreateGoalRequest
 import py.com.cdco.financespy.api.dto.CreateReceivableBody
 import py.com.cdco.financespy.api.dto.CreateReceivableRequest
@@ -93,6 +94,14 @@ open class FinancePyApi(private val http: HttpClient) {
     }
 
     open suspend fun fetchBalanceSheet(): BalanceSheetResponse = http.get("/api/v1/balance_sheet").body()
+
+    open suspend fun fetchDashboard(period: String? = null): DashboardDto {
+        return http.get("/api/v1/dashboard") {
+            if (period != null) {
+                parameter("period", period)
+            }
+        }.body()
+    }
 
     open suspend fun fetchAllRules(): List<RuleDto> {
         val all = mutableListOf<RuleDto>()
