@@ -30,7 +30,7 @@ class TransactionsTest < ApplicationSystemTestCase
   end
 
   test "can search for a transaction" do
-    assert_selector "h1", text: "Transactions"
+    assert_selector "h1", text: I18n.t("transactions.index.title")
 
     within "form#transactions-search" do
       find("#q_search").fill_in with: @transaction.name
