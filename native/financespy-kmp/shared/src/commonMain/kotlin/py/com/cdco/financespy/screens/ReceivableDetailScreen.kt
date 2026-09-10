@@ -1,7 +1,9 @@
 package py.com.cdco.financespy.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -9,21 +11,34 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
+import py.com.cdco.financespy.theme.components.AppTextField
 import py.com.cdco.financespy.theme.components.ButtonVariant
 import py.com.cdco.financespy.utils.formatMoney
 
@@ -86,6 +101,14 @@ fun ReceivableDetailScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.padding(top = 8.dp)
                         ) {
+                            if (receivable.balance > 0.0) {
+                                AppButton(
+                                    text = "Registrar pago",
+                                    onClick = { viewModel.openPaymentDialog() },
+                                    variant = ButtonVariant.Primary,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                             AppButton(
                                 text = "Editar",
                                 onClick = onEditClick,
@@ -111,6 +134,115 @@ fun ReceivableDetailScreen(
             }
         }
     }
+
+    if (state.showPaymentDialog) {
+        PaymentDialog(
+            accounts = state.paymentAccounts,
+            selectedAccountId = state.paymentFromAccountId,
+            amount = state.paymentAmount,
+            date = state.paymentDate,
+            isSaving = state.isRegisteringPayment,
+            error = state.paymentError,
+            onAccountSelected = viewModel::updatePaymentFromAccountId,
+            onAmountChange = viewModel::updatePaymentAmount,
+            onDateChange = viewModel::updatePaymentDate,
+            onConfirm = { viewModel.registerPayment(onDone = {}) },
+            onDismiss = { viewModel.closePaymentDialog() }
+        )
+    }
+}
+
+@Composable
+private fun PaymentDialog(
+    accounts: List<AccountDto>,
+    selectedAccountId: String?,
+    amount: String,
+    date: String,
+    isSaving: Boolean,
+    error: String?,
+    onAccountSelected: (String) -> Unit,
+    onAmountChange: (String) -> Unit,
+    onDateChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedAccount = accounts.find { it.id == selectedAccountId }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Registrar pago", color = FinancePyColors.textPrimary()) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column {
+                    Text(
+                        text = "Cuenta de origen",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = FinancePyColors.textSecondary()
+                    )
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(FinancePyColors.container())
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
+                                .clickable { expanded = true },
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = selectedAccount?.name ?: "Seleccioná una cuenta",
+                                color = FinancePyColors.textPrimary()
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = null,
+                                tint = FinancePyColors.textSecondary()
+                            )
+                        }
+                        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                            accounts.forEach { account ->
+                                DropdownMenuItem(
+                                    text = { Text(account.name) },
+                                    onClick = {
+                                        onAccountSelected(account.id)
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                AppTextField(
+                    value = amount,
+                    onValueChange = onAmountChange,
+                    label = "Importe"
+                )
+
+                AppTextField(
+                    value = date,
+                    onValueChange = onDateChange,
+                    label = "Fecha (AAAA-MM-DD)"
+                )
+
+                error?.let {
+                    Text(text = it, color = FinancePyColors.destructive(), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !isSaving) {
+                Text(if (isSaving) "Guardando..." else "Confirmar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
 
 @Composable

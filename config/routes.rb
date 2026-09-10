@@ -488,6 +488,7 @@ Rails.application.routes.draw do
       resources :receivables, only: %i[index show create update destroy]
 
       resources :transactions, only: [ :index, :show, :create, :update, :destroy ]
+      resources :transfers, only: [ :create ]
       resources :trades, only: [ :index, :show, :create, :update, :destroy ]
       resources :holdings, only: [ :index, :show ]
       resources :valuations, only: [ :index, :create, :update, :show ]

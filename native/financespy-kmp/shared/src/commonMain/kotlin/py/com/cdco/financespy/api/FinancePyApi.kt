@@ -43,6 +43,9 @@ import py.com.cdco.financespy.api.dto.RuleRunDto
 import py.com.cdco.financespy.api.dto.RuleRunsEnvelope
 import py.com.cdco.financespy.api.dto.RulesEnvelope
 import py.com.cdco.financespy.api.dto.TagDto
+import py.com.cdco.financespy.api.dto.CreateTransferBody
+import py.com.cdco.financespy.api.dto.CreateTransferRequest
+import py.com.cdco.financespy.api.dto.TransferDto
 import py.com.cdco.financespy.api.dto.TransactionDetailDto
 import py.com.cdco.financespy.api.dto.TransactionListItemDto
 import py.com.cdco.financespy.api.dto.TransactionsResponse
@@ -305,6 +308,13 @@ open class FinancePyApi(private val http: HttpClient) {
 
     open suspend fun deleteReceivable(id: String) {
         http.delete("/api/v1/receivables/$id")
+    }
+
+    open suspend fun createTransfer(body: CreateTransferBody): TransferDto {
+        return http.post("/api/v1/transfers") {
+            contentType(ContentType.Application.Json)
+            setBody(CreateTransferRequest(transfer = body))
+        }.body()
     }
 
     open suspend fun fetchAllBudgets(): List<BudgetDto> {
