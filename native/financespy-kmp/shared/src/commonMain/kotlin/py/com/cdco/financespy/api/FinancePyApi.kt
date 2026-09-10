@@ -38,6 +38,7 @@ import py.com.cdco.financespy.api.dto.ReceivableEnvelope
 import py.com.cdco.financespy.api.dto.ReceivablesEnvelope
 import py.com.cdco.financespy.api.dto.RuleDto
 import py.com.cdco.financespy.api.dto.RuleEnvelope
+import py.com.cdco.financespy.api.dto.RuleRegistryDto
 import py.com.cdco.financespy.api.dto.RuleRunDto
 import py.com.cdco.financespy.api.dto.RuleRunsEnvelope
 import py.com.cdco.financespy.api.dto.RulesEnvelope
@@ -213,6 +214,17 @@ open class FinancePyApi(private val http: HttpClient) {
 
     open suspend fun deleteRule(id: String) {
         http.delete("/api/v1/rules/$id")
+    }
+
+    open suspend fun fetchRuleRegistry(resourceType: String = "transaction"): RuleRegistryDto {
+        return http.get("/api/v1/rules/registry") {
+            parameter("resource_type", resourceType)
+        }.body()
+    }
+
+    open suspend fun fetchRule(id: String): RuleDto {
+        val response: RuleEnvelope = http.get("/api/v1/rules/$id").body()
+        return response.data
     }
 
     open suspend fun fetchAllGoals(): List<GoalDto> {
