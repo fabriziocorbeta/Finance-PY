@@ -5,6 +5,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
+import py.com.cdco.financespy.api.dto.AccountDto
+import py.com.cdco.financespy.api.dto.CreateGoalPledgeBody
+import py.com.cdco.financespy.api.dto.GoalPledgeDto
 import py.com.cdco.financespy.api.dto.UpdateGoalBody
 import py.com.cdco.financespy.db.GoalDao
 import py.com.cdco.financespy.db.GoalEntity
@@ -14,7 +17,15 @@ data class GoalDetailState(
     val isDeleting: Boolean = false,
     val deleteError: String? = null,
     val isUpdatingState: Boolean = false,
-    val stateError: String? = null
+    val stateError: String? = null,
+    val pledges: List<GoalPledgeDto> = emptyList(),
+    val isLoadingPledges: Boolean = false,
+    val showPledgeDialog: Boolean = false,
+    val pledgeAccounts: List<AccountDto> = emptyList(),
+    val pledgeAccountId: String? = null,
+    val pledgeAmount: String = "",
+    val pledgeError: String? = null,
+    val isSavingPledge: Boolean = false
 )
 
 class GoalDetailViewModel(
@@ -52,6 +63,104 @@ class GoalDetailViewModel(
                 )
                 goalDao.upsertAll(listOf(updatedEntity))
                 _state.value = _state.value.copy(goal = updatedEntity)
+            }
+        }
+        loadPledges()
+    }
+
+    fun loadPledges() {
+        scope.launch {
+            _state.value = _state.value.copy(isLoadingPledges = true)
+            runCatching {
+                val pledges = api.fetchGoalPledges(goalId)
+                _state.value = _state.value.copy(pledges = pledges, isLoadingPledges = false)
+            }.onFailure {
+                _state.value = _state.value.copy(isLoadingPledges = false)
+            }
+        }
+    }
+
+    fun openPledgeDialog() {
+        scope.launch {
+            runCatching {
+                val allAccounts = api.fetchAllAccounts()
+                val goalDto = runCatching { api.fetchGoal(goalId) }.getOrNull()
+                val accountIds = goalDto?.account_ids
+                val filtered = if (!accountIds.isNullOrEmpty()) {
+                    allAccounts.filter { it.id in accountIds }
+                } else {
+                    allAccounts
+                }
+                _state.value = _state.value.copy(
+                    pledgeAccounts = filtered,
+                    pledgeAccountId = filtered.firstOrNull()?.id,
+                    pledgeAmount = "",
+                    pledgeError = null,
+                    showPledgeDialog = true
+                )
+            }.onFailure { e ->
+                _state.value = _state.value.copy(
+                    pledgeError = e.message ?: "Error al cargar cuentas",
+                    showPledgeDialog = true
+                )
+            }
+        }
+    }
+
+    fun closePledgeDialog() {
+        _state.value = _state.value.copy(showPledgeDialog = false, pledgeError = null)
+    }
+
+    fun updatePledgeAccount(id: String) {
+        _state.value = _state.value.copy(pledgeAccountId = id)
+    }
+
+    fun updatePledgeAmount(amount: String) {
+        _state.value = _state.value.copy(pledgeAmount = amount)
+    }
+
+    fun createPledge(onDone: () -> Unit = {}) {
+        val accountId = _state.value.pledgeAccountId
+        val amountDouble = _state.value.pledgeAmount.toDoubleOrNull()
+        if (accountId == null) {
+            _state.value = _state.value.copy(pledgeError = "Seleccioná una cuenta")
+            return
+        }
+        if (amountDouble == null || amountDouble <= 0.0) {
+            _state.value = _state.value.copy(pledgeError = "Ingresá un monto válido")
+            return
+        }
+
+        scope.launch {
+            _state.value = _state.value.copy(isSavingPledge = true, pledgeError = null)
+            runCatching {
+                api.createGoalPledge(goalId, CreateGoalPledgeBody(amount = amountDouble, account_id = accountId))
+            }.onSuccess {
+                _state.value = _state.value.copy(isSavingPledge = false, showPledgeDialog = false)
+                loadPledges()
+                onDone()
+            }.onFailure { e ->
+                _state.value = _state.value.copy(isSavingPledge = false, pledgeError = e.message ?: "Error al crear compromiso")
+            }
+        }
+    }
+
+    fun cancelPledge(pledgeId: String) {
+        scope.launch {
+            runCatching {
+                api.cancelGoalPledge(goalId, pledgeId)
+            }.onSuccess {
+                loadPledges()
+            }
+        }
+    }
+
+    fun renewPledge(pledgeId: String) {
+        scope.launch {
+            runCatching {
+                api.renewGoalPledge(goalId, pledgeId)
+            }.onSuccess {
+                loadPledges()
             }
         }
     }

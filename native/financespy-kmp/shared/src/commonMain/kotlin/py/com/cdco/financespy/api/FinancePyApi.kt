@@ -21,8 +21,13 @@ import py.com.cdco.financespy.api.dto.BudgetsEnvelope
 import py.com.cdco.financespy.api.dto.CategoriesResponse
 import py.com.cdco.financespy.api.dto.CategoryDto
 import py.com.cdco.financespy.api.dto.CreateGoalBody
+import py.com.cdco.financespy.api.dto.CreateGoalPledgeBody
+import py.com.cdco.financespy.api.dto.CreateGoalPledgeRequest
 import py.com.cdco.financespy.api.dto.DashboardDto
 import py.com.cdco.financespy.api.dto.CreateGoalRequest
+import py.com.cdco.financespy.api.dto.GoalPledgeDto
+import py.com.cdco.financespy.api.dto.GoalPledgeEnvelope
+import py.com.cdco.financespy.api.dto.GoalPledgesEnvelope
 import py.com.cdco.financespy.api.dto.CreateReceivableBody
 import py.com.cdco.financespy.api.dto.CreateReceivableRequest
 import py.com.cdco.financespy.api.dto.CreateRuleBody
@@ -268,6 +273,28 @@ open class FinancePyApi(private val http: HttpClient) {
 
     open suspend fun deleteGoal(id: String) {
         http.delete("/api/v1/goals/$id")
+    }
+
+    open suspend fun fetchGoalPledges(goalId: String): List<GoalPledgeDto> {
+        val response: GoalPledgesEnvelope = http.get("/api/v1/goals/$goalId/pledges").body()
+        return response.data
+    }
+
+    open suspend fun createGoalPledge(goalId: String, body: CreateGoalPledgeBody): GoalPledgeDto {
+        val response: GoalPledgeEnvelope = http.post("/api/v1/goals/$goalId/pledges") {
+            contentType(ContentType.Application.Json)
+            setBody(CreateGoalPledgeRequest(pledge = body))
+        }.body()
+        return response.data
+    }
+
+    open suspend fun cancelGoalPledge(goalId: String, pledgeId: String) {
+        http.delete("/api/v1/goals/$goalId/pledges/$pledgeId")
+    }
+
+    open suspend fun renewGoalPledge(goalId: String, pledgeId: String): GoalPledgeDto {
+        val response: GoalPledgeEnvelope = http.patch("/api/v1/goals/$goalId/pledges/$pledgeId/renew").body()
+        return response.data
     }
 
     open suspend fun fetchAllReceivables(): List<ReceivableDto> {

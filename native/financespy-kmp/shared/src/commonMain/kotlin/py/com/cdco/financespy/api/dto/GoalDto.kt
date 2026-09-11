@@ -39,7 +39,8 @@ data class GoalDto(
     val current_balance_cents: Long? = null,
     val remaining_amount: Double? = null,
     val remaining_amount_cents: Long? = null,
-    val progress_percent: Int? = null
+    val progress_percent: Int? = null,
+    val account_ids: List<String>? = null
 )
 
 @Serializable
