@@ -59,6 +59,10 @@ class GoalDetailViewModel(
                     remainingAmount = remote.remaining_amount,
                     remainingAmountCents = remote.remaining_amount_cents,
                     progressPercent = remote.progress_percent,
+                    pace = remote.pace,
+                    status = remote.status,
+                    monthsRemaining = remote.months_remaining,
+                    catchUpDelta = remote.catch_up_delta,
                     updatedAt = null
                 )
                 goalDao.upsertAll(listOf(updatedEntity))
@@ -186,6 +190,10 @@ class GoalDetailViewModel(
                     remainingAmount = updated.remaining_amount,
                     remainingAmountCents = updated.remaining_amount_cents,
                     progressPercent = updated.progress_percent,
+                    pace = updated.pace,
+                    status = updated.status,
+                    monthsRemaining = updated.months_remaining,
+                    catchUpDelta = updated.catch_up_delta,
                     updatedAt = null
                 )
                 goalDao.upsertAll(listOf(updatedEntity))

@@ -116,6 +116,46 @@ fun GoalDetailScreen(
                                     color = if (goal.state == "active" || goal.state == null) FinancePyColors.success() else FinancePyColors.textSubdued()
                                 )
                             }
+                            goal.status?.let { trackingStatus ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Ritmo: ",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = FinancePyColors.textSecondary()
+                                    )
+                                    Text(
+                                        text = formatGoalTrackingStatus(trackingStatus),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = when (trackingStatus) {
+                                            "on_track", "reached" -> FinancePyColors.success()
+                                            "behind" -> FinancePyColors.destructive()
+                                            else -> FinancePyColors.textSubdued()
+                                        }
+                                    )
+                                }
+                            }
+                            goal.pace?.let { paceVal ->
+                                Text(
+                                    text = "Ritmo actual: ${formatMoney(paceVal, goal.currency)}/mes",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = FinancePyColors.textSecondary()
+                                )
+                            }
+                            goal.monthsRemaining?.let { months ->
+                                val roundedMonths = kotlin.math.round(months * 10) / 10.0
+                                Text(
+                                    text = "Meses restantes: $roundedMonths",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = FinancePyColors.textSecondary()
+                                )
+                            }
+                            goal.catchUpDelta?.takeIf { it > 0.0 }?.let { delta ->
+                                Text(
+                                    text = "Para ponerte al día: ${formatMoney(delta, goal.currency)}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = FinancePyColors.warning()
+                                )
+                            }
                         }
 
                         val percentProgress = ((goal.progressPercent ?: 0).coerceIn(0, 100)) / 100f
@@ -400,6 +440,19 @@ private fun PledgeDialog(
             }
         }
     )
+}
+
+fun formatGoalTrackingStatus(status: String?): String {
+    return when (status) {
+        "on_track" -> "Al día"
+        "behind" -> "Atrasado"
+        "reached" -> "¡Alcanzada!"
+        "no_target_date" -> "Sin fecha límite"
+        "archived" -> "Archivada"
+        "paused" -> "Pausada"
+        "completed" -> "Completada"
+        else -> status ?: "Sin estado"
+    }
 }
 
 private fun formatPledgeStatus(status: String, daysLeft: Int): String {

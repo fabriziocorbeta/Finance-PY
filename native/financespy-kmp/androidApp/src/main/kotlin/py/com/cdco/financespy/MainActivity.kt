@@ -92,6 +92,7 @@ class MainActivity : ComponentActivity() {
     private val goalsListViewModel by lazy {
         GoalsListViewModel(
             scope = lifecycleScope,
+            api = api,
             goalDao = database.goalDao()
         )
     }

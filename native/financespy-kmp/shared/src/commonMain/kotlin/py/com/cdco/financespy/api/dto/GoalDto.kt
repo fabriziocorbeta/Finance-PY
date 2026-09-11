@@ -40,12 +40,23 @@ data class GoalDto(
     val remaining_amount: Double? = null,
     val remaining_amount_cents: Long? = null,
     val progress_percent: Int? = null,
-    val account_ids: List<String>? = null
+    val account_ids: List<String>? = null,
+    val pace: Double? = null,
+    val status: String? = null,
+    val months_remaining: Double? = null,
+    val catch_up_delta: Double? = null,
+    val allocations: Map<String, String>? = null
 )
 
 @Serializable
 data class CreateGoalRequest(
     val goal: CreateGoalBody
+)
+
+@Serializable
+data class GoalAccountAttributeDto(
+    val account_id: String,
+    val allocated_amount: String? = null
 )
 
 @Serializable
@@ -59,7 +70,9 @@ data class CreateGoalBody(
     val notes: String? = null,
     val progress_basis: String? = null,
     val state: String? = null,
-    val account_ids: List<String>
+    val account_ids: List<String>,
+    val allocations: Map<String, String>? = null,
+    val goal_accounts_attributes: List<GoalAccountAttributeDto>? = null
 )
 
 @Serializable
@@ -78,5 +91,7 @@ data class UpdateGoalBody(
     val notes: String? = null,
     val progress_basis: String? = null,
     val state: String? = null,
-    val account_ids: List<String>? = null
+    val account_ids: List<String>? = null,
+    val allocations: Map<String, String>? = null,
+    val goal_accounts_attributes: List<GoalAccountAttributeDto>? = null
 )

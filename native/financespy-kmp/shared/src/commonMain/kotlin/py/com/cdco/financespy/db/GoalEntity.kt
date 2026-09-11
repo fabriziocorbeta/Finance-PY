@@ -20,5 +20,9 @@ data class GoalEntity(
     val remainingAmount: Double? = null,
     val remainingAmountCents: Long? = null,
     val progressPercent: Int? = null,
+    val pace: Double? = null,
+    val status: String? = null,
+    val monthsRemaining: Double? = null,
+    val catchUpDelta: Double? = null,
     val updatedAt: String? = null
 )

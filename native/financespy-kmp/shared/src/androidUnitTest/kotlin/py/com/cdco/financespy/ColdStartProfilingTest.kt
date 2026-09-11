@@ -70,6 +70,7 @@ class ColdStartProfilingTest {
                 )
                 GoalsListViewModel(
                     scope = scope,
+                    api = api,
                     goalDao = database.goalDao()
                 )
             }
@@ -138,6 +139,7 @@ class ColdStartProfilingTest {
                 val goalsListViewModel by lazy {
                     GoalsListViewModel(
                         scope = scope,
+                        api = api,
                         goalDao = database.goalDao()
                     )
                 }
