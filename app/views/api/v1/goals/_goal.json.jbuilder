@@ -18,5 +18,5 @@ json.account_ids goal.linked_accounts.map(&:id)
 json.pace goal.pace
 json.status goal.status
 json.months_remaining goal.months_remaining
-json.catch_up_delta money_to_minor_units.call(goal.catch_up_delta_money) ? goal.catch_up_delta_money.amount : nil
+json.catch_up_delta goal.monthly_target_amount.nil? ? nil : goal.catch_up_delta_money.amount
 json.allocations goal.goal_accounts.to_h { |ga| [ ga.account_id.to_s, ga.allocated_amount&.to_s ] }
