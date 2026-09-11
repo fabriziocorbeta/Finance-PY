@@ -470,7 +470,11 @@ Rails.application.routes.draw do
       patch "auth/enable_ai", to: "auth#enable_ai"
 
       # Production API endpoints
-      resources :accounts, only: [ :index, :show ]
+      resources :accounts, only: [ :index, :show ] do
+        member do
+          get :balance_series
+        end
+      end
       resources :categories, only: [ :index, :show ]
       resources :merchants, only: %i[index show]
       resources :rules, only: %i[index show create update destroy] do

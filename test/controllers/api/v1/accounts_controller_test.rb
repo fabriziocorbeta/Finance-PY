@@ -303,6 +303,52 @@ class Api::V1::AccountsControllerTest < ActionDispatch::IntegrationTest
     assert_equal account_names.sort, account_names
   end
 
+  test "should return balance series for account" do
+    account = accounts(:depository)
+
+    get "/api/v1/accounts/#{account.id}/balance_series", headers: api_headers(@api_key)
+
+    assert_response :success
+    response_body = JSON.parse(response.body)
+
+    assert_equal account.currency, response_body["currency"]
+    assert_equal "last_30_days", response_body["period"]
+    assert response_body["series"].is_a?(Array)
+    assert response_body["series"].length > 0
+
+    point = response_body["series"].first
+    assert point.key?("date")
+    assert point.key?("balance")
+    assert point["balance"].is_a?(Numeric)
+
+    if response_body["trend"]
+      trend = response_body["trend"]
+      assert trend.key?("start_balance")
+      assert trend.key?("end_balance")
+      assert trend.key?("value")
+      assert trend.key?("direction")
+    end
+  end
+
+  test "should respect custom period for balance series" do
+    account = accounts(:depository)
+
+    get "/api/v1/accounts/#{account.id}/balance_series", params: { period: "last_90_days" }, headers: api_headers(@api_key)
+
+    assert_response :success
+    response_body = JSON.parse(response.body)
+    assert_equal "last_90_days", response_body["period"]
+  end
+
+  test "should return 404 for missing or unauthorized account on balance_series" do
+    get "/api/v1/accounts/#{SecureRandom.uuid}/balance_series", headers: api_headers(@api_key)
+    assert_response :not_found
+
+    account = accounts(:depository)
+    get "/api/v1/accounts/#{account.id}/balance_series", headers: api_headers(@other_family_api_key)
+    assert_response :not_found
+  end
+
   private
 
     def api_headers(api_key)

@@ -11,6 +11,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import py.com.cdco.financespy.api.dto.AccountDto
+import py.com.cdco.financespy.api.dto.BalanceSeriesDto
 import py.com.cdco.financespy.api.dto.AccountsResponse
 import py.com.cdco.financespy.api.dto.BalanceSheetResponse
 import py.com.cdco.financespy.api.dto.BudgetCategoryDto
@@ -66,6 +67,12 @@ import py.com.cdco.financespy.api.dto.UpdateTransactionBody
 import py.com.cdco.financespy.api.dto.UpdateTransactionRequest
 
 open class FinancePyApi(private val http: HttpClient) {
+    open suspend fun fetchAccountBalanceSeries(accountId: String, period: String = "last_30_days"): BalanceSeriesDto {
+        return http.get("/api/v1/accounts/$accountId/balance_series") {
+            parameter("period", period)
+        }.body()
+    }
+
     open suspend fun fetchAllAccounts(): List<AccountDto> {
         val all = mutableListOf<AccountDto>()
         var page = 1
