@@ -122,6 +122,10 @@ private fun GoalDto.toEntity() = GoalEntity(
     remainingAmount = remaining_amount,
     remainingAmountCents = remaining_amount_cents,
     progressPercent = progress_percent,
+    pace = pace,
+    status = status,
+    monthsRemaining = months_remaining,
+    catchUpDelta = catch_up_delta,
     updatedAt = null
 )
 

@@ -14,3 +14,9 @@ json.remaining_amount_cents money_to_minor_units.call(goal.remaining_amount_mone
 
 json.progress_percent goal.progress_percent
 json.account_ids goal.linked_accounts.map(&:id)
+
+json.pace goal.pace
+json.status goal.status
+json.months_remaining goal.months_remaining
+json.catch_up_delta money_to_minor_units.call(goal.catch_up_delta_money) ? goal.catch_up_delta_money.amount : nil
+json.allocations goal.goal_accounts.to_h { |ga| [ ga.account_id.to_s, ga.allocated_amount&.to_s ] }

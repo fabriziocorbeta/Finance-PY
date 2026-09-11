@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.CreateGoalBody
+import py.com.cdco.financespy.api.dto.GoalAccountAttributeDto
 import py.com.cdco.financespy.api.dto.UpdateGoalBody
 import py.com.cdco.financespy.db.AccountDao
 import py.com.cdco.financespy.db.AccountEntity
@@ -22,6 +23,7 @@ data class GoalFormState(
     val icon: String = "",
     val notes: String = "",
     val selectedAccountIds: Set<String> = emptySet(),
+    val allocations: Map<String, String> = emptyMap(),
     val availableAccounts: List<AccountEntity> = emptyList(),
     val isSaving: Boolean = false,
     val error: String? = null
@@ -57,6 +59,13 @@ class GoalFormViewModel(
                         notes = goal.notes.orEmpty()
                     )
                 }
+                runCatching {
+                    val remoteGoal = api.fetchGoal(goalId)
+                    _state.value = _state.value.copy(
+                        selectedAccountIds = remoteGoal.account_ids.orEmpty().toSet(),
+                        allocations = remoteGoal.allocations.orEmpty()
+                    )
+                }
             }
         }
     }
@@ -66,15 +75,29 @@ class GoalFormViewModel(
     fun updateCurrency(value: String) { _state.value = _state.value.copy(currency = value) }
     fun updateTargetDate(value: String) { _state.value = _state.value.copy(targetDate = value) }
     fun updateNotes(value: String) { _state.value = _state.value.copy(notes = value) }
+    fun updateColor(value: String) { _state.value = _state.value.copy(color = value) }
+    fun updateIcon(value: String) { _state.value = _state.value.copy(icon = value) }
 
     fun toggleAccountSelection(accountId: String) {
         val current = _state.value.selectedAccountIds.toMutableSet()
+        val currentAllocations = _state.value.allocations.toMutableMap()
         if (current.contains(accountId)) {
             current.remove(accountId)
+            currentAllocations.remove(accountId)
         } else {
             current.add(accountId)
         }
-        _state.value = _state.value.copy(selectedAccountIds = current)
+        _state.value = _state.value.copy(selectedAccountIds = current, allocations = currentAllocations)
+    }
+
+    fun updateAllocation(accountId: String, amount: String) {
+        val current = _state.value.allocations.toMutableMap()
+        if (amount.isBlank()) {
+            current.remove(accountId)
+        } else {
+            current[accountId] = amount.trim()
+        }
+        _state.value = _state.value.copy(allocations = current)
     }
 
     fun save(onSaved: () -> Unit) {
@@ -94,6 +117,12 @@ class GoalFormViewModel(
 
         scope.launch {
             _state.value = s.copy(isSaving = true, error = null)
+            val selectedAccountList = s.selectedAccountIds.toList()
+            val allocationsMap = s.allocations.filterKeys { it in s.selectedAccountIds }.filterValues { it.isNotBlank() }.ifEmpty { null }
+            val goalAccountsAttrs = s.selectedAccountIds.map { accId ->
+                GoalAccountAttributeDto(account_id = accId, allocated_amount = s.allocations[accId]?.ifBlank { null })
+            }.ifEmpty { null }
+
             val result = if (goalId != null) {
                 val body = UpdateGoalBody(
                     name = s.name,
@@ -103,7 +132,9 @@ class GoalFormViewModel(
                     color = s.color.ifBlank { null },
                     icon = s.icon.ifBlank { null },
                     notes = s.notes.ifBlank { null },
-                    account_ids = if (s.selectedAccountIds.isNotEmpty()) s.selectedAccountIds.toList() else null
+                    account_ids = if (selectedAccountList.isNotEmpty()) selectedAccountList else null,
+                    allocations = allocationsMap,
+                    goal_accounts_attributes = goalAccountsAttrs
                 )
                 runCatching { api.updateGoal(goalId, body) }
             } else {
@@ -115,7 +146,9 @@ class GoalFormViewModel(
                     color = s.color.ifBlank { null },
                     icon = s.icon.ifBlank { null },
                     notes = s.notes.ifBlank { null },
-                    account_ids = s.selectedAccountIds.toList()
+                    account_ids = selectedAccountList,
+                    allocations = allocationsMap,
+                    goal_accounts_attributes = goalAccountsAttrs
                 )
                 runCatching { api.createGoal(body) }
             }
