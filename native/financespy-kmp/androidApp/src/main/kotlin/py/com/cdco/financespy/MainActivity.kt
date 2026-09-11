@@ -188,7 +188,8 @@ class MainActivity : ComponentActivity() {
                         scope = lifecycleScope,
                         accountId = accountId,
                         accountDao = database.accountDao(),
-                        entryDao = database.entryDao()
+                        entryDao = database.entryDao(),
+                        api = api
                     )
                 }
             )
