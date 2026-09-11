@@ -484,7 +484,13 @@ Rails.application.routes.draw do
       resources :budgets, only: %i[index show create update destroy] do
         resources :budget_categories, only: %i[index show update]
       end
-      resources :goals, only: %i[index show create update destroy]
+      resources :goals, only: %i[index show create update destroy] do
+        resources :pledges, only: %i[index create destroy], controller: "goal_pledges" do
+          member do
+            patch :renew
+          end
+        end
+      end
       resources :receivables, only: %i[index show create update destroy]
 
       resources :transactions, only: [ :index, :show, :create, :update, :destroy ]

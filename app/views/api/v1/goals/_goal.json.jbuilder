@@ -13,3 +13,4 @@ json.remaining_amount goal.remaining_amount
 json.remaining_amount_cents money_to_minor_units.call(goal.remaining_amount_money)
 
 json.progress_percent goal.progress_percent
+json.account_ids goal.linked_accounts.map(&:id)
