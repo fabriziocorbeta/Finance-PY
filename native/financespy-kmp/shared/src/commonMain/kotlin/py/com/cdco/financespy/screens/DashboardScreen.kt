@@ -12,16 +12,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,16 +51,23 @@ fun DashboardScreen(
     val dashboard = state.dashboard
 
     val periodOptions = listOf(
-        "current_month" to "Mes actual",
+        "last_day" to "Hoy",
+        "current_week" to "Esta semana",
+        "last_7_days" to "Últimos 7 días",
+        "current_month" to "Este mes",
+        "last_month" to "Mes pasado",
         "last_30_days" to "Últimos 30 días",
-        "year_to_date" to "Año actual",
+        "last_90_days" to "Últimos 90 días",
+        "current_year" to "Este año",
+        "last_365_days" to "Últimos 365 días",
+        "last_5_years" to "Últimos 5 años",
+        "last_10_years" to "Últimos 10 años",
         "all_time" to "Todo"
     )
 
-    val primaryBgColor = FinancePyColors.buttonBgPrimary()
-    val containerBgColor = FinancePyColors.container()
-    val surfaceColor = FinancePyColors.surface()
-    val textPrimaryColor = FinancePyColors.textPrimary()
+    var periodExpanded by remember { mutableStateOf(false) }
+    val currentPeriodKey = state.selectedPeriod ?: dashboard?.period?.key ?: "current_month"
+    val currentPeriodLabel = periodOptions.find { it.first == currentPeriodKey }?.second ?: "Este mes"
 
     LazyColumn(
         modifier = Modifier
@@ -115,25 +129,49 @@ fun DashboardScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(periodOptions) { (key, label) ->
-                        val isSelected = (state.selectedPeriod ?: "current_month") == key
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(if (isSelected) primaryBgColor else containerBgColor)
-                                .clickable { viewModel.selectPeriod(key) }
-                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                        ) {
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                ),
-                                color = if (isSelected) surfaceColor else textPrimaryColor
+                Box {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(FinancePyColors.container())
+                            .clickable { periodExpanded = true }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = currentPeriodLabel,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = FinancePyColors.textPrimary()
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            tint = FinancePyColors.textSecondary()
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = periodExpanded,
+                        onDismissRequest = { periodExpanded = false }
+                    ) {
+                        periodOptions.forEach { (key, label) ->
+                            val isSelected = key == currentPeriodKey
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        ),
+                                        color = if (isSelected) FinancePyColors.buttonBgPrimary() else FinancePyColors.textPrimary()
+                                    )
+                                },
+                                onClick = {
+                                    periodExpanded = false
+                                    viewModel.selectPeriod(key)
+                                }
                             )
                         }
                     }

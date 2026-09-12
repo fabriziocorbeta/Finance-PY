@@ -168,6 +168,12 @@ class DashboardViewModelTest {
 
         assertEquals("last_30_days", fakeApi.lastRequestedPeriod)
         assertEquals("last_30_days", viewModel.state.value.selectedPeriod)
+
+        viewModel.selectPeriod("current_year")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("current_year", fakeApi.lastRequestedPeriod)
+        assertEquals("current_year", viewModel.state.value.selectedPeriod)
     }
 
     @Test
