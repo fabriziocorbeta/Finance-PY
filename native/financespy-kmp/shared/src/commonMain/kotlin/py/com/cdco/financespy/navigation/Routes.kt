@@ -16,6 +16,7 @@ object Routes {
     const val RECEIVABLE_FORM = "receivable_form?receivableId={receivableId}"
     const val BUDGET_ALLOCATION_EDITOR = "budget_editor/{budgetId}"
     const val TRANSACTION_FORM = "transaction_form?transactionId={transactionId}"
+    const val SETTINGS = "settings"
 
     fun accountDetail(accountId: String) = "account/$accountId"
     fun ruleDetail(ruleId: String) = "rule/$ruleId"

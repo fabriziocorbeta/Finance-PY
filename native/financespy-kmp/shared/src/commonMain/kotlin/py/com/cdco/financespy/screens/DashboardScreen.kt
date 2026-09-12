@@ -17,10 +17,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,7 +47,8 @@ import py.com.cdco.financespy.theme.components.AppButton
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
-    onAccountClick: (String) -> Unit = {}
+    onAccountClick: (String) -> Unit = {},
+    onSettingsClick: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     val dashboard = state.dashboard
@@ -115,6 +118,13 @@ fun DashboardScreen(
                             text = "Actualizar",
                             onClick = { viewModel.refresh() }
                         )
+                        IconButton(onClick = onSettingsClick) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Ajustes",
+                                tint = FinancePyColors.textPrimary()
+                            )
+                        }
                     }
                 }
 

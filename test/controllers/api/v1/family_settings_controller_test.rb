@@ -51,6 +51,13 @@ class Api::V1::FamilySettingsControllerTest < ActionDispatch::IntegrationTest
     assert_equal @family.updated_at.iso8601, response_body["updated_at"]
     assert_not response_body.key?("stripe_customer_id")
     assert_not response_body.key?("vector_store_id")
+
+    assert_equal @user.id, response_body["current_user"]["id"]
+    assert_equal @user.email, response_body["current_user"]["email"]
+    assert_equal @user.role, response_body["current_user"]["role"]
+
+    assert_kind_of Array, response_body["users"]
+    assert response_body["users"].any? { |u| u["id"] == @user.id }
   end
 
   test "requires authentication" do

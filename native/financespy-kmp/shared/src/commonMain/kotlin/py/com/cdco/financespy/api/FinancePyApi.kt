@@ -17,6 +17,7 @@ import py.com.cdco.financespy.api.dto.BalanceSheetResponse
 import py.com.cdco.financespy.api.dto.BudgetCategoryDto
 import py.com.cdco.financespy.api.dto.BudgetCategoryEnvelope
 import py.com.cdco.financespy.api.dto.BudgetDto
+import py.com.cdco.financespy.api.dto.FamilySettingsDto
 import py.com.cdco.financespy.api.dto.BudgetEnvelope
 import py.com.cdco.financespy.api.dto.BudgetsEnvelope
 import py.com.cdco.financespy.api.dto.CategoriesResponse
@@ -383,4 +384,6 @@ open class FinancePyApi(private val http: HttpClient) {
         }.body()
         return response.data
     }
+
+    open suspend fun fetchFamilySettings(): FamilySettingsDto = http.get("/api/v1/family_settings").body()
 }

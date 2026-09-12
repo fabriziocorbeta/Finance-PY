@@ -5,6 +5,7 @@ class Api::V1::FamilySettingsController < Api::V1::BaseController
 
   def show
     @family = current_resource_owner.family
+    @current_user = current_resource_owner
   end
 
   private
