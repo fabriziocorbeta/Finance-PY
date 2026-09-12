@@ -26,7 +26,7 @@ class Api::V1::ReportsController < Api::V1::BaseController
 
   private
 
-  def ensure_read_scope
-    authorize_scope!(:read)
-  end
+    def ensure_read_scope
+      authorize_scope!(:read)
+    end
 end
