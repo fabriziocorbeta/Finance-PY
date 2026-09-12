@@ -214,14 +214,19 @@ private fun AccountGroupExpandableItem(
                 Text(
                     text = accountGroup.name,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = FinancePyColors.textPrimary()
+                    color = FinancePyColors.textPrimary(),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
                 if (accountGroup.weight > 0) {
                     Spacer(modifier = Modifier.width(6.dp))
+                    val roundedWeight = (accountGroup.weight * 10).toInt() / 10.0
                     Text(
-                        text = "(${accountGroup.weight}%)",
+                        text = "($roundedWeight%)",
                         style = MaterialTheme.typography.labelSmall,
-                        color = FinancePyColors.textSecondary()
+                        color = FinancePyColors.textSecondary(),
+                        maxLines = 1
                     )
                 }
             }
