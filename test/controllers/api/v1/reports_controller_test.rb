@@ -111,7 +111,7 @@ class Api::V1::ReportsControllerTest < ActionDispatch::IntegrationTest
 
   private
 
-  def api_headers(api_key)
-    { "X-Api-Key" => api_key.plain_key }
-  end
+    def api_headers(api_key)
+      { "X-Api-Key" => api_key.plain_key }
+    end
 end
