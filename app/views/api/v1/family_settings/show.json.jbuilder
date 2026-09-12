@@ -15,14 +15,14 @@ json.enabled_currencies @family.enabled_currency_codes
 json.created_at @family.created_at.iso8601
 json.updated_at @family.updated_at.iso8601
 
-if current_resource_owner
+if @current_user
   json.current_user do
-    json.id current_resource_owner.id
-    json.email current_resource_owner.email
-    json.first_name current_resource_owner.first_name
-    json.last_name current_resource_owner.last_name
-    json.display_name current_resource_owner.display_name
-    json.role current_resource_owner.role
+    json.id @current_user.id
+    json.email @current_user.email
+    json.first_name @current_user.first_name
+    json.last_name @current_user.last_name
+    json.display_name @current_user.display_name
+    json.role @current_user.role
   end
 end
 
