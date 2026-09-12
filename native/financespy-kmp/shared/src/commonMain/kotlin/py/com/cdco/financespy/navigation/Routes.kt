@@ -7,6 +7,7 @@ object Routes {
     const val RULES = "rules"
     const val GOALS = "goals"
     const val RECEIVABLES = "receivables"
+    const val REPORTS = "reports"
     const val ACCOUNT_DETAIL = "account/{accountId}"
     const val RULE_DETAIL = "rule/{ruleId}"
     const val RULE_FORM = "rule_form?ruleId={ruleId}"

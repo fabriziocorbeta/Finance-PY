@@ -41,6 +41,7 @@ import py.com.cdco.financespy.api.dto.GoalEnvelope
 import py.com.cdco.financespy.api.dto.GoalsEnvelope
 import py.com.cdco.financespy.api.dto.MerchantDto
 import py.com.cdco.financespy.api.dto.ReceivableDto
+import py.com.cdco.financespy.api.dto.ReportsSummaryDto
 import py.com.cdco.financespy.api.dto.ReceivableEnvelope
 import py.com.cdco.financespy.api.dto.ReceivablesEnvelope
 import py.com.cdco.financespy.api.dto.RuleDto
@@ -386,4 +387,16 @@ open class FinancePyApi(private val http: HttpClient) {
     }
 
     open suspend fun fetchFamilySettings(): FamilySettingsDto = http.get("/api/v1/family_settings").body()
+
+    open suspend fun fetchReportsSummary(
+        periodType: String = "monthly",
+        startDate: String? = null,
+        endDate: String? = null
+    ): ReportsSummaryDto {
+        return http.get("/api/v1/reports/summary") {
+            parameter("period_type", periodType)
+            if (startDate != null) parameter("start_date", startDate)
+            if (endDate != null) parameter("end_date", endDate)
+        }.body()
+    }
 }
