@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -53,6 +54,16 @@ fun parseColorString(
         else -> defaultColor
     }
 }
+
+private data class NodeLayout(
+    val nodeIdx: Int,
+    val layer: Int,
+    val x: Float,
+    val y: Float,
+    val width: Float,
+    val height: Float,
+    val centerY: Float
+)
 
 @Composable
 fun SankeyFlowChart(
@@ -117,22 +128,61 @@ private fun SankeyCanvasLayout(
     val warningColor = FinancePyColors.warning()
     val primaryColor = FinancePyColors.buttonBgPrimary()
     val textSecondaryColor = FinancePyColors.textSecondary()
+    val defaultColor = FinancePyColors.textSecondary()
 
-    val centerNode = nodes.getOrNull(0) ?: SankeyNodeDto(name = "Flujo de caja", value = 0.0)
+    val centerIdx = nodes.indexOfFirst {
+        it.name.contains("Flujo de caja", ignoreCase = true)
+    }.let { if (it >= 0) it else 0 }
 
-    val incomeLinks = links.filter { it.target == 0 }
-    val expenseLinks = links.filter { it.source == 0 }
+    val incomingMap = mutableMapOf<Int, MutableList<SankeyLinkDto>>()
+    val outgoingMap = mutableMapOf<Int, MutableList<SankeyLinkDto>>()
 
-    val incomeNodesWithLinks = incomeLinks.mapNotNull { link ->
-        nodes.getOrNull(link.source)?.let { node -> Pair(node, link) }
+    links.forEach { link ->
+        incomingMap.getOrPut(link.target) { mutableListOf() }.add(link)
+        outgoingMap.getOrPut(link.source) { mutableListOf() }.add(link)
     }
 
-    val expenseNodesWithLinks = expenseLinks.mapNotNull { link ->
-        nodes.getOrNull(link.target)?.let { node -> Pair(node, link) }
+    val hasIncomeSubs = nodes.indices.any { i ->
+        i != centerIdx &&
+        outgoingMap[i]?.any { it.target == centerIdx } == true &&
+        incomingMap[i]?.isNotEmpty() == true
     }
 
-    val totalIncomeValue = incomeNodesWithLinks.sumOf { it.first.value }.let { if (it <= 0) 1.0 else it }
-    val totalExpenseValue = expenseNodesWithLinks.sumOf { it.first.value }.let { if (it <= 0) 1.0 else it }
+    val centerLayer = if (hasIncomeSubs) 2 else 1
+
+    val hasExpenseSubs = nodes.indices.any { j ->
+        j != centerIdx &&
+        incomingMap[j]?.any { it.source == centerIdx } == true &&
+        outgoingMap[j]?.isNotEmpty() == true
+    }
+
+    val maxLayer = centerLayer + (if (hasExpenseSubs) 2 else 1)
+
+    val layerMap = mutableMapOf<Int, Int>()
+    layerMap[centerIdx] = centerLayer
+
+    nodes.indices.forEach { idx ->
+        if (idx == centerIdx) return@forEach
+
+        val isIncome = outgoingMap[idx]?.any { l -> l.target == centerIdx || (layerMap[l.target] != null && layerMap[l.target]!! <= centerLayer) } == true ||
+                       incomingMap[idx]?.any { l -> layerMap[l.source] != null && layerMap[l.source]!! < centerLayer } == true
+
+        if (isIncome) {
+            val hasIncoming = incomingMap[idx]?.isNotEmpty() == true
+            if (hasIncomeSubs) {
+                layerMap[idx] = if (hasIncoming) 1 else 0
+            } else {
+                layerMap[idx] = 0
+            }
+        } else {
+            val hasOutgoing = outgoingMap[idx]?.isNotEmpty() == true
+            if (hasOutgoing) {
+                layerMap[idx] = centerLayer + 1
+            } else {
+                layerMap[idx] = maxLayer
+            }
+        }
+    }
 
     val density = LocalDensity.current
 
@@ -140,178 +190,170 @@ private fun SankeyCanvasLayout(
         val widthPx = constraints.maxWidth.toFloat()
         val heightPx = constraints.maxHeight.toFloat()
 
-        val leftX = with(density) { 16.dp.toPx() }
-        val centerX = widthPx / 2f
-        val rightX = widthPx - with(density) { 16.dp.toPx() }
-        val barWidth = with(density) { 12.dp.toPx() }
+        val barWidth = with(density) { 10.dp.toPx() }
+        val edgeMargin = with(density) { 16.dp.toPx() }
+        val colSpacing = if (maxLayer > 0) (widthPx - 2 * edgeMargin - barWidth) / maxLayer else 0f
+
+        val nodesByLayer = nodes.indices.groupBy { layerMap[it] ?: centerLayer }
+        val nodeLayouts = mutableMapOf<Int, NodeLayout>()
+
+        (0..maxLayer).forEach { layer ->
+            val colNodeIndices = nodesByLayer[layer] ?: emptyList()
+            if (colNodeIndices.isEmpty()) return@forEach
+
+            val colX = edgeMargin + layer * colSpacing
+            val colTotalVal = colNodeIndices.sumOf { nodes[it].value }.let { if (it <= 0) 1.0 else it }
+
+            val verticalMargin = with(density) { 20.dp.toPx() }
+            val gap = if (colNodeIndices.size > 1) with(density) { 12.dp.toPx() } else 0f
+            val availableH = (heightPx - 2 * verticalMargin - (colNodeIndices.size - 1) * gap).coerceAtLeast(20f)
+
+            var currentY = verticalMargin
+            colNodeIndices.forEach { nodeIdx ->
+                val node = nodes[nodeIdx]
+                val nodeH = if (nodeIdx == centerIdx) {
+                    (heightPx * 0.45f).coerceAtLeast(36f)
+                } else {
+                    ((node.value / colTotalVal) * availableH).toFloat().coerceAtLeast(8f)
+                }
+
+                val nodeLayout = NodeLayout(
+                    nodeIdx = nodeIdx,
+                    layer = layer,
+                    x = colX,
+                    y = currentY,
+                    width = barWidth,
+                    height = nodeH,
+                    centerY = currentY + nodeH / 2f
+                )
+                nodeLayouts[nodeIdx] = nodeLayout
+                currentY += nodeH + gap
+            }
+        }
 
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val incomeGap = 16.dp.toPx()
-            val totalIncomeGaps = ((incomeNodesWithLinks.size - 1).coerceAtLeast(0)) * incomeGap
-            val availableIncomeH = (heightPx - totalIncomeGaps - 40.dp.toPx()).coerceAtLeast(20f)
-
-            var currentIncomeY = 20.dp.toPx()
-            val incomePositions = mutableMapOf<Int, Pair<Offset, Float>>()
-
-            incomeNodesWithLinks.forEachIndexed { idx, (node, link) ->
-                val nodeH = ((node.value / totalIncomeValue) * availableIncomeH).toFloat().coerceAtLeast(8f)
-                val nodeTopLeft = Offset(leftX, currentIncomeY)
-
+            nodeLayouts.values.forEach { layout ->
+                val node = nodes[layout.nodeIdx]
                 val nodeColor = parseColorString(
-                    node.color, successColor, successColor, destructiveColor, warningColor, primaryColor
+                    node.color, defaultColor, successColor, destructiveColor, warningColor, primaryColor
                 )
-
                 drawRoundRect(
                     color = nodeColor,
-                    topLeft = nodeTopLeft,
-                    size = Size(barWidth, nodeH),
+                    topLeft = Offset(layout.x, layout.y),
+                    size = Size(layout.width, layout.height),
                     cornerRadius = CornerRadius(4f, 4f)
                 )
-
-                incomePositions[idx] = Pair(Offset(leftX + barWidth, currentIncomeY + nodeH / 2f), nodeH)
-                currentIncomeY += nodeH + incomeGap
             }
 
-            val centerH = (heightPx * 0.5f).coerceAtLeast(40f)
-            val centerTopLeft = Offset(centerX - barWidth / 2f, (heightPx - centerH) / 2f)
-            val centerNodeColor = parseColorString(
-                centerNode.color, successColor, successColor, destructiveColor, warningColor, primaryColor
-            )
+            links.forEach { link ->
+                val srcLayout = nodeLayouts[link.source] ?: return@forEach
+                val dstLayout = nodeLayouts[link.target] ?: return@forEach
 
-            drawRoundRect(
-                color = centerNodeColor,
-                topLeft = centerTopLeft,
-                size = Size(barWidth, centerH),
-                cornerRadius = CornerRadius(4f, 4f)
-            )
+                val outgoingLinksForSrc = outgoingMap[link.source] ?: emptyList()
+                val incomingLinksForDst = incomingMap[link.target] ?: emptyList()
 
-            val centerLeftPoint = Offset(centerX - barWidth / 2f, heightPx / 2f)
-            val centerRightPoint = Offset(centerX + barWidth / 2f, heightPx / 2f)
+                val srcIndexInOutgoing = outgoingLinksForSrc.indexOf(link).coerceAtLeast(0)
+                val dstIndexInIncoming = incomingLinksForDst.indexOf(link).coerceAtLeast(0)
 
-            val expenseGap = 16.dp.toPx()
-            val totalExpenseGaps = ((expenseNodesWithLinks.size - 1).coerceAtLeast(0)) * expenseGap
-            val availableExpenseH = (heightPx - totalExpenseGaps - 40.dp.toPx()).coerceAtLeast(20f)
+                val srcY = if (outgoingLinksForSrc.size > 1) {
+                    srcLayout.y + (srcIndexInOutgoing + 0.5f) * (srcLayout.height / outgoingLinksForSrc.size)
+                } else {
+                    srcLayout.centerY
+                }
 
-            var currentExpenseY = 20.dp.toPx()
-            val expensePositions = mutableMapOf<Int, Pair<Offset, Float>>()
+                val dstY = if (incomingLinksForDst.size > 1) {
+                    dstLayout.y + (dstIndexInIncoming + 0.5f) * (dstLayout.height / incomingLinksForDst.size)
+                } else {
+                    dstLayout.centerY
+                }
 
-            expenseNodesWithLinks.forEachIndexed { idx, (node, link) ->
-                val nodeH = ((node.value / totalExpenseValue) * availableExpenseH).toFloat().coerceAtLeast(8f)
-                val nodeTopLeft = Offset(rightX - barWidth, currentExpenseY)
+                val startX = srcLayout.x + barWidth
+                val endX = dstLayout.x
+                val dx = (endX - startX).coerceAtLeast(4f)
 
-                val nodeColor = parseColorString(
-                    node.color, destructiveColor, successColor, destructiveColor, warningColor, primaryColor
-                )
+                val path = Path().apply {
+                    moveTo(startX, srcY)
+                    cubicTo(
+                        startX + dx * 0.5f, srcY,
+                        startX + dx * 0.5f, dstY,
+                        endX, dstY
+                    )
+                }
 
-                drawRoundRect(
-                    color = nodeColor,
-                    topLeft = nodeTopLeft,
-                    size = Size(barWidth, nodeH),
-                    cornerRadius = CornerRadius(4f, 4f)
-                )
-
-                expensePositions[idx] = Pair(Offset(rightX - barWidth, currentExpenseY + nodeH / 2f), nodeH)
-                currentExpenseY += nodeH + expenseGap
-            }
-
-            incomeNodesWithLinks.forEachIndexed { idx, (_, link) ->
-                val (srcOffset, nodeH) = incomePositions[idx] ?: return@forEachIndexed
-                val strokeW = (nodeH * 0.8f).coerceIn(2f, 24f)
+                val strokeW = (minOf(srcLayout.height, dstLayout.height) * 0.6f).coerceIn(2f, 18f)
                 val rawLinkColor = parseColorString(
-                    link.color, successColor, successColor, destructiveColor, warningColor, primaryColor
+                    link.color, defaultColor, successColor, destructiveColor, warningColor, primaryColor
                 )
                 val linkColor = rawLinkColor.copy(alpha = 0.4f)
 
-                val path = Path().apply {
-                    moveTo(srcOffset.x, srcOffset.y)
-                    cubicTo(
-                        srcOffset.x + (centerLeftPoint.x - srcOffset.x) * 0.5f, srcOffset.y,
-                        srcOffset.x + (centerLeftPoint.x - srcOffset.x) * 0.5f, centerLeftPoint.y,
-                        centerLeftPoint.x, centerLeftPoint.y
-                    )
-                }
-                drawPath(path = path, color = linkColor, style = Stroke(width = strokeW))
-            }
-
-            expenseNodesWithLinks.forEachIndexed { idx, (_, link) ->
-                val (dstOffset, nodeH) = expensePositions[idx] ?: return@forEachIndexed
-                val strokeW = (nodeH * 0.8f).coerceIn(2f, 24f)
-                val rawLinkColor = parseColorString(
-                    link.color, destructiveColor, successColor, destructiveColor, warningColor, primaryColor
-                )
-                val linkColor = rawLinkColor.copy(alpha = 0.4f)
-
-                val path = Path().apply {
-                    moveTo(centerRightPoint.x, centerRightPoint.y)
-                    cubicTo(
-                        centerRightPoint.x + (dstOffset.x - centerRightPoint.x) * 0.5f, centerRightPoint.y,
-                        centerRightPoint.x + (dstOffset.x - centerRightPoint.x) * 0.5f, dstOffset.y,
-                        dstOffset.x, dstOffset.y
-                    )
-                }
                 drawPath(path = path, color = linkColor, style = Stroke(width = strokeW))
             }
         }
 
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 24.dp, top = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                incomeNodesWithLinks.forEach { (node, _) ->
-                    SankeyNodeLabel(
-                        node = node,
-                        currency = currency,
-                        successColor = successColor,
-                        destructiveColor = destructiveColor,
-                        warningColor = warningColor,
-                        primaryColor = primaryColor,
-                        textSecondaryColor = textSecondaryColor
-                    )
-                }
-            }
+        Box(modifier = Modifier.fillMaxSize()) {
+            nodeLayouts.values.forEach { layout ->
+                val node = nodes[layout.nodeIdx]
+                val isLeftHalf = layout.x < widthPx / 2f
+                val isCenterNode = layout.nodeIdx == centerIdx
 
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(top = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                SankeyNodeLabel(
-                    node = centerNode,
-                    currency = currency,
-                    isCenter = true,
-                    successColor = successColor,
-                    destructiveColor = destructiveColor,
-                    warningColor = warningColor,
-                    primaryColor = primaryColor,
-                    textSecondaryColor = textSecondaryColor
-                )
-            }
+                val xDp = with(density) { layout.x.toDp() }
+                val yDp = with(density) { layout.centerY.toDp() }
+                val barWidthDp = with(density) { barWidth.toDp() }
 
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 24.dp, top = 8.dp),
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                expenseNodesWithLinks.forEach { (node, _) ->
-                    SankeyNodeLabel(
-                        node = node,
-                        currency = currency,
-                        successColor = successColor,
-                        destructiveColor = destructiveColor,
-                        warningColor = warningColor,
-                        primaryColor = primaryColor,
-                        textSecondaryColor = textSecondaryColor
-                    )
+                if (isCenterNode) {
+                    Box(
+                        modifier = Modifier
+                            .offset(x = (xDp - 50.dp).coerceAtLeast(0.dp), y = yDp - 14.dp)
+                            .width(110.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        SankeyNodeLabel(
+                            node = node,
+                            currency = currency,
+                            isCenter = true,
+                            successColor = successColor,
+                            destructiveColor = destructiveColor,
+                            warningColor = warningColor,
+                            primaryColor = primaryColor,
+                            textSecondaryColor = textSecondaryColor
+                        )
+                    }
+                } else if (isLeftHalf) {
+                    Box(
+                        modifier = Modifier
+                            .offset(x = xDp + barWidthDp + 4.dp, y = yDp - 14.dp)
+                    ) {
+                        SankeyNodeLabel(
+                            node = node,
+                            currency = currency,
+                            isCenter = false,
+                            alignEnd = false,
+                            successColor = successColor,
+                            destructiveColor = destructiveColor,
+                            warningColor = warningColor,
+                            primaryColor = primaryColor,
+                            textSecondaryColor = textSecondaryColor
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .offset(x = (xDp - 120.dp).coerceAtLeast(0.dp), y = yDp - 14.dp)
+                            .width(116.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        SankeyNodeLabel(
+                            node = node,
+                            currency = currency,
+                            isCenter = false,
+                            alignEnd = true,
+                            successColor = successColor,
+                            destructiveColor = destructiveColor,
+                            warningColor = warningColor,
+                            primaryColor = primaryColor,
+                            textSecondaryColor = textSecondaryColor
+                        )
+                    }
                 }
             }
         }
@@ -323,6 +365,7 @@ private fun SankeyNodeLabel(
     node: SankeyNodeDto,
     currency: String,
     isCenter: Boolean = false,
+    alignEnd: Boolean = false,
     successColor: Color,
     destructiveColor: Color,
     warningColor: Color,
@@ -333,28 +376,44 @@ private fun SankeyNodeLabel(
         node.color, textSecondaryColor, successColor, destructiveColor, warningColor, primaryColor
     )
 
+    val horizAlignment = when {
+        isCenter -> Alignment.CenterHorizontally
+        alignEnd -> Alignment.End
+        else -> Alignment.Start
+    }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = if (isCenter) Arrangement.Center else Arrangement.Start
+        horizontalArrangement = if (alignEnd) Arrangement.End else if (isCenter) Arrangement.Center else Arrangement.Start
     ) {
-        if (!isCenter) {
+        if (!isCenter && !alignEnd) {
             Box(
                 modifier = Modifier
-                    .size(8.dp)
+                    .size(6.dp)
                     .background(nodeColor, CircleShape)
             )
             Spacer(modifier = Modifier.width(4.dp))
         }
-        Column(horizontalAlignment = if (isCenter) Alignment.CenterHorizontally else Alignment.Start) {
+        Column(horizontalAlignment = horizAlignment) {
             Text(
                 text = node.name,
                 style = MaterialTheme.typography.labelSmall,
-                color = FinancePyColors.textPrimary()
+                color = FinancePyColors.textPrimary(),
+                maxLines = 1
             )
             Text(
                 text = formatMoney(node.value, currency),
                 style = MaterialTheme.typography.bodySmall,
-                color = FinancePyColors.textSecondary()
+                color = FinancePyColors.textSecondary(),
+                maxLines = 1
+            )
+        }
+        if (!isCenter && alignEnd) {
+            Spacer(modifier = Modifier.width(4.dp))
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .background(nodeColor, CircleShape)
             )
         }
     }
