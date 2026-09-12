@@ -28,6 +28,7 @@ import py.com.cdco.financespy.screens.GoalsListViewModel
 import py.com.cdco.financespy.screens.ReceivableDetailViewModel
 import py.com.cdco.financespy.screens.ReceivableFormViewModel
 import py.com.cdco.financespy.screens.ReceivablesListViewModel
+import py.com.cdco.financespy.screens.ReportsViewModel
 import py.com.cdco.financespy.screens.RuleDetailViewModel
 import py.com.cdco.financespy.screens.RuleFormViewModel
 import py.com.cdco.financespy.screens.RulesListViewModel
@@ -108,6 +109,13 @@ class MainActivity : ComponentActivity() {
             scope = lifecycleScope,
             api = api,
             authRepository = authRepository
+        )
+    }
+    private val reportsViewModel by lazy {
+        ReportsViewModel(
+            scope = lifecycleScope,
+            syncEngine = syncEngine,
+            api = api
         )
     }
 
@@ -203,7 +211,8 @@ class MainActivity : ComponentActivity() {
                         api = api
                     )
                 },
-                settingsViewModelFactory = { settingsViewModel }
+                settingsViewModelFactory = { settingsViewModel },
+                reportsViewModelFactory = { reportsViewModel }
             )
         }
     }

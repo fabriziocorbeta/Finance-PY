@@ -44,6 +44,8 @@ import py.com.cdco.financespy.screens.ReceivableFormScreen
 import py.com.cdco.financespy.screens.ReceivableFormViewModel
 import py.com.cdco.financespy.screens.ReceivablesListScreen
 import py.com.cdco.financespy.screens.ReceivablesListViewModel
+import py.com.cdco.financespy.screens.ReportsScreen
+import py.com.cdco.financespy.screens.ReportsViewModel
 import py.com.cdco.financespy.screens.RuleDetailScreen
 import py.com.cdco.financespy.screens.RuleDetailViewModel
 import py.com.cdco.financespy.screens.RuleFormScreen
@@ -79,7 +81,8 @@ fun App(
     receivableDetailViewModelFactory: (String) -> ReceivableDetailViewModel,
     receivableFormViewModelFactory: (String?) -> ReceivableFormViewModel,
     accountDetailViewModelFactory: (String) -> AccountDetailViewModel,
-    settingsViewModelFactory: () -> SettingsViewModel
+    settingsViewModelFactory: () -> SettingsViewModel,
+    reportsViewModelFactory: () -> ReportsViewModel
 ) {
     FinancePyTheme {
         if (isLoggedIn != null) {
@@ -102,13 +105,14 @@ fun App(
                         .statusBarsPadding()
                         .navigationBarsPadding()
                 ) {
-                    if (currentRoute == Routes.DASHBOARD || currentRoute == Routes.BUDGETS || currentRoute == Routes.TRANSACTIONS || currentRoute == Routes.RULES || currentRoute == Routes.GOALS || currentRoute == Routes.RECEIVABLES) {
+                    if (currentRoute == Routes.DASHBOARD || currentRoute == Routes.BUDGETS || currentRoute == Routes.TRANSACTIONS || currentRoute == Routes.RULES || currentRoute == Routes.GOALS || currentRoute == Routes.RECEIVABLES || currentRoute == Routes.REPORTS) {
                         val selectedIndex = when (currentRoute) {
                             Routes.BUDGETS -> 1
                             Routes.TRANSACTIONS -> 2
                             Routes.RULES -> 3
                             Routes.GOALS -> 4
                             Routes.RECEIVABLES -> 5
+                            Routes.REPORTS -> 6
                             else -> 0
                         }
                         ScrollableTabRow(
@@ -198,6 +202,19 @@ fun App(
                                         "Cuentas a Cobrar",
                                         style = MaterialTheme.typography.labelLarge,
                                         color = if (currentRoute == Routes.RECEIVABLES) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            )
+                            Tab(
+                                selected = currentRoute == Routes.REPORTS,
+                                onClick = { navController.navigate(Routes.REPORTS) { launchSingleTop = true } },
+                                text = {
+                                    Text(
+                                        "Reportes",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = if (currentRoute == Routes.REPORTS) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
@@ -332,6 +349,11 @@ fun App(
                             ReceivableFormScreen(
                                 viewModel = remember(receivableId) { receivableFormViewModelFactory(receivableId) },
                                 onSaved = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Routes.REPORTS) {
+                            ReportsScreen(
+                                viewModel = remember { reportsViewModelFactory() }
                             )
                         }
                     }

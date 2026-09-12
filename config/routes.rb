@@ -512,6 +512,7 @@ Rails.application.routes.draw do
       resource :usage, only: [ :show ], controller: :usage
       resource :balance_sheet, only: [ :show ], controller: :balance_sheet
       resource :dashboard, only: [ :show ], controller: :dashboard
+      get "reports/summary", to: "reports#summary"
       resource :family_settings, only: [ :show ], controller: :family_settings
       post :sync, to: "sync#create"
 
