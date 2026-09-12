@@ -50,6 +50,8 @@ import py.com.cdco.financespy.screens.RuleFormScreen
 import py.com.cdco.financespy.screens.RuleFormViewModel
 import py.com.cdco.financespy.screens.RulesListScreen
 import py.com.cdco.financespy.screens.RulesListViewModel
+import py.com.cdco.financespy.screens.SettingsScreen
+import py.com.cdco.financespy.screens.SettingsViewModel
 import py.com.cdco.financespy.screens.TransactionFormScreen
 import py.com.cdco.financespy.screens.TransactionFormViewModel
 import py.com.cdco.financespy.screens.TransactionsScreen
@@ -61,6 +63,7 @@ import py.com.cdco.financespy.theme.FinancePyTheme
 fun App(
     isLoggedIn: Boolean?,
     onLoginClick: () -> Unit,
+    onLoggedOut: () -> Unit,
     dashboardViewModelFactory: () -> DashboardViewModel,
     budgetDashboardViewModelFactory: () -> BudgetDashboardViewModel,
     budgetAllocationEditorViewModelFactory: (String) -> BudgetAllocationEditorViewModel,
@@ -75,7 +78,8 @@ fun App(
     receivablesListViewModelFactory: () -> ReceivablesListViewModel,
     receivableDetailViewModelFactory: (String) -> ReceivableDetailViewModel,
     receivableFormViewModelFactory: (String?) -> ReceivableFormViewModel,
-    accountDetailViewModelFactory: (String) -> AccountDetailViewModel
+    accountDetailViewModelFactory: (String) -> AccountDetailViewModel,
+    settingsViewModelFactory: () -> SettingsViewModel
 ) {
     FinancePyTheme {
         if (isLoggedIn != null) {
@@ -206,7 +210,15 @@ fun App(
                         composable(Routes.DASHBOARD) {
                             DashboardScreen(
                                 viewModel = remember { dashboardViewModelFactory() },
-                                onAccountClick = { accountId -> navController.navigate(Routes.accountDetail(accountId)) }
+                                onAccountClick = { accountId -> navController.navigate(Routes.accountDetail(accountId)) },
+                                onSettingsClick = { navController.navigate(Routes.SETTINGS) }
+                            )
+                        }
+                        composable(Routes.SETTINGS) {
+                            SettingsScreen(
+                                viewModel = remember { settingsViewModelFactory() },
+                                onBack = { navController.popBackStack() },
+                                onLoggedOut = onLoggedOut
                             )
                         }
                         composable(Routes.BUDGETS) {

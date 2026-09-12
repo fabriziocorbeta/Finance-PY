@@ -31,6 +31,7 @@ import py.com.cdco.financespy.screens.ReceivablesListViewModel
 import py.com.cdco.financespy.screens.RuleDetailViewModel
 import py.com.cdco.financespy.screens.RuleFormViewModel
 import py.com.cdco.financespy.screens.RulesListViewModel
+import py.com.cdco.financespy.screens.SettingsViewModel
 import py.com.cdco.financespy.screens.TransactionFormViewModel
 import py.com.cdco.financespy.screens.TransactionsViewModel
 import py.com.cdco.financespy.sync.SyncEngine
@@ -102,6 +103,13 @@ class MainActivity : ComponentActivity() {
             receivableDao = database.receivableDao()
         )
     }
+    private val settingsViewModel by lazy {
+        SettingsViewModel(
+            scope = lifecycleScope,
+            api = api,
+            authRepository = authRepository
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -134,6 +142,9 @@ class MainActivity : ComponentActivity() {
                 onLoginClick = {
                     val url = authRepository.buildAuthorizationUrl()
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                },
+                onLoggedOut = {
+                    isLoggedIn.value = false
                 },
                 dashboardViewModelFactory = { dashboardViewModel },
                 budgetDashboardViewModelFactory = { budgetDashboardViewModel },
@@ -191,7 +202,8 @@ class MainActivity : ComponentActivity() {
                         entryDao = database.entryDao(),
                         api = api
                     )
-                }
+                },
+                settingsViewModelFactory = { settingsViewModel }
             )
         }
     }

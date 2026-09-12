@@ -358,9 +358,21 @@ RSpec.configure do |config|
               pagination: { '$ref' => '#/components/schemas/Pagination' }
             }
           },
+          User: {
+            type: :object,
+            required: %w[id email role],
+            properties: {
+              id: { type: :string, format: :uuid },
+              email: { type: :string },
+              first_name: { type: :string, nullable: true },
+              last_name: { type: :string, nullable: true },
+              display_name: { type: :string, nullable: true },
+              role: { type: :string }
+            }
+          },
           FamilySettings: {
             type: :object,
-            required: %w[id currency locale date_format month_start_day moniker default_account_sharing custom_enabled_currencies enabled_currencies created_at updated_at],
+            required: %w[id currency locale date_format month_start_day moniker default_account_sharing custom_enabled_currencies enabled_currencies created_at updated_at users],
             properties: {
               id: { type: :string, format: :uuid },
               name: { type: :string, nullable: true },
@@ -378,7 +390,12 @@ RSpec.configure do |config|
                 items: { type: :string }
               },
               created_at: { type: :string, format: :'date-time' },
-              updated_at: { type: :string, format: :'date-time' }
+              updated_at: { type: :string, format: :'date-time' },
+              current_user: { '$ref' => '#/components/schemas/User' },
+              users: {
+                type: :array,
+                items: { '$ref' => '#/components/schemas/User' }
+              }
             }
           },
           Category: {
