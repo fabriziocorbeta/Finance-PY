@@ -1,24 +1,36 @@
 package py.com.cdco.financespy.screens
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.db.GoalDao
 import py.com.cdco.financespy.db.GoalEntity
+
+data class GoalsListState(
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
 
 class GoalsListViewModel(
     private val scope: CoroutineScope,
     private val api: FinancePyApi,
     private val goalDao: GoalDao
 ) {
+    private val _state = MutableStateFlow(GoalsListState())
+    val state: StateFlow<GoalsListState> = _state.asStateFlow()
+
     val goals: StateFlow<List<GoalEntity>> = goalDao.observeAll()
-        .stateIn(scope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     fun refresh() {
         scope.launch {
+            _state.update { it.copy(isLoading = true, error = null) }
             runCatching {
                 val remote = api.fetchAllGoals()
                 val entities = remote.map { remoteGoal ->
@@ -47,6 +59,10 @@ class GoalsListViewModel(
                 }
                 goalDao.upsertAll(entities)
                 goalDao.deleteAllExcept(entities.map { it.id })
+            }.onSuccess {
+                _state.update { it.copy(isLoading = false, error = null) }
+            }.onFailure { e ->
+                _state.update { it.copy(isLoading = false, error = e.message ?: "Error al cargar las metas") }
             }
         }
     }

@@ -17,6 +17,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -35,6 +36,11 @@ fun ReceivablesListScreen(
     onCreateClick: () -> Unit
 ) {
     val receivables by viewModel.receivables.collectAsState()
+    val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.refresh()
+    }
 
     Column(
         modifier = Modifier
@@ -52,6 +58,16 @@ fun ReceivablesListScreen(
                     onClick = onCreateClick,
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+
+            state.error?.let { err ->
+                item {
+                    Text(
+                        text = "Error: $err",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = FinancePyColors.destructive()
+                    )
+                }
             }
 
             if (receivables.isEmpty()) {

@@ -42,6 +42,7 @@ fun GoalsListScreen(
     onCreateClick: () -> Unit
 ) {
     val goals by viewModel.goals.collectAsState()
+    val state by viewModel.state.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.refresh()
@@ -63,6 +64,16 @@ fun GoalsListScreen(
                     onClick = onCreateClick,
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+
+            state.error?.let { err ->
+                item {
+                    Text(
+                        text = "Error: $err",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = FinancePyColors.destructive()
+                    )
+                }
             }
 
             if (goals.isEmpty()) {
