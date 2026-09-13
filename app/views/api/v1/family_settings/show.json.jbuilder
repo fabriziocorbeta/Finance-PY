@@ -24,6 +24,11 @@ if @current_user
     json.last_name @current_user.last_name
     json.display_name @current_user.display_name
     json.role @current_user.role
+    json.theme @current_user.theme
+    json.goals @current_user.goals
+    json.onboarded_at @current_user.onboarded_at&.iso8601
+    json.needs_onboarding @current_user.needs_onboarding?
+    json.is_invited @family.invitations.accepted.exists?(email: @current_user.email)
   end
 end
 

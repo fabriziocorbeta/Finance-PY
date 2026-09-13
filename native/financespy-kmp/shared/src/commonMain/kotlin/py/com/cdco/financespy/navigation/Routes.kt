@@ -1,6 +1,7 @@
 package py.com.cdco.financespy.navigation
 
 object Routes {
+    const val ONBOARDING = "onboarding"
     const val DASHBOARD = "dashboard"
     const val BUDGETS = "budgets"
     const val TRANSACTIONS = "transactions"

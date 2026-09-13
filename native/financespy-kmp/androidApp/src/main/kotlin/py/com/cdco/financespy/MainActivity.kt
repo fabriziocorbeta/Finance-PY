@@ -23,6 +23,7 @@ import py.com.cdco.financespy.screens.BudgetAllocationEditorViewModel
 import py.com.cdco.financespy.screens.BudgetDashboardViewModel
 import py.com.cdco.financespy.screens.DashboardViewModel
 import py.com.cdco.financespy.screens.GoalDetailViewModel
+import py.com.cdco.financespy.screens.OnboardingViewModel
 import py.com.cdco.financespy.screens.GoalFormViewModel
 import py.com.cdco.financespy.screens.GoalsListViewModel
 import py.com.cdco.financespy.screens.ReceivableDetailViewModel
@@ -47,6 +48,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val isLoggedIn = mutableStateOf<Boolean?>(null)
+    private val needsOnboarding = mutableStateOf(false)
 
     private val tokenStorage by lazy { AndroidTokenStorage(applicationContext) }
     private val httpClient by lazy { ApiClient.create(tokenStorage) }
@@ -128,6 +130,12 @@ class MainActivity : ComponentActivity() {
             api = api
         )
     }
+    private val onboardingViewModel by lazy {
+        OnboardingViewModel(
+            scope = lifecycleScope,
+            api = api
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -142,9 +150,19 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             val tAuthStart = System.currentTimeMillis()
             val loggedIn = authRepository.isLoggedIn()
+            var onboardingNeeded = false
+            if (loggedIn) {
+                try {
+                    val settings = api.fetchFamilySettings()
+                    onboardingNeeded = settings.current_user?.needs_onboarding == true
+                } catch (e: Exception) {
+                    onboardingNeeded = false
+                }
+            }
             val tAuthEnd = System.currentTimeMillis()
-            Log.d("ColdStartProfile", "[Optimized] Auth check on IO completed in ${tAuthEnd - tAuthStart} ms (isLoggedIn=$loggedIn)")
+            Log.d("ColdStartProfile", "[Optimized] Auth check on IO completed in ${tAuthEnd - tAuthStart} ms (isLoggedIn=$loggedIn, needsOnboarding=$onboardingNeeded)")
             withContext(Dispatchers.Main) {
+                needsOnboarding.value = onboardingNeeded
                 isLoggedIn.value = loggedIn
             }
         }
@@ -158,6 +176,7 @@ class MainActivity : ComponentActivity() {
             App(
                 isLoggedIn = isLoggedIn.value,
                 api = api,
+                needsOnboarding = needsOnboarding.value,
                 onLoginClick = {
                     val url = authRepository.buildAuthorizationUrl()
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -165,6 +184,7 @@ class MainActivity : ComponentActivity() {
                 onLoggedOut = {
                     isLoggedIn.value = false
                 },
+                onboardingViewModelFactory = { onboardingViewModel },
                 dashboardViewModelFactory = { dashboardViewModel },
                 budgetDashboardViewModelFactory = { budgetDashboardViewModel },
                 budgetAllocationEditorViewModelFactory = { budgetId ->
@@ -259,7 +279,11 @@ class MainActivity : ComponentActivity() {
         val code = uri.getQueryParameter("code") ?: return
         lifecycleScope.launch {
             authRepository.exchangeCode(code)
-                .onSuccess { isLoggedIn.value = true }
+                .onSuccess {
+                    val settings = try { api.fetchFamilySettings() } catch (e: Exception) { null }
+                    needsOnboarding.value = settings?.current_user?.needs_onboarding == true
+                    isLoggedIn.value = true
+                }
                 .onFailure { e -> Log.e("FinancePYAuth", "exchangeCode failed", e) }
         }
     }
