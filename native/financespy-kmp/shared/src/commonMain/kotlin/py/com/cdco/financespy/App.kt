@@ -82,7 +82,8 @@ fun App(
     receivableFormViewModelFactory: (String?) -> ReceivableFormViewModel,
     accountDetailViewModelFactory: (String) -> AccountDetailViewModel,
     settingsViewModelFactory: () -> SettingsViewModel,
-    reportsViewModelFactory: () -> ReportsViewModel
+    reportsViewModelFactory: () -> ReportsViewModel,
+    onOpenNotificationSettings: (() -> Unit)? = null
 ) {
     FinancePyTheme {
         if (isLoggedIn != null) {
@@ -235,7 +236,8 @@ fun App(
                             SettingsScreen(
                                 viewModel = remember { settingsViewModelFactory() },
                                 onBack = { navController.popBackStack() },
-                                onLoggedOut = onLoggedOut
+                                onLoggedOut = onLoggedOut,
+                                onOpenNotificationSettings = onOpenNotificationSettings
                             )
                         }
                         composable(Routes.BUDGETS) {
