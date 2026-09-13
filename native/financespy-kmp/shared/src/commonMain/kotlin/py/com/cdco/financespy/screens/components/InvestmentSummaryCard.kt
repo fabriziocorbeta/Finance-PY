@@ -25,6 +25,7 @@ import py.com.cdco.financespy.api.dto.InvestmentSummaryDto
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.utils.formatMoney
+import py.com.cdco.financespy.utils.formatPercent
 
 @Composable
 fun InvestmentSummaryCard(
@@ -233,7 +234,7 @@ private fun HoldingRow(
         }
 
         Text(
-            text = "${holding.weight}%",
+            text = formatPercent(holding.weight),
             style = MaterialTheme.typography.bodySmall,
             color = FinancePyColors.textPrimary(),
             modifier = Modifier.weight(1f)
