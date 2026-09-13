@@ -101,6 +101,7 @@ class MainActivity : ComponentActivity() {
     private val receivablesListViewModel by lazy {
         ReceivablesListViewModel(
             scope = lifecycleScope,
+            api = api,
             receivableDao = database.receivableDao()
         )
     }

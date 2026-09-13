@@ -1,8 +1,10 @@
 package py.com.cdco.financespy.screens
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
@@ -17,8 +19,16 @@ class GoalsListViewModel(
     val goals: StateFlow<List<GoalEntity>> = goalDao.observeAll()
         .stateIn(scope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
     fun refresh() {
         scope.launch {
+            _isLoading.value = true
+            _error.value = null
             runCatching {
                 val remote = api.fetchAllGoals()
                 val entities = remote.map { remoteGoal ->
@@ -47,7 +57,10 @@ class GoalsListViewModel(
                 }
                 goalDao.upsertAll(entities)
                 goalDao.deleteAllExcept(entities.map { it.id })
+            }.onFailure { throwable ->
+                _error.value = throwable.message ?: "Error al cargar las metas"
             }
+            _isLoading.value = false
         }
     }
 }
