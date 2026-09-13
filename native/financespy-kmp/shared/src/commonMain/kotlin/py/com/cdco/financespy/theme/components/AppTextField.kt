@@ -14,13 +14,17 @@ fun AppTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    readOnly: Boolean = false,
+    trailingIcon: (@Composable () -> Unit)? = null
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
         modifier = modifier,
+        readOnly = readOnly,
+        trailingIcon = trailingIcon,
         shape = RoundedCornerShape(6.dp),
         colors = TextFieldDefaults.colors(
             focusedContainerColor = FinancePyColors.container(),

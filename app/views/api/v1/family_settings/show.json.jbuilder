@@ -10,6 +10,7 @@ json.timezone @family.timezone
 json.month_start_day @family.month_start_day
 json.moniker @family.moniker
 json.default_account_sharing @family.default_account_sharing
+json.business_mode_enabled @family.business_mode_enabled?
 json.custom_enabled_currencies @family.custom_enabled_currencies?
 json.enabled_currencies @family.enabled_currency_codes
 json.created_at @family.created_at.iso8601
