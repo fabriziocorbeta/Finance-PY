@@ -25,6 +25,8 @@ import py.com.cdco.financespy.screens.DashboardViewModel
 import py.com.cdco.financespy.screens.GoalDetailViewModel
 import py.com.cdco.financespy.screens.GoalFormViewModel
 import py.com.cdco.financespy.screens.GoalsListViewModel
+import py.com.cdco.financespy.screens.FleetListViewModel
+import py.com.cdco.financespy.screens.FleetVehicleDetailViewModel
 import py.com.cdco.financespy.screens.ReceivableDetailViewModel
 import py.com.cdco.financespy.screens.ReceivableFormViewModel
 import py.com.cdco.financespy.screens.ReceivablesListViewModel
@@ -103,6 +105,11 @@ class MainActivity : ComponentActivity() {
             scope = lifecycleScope,
             api = api,
             receivableDao = database.receivableDao()
+        )
+    }
+    private val fleetListViewModel by lazy {
+        FleetListViewModel(
+            api = api
         )
     }
     private val settingsViewModel by lazy {
@@ -201,6 +208,14 @@ class MainActivity : ComponentActivity() {
                     ReceivableFormViewModel(
                         scope = lifecycleScope, receivableId = receivableId, api = api,
                         receivableDao = database.receivableDao()
+                    )
+                },
+                fleetListViewModelFactory = { fleetListViewModel },
+                fleetVehicleDetailViewModelFactory = { vehicleId ->
+                    FleetVehicleDetailViewModel(
+                        vehicleId = vehicleId,
+                        api = api,
+                        scope = lifecycleScope
                     )
                 },
                 accountDetailViewModelFactory = { accountId ->

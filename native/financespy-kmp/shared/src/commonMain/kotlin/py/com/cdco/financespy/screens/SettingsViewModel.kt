@@ -15,6 +15,7 @@ data class SettingsUiState(
     val currentUser: UserDto? = null,
     val familyMembers: List<UserDto> = emptyList(),
     val familyName: String? = null,
+    val business_mode_enabled: Boolean = false,
     val error: String? = null
 )
 
@@ -41,7 +42,8 @@ class SettingsViewModel(
                         isLoading = false,
                         currentUser = settings.current_user,
                         familyMembers = settings.users,
-                        familyName = settings.name
+                        familyName = settings.name,
+                        business_mode_enabled = settings.business_mode_enabled
                     )
                 }
             }.onFailure { err ->
