@@ -496,6 +496,9 @@ Rails.application.routes.draw do
         end
       end
       resources :receivables, only: %i[index show create update destroy]
+      resources :fleet_vehicles, only: %i[index show create update destroy] do
+        resources :fuel_logs, only: %i[create update destroy], controller: "fuel_logs"
+      end
 
       resources :transactions, only: [ :index, :show, :create, :update, :destroy ]
       resources :transfers, only: [ :create ]
