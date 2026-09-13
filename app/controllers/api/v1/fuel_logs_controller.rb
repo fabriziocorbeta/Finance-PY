@@ -6,7 +6,7 @@ class Api::V1::FuelLogsController < Api::V1::BaseController
   before_action :set_fuel_log, only: %i[update destroy]
 
   def create
-    @fuel_log = @fleet_vehicle.fuel_logs.build(extracted_fuel_log_params)
+    @fuel_log = @fleet_vehicle.fuel_logs.build(fuel_log_attributes)
 
     if @fuel_log.save
       render :show, status: :created
@@ -33,7 +33,7 @@ class Api::V1::FuelLogsController < Api::V1::BaseController
   end
 
   def update
-    if @fuel_log.update(extracted_fuel_log_params)
+    if @fuel_log.update(fuel_log_attributes)
       render :show, status: :ok
     else
       render json: {
@@ -107,5 +107,19 @@ class Api::V1::FuelLogsController < Api::V1::BaseController
         :account_id, :logged_at, :odometer, :liters, :cost, :notes,
         fuel_log_lines_attributes: [ :id, :fuel_type, :brand, :liters, :cost, :_destroy ]
       )
+    end
+
+    # Resuelve account_id explícitamente contra las cuentas de la family en vez
+    # de mass-assignarlo directo (Brakeman PermitAttributes, alta confianza) —
+    # el modelo ya valida account.family_id == fleet_vehicle.family_id, pero
+    # resolverlo acá evita depender solo de esa validación y deja claro en el
+    # controller cuál es el alcance permitido.
+    def fuel_log_attributes
+      attrs = extracted_fuel_log_params.to_h.symbolize_keys
+      return attrs unless attrs.key?(:account_id)
+
+      account_id = attrs.delete(:account_id)
+      attrs[:account] = current_resource_owner.family.accounts.find_by(id: account_id)
+      attrs
     end
 end
