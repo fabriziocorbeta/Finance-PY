@@ -26,6 +26,8 @@ import py.com.cdco.financespy.screens.GoalDetailViewModel
 import py.com.cdco.financespy.screens.GoalFormViewModel
 import py.com.cdco.financespy.screens.GoalsListViewModel
 import py.com.cdco.financespy.screens.ReceivableDetailViewModel
+import py.com.cdco.financespy.screens.FleetListViewModel
+import py.com.cdco.financespy.screens.FleetVehicleDetailViewModel
 import py.com.cdco.financespy.screens.ReceivableFormViewModel
 import py.com.cdco.financespy.screens.ReceivablesListViewModel
 import py.com.cdco.financespy.screens.ReportsViewModel
@@ -106,6 +108,12 @@ class MainActivity : ComponentActivity() {
             receivableDao = database.receivableDao()
         )
     }
+    private val fleetListViewModel by lazy {
+        FleetListViewModel(
+            scope = lifecycleScope,
+            api = api
+        )
+    }
     private val settingsViewModel by lazy {
         SettingsViewModel(
             scope = lifecycleScope,
@@ -149,6 +157,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             App(
                 isLoggedIn = isLoggedIn.value,
+                api = api,
                 onLoginClick = {
                     val url = authRepository.buildAuthorizationUrl()
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -202,6 +211,14 @@ class MainActivity : ComponentActivity() {
                     ReceivableFormViewModel(
                         scope = lifecycleScope, receivableId = receivableId, api = api,
                         receivableDao = database.receivableDao()
+                    )
+                },
+                fleetListViewModelFactory = { fleetListViewModel },
+                fleetVehicleDetailViewModelFactory = { vehicleId ->
+                    FleetVehicleDetailViewModel(
+                        scope = lifecycleScope,
+                        vehicleId = vehicleId,
+                        api = api
                     )
                 },
                 accountDetailViewModelFactory = { accountId ->

@@ -14,7 +14,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -22,6 +24,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import py.com.cdco.financespy.api.FinancePyApi
+import py.com.cdco.financespy.api.dto.FamilySettingsDto
 import py.com.cdco.financespy.navigation.Routes
 import py.com.cdco.financespy.screens.AccountDetailScreen
 import py.com.cdco.financespy.screens.AccountDetailViewModel
@@ -31,6 +35,10 @@ import py.com.cdco.financespy.screens.BudgetDashboardScreen
 import py.com.cdco.financespy.screens.BudgetDashboardViewModel
 import py.com.cdco.financespy.screens.DashboardScreen
 import py.com.cdco.financespy.screens.DashboardViewModel
+import py.com.cdco.financespy.screens.FleetListScreen
+import py.com.cdco.financespy.screens.FleetListViewModel
+import py.com.cdco.financespy.screens.FleetVehicleDetailScreen
+import py.com.cdco.financespy.screens.FleetVehicleDetailViewModel
 import py.com.cdco.financespy.screens.GoalDetailScreen
 import py.com.cdco.financespy.screens.GoalDetailViewModel
 import py.com.cdco.financespy.screens.GoalFormScreen
@@ -64,6 +72,7 @@ import py.com.cdco.financespy.theme.FinancePyTheme
 @Composable
 fun App(
     isLoggedIn: Boolean?,
+    api: FinancePyApi,
     onLoginClick: () -> Unit,
     onLoggedOut: () -> Unit,
     dashboardViewModelFactory: () -> DashboardViewModel,
@@ -80,6 +89,8 @@ fun App(
     receivablesListViewModelFactory: () -> ReceivablesListViewModel,
     receivableDetailViewModelFactory: (String) -> ReceivableDetailViewModel,
     receivableFormViewModelFactory: (String?) -> ReceivableFormViewModel,
+    fleetListViewModelFactory: () -> FleetListViewModel,
+    fleetVehicleDetailViewModelFactory: (String) -> FleetVehicleDetailViewModel,
     accountDetailViewModelFactory: (String) -> AccountDetailViewModel,
     settingsViewModelFactory: () -> SettingsViewModel,
     reportsViewModelFactory: () -> ReportsViewModel,
@@ -99,6 +110,17 @@ fun App(
                 val backStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = backStackEntry?.destination?.route
 
+                var familySettings by remember { mutableStateOf<FamilySettingsDto?>(null) }
+                LaunchedEffect(isLoggedIn) {
+                    runCatching {
+                        api.fetchFamilySettings()
+                    }.onSuccess { settings ->
+                        familySettings = settings
+                    }
+                }
+
+                val showFleet = familySettings?.business_mode_enabled == true
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -106,7 +128,21 @@ fun App(
                         .statusBarsPadding()
                         .navigationBarsPadding()
                 ) {
-                    if (currentRoute == Routes.DASHBOARD || currentRoute == Routes.BUDGETS || currentRoute == Routes.TRANSACTIONS || currentRoute == Routes.RULES || currentRoute == Routes.GOALS || currentRoute == Routes.RECEIVABLES || currentRoute == Routes.REPORTS) {
+                    val mainRoutes = if (showFleet) {
+                        listOf(
+                            Routes.DASHBOARD, Routes.BUDGETS, Routes.TRANSACTIONS,
+                            Routes.RULES, Routes.GOALS, Routes.RECEIVABLES,
+                            Routes.REPORTS, Routes.FLEET
+                        )
+                    } else {
+                        listOf(
+                            Routes.DASHBOARD, Routes.BUDGETS, Routes.TRANSACTIONS,
+                            Routes.RULES, Routes.GOALS, Routes.RECEIVABLES,
+                            Routes.REPORTS
+                        )
+                    }
+
+                    if (currentRoute in mainRoutes) {
                         val selectedIndex = when (currentRoute) {
                             Routes.BUDGETS -> 1
                             Routes.TRANSACTIONS -> 2
@@ -114,6 +150,7 @@ fun App(
                             Routes.GOALS -> 4
                             Routes.RECEIVABLES -> 5
                             Routes.REPORTS -> 6
+                            Routes.FLEET -> 7
                             else -> 0
                         }
                         ScrollableTabRow(
@@ -221,6 +258,21 @@ fun App(
                                     )
                                 }
                             )
+                            if (showFleet) {
+                                Tab(
+                                    selected = currentRoute == Routes.FLEET,
+                                    onClick = { navController.navigate(Routes.FLEET) { launchSingleTop = true } },
+                                    text = {
+                                        Text(
+                                            "Flota",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = if (currentRoute == Routes.FLEET) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                )
+                            }
                         }
                     }
 
@@ -356,6 +408,19 @@ fun App(
                         composable(Routes.REPORTS) {
                             ReportsScreen(
                                 viewModel = remember { reportsViewModelFactory() }
+                            )
+                        }
+                        composable(Routes.FLEET) {
+                            FleetListScreen(
+                                viewModel = remember { fleetListViewModelFactory() },
+                                onVehicleClick = { vehicleId -> navController.navigate(Routes.fleetVehicleDetail(vehicleId)) }
+                            )
+                        }
+                        composable(Routes.FLEET_VEHICLE_DETAIL) { entry ->
+                            val vehicleId = entry.arguments?.getString("vehicleId") ?: return@composable
+                            FleetVehicleDetailScreen(
+                                viewModel = remember(vehicleId) { fleetVehicleDetailViewModelFactory(vehicleId) },
+                                onBack = { navController.popBackStack() }
                             )
                         }
                     }
