@@ -46,7 +46,7 @@ class Api::V1::ProductsController < Api::V1::BaseController
     initial_stock = (raw[:initial_stock] || raw[:stock] || 0).to_i
 
     if initial_stock < 0
-      return render_validation_error(["Initial stock must be zero or positive"])
+      return render_validation_error([ "Initial stock must be zero or positive" ])
     end
 
     @product = current_resource_owner.family.products.new(cleaned_params)
