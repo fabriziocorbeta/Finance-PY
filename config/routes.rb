@@ -496,6 +496,19 @@ Rails.application.routes.draw do
         end
       end
       resources :receivables, only: %i[index show create update destroy]
+      resources :products, only: %i[index show create update destroy]
+      resources :sales, only: %i[index show create update destroy] do
+        member do
+          post :complete
+          post :cancel
+        end
+      end
+      resources :purchase_orders, only: %i[index show create update destroy] do
+        member do
+          post :receive
+          post :cancel
+        end
+      end
 
       resources :transactions, only: [ :index, :show, :create, :update, :destroy ]
       resources :transfers, only: [ :create ]

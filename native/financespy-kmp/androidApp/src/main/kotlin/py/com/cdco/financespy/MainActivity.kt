@@ -25,10 +25,18 @@ import py.com.cdco.financespy.screens.DashboardViewModel
 import py.com.cdco.financespy.screens.GoalDetailViewModel
 import py.com.cdco.financespy.screens.GoalFormViewModel
 import py.com.cdco.financespy.screens.GoalsListViewModel
+import py.com.cdco.financespy.screens.ProductFormViewModel
+import py.com.cdco.financespy.screens.ProductsListViewModel
+import py.com.cdco.financespy.screens.PurchaseOrderDetailViewModel
+import py.com.cdco.financespy.screens.PurchaseOrderFormViewModel
+import py.com.cdco.financespy.screens.PurchaseOrdersListViewModel
 import py.com.cdco.financespy.screens.ReceivableDetailViewModel
 import py.com.cdco.financespy.screens.ReceivableFormViewModel
 import py.com.cdco.financespy.screens.ReceivablesListViewModel
 import py.com.cdco.financespy.screens.ReportsViewModel
+import py.com.cdco.financespy.screens.SaleDetailViewModel
+import py.com.cdco.financespy.screens.SaleFormViewModel
+import py.com.cdco.financespy.screens.SalesListViewModel
 import py.com.cdco.financespy.screens.RuleDetailViewModel
 import py.com.cdco.financespy.screens.RuleFormViewModel
 import py.com.cdco.financespy.screens.RulesListViewModel
@@ -103,6 +111,21 @@ class MainActivity : ComponentActivity() {
             scope = lifecycleScope,
             api = api,
             receivableDao = database.receivableDao()
+        )
+    }
+    private val productsListViewModel by lazy {
+        ProductsListViewModel(
+            api = api
+        )
+    }
+    private val salesListViewModel by lazy {
+        SalesListViewModel(
+            api = api
+        )
+    }
+    private val purchaseOrdersListViewModel by lazy {
+        PurchaseOrdersListViewModel(
+            api = api
         )
     }
     private val settingsViewModel by lazy {
@@ -202,6 +225,24 @@ class MainActivity : ComponentActivity() {
                         scope = lifecycleScope, receivableId = receivableId, api = api,
                         receivableDao = database.receivableDao()
                     )
+                },
+                productsListViewModelFactory = { productsListViewModel },
+                productFormViewModelFactory = { productId ->
+                    ProductFormViewModel(productId = productId, api = api)
+                },
+                salesListViewModelFactory = { salesListViewModel },
+                saleDetailViewModelFactory = { saleId ->
+                    SaleDetailViewModel(saleId = saleId, api = api)
+                },
+                saleFormViewModelFactory = { saleId ->
+                    SaleFormViewModel(saleId = saleId, api = api)
+                },
+                purchaseOrdersListViewModelFactory = { purchaseOrdersListViewModel },
+                purchaseOrderDetailViewModelFactory = { poId ->
+                    PurchaseOrderDetailViewModel(purchaseOrderId = poId, api = api)
+                },
+                purchaseOrderFormViewModelFactory = { poId ->
+                    PurchaseOrderFormViewModel(purchaseOrderId = poId, api = api)
                 },
                 accountDetailViewModelFactory = { accountId ->
                     AccountDetailViewModel(

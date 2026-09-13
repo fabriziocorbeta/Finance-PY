@@ -13,6 +13,7 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -44,9 +45,25 @@ import py.com.cdco.financespy.screens.ReceivableFormScreen
 import py.com.cdco.financespy.screens.ReceivableFormViewModel
 import py.com.cdco.financespy.screens.ReceivablesListScreen
 import py.com.cdco.financespy.screens.ReceivablesListViewModel
+import py.com.cdco.financespy.screens.ProductFormScreen
+import py.com.cdco.financespy.screens.ProductFormViewModel
+import py.com.cdco.financespy.screens.ProductsListScreen
+import py.com.cdco.financespy.screens.ProductsListViewModel
+import py.com.cdco.financespy.screens.PurchaseOrderDetailScreen
+import py.com.cdco.financespy.screens.PurchaseOrderDetailViewModel
+import py.com.cdco.financespy.screens.PurchaseOrderFormScreen
+import py.com.cdco.financespy.screens.PurchaseOrderFormViewModel
+import py.com.cdco.financespy.screens.PurchaseOrdersListScreen
+import py.com.cdco.financespy.screens.PurchaseOrdersListViewModel
 import py.com.cdco.financespy.screens.ReportsScreen
 import py.com.cdco.financespy.screens.ReportsViewModel
 import py.com.cdco.financespy.screens.RuleDetailScreen
+import py.com.cdco.financespy.screens.SaleDetailScreen
+import py.com.cdco.financespy.screens.SaleDetailViewModel
+import py.com.cdco.financespy.screens.SaleFormScreen
+import py.com.cdco.financespy.screens.SaleFormViewModel
+import py.com.cdco.financespy.screens.SalesListScreen
+import py.com.cdco.financespy.screens.SalesListViewModel
 import py.com.cdco.financespy.screens.RuleDetailViewModel
 import py.com.cdco.financespy.screens.RuleFormScreen
 import py.com.cdco.financespy.screens.RuleFormViewModel
@@ -80,6 +97,14 @@ fun App(
     receivablesListViewModelFactory: () -> ReceivablesListViewModel,
     receivableDetailViewModelFactory: (String) -> ReceivableDetailViewModel,
     receivableFormViewModelFactory: (String?) -> ReceivableFormViewModel,
+    productsListViewModelFactory: () -> ProductsListViewModel,
+    productFormViewModelFactory: (String?) -> ProductFormViewModel,
+    salesListViewModelFactory: () -> SalesListViewModel,
+    saleDetailViewModelFactory: (String) -> SaleDetailViewModel,
+    saleFormViewModelFactory: (String?) -> SaleFormViewModel,
+    purchaseOrdersListViewModelFactory: () -> PurchaseOrdersListViewModel,
+    purchaseOrderDetailViewModelFactory: (String) -> PurchaseOrderDetailViewModel,
+    purchaseOrderFormViewModelFactory: (String?) -> PurchaseOrderFormViewModel,
     accountDetailViewModelFactory: (String) -> AccountDetailViewModel,
     settingsViewModelFactory: () -> SettingsViewModel,
     reportsViewModelFactory: () -> ReportsViewModel
@@ -98,6 +123,10 @@ fun App(
                 val backStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = backStackEntry?.destination?.route
 
+                val settingsVm = remember { settingsViewModelFactory() }
+                val settingsState by settingsVm.uiState.collectAsState()
+                val isBusinessModeEnabled = settingsState.businessModeEnabled
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -105,14 +134,27 @@ fun App(
                         .statusBarsPadding()
                         .navigationBarsPadding()
                 ) {
-                    if (currentRoute == Routes.DASHBOARD || currentRoute == Routes.BUDGETS || currentRoute == Routes.TRANSACTIONS || currentRoute == Routes.RULES || currentRoute == Routes.GOALS || currentRoute == Routes.RECEIVABLES || currentRoute == Routes.REPORTS) {
+                    val businessRoutes = listOf(Routes.PRODUCTS, Routes.SALES, Routes.PURCHASE_ORDERS)
+                    val isTopLevelRoute = currentRoute == Routes.DASHBOARD ||
+                        currentRoute == Routes.BUDGETS ||
+                        currentRoute == Routes.TRANSACTIONS ||
+                        currentRoute == Routes.RULES ||
+                        currentRoute == Routes.GOALS ||
+                        currentRoute == Routes.RECEIVABLES ||
+                        currentRoute == Routes.REPORTS ||
+                        (isBusinessModeEnabled && currentRoute in businessRoutes)
+
+                    if (isTopLevelRoute) {
                         val selectedIndex = when (currentRoute) {
                             Routes.BUDGETS -> 1
                             Routes.TRANSACTIONS -> 2
                             Routes.RULES -> 3
                             Routes.GOALS -> 4
                             Routes.RECEIVABLES -> 5
-                            Routes.REPORTS -> 6
+                            Routes.PRODUCTS -> if (isBusinessModeEnabled) 6 else 0
+                            Routes.SALES -> if (isBusinessModeEnabled) 7 else 0
+                            Routes.PURCHASE_ORDERS -> if (isBusinessModeEnabled) 8 else 0
+                            Routes.REPORTS -> if (isBusinessModeEnabled) 9 else 6
                             else -> 0
                         }
                         ScrollableTabRow(
@@ -207,6 +249,47 @@ fun App(
                                     )
                                 }
                             )
+                            if (isBusinessModeEnabled) {
+                                Tab(
+                                    selected = currentRoute == Routes.PRODUCTS,
+                                    onClick = { navController.navigate(Routes.PRODUCTS) { launchSingleTop = true } },
+                                    text = {
+                                        Text(
+                                            "Productos",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = if (currentRoute == Routes.PRODUCTS) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                )
+                                Tab(
+                                    selected = currentRoute == Routes.SALES,
+                                    onClick = { navController.navigate(Routes.SALES) { launchSingleTop = true } },
+                                    text = {
+                                        Text(
+                                            "Ventas",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = if (currentRoute == Routes.SALES) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                )
+                                Tab(
+                                    selected = currentRoute == Routes.PURCHASE_ORDERS,
+                                    onClick = { navController.navigate(Routes.PURCHASE_ORDERS) { launchSingleTop = true } },
+                                    text = {
+                                        Text(
+                                            "Compras",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = if (currentRoute == Routes.PURCHASE_ORDERS) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                )
+                            }
                             Tab(
                                 selected = currentRoute == Routes.REPORTS,
                                 onClick = { navController.navigate(Routes.REPORTS) { launchSingleTop = true } },
@@ -233,7 +316,7 @@ fun App(
                         }
                         composable(Routes.SETTINGS) {
                             SettingsScreen(
-                                viewModel = remember { settingsViewModelFactory() },
+                                viewModel = settingsVm,
                                 onBack = { navController.popBackStack() },
                                 onLoggedOut = onLoggedOut
                             )
@@ -349,6 +432,69 @@ fun App(
                             ReceivableFormScreen(
                                 viewModel = remember(receivableId) { receivableFormViewModelFactory(receivableId) },
                                 onSaved = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Routes.PRODUCTS) {
+                            ProductsListScreen(
+                                viewModel = remember { productsListViewModelFactory() },
+                                onProductClick = { productId -> navController.navigate(Routes.productFormEdit(productId)) },
+                                onCreateClick = { navController.navigate(Routes.productFormCreate()) }
+                            )
+                        }
+                        composable(Routes.PRODUCT_FORM) { entry ->
+                            val productId = entry.arguments?.getString("productId")
+                            ProductFormScreen(
+                                viewModel = remember(productId) { productFormViewModelFactory(productId) },
+                                onSaved = { navController.popBackStack() },
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Routes.SALES) {
+                            SalesListScreen(
+                                viewModel = remember { salesListViewModelFactory() },
+                                onSaleClick = { saleId -> navController.navigate(Routes.saleDetail(saleId)) },
+                                onCreateClick = { navController.navigate(Routes.saleFormCreate()) }
+                            )
+                        }
+                        composable(Routes.SALE_DETAIL) { entry ->
+                            val saleId = entry.arguments?.getString("saleId") ?: return@composable
+                            SaleDetailScreen(
+                                viewModel = remember(saleId) { saleDetailViewModelFactory(saleId) },
+                                onEditClick = { navController.navigate(Routes.saleFormEdit(saleId)) },
+                                onDeleted = { navController.popBackStack(Routes.SALES, inclusive = false) },
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Routes.SALE_FORM) { entry ->
+                            val saleId = entry.arguments?.getString("saleId")
+                            SaleFormScreen(
+                                viewModel = remember(saleId) { saleFormViewModelFactory(saleId) },
+                                onSaved = { navController.popBackStack() },
+                                onCancel = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Routes.PURCHASE_ORDERS) {
+                            PurchaseOrdersListScreen(
+                                viewModel = remember { purchaseOrdersListViewModelFactory() },
+                                onPurchaseOrderClick = { poId -> navController.navigate(Routes.purchaseOrderDetail(poId)) },
+                                onCreateClick = { navController.navigate(Routes.purchaseOrderFormCreate()) }
+                            )
+                        }
+                        composable(Routes.PURCHASE_ORDER_DETAIL) { entry ->
+                            val poId = entry.arguments?.getString("purchaseOrderId") ?: return@composable
+                            PurchaseOrderDetailScreen(
+                                viewModel = remember(poId) { purchaseOrderDetailViewModelFactory(poId) },
+                                onEditClick = { navController.navigate(Routes.purchaseOrderFormEdit(poId)) },
+                                onDeleted = { navController.popBackStack(Routes.PURCHASE_ORDERS, inclusive = false) },
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Routes.PURCHASE_ORDER_FORM) { entry ->
+                            val poId = entry.arguments?.getString("purchaseOrderId")
+                            PurchaseOrderFormScreen(
+                                viewModel = remember(poId) { purchaseOrderFormViewModelFactory(poId) },
+                                onSaved = { navController.popBackStack() },
+                                onCancel = { navController.popBackStack() }
                             )
                         }
                         composable(Routes.REPORTS) {
