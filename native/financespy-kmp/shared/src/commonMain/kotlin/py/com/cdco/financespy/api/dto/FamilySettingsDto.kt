@@ -14,6 +14,7 @@ data class FamilySettingsDto(
     val month_start_day: Int,
     val moniker: String? = null,
     val default_account_sharing: String? = null,
+    val business_mode_enabled: Boolean = false,
     val custom_enabled_currencies: Boolean = false,
     val enabled_currencies: List<String> = emptyList(),
     val created_at: String,

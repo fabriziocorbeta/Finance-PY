@@ -22,6 +22,8 @@ import py.com.cdco.financespy.screens.AccountDetailViewModel
 import py.com.cdco.financespy.screens.BudgetAllocationEditorViewModel
 import py.com.cdco.financespy.screens.BudgetDashboardViewModel
 import py.com.cdco.financespy.screens.DashboardViewModel
+import py.com.cdco.financespy.screens.FleetListViewModel
+import py.com.cdco.financespy.screens.FleetVehicleDetailViewModel
 import py.com.cdco.financespy.screens.GoalDetailViewModel
 import py.com.cdco.financespy.screens.GoalFormViewModel
 import py.com.cdco.financespy.screens.GoalsListViewModel
@@ -44,6 +46,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val isLoggedIn = mutableStateOf<Boolean?>(null)
+    private val businessModeEnabled = mutableStateOf(false)
 
     private val tokenStorage by lazy { AndroidTokenStorage(applicationContext) }
     private val httpClient by lazy { ApiClient.create(tokenStorage) }
@@ -134,8 +137,16 @@ class MainActivity : ComponentActivity() {
             val loggedIn = authRepository.isLoggedIn()
             val tAuthEnd = System.currentTimeMillis()
             Log.d("ColdStartProfile", "[Optimized] Auth check on IO completed in ${tAuthEnd - tAuthStart} ms (isLoggedIn=$loggedIn)")
+            var bizEnabled = false
+            if (loggedIn) {
+                try {
+                    val settings = api.fetchFamilySettings()
+                    bizEnabled = settings.business_mode_enabled
+                } catch (_: Exception) {}
+            }
             withContext(Dispatchers.Main) {
                 isLoggedIn.value = loggedIn
+                businessModeEnabled.value = bizEnabled
             }
         }
 
@@ -202,6 +213,12 @@ class MainActivity : ComponentActivity() {
                         receivableDao = database.receivableDao()
                     )
                 },
+                fleetListViewModelFactory = {
+                    FleetListViewModel(api = api, scope = lifecycleScope)
+                },
+                fleetVehicleDetailViewModelFactory = { vehicleId ->
+                    FleetVehicleDetailViewModel(vehicleId = vehicleId, api = api, scope = lifecycleScope)
+                },
                 accountDetailViewModelFactory = { accountId ->
                     AccountDetailViewModel(
                         scope = lifecycleScope,
@@ -212,7 +229,8 @@ class MainActivity : ComponentActivity() {
                     )
                 },
                 settingsViewModelFactory = { settingsViewModel },
-                reportsViewModelFactory = { reportsViewModel }
+                reportsViewModelFactory = { reportsViewModel },
+                businessModeEnabled = businessModeEnabled.value
             )
         }
     }

@@ -31,6 +31,10 @@ import py.com.cdco.financespy.screens.BudgetDashboardScreen
 import py.com.cdco.financespy.screens.BudgetDashboardViewModel
 import py.com.cdco.financespy.screens.DashboardScreen
 import py.com.cdco.financespy.screens.DashboardViewModel
+import py.com.cdco.financespy.screens.FleetListScreen
+import py.com.cdco.financespy.screens.FleetListViewModel
+import py.com.cdco.financespy.screens.FleetVehicleDetailScreen
+import py.com.cdco.financespy.screens.FleetVehicleDetailViewModel
 import py.com.cdco.financespy.screens.GoalDetailScreen
 import py.com.cdco.financespy.screens.GoalDetailViewModel
 import py.com.cdco.financespy.screens.GoalFormScreen
@@ -80,9 +84,12 @@ fun App(
     receivablesListViewModelFactory: () -> ReceivablesListViewModel,
     receivableDetailViewModelFactory: (String) -> ReceivableDetailViewModel,
     receivableFormViewModelFactory: (String?) -> ReceivableFormViewModel,
+    fleetListViewModelFactory: () -> FleetListViewModel,
+    fleetVehicleDetailViewModelFactory: (String) -> FleetVehicleDetailViewModel,
     accountDetailViewModelFactory: (String) -> AccountDetailViewModel,
     settingsViewModelFactory: () -> SettingsViewModel,
-    reportsViewModelFactory: () -> ReportsViewModel
+    reportsViewModelFactory: () -> ReportsViewModel,
+    businessModeEnabled: Boolean = false
 ) {
     FinancePyTheme {
         if (isLoggedIn != null) {
@@ -105,14 +112,24 @@ fun App(
                         .statusBarsPadding()
                         .navigationBarsPadding()
                 ) {
-                    if (currentRoute == Routes.DASHBOARD || currentRoute == Routes.BUDGETS || currentRoute == Routes.TRANSACTIONS || currentRoute == Routes.RULES || currentRoute == Routes.GOALS || currentRoute == Routes.RECEIVABLES || currentRoute == Routes.REPORTS) {
+                    val showTabs = currentRoute == Routes.DASHBOARD ||
+                        currentRoute == Routes.BUDGETS ||
+                        currentRoute == Routes.TRANSACTIONS ||
+                        currentRoute == Routes.RULES ||
+                        currentRoute == Routes.GOALS ||
+                        currentRoute == Routes.RECEIVABLES ||
+                        (businessModeEnabled && currentRoute == Routes.FLEET) ||
+                        currentRoute == Routes.REPORTS
+
+                    if (showTabs) {
                         val selectedIndex = when (currentRoute) {
                             Routes.BUDGETS -> 1
                             Routes.TRANSACTIONS -> 2
                             Routes.RULES -> 3
                             Routes.GOALS -> 4
                             Routes.RECEIVABLES -> 5
-                            Routes.REPORTS -> 6
+                            Routes.FLEET -> if (businessModeEnabled) 6 else -1
+                            Routes.REPORTS -> if (businessModeEnabled) 7 else 6
                             else -> 0
                         }
                         ScrollableTabRow(
@@ -207,6 +224,21 @@ fun App(
                                     )
                                 }
                             )
+                            if (businessModeEnabled) {
+                                Tab(
+                                    selected = currentRoute == Routes.FLEET,
+                                    onClick = { navController.navigate(Routes.FLEET) { launchSingleTop = true } },
+                                    text = {
+                                        Text(
+                                            "Flota",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = if (currentRoute == Routes.FLEET) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                )
+                            }
                             Tab(
                                 selected = currentRoute == Routes.REPORTS,
                                 onClick = { navController.navigate(Routes.REPORTS) { launchSingleTop = true } },
@@ -350,6 +382,21 @@ fun App(
                                 viewModel = remember(receivableId) { receivableFormViewModelFactory(receivableId) },
                                 onSaved = { navController.popBackStack() }
                             )
+                        }
+                        if (businessModeEnabled) {
+                            composable(Routes.FLEET) {
+                                FleetListScreen(
+                                    viewModel = remember { fleetListViewModelFactory() },
+                                    onVehicleClick = { vehicleId -> navController.navigate(Routes.fleetVehicleDetail(vehicleId)) }
+                                )
+                            }
+                            composable(Routes.FLEET_VEHICLE_DETAIL) { entry ->
+                                val vehicleId = entry.arguments?.getString("vehicleId") ?: return@composable
+                                FleetVehicleDetailScreen(
+                                    viewModel = remember(vehicleId) { fleetVehicleDetailViewModelFactory(vehicleId) },
+                                    onBack = { navController.popBackStack() }
+                                )
+                            }
                         }
                         composable(Routes.REPORTS) {
                             ReportsScreen(
