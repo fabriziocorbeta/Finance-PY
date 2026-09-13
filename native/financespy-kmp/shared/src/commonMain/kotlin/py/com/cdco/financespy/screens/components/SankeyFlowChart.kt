@@ -290,6 +290,46 @@ private fun SankeyCanvasLayout(
             }
         }
 
+        val labelYMap = mutableMapOf<Int, androidx.compose.ui.unit.Dp>()
+        val minLabelSpacing = 34.dp
+
+        val centerNodeLayout = nodeLayouts[centerIdx]
+        if (centerNodeLayout != null) {
+            labelYMap[centerIdx] = with(density) { centerNodeLayout.centerY.toDp() } - 14.dp
+        }
+
+        val leftNodes = nodeLayouts.values
+            .filter { it.nodeIdx != centerIdx && it.x < widthPx / 2f }
+            .sortedBy { it.centerY }
+
+        var prevLeftY: androidx.compose.ui.unit.Dp? = null
+        leftNodes.forEach { layout ->
+            val idealY = with(density) { layout.centerY.toDp() } - 14.dp
+            val y = if (prevLeftY != null && idealY < prevLeftY!! + minLabelSpacing) {
+                prevLeftY!! + minLabelSpacing
+            } else {
+                idealY
+            }
+            labelYMap[layout.nodeIdx] = y
+            prevLeftY = y
+        }
+
+        val rightNodes = nodeLayouts.values
+            .filter { it.nodeIdx != centerIdx && it.x >= widthPx / 2f }
+            .sortedBy { it.centerY }
+
+        var prevRightY: androidx.compose.ui.unit.Dp? = null
+        rightNodes.forEach { layout ->
+            val idealY = with(density) { layout.centerY.toDp() } - 14.dp
+            val y = if (prevRightY != null && idealY < prevRightY!! + minLabelSpacing) {
+                prevRightY!! + minLabelSpacing
+            } else {
+                idealY
+            }
+            labelYMap[layout.nodeIdx] = y
+            prevRightY = y
+        }
+
         Box(modifier = Modifier.fillMaxSize()) {
             nodeLayouts.values.forEach { layout ->
                 val node = nodes[layout.nodeIdx]
@@ -297,13 +337,13 @@ private fun SankeyCanvasLayout(
                 val isCenterNode = layout.nodeIdx == centerIdx
 
                 val xDp = with(density) { layout.x.toDp() }
-                val yDp = with(density) { layout.centerY.toDp() }
+                val yDp = labelYMap[layout.nodeIdx] ?: (with(density) { layout.centerY.toDp() } - 14.dp)
                 val barWidthDp = with(density) { barWidth.toDp() }
 
                 if (isCenterNode) {
                     Box(
                         modifier = Modifier
-                            .offset(x = (xDp - 50.dp).coerceAtLeast(0.dp), y = yDp - 14.dp)
+                            .offset(x = (xDp - 50.dp).coerceAtLeast(0.dp), y = yDp)
                             .width(110.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -321,7 +361,7 @@ private fun SankeyCanvasLayout(
                 } else if (isLeftHalf) {
                     Box(
                         modifier = Modifier
-                            .offset(x = xDp + barWidthDp + 4.dp, y = yDp - 14.dp)
+                            .offset(x = xDp + barWidthDp + 4.dp, y = yDp)
                     ) {
                         SankeyNodeLabel(
                             node = node,
@@ -338,7 +378,7 @@ private fun SankeyCanvasLayout(
                 } else {
                     Box(
                         modifier = Modifier
-                            .offset(x = (xDp - 120.dp).coerceAtLeast(0.dp), y = yDp - 14.dp)
+                            .offset(x = (xDp - 120.dp).coerceAtLeast(0.dp), y = yDp)
                             .width(116.dp),
                         contentAlignment = Alignment.CenterEnd
                     ) {
