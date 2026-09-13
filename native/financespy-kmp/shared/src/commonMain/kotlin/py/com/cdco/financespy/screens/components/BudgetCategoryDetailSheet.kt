@@ -121,12 +121,6 @@ fun BudgetCategoryDetailSheet(
                         value = formatMoney(category.actualSpending, currency)
                     )
 
-                    val (badgeBg, badgeFg, badgeText) = when (category.status) {
-                        BudgetCategoryStatus.OVER_BUDGET -> Triple(FinancePyColors.destructive().copy(alpha = 0.15f), FinancePyColors.destructive(), "Presupuesto excedido")
-                        BudgetCategoryStatus.NEAR_LIMIT -> Triple(FinancePyColors.warning().copy(alpha = 0.15f), FinancePyColors.warning(), "Cerca del límite")
-                        BudgetCategoryStatus.ON_TRACK -> Triple(FinancePyColors.success().copy(alpha = 0.15f), FinancePyColors.success(), "Correcto")
-                    }
-
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -141,18 +135,7 @@ fun BudgetCategoryDetailSheet(
                         )
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(badgeBg)
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = badgeText,
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = badgeFg
-                                )
-                            }
+                            BudgetStatusBadge(status = category.status)
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = category.statusAmountText,
