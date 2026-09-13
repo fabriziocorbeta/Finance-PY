@@ -76,8 +76,16 @@ import py.com.cdco.financespy.api.dto.UpdateRuleBody
 import py.com.cdco.financespy.api.dto.UpdateRuleRequest
 import py.com.cdco.financespy.api.dto.UpdateTransactionBody
 import py.com.cdco.financespy.api.dto.UpdateTransactionRequest
+import py.com.cdco.financespy.api.dto.UpdateUserBody
+import py.com.cdco.financespy.api.dto.UpdateUserRequest
 
 open class FinancePyApi(private val http: HttpClient) {
+    open suspend fun updateUser(body: UpdateUserBody): FamilySettingsDto {
+        return http.patch("/api/v1/users/me") {
+            contentType(ContentType.Application.Json)
+            setBody(UpdateUserRequest(user = body))
+        }.body()
+    }
     open suspend fun fetchAccountBalanceSeries(accountId: String, period: String = "last_30_days"): BalanceSeriesDto {
         return http.get("/api/v1/accounts/$accountId/balance_series") {
             parameter("period", period)

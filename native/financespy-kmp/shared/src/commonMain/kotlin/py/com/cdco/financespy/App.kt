@@ -46,6 +46,8 @@ import py.com.cdco.financespy.screens.GoalFormViewModel
 import py.com.cdco.financespy.screens.GoalsListScreen
 import py.com.cdco.financespy.screens.GoalsListViewModel
 import py.com.cdco.financespy.screens.LoginScreen
+import py.com.cdco.financespy.screens.OnboardingScreen
+import py.com.cdco.financespy.screens.OnboardingViewModel
 import py.com.cdco.financespy.screens.ReceivableDetailScreen
 import py.com.cdco.financespy.screens.ReceivableDetailViewModel
 import py.com.cdco.financespy.screens.ReceivableFormScreen
@@ -73,8 +75,10 @@ import py.com.cdco.financespy.theme.FinancePyTheme
 fun App(
     isLoggedIn: Boolean?,
     api: FinancePyApi,
+    needsOnboarding: Boolean = false,
     onLoginClick: () -> Unit,
     onLoggedOut: () -> Unit,
+    onboardingViewModelFactory: () -> OnboardingViewModel,
     dashboardViewModelFactory: () -> DashboardViewModel,
     budgetDashboardViewModelFactory: () -> BudgetDashboardViewModel,
     budgetAllocationEditorViewModelFactory: (String) -> BudgetAllocationEditorViewModel,
@@ -276,7 +280,19 @@ fun App(
                         }
                     }
 
-                    NavHost(navController = navController, startDestination = Routes.DASHBOARD) {
+                    val startDestination = if (needsOnboarding) Routes.ONBOARDING else Routes.DASHBOARD
+
+                    NavHost(navController = navController, startDestination = startDestination) {
+                        composable(Routes.ONBOARDING) {
+                            OnboardingScreen(
+                                viewModel = remember { onboardingViewModelFactory() },
+                                onComplete = {
+                                    navController.navigate(Routes.DASHBOARD) {
+                                        popUpTo(Routes.ONBOARDING) { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
                         composable(Routes.DASHBOARD) {
                             DashboardScreen(
                                 viewModel = remember { dashboardViewModelFactory() },
