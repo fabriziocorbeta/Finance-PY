@@ -96,29 +96,33 @@ class Api::V1::FuelLogsController < Api::V1::BaseController
       }, status: :not_found
     end
 
-    def extracted_fuel_log_params
+    def raw_fuel_log_params
       raw = params.key?(:fuel_log) ? params.require(:fuel_log) : params
 
       if raw[:fuel_log_lines].present? && !raw.key?(:fuel_log_lines_attributes)
         raw[:fuel_log_lines_attributes] = raw[:fuel_log_lines]
       end
 
-      raw.permit(
-        :account_id, :logged_at, :odometer, :liters, :cost, :notes,
+      raw
+    end
+
+    def extracted_fuel_log_params
+      raw_fuel_log_params.permit(
+        :logged_at, :odometer, :liters, :cost, :notes,
         fuel_log_lines_attributes: [ :id, :fuel_type, :brand, :liters, :cost, :_destroy ]
       )
     end
 
-    # Resuelve account_id explícitamente contra las cuentas de la family en vez
-    # de mass-assignarlo directo (Brakeman PermitAttributes, alta confianza) —
-    # el modelo ya valida account.family_id == fleet_vehicle.family_id, pero
-    # resolverlo acá evita depender solo de esa validación y deja claro en el
-    # controller cuál es el alcance permitido.
+    # account_id NO se permite vía .permit (Brakeman PermitAttributes, alta
+    # confianza) — se resuelve acá explícito, acotado a las cuentas de la
+    # family del usuario. El modelo también valida account.family_id ==
+    # fleet_vehicle.family_id, pero resolverlo así acá deja el alcance
+    # permitido explícito en el controller en vez de depender solo de eso.
     def fuel_log_attributes
       attrs = extracted_fuel_log_params.to_h.symbolize_keys
-      return attrs unless attrs.key?(:account_id)
+      account_id = raw_fuel_log_params[:account_id]
+      return attrs if account_id.blank?
 
-      account_id = attrs.delete(:account_id)
       attrs[:account] = current_resource_owner.family.accounts.find_by(id: account_id)
       attrs
     end
