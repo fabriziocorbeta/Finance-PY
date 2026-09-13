@@ -24,8 +24,17 @@ import py.com.cdco.financespy.api.dto.CategoriesResponse
 import py.com.cdco.financespy.api.dto.CategoryDto
 import py.com.cdco.financespy.api.dto.CreateGoalBody
 import py.com.cdco.financespy.api.dto.CreateGoalPledgeBody
+import py.com.cdco.financespy.api.dto.CreateFleetVehicleBody
+import py.com.cdco.financespy.api.dto.CreateFleetVehicleRequest
+import py.com.cdco.financespy.api.dto.CreateFuelLogBody
+import py.com.cdco.financespy.api.dto.CreateFuelLogRequest
 import py.com.cdco.financespy.api.dto.CreateGoalPledgeRequest
 import py.com.cdco.financespy.api.dto.DashboardDto
+import py.com.cdco.financespy.api.dto.FleetVehicleDto
+import py.com.cdco.financespy.api.dto.FleetVehicleEnvelope
+import py.com.cdco.financespy.api.dto.FleetVehiclesEnvelope
+import py.com.cdco.financespy.api.dto.FuelLogDto
+import py.com.cdco.financespy.api.dto.FuelLogEnvelope
 import py.com.cdco.financespy.api.dto.CreateGoalRequest
 import py.com.cdco.financespy.api.dto.GoalPledgeDto
 import py.com.cdco.financespy.api.dto.GoalPledgeEnvelope
@@ -398,5 +407,50 @@ open class FinancePyApi(private val http: HttpClient) {
             if (startDate != null) parameter("start_date", startDate)
             if (endDate != null) parameter("end_date", endDate)
         }.body()
+    }
+
+    open suspend fun fetchFleetVehicles(): List<FleetVehicleDto> {
+        val all = mutableListOf<FleetVehicleDto>()
+        var page = 1
+        while (true) {
+            val response: FleetVehiclesEnvelope = http.get("/api/v1/fleet_vehicles") {
+                parameter("page", page)
+                parameter("per_page", 100)
+            }.body()
+            all += response.data
+            val meta = response.meta
+            if (meta == null || meta.next_page == null) break
+            page = meta.next_page
+        }
+        return all
+    }
+
+    open suspend fun fetchFleetVehicle(id: String): FleetVehicleDto {
+        val response: FleetVehicleEnvelope = http.get("/api/v1/fleet_vehicles/$id").body()
+        return response.data
+    }
+
+    open suspend fun createFleetVehicle(body: CreateFleetVehicleBody): FleetVehicleDto {
+        val response: FleetVehicleEnvelope = http.post("/api/v1/fleet_vehicles") {
+            contentType(ContentType.Application.Json)
+            setBody(CreateFleetVehicleRequest(fleet_vehicle = body))
+        }.body()
+        return response.data
+    }
+
+    open suspend fun deleteFleetVehicle(id: String) {
+        http.delete("/api/v1/fleet_vehicles/$id")
+    }
+
+    open suspend fun createFuelLog(vehicleId: String, body: CreateFuelLogBody): FuelLogDto {
+        val response: FuelLogEnvelope = http.post("/api/v1/fleet_vehicles/$vehicleId/fuel_logs") {
+            contentType(ContentType.Application.Json)
+            setBody(CreateFuelLogRequest(fuel_log = body))
+        }.body()
+        return response.data
+    }
+
+    open suspend fun deleteFuelLog(vehicleId: String, fuelLogId: String) {
+        http.delete("/api/v1/fleet_vehicles/$vehicleId/fuel_logs/$fuelLogId")
     }
 }
