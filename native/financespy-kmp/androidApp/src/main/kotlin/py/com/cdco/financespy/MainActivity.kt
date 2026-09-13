@@ -37,6 +37,7 @@ import py.com.cdco.financespy.screens.TransactionFormViewModel
 import py.com.cdco.financespy.screens.TransactionsViewModel
 import py.com.cdco.financespy.sync.SyncEngine
 import py.com.cdco.financespy.sync.currentIsoDate
+import py.com.cdco.financespy.wallet.WalletCaptureHandler
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -212,9 +213,20 @@ class MainActivity : ComponentActivity() {
                     )
                 },
                 settingsViewModelFactory = { settingsViewModel },
-                reportsViewModelFactory = { reportsViewModel }
+                reportsViewModelFactory = { reportsViewModel },
+                onOpenNotificationSettings = {
+                    val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    startActivity(intent)
+                }
             )
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        WalletCaptureHandler.retryPending(applicationContext)
     }
 
     override fun onNewIntent(intent: Intent) {

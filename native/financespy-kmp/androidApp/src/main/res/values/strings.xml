@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- TODO: Configure actual ANDROID_WEBHOOK_TOKEN value matching backend ENV["ANDROID_WEBHOOK_TOKEN"] -->
+    <string name="wallet_webhook_token">YOUR_ANDROID_WEBHOOK_TOKEN</string>
+</resources>
