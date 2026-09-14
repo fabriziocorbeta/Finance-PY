@@ -268,7 +268,7 @@ class MainActivity : ComponentActivity() {
                     SaleDetailViewModel(saleId = saleId, api = api)
                 },
                 saleFormViewModelFactory = { saleId ->
-                    SaleFormViewModel(saleId = saleId, api = api)
+                    SaleFormViewModel(saleId = saleId, api = api, accountDao = database.accountDao())
                 },
                 purchaseOrdersListViewModelFactory = { purchaseOrdersListViewModel },
                 purchaseOrderDetailViewModelFactory = { poId ->

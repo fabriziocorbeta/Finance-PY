@@ -12,6 +12,7 @@ json.notes sale.notes
 json.delivery_address sale.delivery_address
 json.delivery_date sale.delivery_date
 json.carrier sale.carrier
+json.account_id sale.account_id
 json.total sale.total.to_f
 json.created_at sale.created_at.iso8601
 json.updated_at sale.updated_at.iso8601

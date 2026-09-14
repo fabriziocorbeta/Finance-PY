@@ -27,9 +27,11 @@ es:
       success: Venta actualizada exitosamente.
       title: Editar venta
     form:
+      account: Cuenta
       cancel: Cancelar
       carrier: Transportadora
       client_name: Cliente
+      select_account: Seleccione una cuenta
       condition: Condición
       currency: Moneda
       delivery_address: Dirección de entrega

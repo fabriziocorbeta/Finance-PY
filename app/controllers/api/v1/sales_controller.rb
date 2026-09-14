@@ -159,7 +159,7 @@ class Api::V1::SalesController < Api::V1::BaseController
       raw = params.key?(:sale) ? params.require(:sale) : params
       raw.permit(
         :client_name, :currency, :payment_method, :invoice_number, :condition, :notes,
-        :delivery_address, :delivery_date, :carrier,
+        :delivery_address, :delivery_date, :carrier, :account_id,
         sale_items_attributes: [ :id, :product_id, :quantity, :unit_price, :_destroy ]
       )
     end

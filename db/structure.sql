@@ -1884,7 +1884,9 @@ CREATE TABLE public.sales (
     updated_at timestamp(6) without time zone NOT NULL,
     delivery_address text,
     delivery_date date,
-    carrier character varying
+    carrier character varying,
+    account_id uuid NOT NULL,
+    entry_id uuid
 );
 
 ALTER TABLE ONLY public.sales FORCE ROW LEVEL SECURITY;
@@ -4821,6 +4823,20 @@ CREATE INDEX index_sale_items_on_sale_id ON public.sale_items USING btree (sale_
 
 
 --
+-- Name: index_sales_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_sales_on_account_id ON public.sales USING btree (account_id);
+
+
+--
+-- Name: index_sales_on_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_sales_on_entry_id ON public.sales USING btree (entry_id);
+
+
+--
 -- Name: index_sales_on_family_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5569,6 +5585,14 @@ ALTER TABLE ONLY public.coinbase_accounts
 
 
 --
+-- Name: sales fk_rails_44b9782c99; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sales
+    ADD CONSTRAINT fk_rails_44b9782c99 FOREIGN KEY (entry_id) REFERENCES public.entries(id);
+
+
+--
 -- Name: enable_banking_accounts fk_rails_4501cd26dd; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5678,6 +5702,14 @@ ALTER TABLE ONLY public.recurring_transactions
 
 ALTER TABLE ONLY public.eval_runs
     ADD CONSTRAINT fk_rails_6d0bb7db13 FOREIGN KEY (eval_dataset_id) REFERENCES public.eval_datasets(id);
+
+
+--
+-- Name: sales fk_rails_6e7599c2ae; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sales
+    ADD CONSTRAINT fk_rails_6e7599c2ae FOREIGN KEY (account_id) REFERENCES public.accounts(id);
 
 
 --
@@ -6581,6 +6613,7 @@ CREATE POLICY valuations_family_isolation_policy ON public.valuations USING ((fa
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260914175626'),
 ('20260902020000'),
 ('20260902010000'),
 ('20260831230000'),

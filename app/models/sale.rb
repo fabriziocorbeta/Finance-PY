@@ -1,5 +1,7 @@
 class Sale < ApplicationRecord
   belongs_to :family
+  belongs_to :account
+  belongs_to :entry, optional: true
   has_many :sale_items, dependent: :destroy
   accepts_nested_attributes_for :sale_items, allow_destroy: true, reject_if: proc { |attributes| attributes["product_id"].blank? }
 
@@ -7,6 +9,7 @@ class Sale < ApplicationRecord
   enum :currency, { pyg: "pyg", usd: "usd" }, default: "pyg"
 
   validates :sale_number, presence: true, uniqueness: { scope: :family_id }
+  validate :account_belongs_to_family
   validate :status_cannot_be_changed_directly, on: :update
 
   before_validation :assign_sale_number, on: :create
@@ -46,6 +49,8 @@ class Sale < ApplicationRecord
       ensure
         @allow_status_change = false
       end
+
+      create_associated_entry
     end
   end
 
@@ -72,10 +77,43 @@ class Sale < ApplicationRecord
       ensure
         @allow_status_change = false
       end
+
+      destroy_associated_entry
     end
   end
 
   private
+
+    def create_associated_entry
+      sale_category = family.categories.find_or_create_by!(name: "Ventas") do |category|
+        category.color = "#10b981"
+        category.lucide_icon = "shopping-cart"
+      end
+      transaction_entryable = Transaction.new(category: sale_category)
+      entry_record = account.entries.create!(
+        entryable: transaction_entryable,
+        name: "Venta ##{sale_number}#{client_name.present? ? " - #{client_name}" : ""}",
+        date: Date.current,
+        amount: -total,
+        currency: account.currency
+      )
+      update_column(:entry_id, entry_record.id)
+      entry_record.sync_account_later
+    end
+
+    def destroy_associated_entry
+      if entry
+        entry_to_remove = entry
+        update_column(:entry_id, nil)
+        entry_to_remove.destroy!
+        entry_to_remove.sync_account_later
+      end
+    end
+
+    def account_belongs_to_family
+      return if account.nil? || family.nil?
+      errors.add(:account, "must belong to the same family") unless account.family_id == family_id
+    end
 
     def assign_sale_number
       if sale_number.blank? && family.present?

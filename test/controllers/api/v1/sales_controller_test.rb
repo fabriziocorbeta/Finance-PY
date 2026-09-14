@@ -41,6 +41,7 @@ class Api::V1::SalesControllerTest < ActionDispatch::IntegrationTest
 
     @sale = Sale.create!(
       family: @family,
+      account: accounts(:depository),
       client_name: "John Doe",
       currency: "pyg",
       sale_items_attributes: [
@@ -76,6 +77,7 @@ class Api::V1::SalesControllerTest < ActionDispatch::IntegrationTest
              sale: {
                client_name: "Jane Smith",
                currency: "pyg",
+               account_id: accounts(:depository).id,
                sale_items_attributes: [
                  { product_id: @product.id, quantity: 2, unit_price: 20 }
                ]

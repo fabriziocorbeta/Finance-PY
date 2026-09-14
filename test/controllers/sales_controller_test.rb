@@ -19,7 +19,8 @@ class SalesControllerTest < ActionDispatch::IntegrationTest
 
     @sale = @dylan_family.sales.create!(
       client_name: "Test Client",
-      status: "draft"
+      status: "draft",
+      account: accounts(:depository)
     )
 
     @sale_item = @sale.sale_items.create!(
@@ -44,6 +45,7 @@ class SalesControllerTest < ActionDispatch::IntegrationTest
       post sales_url, params: {
         sale: {
           client_name: "New Client",
+          account_id: accounts(:depository).id,
           sale_items_attributes: {
             "0" => {
               product_id: @product.id,
@@ -66,6 +68,7 @@ class SalesControllerTest < ActionDispatch::IntegrationTest
       post sales_url, params: {
         sale: {
           client_name: "JSON Client",
+          account_id: accounts(:depository).id,
           sale_items_attributes: {
             "0" => {
               product_id: @product.id,
@@ -197,9 +200,11 @@ class SalesControllerTest < ActionDispatch::IntegrationTest
 
   test "cannot access sale from another family" do
     other_family = Family.create!(name: "Other Family", business_mode_enabled: true)
+    other_account = Account.create!(family: other_family, name: "Cuenta Other", currency: "USD", balance: 0, accountable: Depository.new)
     other_sale = other_family.sales.create!(
       client_name: "Other Client",
-      status: "draft"
+      status: "draft",
+      account: other_account
     )
 
     get sale_url(other_sale)
