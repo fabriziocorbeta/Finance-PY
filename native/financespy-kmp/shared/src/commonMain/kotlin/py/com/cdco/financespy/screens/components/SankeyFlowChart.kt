@@ -69,70 +69,21 @@ internal data class NodeLayout(
     val centerY: Float
 )
 
-@Composable
-fun SankeyFlowChart(
-    sankeyDto: CashflowSankeyDto?,
-    currency: String = "PYG",
-    modifier: Modifier = Modifier
-) {
-    AppCard(modifier = modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Flujo de caja",
-                style = MaterialTheme.typography.titleMedium,
-                color = FinancePyColors.textPrimary()
-            )
+internal data class SankeyLayerInfo(
+    val centerIdx: Int,
+    val centerLayer: Int,
+    val maxLayer: Int,
+    val layerMap: Map<Int, Int>
+)
 
-            val nodes = sankeyDto?.nodes ?: emptyList()
-            val links = sankeyDto?.links ?: emptyList()
-
-            if (nodes.isEmpty() || links.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "No hay datos de flujo de caja para este período",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = FinancePyColors.textPrimary()
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Añade transacciones para mostrar datos de flujo de caja o amplía el período de tiempo",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = FinancePyColors.textSecondary()
-                    )
-                }
-            } else {
-                Spacer(modifier = Modifier.height(16.dp))
-                SankeyCanvasLayout(
-                    sankeyDto = sankeyDto!!,
-                    currency = currency,
-                    modifier = Modifier.fillMaxWidth().height(280.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SankeyCanvasLayout(
-    sankeyDto: CashflowSankeyDto,
-    currency: String,
-    modifier: Modifier = Modifier
-) {
+// Comparte la asignación de nodos a columnas (capas) entre el cálculo de
+// altura del chart y el layout real -- antes vivía solo adentro de
+// SankeyCanvasLayout, así que el alto fijo de 280dp no tenía forma de saber
+// cuántos nodos iban a caer en la columna más cargada, y con 5+ categorías
+// de gasto las labels terminaban pisándose entre sí.
+internal fun computeSankeyLayers(sankeyDto: CashflowSankeyDto): SankeyLayerInfo {
     val nodes = sankeyDto.nodes
     val links = sankeyDto.links
-
-    val successColor = FinancePyColors.success()
-    val destructiveColor = FinancePyColors.destructive()
-    val warningColor = FinancePyColors.warning()
-    val primaryColor = FinancePyColors.buttonBgPrimary()
-    val textSecondaryColor = FinancePyColors.textSecondary()
-    val defaultColor = FinancePyColors.textSecondary()
 
     val centerIdx = nodes.indexOfFirst {
         it.name.contains("Flujo de caja", ignoreCase = true)
@@ -186,6 +137,109 @@ private fun SankeyCanvasLayout(
                 layerMap[idx] = maxLayer
             }
         }
+    }
+
+    return SankeyLayerInfo(centerIdx = centerIdx, centerLayer = centerLayer, maxLayer = maxLayer, layerMap = layerMap)
+}
+
+// Cantidad de nodos en la columna más cargada (sin contar el nodo central,
+// que siempre ocupa una sola fila) -- usada para dimensionar el alto del
+// chart dinámicamente en vez de un 280dp fijo.
+internal fun maxNodesInAnyLayer(sankeyDto: CashflowSankeyDto): Int {
+    if (sankeyDto.nodes.isEmpty()) return 0
+    val info = computeSankeyLayers(sankeyDto)
+    return sankeyDto.nodes.indices
+        .filter { it != info.centerIdx }
+        .groupingBy { info.layerMap[it] ?: info.centerLayer }
+        .eachCount()
+        .values
+        .maxOrNull() ?: 1
+}
+
+@Composable
+fun SankeyFlowChart(
+    sankeyDto: CashflowSankeyDto?,
+    currency: String = "PYG",
+    modifier: Modifier = Modifier
+) {
+    AppCard(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Flujo de caja",
+                style = MaterialTheme.typography.titleMedium,
+                color = FinancePyColors.textPrimary()
+            )
+
+            val nodes = sankeyDto?.nodes ?: emptyList()
+            val links = sankeyDto?.links ?: emptyList()
+
+            if (nodes.isEmpty() || links.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "No hay datos de flujo de caja para este período",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = FinancePyColors.textPrimary()
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Añade transacciones para mostrar datos de flujo de caja o amplía el período de tiempo",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = FinancePyColors.textSecondary()
+                    )
+                }
+            } else {
+                Spacer(modifier = Modifier.height(16.dp))
+                // Alto fijo (280dp) hacía que las labels se pisaran cuando
+                // había 5+ categorías en una columna (ver captura de
+                // Fabrizio 2026-09-14: "Segu..."/"Fees..." superpuestos).
+                // Cada nodo necesita ~44dp para sus dos líneas de label sin
+                // amontonarse; 280dp sigue siendo el piso para charts chicos.
+                val maxNodesInColumn = maxNodesInAnyLayer(sankeyDto!!)
+                val chartHeight = maxOf(280.dp, (maxNodesInColumn * 44).dp)
+                SankeyCanvasLayout(
+                    sankeyDto = sankeyDto,
+                    currency = currency,
+                    modifier = Modifier.fillMaxWidth().height(chartHeight)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SankeyCanvasLayout(
+    sankeyDto: CashflowSankeyDto,
+    currency: String,
+    modifier: Modifier = Modifier
+) {
+    val nodes = sankeyDto.nodes
+    val links = sankeyDto.links
+
+    val successColor = FinancePyColors.success()
+    val destructiveColor = FinancePyColors.destructive()
+    val warningColor = FinancePyColors.warning()
+    val primaryColor = FinancePyColors.buttonBgPrimary()
+    val textSecondaryColor = FinancePyColors.textSecondary()
+    val defaultColor = FinancePyColors.textSecondary()
+
+    val layerInfo = computeSankeyLayers(sankeyDto)
+    val centerIdx = layerInfo.centerIdx
+    val centerLayer = layerInfo.centerLayer
+    val maxLayer = layerInfo.maxLayer
+    val layerMap = layerInfo.layerMap
+
+    val incomingMap = mutableMapOf<Int, MutableList<SankeyLinkDto>>()
+    val outgoingMap = mutableMapOf<Int, MutableList<SankeyLinkDto>>()
+
+    links.forEach { link ->
+        incomingMap.getOrPut(link.target) { mutableListOf() }.add(link)
+        outgoingMap.getOrPut(link.source) { mutableListOf() }.add(link)
     }
 
     val density = LocalDensity.current
@@ -298,9 +352,14 @@ private fun SankeyCanvasLayout(
         val labelSmallStyle = MaterialTheme.typography.labelSmall
         val bodySmallStyle = MaterialTheme.typography.bodySmall
 
+        // Con 4+ nodos en una columna, las labels de 2 líneas (nombre +
+        // monto apilados) ya no entran sin invadir el espacio de columnas
+        // vecinas -- bajado de >4 a >=4 tras el reporte de labels
+        // superpuestas con categorías de negocio (Transportation/Healthcare/
+        // Fees/Schatzi, 4 nodos en una sola columna).
         val isCompactLayerMap = (0..maxLayer).associateWith { layer ->
             val colNodeIndices = nodesByLayer[layer] ?: emptyList()
-            colNodeIndices.size > 4
+            colNodeIndices.size >= 4
         }
 
         val nodeLabelHeightsPx = nodes.indices.associateWith { idx ->

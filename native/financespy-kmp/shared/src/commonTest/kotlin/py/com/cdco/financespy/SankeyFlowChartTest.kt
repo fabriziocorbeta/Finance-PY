@@ -4,6 +4,7 @@ import py.com.cdco.financespy.api.dto.CashflowSankeyDto
 import py.com.cdco.financespy.api.dto.SankeyLinkDto
 import py.com.cdco.financespy.api.dto.SankeyNodeDto
 import py.com.cdco.financespy.screens.components.computeVerticalLabelPositions
+import py.com.cdco.financespy.screens.components.maxNodesInAnyLayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -116,5 +117,42 @@ class SankeyFlowChartTest {
         // Verify links and nodes are properly non-empty
         assertTrue(dto.nodes.size >= 8)
         assertTrue(dto.links.isNotEmpty())
+    }
+
+    // Reproduce el caso real reportado: Transportation/Healthcare/Fees/
+    // Schatzi (4 categorías de gasto) apiladas en la misma columna hacían
+    // que sus labels de 2 líneas se pisaran entre sí y con la columna
+    // vecina de subcategorías (Combustible/Seguro). El fix agrega altura
+    // dinámica según la columna más cargada -- este test fija ese cálculo.
+    @Test
+    fun testMaxNodesInAnyLayer_matchesDensestColumn() {
+        val nodes = listOf(
+            SankeyNodeDto(name = "Venta de Mercaderías", value = 5000000.0, color = "#10A861"),
+            SankeyNodeDto(name = "Ventas", value = 5000000.0, color = "#10A861"),
+            SankeyNodeDto(name = "Flujo de caja", value = 5000000.0, color = "#9E9E9E"),
+            SankeyNodeDto(name = "Transportation", value = 2000000.0, color = "#EC2222"),
+            SankeyNodeDto(name = "Combustible", value = 1200000.0, color = "#EC2222"),
+            SankeyNodeDto(name = "Seguro Sportage", value = 800000.0, color = "#EC2222"),
+            SankeyNodeDto(name = "Healthcare", value = 1000000.0, color = "#EC2222"),
+            SankeyNodeDto(name = "Fees", value = 500000.0, color = "#EC2222"),
+            SankeyNodeDto(name = "Schatzi ❤️", value = 1500000.0, color = "#EC2222")
+        )
+
+        val links = listOf(
+            SankeyLinkDto(source = 0, target = 1, value = 5000000.0, color = "#10A861"),
+            SankeyLinkDto(source = 1, target = 2, value = 5000000.0, color = "#10A861"),
+            SankeyLinkDto(source = 2, target = 3, value = 2000000.0, color = "#EC2222"),
+            SankeyLinkDto(source = 3, target = 4, value = 1200000.0, color = "#EC2222"),
+            SankeyLinkDto(source = 3, target = 5, value = 800000.0, color = "#EC2222"),
+            SankeyLinkDto(source = 2, target = 6, value = 1000000.0, color = "#EC2222"),
+            SankeyLinkDto(source = 2, target = 7, value = 500000.0, color = "#EC2222"),
+            SankeyLinkDto(source = 2, target = 8, value = 1500000.0, color = "#EC2222")
+        )
+
+        val dto = CashflowSankeyDto(nodes = nodes, links = links)
+
+        // Transportation, Healthcare, Fees, Schatzi caen en la misma columna
+        // (centerLayer + 1) -- 4 nodos, la columna más cargada del diagrama.
+        assertEquals(4, maxNodesInAnyLayer(dto))
     }
 }
