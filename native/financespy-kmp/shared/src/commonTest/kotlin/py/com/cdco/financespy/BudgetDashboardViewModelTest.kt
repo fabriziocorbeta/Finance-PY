@@ -16,6 +16,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class FakeFinancePyApi : FinancePyApi(io.ktor.client.HttpClient()) {
     var budgetsToReturn = listOf<BudgetDto>()
@@ -130,5 +131,50 @@ class BudgetDashboardViewModelTest {
         assertEquals(1, state.categories.size)
         assertEquals("Food & Dining", state.categories[0].name)
         assertEquals(50.0f, state.categories[0].percentSpent)
+    }
+
+    @Test
+    fun testToggleGroupExpanded() = testScope.runTest {
+        fakeApi.budgetsToReturn = listOf(
+            BudgetDto(
+                id = "budget-1",
+                start_date = "2026-08-01",
+                categories = listOf(
+                    BudgetCategoryDto(
+                        id = "cat-parent-1",
+                        category_id = "c1",
+                        category_name = "Marketing",
+                        subcategory = false
+                    ),
+                    BudgetCategoryDto(
+                        id = "cat-sub-1",
+                        category_id = "c11",
+                        category_parent_id = "c1",
+                        category_name = "Pautas publicitarias",
+                        subcategory = true
+                    )
+                )
+            )
+        )
+
+        val viewModel = BudgetDashboardViewModel(
+            scope = this,
+            api = fakeApi,
+            initialYear = 2026,
+            initialMonth = 8
+        )
+
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val initialState = viewModel.uiState.value
+        assertTrue("cat-parent-1" in initialState.expandedGroupIds)
+
+        viewModel.toggleGroupExpanded("cat-parent-1")
+        val collapsedState = viewModel.uiState.value
+        assertFalse("cat-parent-1" in collapsedState.expandedGroupIds)
+
+        viewModel.toggleGroupExpanded("cat-parent-1")
+        val reExpandedState = viewModel.uiState.value
+        assertTrue("cat-parent-1" in reExpandedState.expandedGroupIds)
     }
 }
