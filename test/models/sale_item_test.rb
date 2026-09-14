@@ -12,7 +12,7 @@ class SaleItemTest < ActiveSupport::TestCase
       stock: 50,
       min_stock: 5
     )
-    @sale = Sale.create!(family: @family)
+    @sale = Sale.create!(family: @family, account: accounts(:depository))
   end
 
   test "validates quantity is greater than zero" do

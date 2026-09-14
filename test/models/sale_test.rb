@@ -4,23 +4,25 @@ class SaleTest < ActiveSupport::TestCase
   setup do
     @family = families(:dylan_family)
     @product = products(:dylan_product_1)
+    @account = accounts(:depository)
   end
 
   test "sale_number auto-increments per family" do
     family2 = Family.create!(name: "Another Family", default_account_sharing: "shared")
+    account2 = Account.create!(family: family2, name: "Cuenta Family2", currency: "USD", balance: 0, accountable: Depository.new)
 
-    sale1 = Sale.create!(family: @family)
+    sale1 = Sale.create!(family: @family, account: @account)
     assert_equal 1, sale1.sale_number
 
-    sale2 = Sale.create!(family: @family)
+    sale2 = Sale.create!(family: @family, account: @account)
     assert_equal 2, sale2.sale_number
 
-    sale3 = Sale.create!(family: family2)
+    sale3 = Sale.create!(family: family2, account: account2)
     assert_equal 1, sale3.sale_number
   end
 
   test "total calculates sum of sale items" do
-    sale = Sale.create!(family: @family)
+    sale = Sale.create!(family: @family, account: @account)
     sale.sale_items.create!(product: @product, quantity: 2, unit_price: 10)
     sale.sale_items.create!(product: @product, quantity: 3, unit_price: 15)
 
@@ -28,7 +30,7 @@ class SaleTest < ActiveSupport::TestCase
   end
 
   test "complete! updates status to completed and creates stock movements" do
-    sale = Sale.create!(family: @family)
+    sale = Sale.create!(family: @family, account: @account)
     item = sale.sale_items.create!(product: @product, quantity: 2, unit_price: 10)
 
     assert_difference -> { ProductStockMovement.count }, 1 do
@@ -42,23 +44,40 @@ class SaleTest < ActiveSupport::TestCase
     assert_equal @product.id, movement.product_id
   end
 
-  test "cancel! from completed updates status and creates return stock movements" do
-    sale = Sale.create!(family: @family)
+  test "complete! creates an income entry on the sale's account" do
+    sale = Sale.create!(family: @family, account: @account)
+    sale.sale_items.create!(product: @product, quantity: 2, unit_price: 10)
+
+    assert_difference -> { Entry.count }, 1 do
+      sale.complete!
+    end
+
+    sale.reload
+    assert_not_nil sale.entry_id
+    assert_equal(-20, sale.entry.amount)
+    assert_equal @account.id, sale.entry.account_id
+  end
+
+  test "cancel! from completed updates status, creates return stock movements and removes the entry" do
+    sale = Sale.create!(family: @family, account: @account)
     item = sale.sale_items.create!(product: @product, quantity: 2, unit_price: 10)
     sale.complete!
 
     assert_difference -> { ProductStockMovement.count }, 1 do
-      sale.cancel!
+      assert_difference -> { Entry.count }, -1 do
+        sale.cancel!
+      end
     end
 
     assert_equal "cancelled", sale.reload.status
+    assert_nil sale.entry_id
     movement = ProductStockMovement.order(:created_at).last
     assert_equal "entrada", movement.reason
     assert_equal 2, movement.quantity_delta
   end
 
   test "cancel! from draft updates status and does not create stock movements" do
-    sale = Sale.create!(family: @family)
+    sale = Sale.create!(family: @family, account: @account)
     item = sale.sale_items.create!(product: @product, quantity: 2, unit_price: 10)
 
     assert_no_difference -> { ProductStockMovement.count } do
@@ -68,8 +87,16 @@ class SaleTest < ActiveSupport::TestCase
     assert_equal "cancelled", sale.reload.status
   end
 
+  test "account must belong to the same family" do
+    foreign_account = Account.create!(family: Family.create!(name: "Other Family", default_account_sharing: "shared"), name: "Ajena", currency: "USD", balance: 0, accountable: Depository.new)
+    sale = Sale.new(family: @family, account: foreign_account)
+
+    assert_not sale.valid?
+    assert_includes sale.errors[:account], "must belong to the same family"
+  end
+
   test "status cannot be changed directly" do
-    sale = Sale.create!(family: @family)
+    sale = Sale.create!(family: @family, account: @account)
 
     sale.status = "completed"
     assert_not sale.valid?

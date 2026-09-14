@@ -11,6 +11,10 @@
       <%= f.select :currency, Sale.currencies.keys.map { |k| [k.upcase, k] }, label: t(".currency") %>
     </div>
 
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <%= f.collection_select :account_id, Current.family.accounts.active.alphabetically, :id, :name, { prompt: t(".select_account") }, label: t(".account"), required: true %>
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <%= f.text_field :payment_method, label: t(".payment_method") %>
       <%= f.text_field :invoice_number, label: t(".invoice_number") %>

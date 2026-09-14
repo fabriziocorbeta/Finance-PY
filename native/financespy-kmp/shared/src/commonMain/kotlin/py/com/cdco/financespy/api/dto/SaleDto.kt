@@ -31,6 +31,7 @@ data class SaleDto(
     val delivery_address: String? = null,
     val delivery_date: String? = null,
     val carrier: String? = null,
+    val account_id: String? = null,
     val total: Double = 0.0,
     val created_at: String? = null,
     val updated_at: String? = null,

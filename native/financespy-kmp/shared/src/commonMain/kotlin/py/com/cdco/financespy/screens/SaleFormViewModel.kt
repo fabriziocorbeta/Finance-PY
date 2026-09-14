@@ -9,6 +9,8 @@ import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.ProductDto
 import py.com.cdco.financespy.api.dto.SaleDto
+import py.com.cdco.financespy.db.AccountDao
+import py.com.cdco.financespy.db.AccountEntity
 
 data class SaleFormItemState(
     val productId: String = "",
@@ -18,7 +20,8 @@ data class SaleFormItemState(
 
 class SaleFormViewModel(
     private val saleId: String?,
-    private val api: FinancePyApi
+    private val api: FinancePyApi,
+    private val accountDao: AccountDao
 ) : ViewModel() {
 
     private val _sale = MutableStateFlow<SaleDto?>(null)
@@ -26,6 +29,9 @@ class SaleFormViewModel(
 
     private val _availableProducts = MutableStateFlow<List<ProductDto>>(emptyList())
     val availableProducts: StateFlow<List<ProductDto>> = _availableProducts.asStateFlow()
+
+    private val _availableAccounts = MutableStateFlow<List<AccountEntity>>(emptyList())
+    val availableAccounts: StateFlow<List<AccountEntity>> = _availableAccounts.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -38,8 +44,17 @@ class SaleFormViewModel(
 
     init {
         loadProducts()
+        loadAccounts()
         if (saleId != null) {
             loadSale(saleId)
+        }
+    }
+
+    private fun loadAccounts() {
+        viewModelScope.launch {
+            accountDao.observeAll().collect { accounts ->
+                _availableAccounts.value = accounts
+            }
         }
     }
 
@@ -71,9 +86,15 @@ class SaleFormViewModel(
         clientName: String?,
         currency: String,
         notes: String?,
+        accountId: String,
         items: List<SaleFormItemState>,
         onSaved: () -> Unit
     ) {
+        if (accountId.isBlank()) {
+            _error.value = "Seleccioná una cuenta"
+            return
+        }
+
         viewModelScope.launch {
             _isSaving.value = true
             _error.value = null
@@ -90,6 +111,7 @@ class SaleFormViewModel(
                     "client_name" to clientName.takeIf { !it.isNullOrBlank() },
                     "currency" to currency.lowercase(),
                     "notes" to notes.takeIf { !it.isNullOrBlank() },
+                    "account_id" to accountId,
                     "sale_items_attributes" to itemsAttributes
                 )
 

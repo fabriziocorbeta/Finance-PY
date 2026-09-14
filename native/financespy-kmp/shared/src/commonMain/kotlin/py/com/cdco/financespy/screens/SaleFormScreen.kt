@@ -25,6 +25,7 @@ fun SaleFormScreen(
 ) {
     val existingSale by viewModel.sale.collectAsState()
     val availableProducts by viewModel.availableProducts.collectAsState()
+    val availableAccounts by viewModel.availableAccounts.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -32,6 +33,7 @@ fun SaleFormScreen(
     var clientName by remember { mutableStateOf("") }
     var currency by remember { mutableStateOf("pyg") }
     var notes by remember { mutableStateOf("") }
+    var accountId by remember { mutableStateOf("") }
     val items = remember { mutableStateListOf<SaleFormItemState>() }
 
     LaunchedEffect(existingSale) {
@@ -39,6 +41,7 @@ fun SaleFormScreen(
             clientName = s.client_name ?: ""
             currency = s.currency
             notes = s.notes ?: ""
+            accountId = s.account_id ?: accountId
             items.clear()
             s.sale_items.forEach { item ->
                 items.add(
@@ -49,6 +52,12 @@ fun SaleFormScreen(
                     )
                 )
             }
+        }
+    }
+
+    LaunchedEffect(availableAccounts) {
+        if (accountId.isBlank()) {
+            availableAccounts.firstOrNull()?.let { accountId = it.id }
         }
     }
 
@@ -110,6 +119,39 @@ fun SaleFormScreen(
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 2
                 )
+
+                run {
+                    var accountExpanded by remember { mutableStateOf(false) }
+                    val selectedAccount = availableAccounts.find { it.id == accountId }
+
+                    ExposedDropdownMenuBox(
+                        expanded = accountExpanded,
+                        onExpandedChange = { accountExpanded = !accountExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedAccount?.name ?: "Seleccionar Cuenta",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Cuenta") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
+                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = accountExpanded,
+                            onDismissRequest = { accountExpanded = false }
+                        ) {
+                            availableAccounts.forEach { acc ->
+                                DropdownMenuItem(
+                                    text = { Text(acc.name) },
+                                    onClick = {
+                                        accountId = acc.id
+                                        accountExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -231,12 +273,13 @@ fun SaleFormScreen(
                             clientName = clientName,
                             currency = currency,
                             notes = notes,
+                            accountId = accountId,
                             items = items,
                             onSaved = onSaved
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !isSaving && items.isNotEmpty() && items.all { it.productId.isNotBlank() }
+                    enabled = !isSaving && accountId.isNotBlank() && items.isNotEmpty() && items.all { it.productId.isNotBlank() }
                 ) {
                     if (isSaving) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
