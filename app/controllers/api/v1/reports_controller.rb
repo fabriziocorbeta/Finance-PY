@@ -24,6 +24,30 @@ class Api::V1::ReportsController < Api::V1::BaseController
     }, status: :internal_server_error
   end
 
+  # GET /api/v1/reports/export_transactions
+  def export_transactions
+    builder = Reports::TransactionsCsvBuilder.new(
+      family: current_resource_owner.family,
+      user: current_resource_owner,
+      period_type: params[:period_type],
+      start_date: params[:start_date],
+      end_date: params[:end_date],
+      params: params
+    )
+
+    send_data builder.generate_csv,
+              filename: builder.filename,
+              type: "text/csv"
+  rescue => e
+    Rails.logger.error "ReportsController#export_transactions error: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
+
+    render json: {
+      error: "internal_server_error",
+      message: "An unexpected error occurred"
+    }, status: :internal_server_error
+  end
+
   private
 
     def ensure_read_scope

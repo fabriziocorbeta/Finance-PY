@@ -8,8 +8,12 @@ import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsBytes
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import py.com.cdco.financespy.api.dto.FamilyExportDto
+import py.com.cdco.financespy.api.dto.FamilyExportEnvelope
+import py.com.cdco.financespy.api.dto.FamilyExportsEnvelope
 import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.BalanceSeriesDto
 import py.com.cdco.financespy.api.dto.AccountsResponse
@@ -588,5 +592,34 @@ open class FinancePyApi(private val http: HttpClient) {
 
     open suspend fun deleteFuelLog(vehicleId: String, fuelLogId: String) {
         http.delete("/api/v1/fleet_vehicles/$vehicleId/fuel_logs/$fuelLogId")
+    }
+
+    // --- Family Data Exports ---
+    open suspend fun fetchFamilyExports(page: Int = 1, perPage: Int = 25): FamilyExportsEnvelope {
+        return http.get("/api/v1/family_exports") {
+            parameter("page", page)
+            parameter("per_page", perPage)
+        }.body()
+    }
+
+    open suspend fun createFamilyExport(): FamilyExportDto {
+        val response: FamilyExportEnvelope = http.post("/api/v1/family_exports").body()
+        return response.data
+    }
+
+    open suspend fun downloadFamilyExport(id: String): ByteArray {
+        return http.get("/api/v1/family_exports/$id/download").bodyAsBytes()
+    }
+
+    open suspend fun exportTransactionsCsv(
+        periodType: String = "monthly",
+        startDate: String? = null,
+        endDate: String? = null
+    ): ByteArray {
+        return http.get("/api/v1/reports/export_transactions") {
+            parameter("period_type", periodType)
+            if (startDate != null) parameter("start_date", startDate)
+            if (endDate != null) parameter("end_date", endDate)
+        }.bodyAsBytes()
     }
 }

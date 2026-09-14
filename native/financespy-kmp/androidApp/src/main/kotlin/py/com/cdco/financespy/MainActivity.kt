@@ -298,8 +298,35 @@ class MainActivity : ComponentActivity() {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     startActivity(intent)
+                },
+                onShareFile = { bytes, filename, mimeType ->
+                    shareFile(bytes, filename, mimeType)
                 }
             )
+        }
+    }
+
+    private fun shareFile(bytes: ByteArray, filename: String, mimeType: String) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val file = java.io.File(cacheDir, filename)
+                file.writeBytes(bytes)
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    this@MainActivity,
+                    "$packageName.fileprovider",
+                    file
+                )
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = mimeType
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                withContext(Dispatchers.Main) {
+                    startActivity(Intent.createChooser(intent, "Compartir archivo"))
+                }
+            } catch (e: Exception) {
+                Log.e("FinancePYShare", "Error sharing file", e)
+            }
         }
     }
 

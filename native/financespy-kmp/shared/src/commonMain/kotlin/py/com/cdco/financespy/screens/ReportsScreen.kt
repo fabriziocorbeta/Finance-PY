@@ -53,14 +53,17 @@ import py.com.cdco.financespy.api.dto.ReportTrendItemDto
 import py.com.cdco.financespy.api.dto.ReportsSummaryDto
 import py.com.cdco.financespy.screens.components.parseColorString
 import py.com.cdco.financespy.theme.FinancePyColors
+import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
+import py.com.cdco.financespy.theme.components.ButtonVariant
 import py.com.cdco.financespy.utils.formatMoney
 import py.com.cdco.financespy.utils.formatPercent
 
 @Composable
 fun ReportsScreen(
     viewModel: ReportsViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onShareFile: ((ByteArray, String, String) -> Unit)? = null
 ) {
     val state by viewModel.state.collectAsState()
 
@@ -83,12 +86,30 @@ fun ReportsScreen(
                 color = FinancePyColors.textPrimary()
             )
 
-            IconButton(onClick = { viewModel.refresh() }) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Refrescar reportes",
-                    tint = FinancePyColors.textPrimary()
-                )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (onShareFile != null) {
+                    AppButton(
+                        text = if (state.isExportingCsv) "Exportando..." else "Exportar CSV",
+                        onClick = {
+                            viewModel.exportTransactionsCsv { bytes, filename, mimeType ->
+                                onShareFile(bytes, filename, mimeType)
+                            }
+                        },
+                        enabled = !state.isExportingCsv,
+                        variant = ButtonVariant.Secondary
+                    )
+                }
+
+                IconButton(onClick = { viewModel.refresh() }) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refrescar reportes",
+                        tint = FinancePyColors.textPrimary()
+                    )
+                }
             }
         }
 

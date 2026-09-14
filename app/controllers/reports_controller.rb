@@ -30,24 +30,19 @@ class ReportsController < ApplicationController
   end
 
   def export_transactions
-    @period_type = params[:period_type]&.to_sym || :monthly
-    @start_date = parse_date_param(:start_date) || default_start_date
-    @end_date = parse_date_param(:end_date) || default_end_date
-
-    # Validate and fix date range if end_date is before start_date
-    # Don't show flash message since we're returning CSV data
-    validate_and_fix_date_range(show_flash: false)
-
-    @period = Period.custom(start_date: @start_date, end_date: @end_date)
-
-    # Build monthly breakdown data for export
-    @export_data = build_monthly_breakdown_for_export
+    builder = Reports::TransactionsCsvBuilder.new(
+      family: Current.family,
+      user: Current.user,
+      period_type: params[:period_type],
+      start_date: params[:start_date],
+      end_date: params[:end_date],
+      params: params
+    )
 
     respond_to do |format|
       format.csv do
-        csv_data = generate_transactions_csv
-        send_data csv_data,
-                  filename: "transactions_breakdown_#{@start_date.strftime('%Y%m%d')}_to_#{@end_date.strftime('%Y%m%d')}.csv",
+        send_data builder.generate_csv,
+                  filename: builder.filename,
                   type: "text/csv"
       end
 
