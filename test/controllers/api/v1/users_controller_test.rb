@@ -271,6 +271,49 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Account has been deactivated", body["message"]
   end
 
+  # -- Nav preferences (sincronizado entre dispositivos) ---------------------
+
+  test "nav_preferences requires authentication" do
+    get "/api/v1/users/me/nav_preferences"
+    assert_response :unauthorized
+  end
+
+  test "nav_preferences returns nil when never set" do
+    get "/api/v1/users/me/nav_preferences", headers: api_headers(@read_only_api_key)
+    assert_response :success
+
+    body = JSON.parse(response.body)
+    assert_nil body["nav_item_order"]
+  end
+
+  test "update_nav_preferences persists order and syncs across requests" do
+    put "/api/v1/users/me/nav_preferences",
+        params: { nav_item_order: [ "dashboard", "rules", "goals" ] },
+        headers: api_headers(@api_key)
+    assert_response :success
+
+    body = JSON.parse(response.body)
+    assert_equal [ "dashboard", "rules", "goals" ], body["nav_item_order"]
+
+    get "/api/v1/users/me/nav_preferences", headers: api_headers(@api_key)
+    assert_response :success
+    assert_equal [ "dashboard", "rules", "goals" ], JSON.parse(response.body)["nav_item_order"]
+  end
+
+  test "update_nav_preferences requires write scope" do
+    put "/api/v1/users/me/nav_preferences",
+        params: { nav_item_order: [ "dashboard" ] },
+        headers: api_headers(@read_only_api_key)
+    assert_response :forbidden
+  end
+
+  test "update_nav_preferences rejects non-array payload" do
+    put "/api/v1/users/me/nav_preferences",
+        params: { nav_item_order: "not_an_array" },
+        headers: api_headers(@api_key)
+    assert_response :unprocessable_entity
+  end
+
   private
 
     def api_headers(api_key)

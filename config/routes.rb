@@ -544,6 +544,8 @@ Rails.application.routes.draw do
       delete "users/reset", to: "users#reset"
       delete "users/me", to: "users#destroy"
       patch "users/me", to: "users#update"
+      get "users/me/nav_preferences", to: "users#nav_preferences"
+      put "users/me/nav_preferences", to: "users#update_nav_preferences"
 
       # Test routes for API controller testing (only available in test environment)
       if Rails.env.test?

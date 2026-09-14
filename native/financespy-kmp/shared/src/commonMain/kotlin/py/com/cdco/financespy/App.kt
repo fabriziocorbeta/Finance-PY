@@ -14,6 +14,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
@@ -146,8 +147,9 @@ fun App(
                 val settingsState by settingsVm.uiState.collectAsState()
                 val isBusinessModeEnabled = settingsState.businessModeEnabled
 
+                val appScope = rememberCoroutineScope()
                 val navCustomizationVm = remember(isBusinessModeEnabled) {
-                    NavCustomizationViewModel(navPreferences, isBusinessModeEnabled)
+                    NavCustomizationViewModel(appScope, navPreferences, api, isBusinessModeEnabled)
                 }
                 val navCustomizationState by navCustomizationVm.uiState.collectAsState()
                 val pool = NavItems.pool(isBusinessModeEnabled)
