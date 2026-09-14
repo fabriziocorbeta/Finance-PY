@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::UsersController < Api::V1::BaseController
-  before_action :ensure_read_scope, only: :reset_status
-  before_action :ensure_write_scope, except: :reset_status
+  before_action :ensure_read_scope, only: %i[reset_status nav_preferences]
+  before_action :ensure_write_scope, except: %i[reset_status nav_preferences]
   before_action :ensure_admin, only: %i[reset reset_status]
 
   def reset
@@ -51,6 +51,21 @@ class Api::V1::UsersController < Api::V1::BaseController
     else
       render json: { error: "Failed to update user", details: user.errors.full_messages }, status: :unprocessable_entity
     end
+  end
+
+  def nav_preferences
+    render json: { nav_item_order: current_resource_owner.nav_item_order }
+  end
+
+  def update_nav_preferences
+    item_ids = params.require(:nav_item_order)
+
+    unless item_ids.is_a?(Array) && item_ids.all? { |id| id.is_a?(String) }
+      return render json: { error: "invalid_params", message: "nav_item_order must be an array of strings" }, status: :unprocessable_entity
+    end
+
+    current_resource_owner.update_nav_item_order(item_ids)
+    render json: { nav_item_order: current_resource_owner.reload.nav_item_order }
   end
 
   def destroy

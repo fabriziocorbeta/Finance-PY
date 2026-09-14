@@ -7,6 +7,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsBytes
 import io.ktor.http.ContentType
@@ -15,6 +16,7 @@ import py.com.cdco.financespy.api.dto.FamilyExportDto
 import py.com.cdco.financespy.api.dto.FamilyExportEnvelope
 import py.com.cdco.financespy.api.dto.FamilyExportsEnvelope
 import py.com.cdco.financespy.api.dto.AccountDto
+import py.com.cdco.financespy.api.dto.NavPreferencesDto
 import py.com.cdco.financespy.api.dto.BalanceSeriesDto
 import py.com.cdco.financespy.api.dto.AccountsResponse
 import py.com.cdco.financespy.api.dto.BalanceSheetResponse
@@ -99,6 +101,17 @@ open class FinancePyApi(private val http: HttpClient) {
             setBody(UpdateUserRequest(user = body))
         }.body()
     }
+    open suspend fun fetchNavItemOrder(): List<String>? {
+        return http.get("/api/v1/users/me/nav_preferences").body<NavPreferencesDto>().nav_item_order
+    }
+
+    open suspend fun updateNavItemOrder(itemIds: List<String>): List<String>? {
+        return http.put("/api/v1/users/me/nav_preferences") {
+            contentType(ContentType.Application.Json)
+            setBody(NavPreferencesDto(nav_item_order = itemIds))
+        }.body<NavPreferencesDto>().nav_item_order
+    }
+
     open suspend fun fetchAccountBalanceSeries(accountId: String, period: String = "last_30_days"): BalanceSeriesDto {
         return http.get("/api/v1/accounts/$accountId/balance_series") {
             parameter("period", period)

@@ -16,3 +16,8 @@ data class UserDto(
     val needs_onboarding: Boolean = false,
     val is_invited: Boolean = false
 )
+
+@Serializable
+data class NavPreferencesDto(
+    val nav_item_order: List<String>? = null
+)

@@ -1,8 +1,11 @@
 package py.com.cdco.financespy.screens
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.navigation.NavItem
 import py.com.cdco.financespy.navigation.NavItems
 import py.com.cdco.financespy.navigation.NavPreferences
@@ -13,8 +16,15 @@ data class NavCustomizationUiState(
     val maxSelectable: Int = 6
 )
 
+// El orden de la barra inferior se sincroniza entre dispositivos vía
+// preferences jsonb del usuario (users/me/nav_preferences). navPreferences
+// (local) sigue siendo el cache offline-first: se lee de entrada para pintar
+// sin esperar red, se sobreescribe si el server tiene algo distinto, y cada
+// cambio se guarda local + se empuja al server en background.
 class NavCustomizationViewModel(
+    private val scope: CoroutineScope,
     private val navPreferences: NavPreferences,
+    private val api: FinancePyApi,
     private val businessModeEnabled: Boolean
 ) {
     private val pool = NavItems.pool(businessModeEnabled)
@@ -26,6 +36,38 @@ class NavCustomizationViewModel(
         )
     )
     val uiState: StateFlow<NavCustomizationUiState> = _uiState.asStateFlow()
+
+    init {
+        syncFromServer()
+    }
+
+    private fun syncFromServer() {
+        scope.launch {
+            try {
+                val remoteOrder = api.fetchNavItemOrder()
+                val poolIds = pool.map { it.id }.toSet()
+                val filtered = remoteOrder?.filter { it in poolIds }
+                if (!filtered.isNullOrEmpty() && filtered != _uiState.value.selectedIds) {
+                    navPreferences.saveOrder(filtered)
+                    _uiState.value = _uiState.value.copy(selectedIds = filtered)
+                }
+            } catch (e: Exception) {
+                // Sin conexión o error de red: seguimos con el cache local.
+            }
+        }
+    }
+
+    private fun persist(order: List<String>) {
+        navPreferences.saveOrder(order)
+        scope.launch {
+            try {
+                api.updateNavItemOrder(order)
+            } catch (e: Exception) {
+                // Falla silenciosa: el cambio queda local, se re-sincroniza
+                // en el próximo syncFromServer (próxima apertura de pantalla).
+            }
+        }
+    }
 
     private fun loadInitialSelection(): List<String> {
         val saved = navPreferences.loadOrder()
@@ -45,7 +87,7 @@ class NavCustomizationViewModel(
             current + itemId
         }
         _uiState.value = _uiState.value.copy(selectedIds = next)
-        navPreferences.saveOrder(next)
+        persist(next)
     }
 
     fun moveUp(itemId: String) {
@@ -55,7 +97,7 @@ class NavCustomizationViewModel(
         current.removeAt(idx)
         current.add(idx - 1, itemId)
         _uiState.value = _uiState.value.copy(selectedIds = current)
-        navPreferences.saveOrder(current)
+        persist(current)
     }
 
     fun moveDown(itemId: String) {
@@ -65,13 +107,13 @@ class NavCustomizationViewModel(
         current.removeAt(idx)
         current.add(idx + 1, itemId)
         _uiState.value = _uiState.value.copy(selectedIds = current)
-        navPreferences.saveOrder(current)
+        persist(current)
     }
 
     fun resetToDefault() {
         val poolIds = pool.map { it.id }.toSet()
         val defaults = NavItems.CORE_DEFAULT_ORDER.filter { it in poolIds }
         _uiState.value = _uiState.value.copy(selectedIds = defaults)
-        navPreferences.saveOrder(defaults)
+        persist(defaults)
     }
 }

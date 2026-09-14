@@ -379,6 +379,22 @@ class User < ApplicationRecord
     end
   end
 
+  # Native app bottom nav customization (Android/iOS) -- ids del nav item
+  # elegido por el usuario y su orden. Guardado en preferences para
+  # sincronizar entre dispositivos, igual que el resto de preferencias de UI.
+  def nav_item_order
+    preferences&.[]("nav_item_order")
+  end
+
+  def update_nav_item_order(item_ids)
+    transaction do
+      lock!
+      updated_prefs = (preferences || {}).deep_dup
+      updated_prefs["nav_item_order"] = item_ids
+      update!(preferences: updated_prefs)
+    end
+  end
+
   private
     def apply_ui_layout_defaults
       self.ui_layout = (ui_layout.presence || self.class.default_ui_layout)
