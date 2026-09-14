@@ -29,6 +29,7 @@ object Routes {
     const val BUDGET_ALLOCATION_EDITOR = "budget_editor/{budgetId}"
     const val TRANSACTION_FORM = "transaction_form?transactionId={transactionId}"
     const val SETTINGS = "settings"
+    const val NAV_CUSTOMIZATION = "nav_customization"
 
     fun accountDetail(accountId: String) = "account/$accountId"
     fun ruleDetail(ruleId: String) = "rule/$ruleId"
