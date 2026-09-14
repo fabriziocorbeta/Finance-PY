@@ -45,7 +45,7 @@ data class GoalDto(
     val status: String? = null,
     val months_remaining: Double? = null,
     val catch_up_delta: Double? = null,
-    val allocations: Map<String, String>? = null
+    val allocations: Map<String, String?>? = null
 )
 
 @Serializable
@@ -71,7 +71,7 @@ data class CreateGoalBody(
     val progress_basis: String? = null,
     val state: String? = null,
     val account_ids: List<String>,
-    val allocations: Map<String, String>? = null,
+    val allocations: Map<String, String?>? = null,
     val goal_accounts_attributes: List<GoalAccountAttributeDto>? = null
 )
 
@@ -92,6 +92,6 @@ data class UpdateGoalBody(
     val progress_basis: String? = null,
     val state: String? = null,
     val account_ids: List<String>? = null,
-    val allocations: Map<String, String>? = null,
+    val allocations: Map<String, String?>? = null,
     val goal_accounts_attributes: List<GoalAccountAttributeDto>? = null
 )

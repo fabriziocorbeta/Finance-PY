@@ -63,7 +63,10 @@ class GoalFormViewModel(
                     val remoteGoal = api.fetchGoal(goalId)
                     _state.value = _state.value.copy(
                         selectedAccountIds = remoteGoal.account_ids.orEmpty().toSet(),
-                        allocations = remoteGoal.allocations.orEmpty()
+                        // allocated_amount null = "sin monto fijo" (allocation tipo "pool",
+                        // diseño intencional del modelo Goal) -- se representa como campo
+                        // vacío en el form, el usuario puede completar un monto o dejarlo así.
+                        allocations = remoteGoal.allocations.orEmpty().mapValues { (_, v) -> v ?: "" }
                     )
                 }
             }
