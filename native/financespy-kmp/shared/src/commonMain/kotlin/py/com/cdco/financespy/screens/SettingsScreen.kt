@@ -1,6 +1,7 @@
 package py.com.cdco.financespy.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,11 +12,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Rule
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -43,7 +48,9 @@ fun SettingsScreen(
     viewModel: SettingsViewModel,
     onBack: () -> Unit,
     onLoggedOut: () -> Unit,
-    onOpenNotificationSettings: (() -> Unit)? = null
+    onOpenNotificationSettings: (() -> Unit)? = null,
+    onNavigateToRules: (() -> Unit)? = null,
+    onNavigateToNavCustomization: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -226,6 +233,36 @@ fun SettingsScreen(
                     }
                 }
 
+                if (onNavigateToRules != null || onNavigateToNavCustomization != null) {
+                    item {
+                        Text(
+                            text = "Navegación",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = FinancePyColors.textPrimary()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        AppCard {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                if (onNavigateToRules != null) {
+                                    SettingsNavRow(
+                                        icon = Icons.Filled.Rule,
+                                        label = "Reglas",
+                                        onClick = onNavigateToRules
+                                    )
+                                }
+                                if (onNavigateToNavCustomization != null) {
+                                    SettingsNavRow(
+                                        icon = Icons.Filled.Tune,
+                                        label = "Personalizar navegación",
+                                        onClick = onNavigateToNavCustomization
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
+
                 if (onOpenNotificationSettings != null) {
                     item {
                         Text(
@@ -269,6 +306,40 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SettingsNavRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = FinancePyColors.textSecondary(),
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = FinancePyColors.textPrimary(),
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = FinancePyColors.textSubdued()
+        )
     }
 }
 

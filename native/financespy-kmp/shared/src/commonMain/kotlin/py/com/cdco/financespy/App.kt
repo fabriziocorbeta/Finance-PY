@@ -1,16 +1,17 @@
 package py.com.cdco.financespy
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -19,15 +20,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import py.com.cdco.financespy.api.FinancePyApi
-import py.com.cdco.financespy.api.dto.FamilySettingsDto
+import py.com.cdco.financespy.navigation.NavItem
+import py.com.cdco.financespy.navigation.NavItems
+import py.com.cdco.financespy.navigation.NavPreferences
 import py.com.cdco.financespy.navigation.Routes
+import py.com.cdco.financespy.screens.NavCustomizationScreen
+import py.com.cdco.financespy.screens.NavCustomizationViewModel
+import py.com.cdco.financespy.theme.components.AppBottomNav
+import py.com.cdco.financespy.theme.components.AppHamburgerMenu
 import py.com.cdco.financespy.screens.AccountDetailScreen
 import py.com.cdco.financespy.screens.AccountDetailViewModel
 import py.com.cdco.financespy.screens.BudgetAllocationEditorScreen
@@ -92,6 +97,7 @@ import py.com.cdco.financespy.theme.FinancePyTheme
 fun App(
     isLoggedIn: Boolean?,
     api: FinancePyApi,
+    navPreferences: NavPreferences,
     needsOnboarding: Boolean = false,
     onLoginClick: () -> Unit,
     onLoggedOut: () -> Unit,
@@ -143,204 +149,67 @@ fun App(
                 val settingsState by settingsVm.uiState.collectAsState()
                 val isBusinessModeEnabled = settingsState.businessModeEnabled
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(FinancePyColors.surface())
-                        .statusBarsPadding()
-                        .navigationBarsPadding()
-                ) {
-                    val businessRoutes = listOf(Routes.PRODUCTS, Routes.SALES, Routes.PURCHASE_ORDERS, Routes.FLEET)
-                    val isTopLevelRoute = currentRoute == Routes.DASHBOARD ||
-                        currentRoute == Routes.BUDGETS ||
-                        currentRoute == Routes.TRANSACTIONS ||
-                        currentRoute == Routes.RULES ||
-                        currentRoute == Routes.GOALS ||
-                        currentRoute == Routes.RECEIVABLES ||
-                        currentRoute == Routes.REPORTS ||
-                        (isBusinessModeEnabled && currentRoute in businessRoutes)
+                val navCustomizationVm = remember(isBusinessModeEnabled) {
+                    NavCustomizationViewModel(navPreferences, isBusinessModeEnabled)
+                }
+                val navCustomizationState by navCustomizationVm.uiState.collectAsState()
+                val pool = NavItems.pool(isBusinessModeEnabled)
+                val barItems = navCustomizationState.selectedIds.mapNotNull { id -> pool.find { it.id == id } }
+                val overflowItems = pool.filter { it.id !in navCustomizationState.selectedIds }
 
-                    if (isTopLevelRoute) {
-                        val selectedIndex = when (currentRoute) {
-                            Routes.BUDGETS -> 1
-                            Routes.TRANSACTIONS -> 2
-                            Routes.RULES -> 3
-                            Routes.GOALS -> 4
-                            Routes.RECEIVABLES -> 5
-                            Routes.PRODUCTS -> if (isBusinessModeEnabled) 6 else 0
-                            Routes.SALES -> if (isBusinessModeEnabled) 7 else 0
-                            Routes.PURCHASE_ORDERS -> if (isBusinessModeEnabled) 8 else 0
-                            Routes.REPORTS -> if (isBusinessModeEnabled) 9 else 6
-                            Routes.FLEET -> if (isBusinessModeEnabled) 10 else 0
-                            else -> 0
-                        }
-                        ScrollableTabRow(
-                            selectedTabIndex = selectedIndex,
-                            edgePadding = 0.dp,
-                            containerColor = FinancePyColors.container(),
-                            contentColor = FinancePyColors.textPrimary(),
-                            indicator = { tabPositions ->
-                                if (selectedIndex < tabPositions.size) {
-                                    TabRowDefaults.SecondaryIndicator(
-                                        Modifier.tabIndicatorOffset(tabPositions[selectedIndex]),
-                                        color = FinancePyColors.textPrimary()
+                var showHamburgerMenu by remember { mutableStateOf(false) }
+
+                val businessRoutes = listOf(Routes.PRODUCTS, Routes.SALES, Routes.PURCHASE_ORDERS, Routes.FLEET)
+                val isTopLevelRoute = currentRoute == Routes.DASHBOARD ||
+                    currentRoute == Routes.BUDGETS ||
+                    currentRoute == Routes.TRANSACTIONS ||
+                    currentRoute == Routes.RULES ||
+                    currentRoute == Routes.GOALS ||
+                    currentRoute == Routes.RECEIVABLES ||
+                    currentRoute == Routes.REPORTS ||
+                    (isBusinessModeEnabled && currentRoute in businessRoutes)
+
+                fun navigateToItem(item: NavItem) {
+                    navController.navigate(item.route) { launchSingleTop = true }
+                    showHamburgerMenu = false
+                }
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Scaffold(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(FinancePyColors.surface())
+                            .statusBarsPadding()
+                            .navigationBarsPadding(),
+                        containerColor = FinancePyColors.surface(),
+                        topBar = {
+                            if (isTopLevelRoute) {
+                                IconButton(onClick = { showHamburgerMenu = true }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Menu,
+                                        contentDescription = "Más opciones",
+                                        tint = FinancePyColors.textPrimary()
                                     )
                                 }
                             }
-                        ) {
-                            Tab(
-                                selected = currentRoute == Routes.DASHBOARD,
-                                onClick = { navController.navigate(Routes.DASHBOARD) { launchSingleTop = true } },
-                                text = {
-                                    Text(
-                                        "Dashboard",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = if (currentRoute == Routes.DASHBOARD) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            )
-                            Tab(
-                                selected = currentRoute == Routes.BUDGETS,
-                                onClick = { navController.navigate(Routes.BUDGETS) { launchSingleTop = true } },
-                                text = {
-                                    Text(
-                                        "Presupuestos",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = if (currentRoute == Routes.BUDGETS) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            )
-                            Tab(
-                                selected = currentRoute == Routes.TRANSACTIONS,
-                                onClick = { navController.navigate(Routes.TRANSACTIONS) { launchSingleTop = true } },
-                                text = {
-                                    Text(
-                                        "Transacciones",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = if (currentRoute == Routes.TRANSACTIONS) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            )
-                            Tab(
-                                selected = currentRoute == Routes.RULES,
-                                onClick = { navController.navigate(Routes.RULES) { launchSingleTop = true } },
-                                text = {
-                                    Text(
-                                        "Reglas",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = if (currentRoute == Routes.RULES) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            )
-                            Tab(
-                                selected = currentRoute == Routes.GOALS,
-                                onClick = { navController.navigate(Routes.GOALS) { launchSingleTop = true } },
-                                text = {
-                                    Text(
-                                        "Metas",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = if (currentRoute == Routes.GOALS) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            )
-                            Tab(
-                                selected = currentRoute == Routes.RECEIVABLES,
-                                onClick = { navController.navigate(Routes.RECEIVABLES) { launchSingleTop = true } },
-                                text = {
-                                    Text(
-                                        "Cuentas a Cobrar",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = if (currentRoute == Routes.RECEIVABLES) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            )
-                            if (isBusinessModeEnabled) {
-                                Tab(
-                                    selected = currentRoute == Routes.PRODUCTS,
-                                    onClick = { navController.navigate(Routes.PRODUCTS) { launchSingleTop = true } },
-                                    text = {
-                                        Text(
-                                            "Productos",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = if (currentRoute == Routes.PRODUCTS) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                )
-                                Tab(
-                                    selected = currentRoute == Routes.SALES,
-                                    onClick = { navController.navigate(Routes.SALES) { launchSingleTop = true } },
-                                    text = {
-                                        Text(
-                                            "Ventas",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = if (currentRoute == Routes.SALES) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                )
-                                Tab(
-                                    selected = currentRoute == Routes.PURCHASE_ORDERS,
-                                    onClick = { navController.navigate(Routes.PURCHASE_ORDERS) { launchSingleTop = true } },
-                                    text = {
-                                        Text(
-                                            "Compras",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = if (currentRoute == Routes.PURCHASE_ORDERS) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                )
-                            }
-                            Tab(
-                                selected = currentRoute == Routes.REPORTS,
-                                onClick = { navController.navigate(Routes.REPORTS) { launchSingleTop = true } },
-                                text = {
-                                    Text(
-                                        "Reportes",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = if (currentRoute == Routes.REPORTS) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            )
-                            if (isBusinessModeEnabled) {
-                                Tab(
-                                    selected = currentRoute == Routes.FLEET,
-                                    onClick = { navController.navigate(Routes.FLEET) { launchSingleTop = true } },
-                                    text = {
-                                        Text(
-                                            "Flota",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = if (currentRoute == Routes.FLEET) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
+                        },
+                        bottomBar = {
+                            if (isTopLevelRoute) {
+                                AppBottomNav(
+                                    items = barItems,
+                                    currentRoute = currentRoute,
+                                    onNavigate = { item -> navigateToItem(item) }
                                 )
                             }
                         }
-                    }
-
+                    ) { innerPadding ->
                     val startDestination = if (needsOnboarding) Routes.ONBOARDING else Routes.DASHBOARD
 
-                    NavHost(navController = navController, startDestination = startDestination) {
+                    NavHost(
+                        navController = navController,
+                        startDestination = startDestination,
+                        modifier = Modifier.padding(innerPadding)
+                    ) {
                         composable(Routes.ONBOARDING) {
                             OnboardingScreen(
                                 viewModel = remember { onboardingViewModelFactory() },
@@ -363,7 +232,15 @@ fun App(
                                 viewModel = settingsVm,
                                 onBack = { navController.popBackStack() },
                                 onLoggedOut = onLoggedOut,
-                                onOpenNotificationSettings = onOpenNotificationSettings
+                                onOpenNotificationSettings = onOpenNotificationSettings,
+                                onNavigateToRules = { navController.navigate(Routes.RULES) },
+                                onNavigateToNavCustomization = { navController.navigate(Routes.NAV_CUSTOMIZATION) }
+                            )
+                        }
+                        composable(Routes.NAV_CUSTOMIZATION) {
+                            NavCustomizationScreen(
+                                viewModel = navCustomizationVm,
+                                onBack = { navController.popBackStack() }
                             )
                         }
                         composable(Routes.BUDGETS) {
@@ -560,6 +437,15 @@ fun App(
                                 onBack = { navController.popBackStack() }
                             )
                         }
+                    }
+                    }
+
+                    if (showHamburgerMenu) {
+                        AppHamburgerMenu(
+                            items = overflowItems,
+                            onItemClick = { item -> navigateToItem(item) },
+                            onDismiss = { showHamburgerMenu = false }
+                        )
                     }
                 }
             }
