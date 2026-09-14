@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,6 +35,7 @@ fun AppBottomNav(
     items: List<NavItem>,
     currentRoute: String?,
     onNavigate: (NavItem) -> Unit,
+    onMoreClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -56,7 +59,46 @@ fun AppBottomNav(
                     modifier = Modifier.weight(1f)
                 )
             }
+            if (onMoreClick != null) {
+                AppBottomNavMoreItem(
+                    onClick = onMoreClick,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun AppBottomNavMoreItem(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.selectable(selected = false, onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Menu,
+                contentDescription = "Más opciones",
+                tint = FinancePyColors.textSecondary(),
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        Text(
+            text = "Más",
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+            color = FinancePyColors.textSecondary(),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 2.dp)
+        )
     }
 }
 
