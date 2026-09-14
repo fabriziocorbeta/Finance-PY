@@ -1,6 +1,8 @@
 package py.com.cdco.financespy.wallet
 
 import android.content.Context
+import kotlinx.coroutines.runBlocking
+import py.com.cdco.financespy.auth.AndroidTokenStorage
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.Executors
@@ -42,13 +44,12 @@ object WalletCaptureHandler {
         )
 
         val store = PendingCaptureStore(context)
-        val tokenResId = context.resources.getIdentifier("wallet_webhook_token", "string", context.packageName)
-        if (tokenResId == 0) {
+        val token = runBlocking { AndroidTokenStorage(context).accessToken() }
+        if (token.isNullOrBlank()) {
             store.add(capture)
             onResult?.invoke("token_missing", purchase.cardText)
             return
         }
-        val token = context.getString(tokenResId)
         val result = WebhookClient(token).post(capture)
 
         when (result) {
@@ -67,12 +68,11 @@ object WalletCaptureHandler {
     fun retryPending(context: Context, callback: ((applied: Int) -> Unit)? = null) {
         executor.execute {
             val store = PendingCaptureStore(context)
-            val tokenResId = context.resources.getIdentifier("wallet_webhook_token", "string", context.packageName)
-            if (tokenResId == 0) {
+            val token = runBlocking { AndroidTokenStorage(context).accessToken() }
+            if (token.isNullOrBlank()) {
                 callback?.invoke(0)
                 return@execute
             }
-            val token = context.getString(tokenResId)
             val client = WebhookClient(token)
             var applied = 0
 

@@ -10,7 +10,7 @@ sealed class WebhookResult {
 }
 
 class WebhookClient(private val token: String) {
-    private val url = "https://finance.cd-co.com.py/webhooks/android_purchase"
+    private val url = "https://finance.cd-co.com.py/api/v1/android_purchases"
 
     fun post(capture: PendingCapture): WebhookResult {
         var conn: HttpURLConnection? = null

@@ -1,14 +1,14 @@
 class AndroidPurchase::WebhookProcessor
   Error = Class.new(StandardError)
 
-  def initialize(params)
+  def initialize(params, family: nil)
     @account_id = params[:account_id].to_s
     @amount = params[:amount]
     @merchant = params[:merchant].to_s
     @item = params[:item].to_s
     @timestamp = params[:timestamp].to_s
     @raw_text = params[:raw_text].to_s
-    @expected_family_id = ENV["ANDROID_WEBHOOK_FAMILY_ID"]
+    @family = family
   end
 
   def process
@@ -19,7 +19,7 @@ class AndroidPurchase::WebhookProcessor
     # Same "Unknown account_id" message for both "doesn't exist" and "wrong
     # family" so a caller with a valid token can't use this to enumerate
     # which account ids exist in other families.
-    if account.nil? || (@expected_family_id.present? && account.family_id != @expected_family_id)
+    if account.nil? || (@family.present? && account.family_id != @family.id)
       raise Error, "Unknown account_id: #{@account_id}"
     end
 
