@@ -28,7 +28,9 @@ module Reports
         summary: build_summary_metrics,
         trends: build_trends_data,
         net_worth: build_net_worth_metrics,
-        transactions_breakdown: build_transactions_breakdown
+        transactions_breakdown: build_transactions_breakdown,
+        investment_metrics: build_investment_metrics,
+        investment_flows: build_investment_flows
       }
     end
 
@@ -313,6 +315,60 @@ module Reports
 
         finance_account_ids = user.finance_accounts.pluck(:id)
         scope.where(entries: { account_id: finance_account_ids })
+      end
+
+      def build_investment_metrics
+        investment_statement = InvestmentStatement.new(family, user: user)
+        investment_accounts = investment_statement.investment_accounts
+
+        return { has_investments: false } unless investment_accounts.any?
+
+        period_totals = investment_statement.totals(period: period)
+        trend = investment_statement.unrealized_gains_trend
+        portfolio_val = investment_statement.portfolio_value_money.amount.to_f
+
+        {
+          has_investments: true,
+          portfolio_value: portfolio_val,
+          unrealized_gain: trend ? trend.value.to_f : 0.0,
+          unrealized_gain_pct: trend && trend.percent.finite? ? trend.percent.to_f : nil,
+          period_contributions: period_totals.contributions.amount.to_f,
+          period_withdrawals: period_totals.withdrawals.amount.to_f,
+          top_holdings: build_top_holdings(investment_statement, portfolio_val)
+        }
+      end
+
+      def build_top_holdings(investment_statement, portfolio_value)
+        investment_statement.top_holdings(limit: 5).map do |holding|
+          converted_amount = investment_statement.send(:convert_to_family_currency, holding.amount, holding.currency).to_f
+          trend = holding.trend
+
+          weight = if portfolio_value > 0
+            (converted_amount / portfolio_value * 100.0).round(2)
+          else
+            (holding.weight || 0.0).to_f.round(2)
+          end
+
+          return_pct = trend && trend.percent.finite? ? trend.percent.to_f.round(2) : nil
+
+          {
+            ticker: holding.ticker,
+            name: holding.name,
+            weight: weight,
+            amount: converted_amount.round(2),
+            return_pct: return_pct
+          }
+        end
+      end
+
+      def build_investment_flows
+        flows = InvestmentFlowStatement.new(family, user: user).period_totals(period: period)
+
+        {
+          contributions: flows.contributions.amount.to_f,
+          withdrawals: flows.withdrawals.amount.to_f,
+          net_flow: flows.net_flow.amount.to_f
+        }
       end
   end
 end
