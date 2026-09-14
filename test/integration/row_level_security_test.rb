@@ -138,18 +138,18 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
 
     # Business active tables (Family B)
     @product_b = Product.create!(family: @family_b, name: "Other Product", buy_price: 10000, sell_price: 15000, stock: 10)
-    @purchase_order_b = PurchaseOrder.create!(family: @family_b, supplier_name: "Other Supplier")
+    @purchase_order_b = PurchaseOrder.create!(family: @family_b, supplier_name: "Other Supplier", account: @account_b)
     @purchase_order_item_b = PurchaseOrderItem.create!(purchase_order: @purchase_order_b, product: @product_b, quantity: 5, unit_cost: 10000)
-    @sale_b = Sale.create!(family: @family_b, client_name: "Other Client")
+    @sale_b = Sale.create!(family: @family_b, client_name: "Other Client", account: @account_b)
     @sale_item_b = SaleItem.create!(sale: @sale_b, product: @product_b, quantity: 2, unit_price: 15000)
     @recurring_transaction_b = RecurringTransaction.create!(family: @family_b, name: "Other Recurring", amount: 100000, currency: "pyg", expected_day_of_month: 15, last_occurrence_date: Date.current, next_expected_date: 1.month.from_now.to_date)
     @product_stock_movement_b = ProductStockMovement.create!(product: @product_b, quantity_delta: 5, reason: "entrada")
 
     # Family A records for positive confirmation
     @product_a = Product.create!(family: @family_a, name: "Family A Product", buy_price: 10000, sell_price: 15000, stock: 10)
-    @purchase_order_a = PurchaseOrder.create!(family: @family_a, supplier_name: "Family A Supplier")
+    @purchase_order_a = PurchaseOrder.create!(family: @family_a, supplier_name: "Family A Supplier", account: accounts(:depository))
     @purchase_order_item_a = PurchaseOrderItem.create!(purchase_order: @purchase_order_a, product: @product_a, quantity: 5, unit_cost: 10000)
-    @sale_a = Sale.create!(family: @family_a, client_name: "Family A Client")
+    @sale_a = Sale.create!(family: @family_a, client_name: "Family A Client", account: accounts(:depository))
     @sale_item_a = SaleItem.create!(sale: @sale_a, product: @product_a, quantity: 2, unit_price: 15000)
     @recurring_transaction_a = RecurringTransaction.create!(family: @family_a, name: "Family A Recurring", amount: 100000, currency: "pyg", expected_day_of_month: 15, last_occurrence_date: Date.current, next_expected_date: 1.month.from_now.to_date)
     @product_stock_movement_a = ProductStockMovement.create!(product: @product_a, quantity_delta: 5, reason: "entrada")

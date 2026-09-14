@@ -1713,7 +1713,9 @@ CREATE TABLE public.purchase_orders (
     expected_date date,
     notes text,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    account_id uuid NOT NULL,
+    entry_id uuid
 );
 
 ALTER TABLE ONLY public.purchase_orders FORCE ROW LEVEL SECURITY;
@@ -4690,6 +4692,20 @@ CREATE INDEX index_purchase_order_items_on_purchase_order_id ON public.purchase_
 
 
 --
+-- Name: index_purchase_orders_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_purchase_orders_on_account_id ON public.purchase_orders USING btree (account_id);
+
+
+--
+-- Name: index_purchase_orders_on_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_purchase_orders_on_entry_id ON public.purchase_orders USING btree (entry_id);
+
+
+--
 -- Name: index_purchase_orders_on_family_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5406,6 +5422,14 @@ ALTER TABLE ONLY public.import_rows
 
 ALTER TABLE ONLY public.trades
     ADD CONSTRAINT fk_rails_14583816f0 FOREIGN KEY (security_id) REFERENCES public.securities(id);
+
+
+--
+-- Name: purchase_orders fk_rails_1a3bebde37; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.purchase_orders
+    ADD CONSTRAINT fk_rails_1a3bebde37 FOREIGN KEY (entry_id) REFERENCES public.entries(id);
 
 
 --
@@ -6217,6 +6241,14 @@ ALTER TABLE ONLY public.fuel_log_lines
 
 
 --
+-- Name: purchase_orders fk_rails_f3a3354387; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.purchase_orders
+    ADD CONSTRAINT fk_rails_f3a3354387 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
 -- Name: balances fk_rails_f3e5781e9c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6613,6 +6645,7 @@ CREATE POLICY valuations_family_isolation_policy ON public.valuations USING ((fa
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260914211237'),
 ('20260914175626'),
 ('20260902020000'),
 ('20260902010000'),

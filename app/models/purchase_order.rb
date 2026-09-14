@@ -1,11 +1,14 @@
 class PurchaseOrder < ApplicationRecord
   belongs_to :family
+  belongs_to :account
+  belongs_to :entry, optional: true
   has_many :purchase_order_items, dependent: :destroy
 
   enum :status, { draft: "draft", received: "received", cancelled: "cancelled" }, default: "draft"
   enum :currency, { pyg: "pyg", usd: "usd" }, default: "pyg"
 
   validates :order_number, presence: true, uniqueness: { scope: :family_id }
+  validate :account_belongs_to_family
   validate :status_cannot_be_changed_directly, on: :update
 
   before_validation :assign_order_number, on: :create
@@ -40,6 +43,8 @@ class PurchaseOrder < ApplicationRecord
       ensure
         @allow_status_change = false
       end
+
+      create_associated_entry
     end
   end
 
@@ -66,10 +71,43 @@ class PurchaseOrder < ApplicationRecord
       ensure
         @allow_status_change = false
       end
+
+      destroy_associated_entry
     end
   end
 
   private
+
+    def create_associated_entry
+      purchase_category = family.categories.find_or_create_by!(name: "Compras") do |category|
+        category.color = "#f97316"
+        category.lucide_icon = "shopping-bag"
+      end
+      transaction_entryable = Transaction.new(category: purchase_category)
+      entry_record = account.entries.create!(
+        entryable: transaction_entryable,
+        name: "Compra ##{order_number}#{supplier_name.present? ? " - #{supplier_name}" : ""}",
+        date: Date.current,
+        amount: total,
+        currency: account.currency
+      )
+      update_column(:entry_id, entry_record.id)
+      entry_record.sync_account_later
+    end
+
+    def destroy_associated_entry
+      if entry
+        entry_to_remove = entry
+        update_column(:entry_id, nil)
+        entry_to_remove.destroy!
+        entry_to_remove.sync_account_later
+      end
+    end
+
+    def account_belongs_to_family
+      return if account.nil? || family.nil?
+      errors.add(:account, "must belong to the same family") unless account.family_id == family_id
+    end
 
     def assign_order_number
       if order_number.blank? && family.present?

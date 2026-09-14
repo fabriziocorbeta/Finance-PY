@@ -158,7 +158,7 @@ class Api::V1::PurchaseOrdersController < Api::V1::BaseController
     def purchase_order_params
       raw = params.key?(:purchase_order) ? params.require(:purchase_order) : params
       raw.permit(
-        :supplier_name, :currency, :expected_date, :notes,
+        :supplier_name, :currency, :expected_date, :notes, :account_id,
         purchase_order_items_attributes: [ :id, :product_id, :quantity, :unit_cost, :_destroy ]
       )
     end

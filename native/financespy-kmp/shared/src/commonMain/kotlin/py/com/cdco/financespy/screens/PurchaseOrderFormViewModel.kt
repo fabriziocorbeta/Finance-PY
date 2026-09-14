@@ -9,6 +9,8 @@ import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.ProductDto
 import py.com.cdco.financespy.api.dto.PurchaseOrderDto
+import py.com.cdco.financespy.db.AccountDao
+import py.com.cdco.financespy.db.AccountEntity
 
 data class PurchaseOrderFormItemState(
     val productId: String = "",
@@ -18,7 +20,8 @@ data class PurchaseOrderFormItemState(
 
 class PurchaseOrderFormViewModel(
     private val purchaseOrderId: String?,
-    private val api: FinancePyApi
+    private val api: FinancePyApi,
+    private val accountDao: AccountDao
 ) : ViewModel() {
 
     private val _purchaseOrder = MutableStateFlow<PurchaseOrderDto?>(null)
@@ -26,6 +29,9 @@ class PurchaseOrderFormViewModel(
 
     private val _availableProducts = MutableStateFlow<List<ProductDto>>(emptyList())
     val availableProducts: StateFlow<List<ProductDto>> = _availableProducts.asStateFlow()
+
+    private val _availableAccounts = MutableStateFlow<List<AccountEntity>>(emptyList())
+    val availableAccounts: StateFlow<List<AccountEntity>> = _availableAccounts.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -38,8 +44,17 @@ class PurchaseOrderFormViewModel(
 
     init {
         loadProducts()
+        loadAccounts()
         if (purchaseOrderId != null) {
             loadPurchaseOrder(purchaseOrderId)
+        }
+    }
+
+    private fun loadAccounts() {
+        viewModelScope.launch {
+            accountDao.observeAll().collect { accounts ->
+                _availableAccounts.value = accounts
+            }
         }
     }
 
@@ -71,9 +86,15 @@ class PurchaseOrderFormViewModel(
         supplierName: String?,
         currency: String,
         notes: String?,
+        accountId: String,
         items: List<PurchaseOrderFormItemState>,
         onSaved: () -> Unit
     ) {
+        if (accountId.isBlank()) {
+            _error.value = "Seleccioná una cuenta"
+            return
+        }
+
         viewModelScope.launch {
             _isSaving.value = true
             _error.value = null
@@ -90,6 +111,7 @@ class PurchaseOrderFormViewModel(
                     "supplier_name" to supplierName.takeIf { !it.isNullOrBlank() },
                     "currency" to currency.lowercase(),
                     "notes" to notes.takeIf { !it.isNullOrBlank() },
+                    "account_id" to accountId,
                     "purchase_order_items_attributes" to itemsAttributes
                 )
 
