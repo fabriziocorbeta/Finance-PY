@@ -10,7 +10,9 @@ data class ReportsSummaryDto(
     val summary: ReportSummaryMetricsDto,
     val trends: List<ReportTrendItemDto> = emptyList(),
     @SerialName("net_worth") val netWorth: ReportNetWorthDto,
-    @SerialName("transactions_breakdown") val transactionsBreakdown: ReportTransactionsBreakdownDto
+    @SerialName("transactions_breakdown") val transactionsBreakdown: ReportTransactionsBreakdownDto,
+    @SerialName("investment_metrics") val investmentMetrics: ReportInvestmentMetricsDto? = null,
+    @SerialName("investment_flows") val investmentFlows: ReportInvestmentFlowsDto? = null
 )
 
 @Serializable
@@ -74,4 +76,31 @@ data class ReportSubcategoryBreakdownDto(
     @SerialName("category_icon") val categoryIcon: String? = null,
     val total: Double,
     val count: Int = 0
+)
+
+@Serializable
+data class ReportInvestmentMetricsDto(
+    @SerialName("has_investments") val hasInvestments: Boolean = false,
+    @SerialName("portfolio_value") val portfolioValue: Double = 0.0,
+    @SerialName("unrealized_gain") val unrealizedGain: Double = 0.0,
+    @SerialName("unrealized_gain_pct") val unrealizedGainPct: Double? = null,
+    @SerialName("period_contributions") val periodContributions: Double = 0.0,
+    @SerialName("period_withdrawals") val periodWithdrawals: Double = 0.0,
+    @SerialName("top_holdings") val topHoldings: List<ReportTopHoldingDto> = emptyList()
+)
+
+@Serializable
+data class ReportTopHoldingDto(
+    val ticker: String,
+    val name: String,
+    val weight: Double = 0.0,
+    val amount: Double = 0.0,
+    @SerialName("return_pct") val returnPct: Double? = null
+)
+
+@Serializable
+data class ReportInvestmentFlowsDto(
+    val contributions: Double = 0.0,
+    val withdrawals: Double = 0.0,
+    @SerialName("net_flow") val netFlow: Double = 0.0
 )

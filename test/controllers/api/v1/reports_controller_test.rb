@@ -29,6 +29,8 @@ class Api::V1::ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil json_response["trends"]
     assert_not_nil json_response["net_worth"]
     assert_not_nil json_response["transactions_breakdown"]
+    assert_not_nil json_response["investment_metrics"]
+    assert_not_nil json_response["investment_flows"]
 
     assert json_response["summary"].key?("income")
     assert json_response["summary"].key?("expense")
@@ -38,6 +40,11 @@ class Api::V1::ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert json_response["transactions_breakdown"].key?("income")
     assert json_response["transactions_breakdown"].key?("expense")
+
+    assert json_response["investment_metrics"].key?("has_investments")
+    assert json_response["investment_flows"].key?("contributions")
+    assert json_response["investment_flows"].key?("withdrawals")
+    assert json_response["investment_flows"].key?("net_flow")
   end
 
   test "should get reports summary with quarterly period" do

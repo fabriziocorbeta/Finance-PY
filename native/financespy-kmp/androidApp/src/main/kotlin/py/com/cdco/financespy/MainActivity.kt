@@ -17,6 +17,7 @@ import py.com.cdco.financespy.auth.AuthRepository
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.db.buildDatabase
 import py.com.cdco.financespy.db.initDatabaseBuilder
+import py.com.cdco.financespy.navigation.AndroidNavPreferences
 import py.com.cdco.financespy.network.ApiClient
 import py.com.cdco.financespy.screens.AccountDetailViewModel
 import py.com.cdco.financespy.screens.BudgetAllocationEditorViewModel
@@ -59,6 +60,7 @@ class MainActivity : ComponentActivity() {
     private val needsOnboarding = mutableStateOf(false)
 
     private val tokenStorage by lazy { AndroidTokenStorage(applicationContext) }
+    private val navPreferences by lazy { AndroidNavPreferences(applicationContext) }
     private val httpClient by lazy { ApiClient.create(tokenStorage) }
     private val authRepository by lazy { AuthRepository(httpClient, tokenStorage) }
     private val api by lazy { FinancePyApi(httpClient) }
@@ -199,6 +201,7 @@ class MainActivity : ComponentActivity() {
             App(
                 isLoggedIn = isLoggedIn.value,
                 api = api,
+                navPreferences = navPreferences,
                 needsOnboarding = needsOnboarding.value,
                 onLoginClick = {
                     val url = authRepository.buildAuthorizationUrl()
