@@ -11,6 +11,37 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     @family.recurring_transactions.destroy_all
   end
 
+  test "account must belong to the same family" do
+    other_family = Family.create!(name: "Other Family", default_account_sharing: "shared")
+    foreign_account = Account.create!(family: other_family, name: "Ajena", currency: "USD", balance: 0, accountable: Depository.new)
+
+    rt = RecurringTransaction.new(
+      family: @family,
+      account: foreign_account,
+      name: "Test",
+      amount: 100,
+      currency: "USD",
+      expected_day_of_month: 15
+    )
+
+    assert_not rt.valid?
+    assert_includes rt.errors[:account], "must belong to the same family"
+  end
+
+  test "account from the same family is valid" do
+    rt = RecurringTransaction.new(
+      family: @family,
+      account: @account,
+      name: "Test",
+      amount: 100,
+      currency: "USD",
+      expected_day_of_month: 15
+    )
+
+    rt.valid?
+    assert_empty rt.errors[:account]
+  end
+
   test "status is required" do
     recurring = @family.recurring_transactions.build(
       account: @account,
