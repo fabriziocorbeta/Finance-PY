@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -26,6 +27,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -38,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import py.com.cdco.financespy.api.dto.FamilyExportDto
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
@@ -49,6 +52,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onLoggedOut: () -> Unit,
     onOpenNotificationSettings: (() -> Unit)? = null,
+    onShareFile: ((ByteArray, String, String) -> Unit)? = null,
     onNavigateToRules: (() -> Unit)? = null,
     onNavigateToNavCustomization: (() -> Unit)? = null
 ) {
@@ -263,6 +267,54 @@ fun SettingsScreen(
                     }
                 }
 
+                // Family Data Backup (Admin only)
+                if (state.currentUser?.role.equals("admin", ignoreCase = true)) {
+                    item {
+                        Text(
+                            text = "Copia de Seguridad (Backup)",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = FinancePyColors.textPrimary()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        AppCard {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text(
+                                    text = "Genera una copia de seguridad completa de los datos de tu familia en un archivo ZIP (cuentas, transacciones, reglas, categorías y NDJSON).",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = FinancePyColors.textSecondary()
+                                )
+
+                                AppButton(
+                                    text = if (state.isCreatingExport) "Generando backup..." else "Crear nuevo backup",
+                                    onClick = { viewModel.createFamilyExport() },
+                                    enabled = !state.isCreatingExport,
+                                    variant = ButtonVariant.Primary,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+
+                    if (state.familyExports.isNotEmpty()) {
+                        items(state.familyExports) { export ->
+                            FamilyExportItem(
+                                export = export,
+                                isDownloading = state.downloadingExportId == export.id,
+                                onDownload = {
+                                    if (onShareFile != null) {
+                                        viewModel.downloadAndShareExport(export, onShareFile)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+
                 if (onOpenNotificationSettings != null) {
                     item {
                         Text(
@@ -361,6 +413,71 @@ private fun ProfileItem(label: String, value: String) {
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
             color = FinancePyColors.textPrimary()
         )
+    }
+}
+
+@Composable
+private fun FamilyExportItem(
+    export: FamilyExportDto,
+    isDownloading: Boolean,
+    onDownload: () -> Unit
+) {
+    AppCard {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = export.filename ?: "Copia de seguridad",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = FinancePyColors.textPrimary()
+                    )
+                    Text(
+                        text = export.created_at.take(19).replace("T", " "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = FinancePyColors.textSecondary()
+                    )
+                }
+
+                val (statusText, statusColor) = when (export.status) {
+                    "completed" -> "Completado" to FinancePyColors.success()
+                    "failed" -> "Fallido" to FinancePyColors.destructive()
+                    "processing" -> "Procesando..." to FinancePyColors.warning()
+                    else -> "Pendiente..." to FinancePyColors.textSecondary()
+                }
+
+                Surface(
+                    color = statusColor.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = statusColor,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            if (export.downloadable) {
+                Spacer(modifier = Modifier.height(4.dp))
+                AppButton(
+                    text = if (isDownloading) "Descargando..." else "Descargar / Compartir",
+                    onClick = onDownload,
+                    enabled = !isDownloading,
+                    variant = ButtonVariant.Secondary,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
     }
 }
 

@@ -129,7 +129,8 @@ fun App(
     accountDetailViewModelFactory: (String) -> AccountDetailViewModel,
     settingsViewModelFactory: () -> SettingsViewModel,
     reportsViewModelFactory: () -> ReportsViewModel,
-    onOpenNotificationSettings: (() -> Unit)? = null
+    onOpenNotificationSettings: (() -> Unit)? = null,
+    onShareFile: ((ByteArray, String, String) -> Unit)? = null
 ) {
     FinancePyTheme {
         if (isLoggedIn != null) {
@@ -233,6 +234,7 @@ fun App(
                                 onBack = { navController.popBackStack() },
                                 onLoggedOut = onLoggedOut,
                                 onOpenNotificationSettings = onOpenNotificationSettings,
+                                onShareFile = onShareFile,
                                 onNavigateToRules = { navController.navigate(Routes.RULES) },
                                 onNavigateToNavCustomization = { navController.navigate(Routes.NAV_CUSTOMIZATION) }
                             )
@@ -421,7 +423,8 @@ fun App(
                         }
                         composable(Routes.REPORTS) {
                             ReportsScreen(
-                                viewModel = remember { reportsViewModelFactory() }
+                                viewModel = remember { reportsViewModelFactory() },
+                                onShareFile = onShareFile
                             )
                         }
                         composable(Routes.FLEET) {

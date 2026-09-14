@@ -91,6 +91,25 @@ class Api::V1::ReportsControllerTest < ActionDispatch::IntegrationTest
     api_key_without_read&.destroy
   end
 
+  test "should export transactions csv with default period" do
+    get api_v1_reports_export_transactions_url, headers: api_headers(@api_key)
+    assert_response :success
+    assert_equal "text/csv", response.media_type
+    assert_includes response.headers["Content-Disposition"], "transactions_breakdown_"
+    assert_includes response.body, "Category"
+    assert_includes response.body, "Total"
+  end
+
+  test "should export transactions csv with custom period" do
+    start_d = "2025-01-01"
+    end_d = "2025-01-31"
+
+    get api_v1_reports_export_transactions_url(period_type: "custom", start_date: start_d, end_date: end_d), headers: api_headers(@api_key)
+    assert_response :success
+    assert_equal "text/csv", response.media_type
+    assert_includes response.headers["Content-Disposition"], "transactions_breakdown_20250101_to_20250131.csv"
+  end
+
   test "should respect RLS multi-tenant scoping for family data" do
     other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
     other_user = User.create!(
