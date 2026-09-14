@@ -42,7 +42,8 @@ import py.com.cdco.financespy.theme.components.ButtonVariant
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onBack: () -> Unit,
-    onLoggedOut: () -> Unit
+    onLoggedOut: () -> Unit,
+    onOpenNotificationSettings: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -219,6 +220,38 @@ fun SettingsScreen(
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                     color = FinancePyColors.textSecondary(),
                                     modifier = Modifier.padding(start = 8.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (onOpenNotificationSettings != null) {
+                    item {
+                        Text(
+                            text = "Captura de Wallet",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = FinancePyColors.textPrimary()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        AppCard {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Permite a FinancePY capturar automáticamente compras enviadas por Google Wallet al recibir la notificación del sistema.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = FinancePyColors.textSecondary()
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                AppButton(
+                                    text = "Activar acceso a notificaciones",
+                                    onClick = onOpenNotificationSettings,
+                                    variant = ButtonVariant.Secondary,
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         }

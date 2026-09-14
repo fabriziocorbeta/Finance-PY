@@ -37,6 +37,11 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_response :unauthorized
   end
 
+  test "update requires authentication" do
+    patch "/api/v1/users/me", params: { first_name: "New" }
+    assert_response :unauthorized
+  end
+
   # -- Scope enforcement -----------------------------------------------------
 
   test "reset requires write scope" do
@@ -46,6 +51,11 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
 
   test "destroy requires write scope" do
     delete "/api/v1/users/me", headers: api_headers(@read_only_api_key)
+    assert_response :forbidden
+  end
+
+  test "update requires write scope" do
+    patch "/api/v1/users/me", params: { first_name: "New" }, headers: api_headers(@read_only_api_key)
     assert_response :forbidden
   end
 
@@ -130,6 +140,86 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
     assert body["counts"].key?("plaid_items")
     assert body["counts"].key?("imports")
     assert body["counts"].key?("budgets")
+  end
+
+  # -- Update account / Onboarding -------------------------------------------
+
+  test "update updates user and family attributes and marks onboarded_at" do
+    @user.update!(onboarded_at: nil, set_onboarding_preferences_at: nil, set_onboarding_goals_at: nil, goals: [])
+    now_iso = Time.current.iso8601
+
+    patch "/api/v1/users/me", params: {
+      first_name: "Juan",
+      last_name: "Perez",
+      theme: "dark",
+      goals: %w[cashflow budgeting],
+      set_onboarding_preferences_at: now_iso,
+      set_onboarding_goals_at: now_iso,
+      onboarded_at: now_iso,
+      family_attributes: {
+        moniker: "Group",
+        name: "Familia Perez",
+        country: "PY",
+        currency: "PYG",
+        locale: "es",
+        date_format: "%d/%m/%Y"
+      }
+    }, headers: api_headers(@api_key), as: :json
+
+    assert_response :ok
+    body = JSON.parse(response.body)
+
+    @user.reload
+    assert_equal "Juan", @user.first_name
+    assert_equal "Perez", @user.last_name
+    assert_equal "dark", @user.theme
+    assert_equal %w[cashflow budgeting], @user.goals
+    assert_not_nil @user.onboarded_at
+    assert_equal false, @user.needs_onboarding?
+
+    family = @user.family.reload
+    assert_equal "Group", family.moniker
+    assert_equal "Familia Perez", family.name
+    assert_equal "PY", family.country
+    assert_equal "PYG", family.currency
+    assert_equal "es", family.locale
+    assert_equal "%d/%m/%Y", family.date_format
+
+    assert_equal "Juan", body["current_user"]["first_name"]
+    assert_equal "Perez", body["current_user"]["last_name"]
+    assert_equal false, body["current_user"]["needs_onboarding"]
+    assert_equal false, body["current_user"]["is_invited"]
+  end
+
+  test "invited user shows is_invited = true in response" do
+    invitation = @user.family.invitations.create!(
+      inviter: @user,
+      email: "invited@example.com",
+      role: "member",
+      token: SecureRandom.hex(16),
+      accepted_at: Time.current
+    )
+
+    invited_user = @user.family.users.create!(
+      email: "invited@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      role: :member
+    )
+
+    invited_api_key = ApiKey.create!(
+      user: invited_user,
+      name: "Invited Key",
+      scopes: %w[read_write],
+      source: "web",
+      display_key: "test_invited_#{SecureRandom.hex(8)}"
+    )
+
+    get "/api/v1/family_settings", headers: api_headers(invited_api_key)
+
+    assert_response :ok
+    body = JSON.parse(response.body)
+    assert_equal true, body["current_user"]["is_invited"]
   end
 
   # -- Delete account --------------------------------------------------------

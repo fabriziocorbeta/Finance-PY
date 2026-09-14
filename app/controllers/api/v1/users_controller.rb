@@ -41,6 +41,18 @@ class Api::V1::UsersController < Api::V1::BaseController
     }
   end
 
+  def update
+    user = current_resource_owner
+
+    if user.update(user_params)
+      @family = user.family.reload
+      @current_user = user.reload
+      render "api/v1/family_settings/show"
+    else
+      render json: { error: "Failed to update user", details: user.errors.full_messages }, status: :unprocessable_entity
+    end
+  end
+
   def destroy
     user = current_resource_owner
 
@@ -53,6 +65,24 @@ class Api::V1::UsersController < Api::V1::BaseController
   end
 
   private
+
+    def user_params
+      p = params.key?(:user) ? params.require(:user) : params
+
+      family_attrs = %i[name currency country date_format timezone locale month_start_day]
+      family_attrs.push(:moniker, :default_account_sharing) if user_admin?
+
+      p.permit(
+        :first_name, :last_name, :email, :theme, :locale,
+        :onboarded_at, :set_onboarding_preferences_at, :set_onboarding_goals_at,
+        goals: [],
+        family_attributes: family_attrs
+      )
+    end
+
+    def user_admin?
+      current_resource_owner&.admin?
+    end
 
     def ensure_write_scope
       authorize_scope!(:write)

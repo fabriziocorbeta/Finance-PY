@@ -255,19 +255,29 @@ fun BudgetDashboardScreen(
                     }
                 } else {
                     filteredGroups.forEach { group ->
-                        item(key = "parent_${group.parentCategory.id}") {
+                        val parentId = group.parentCategory.id
+                        val isExpanded = parentId in uiState.expandedGroupIds
+                        val hasSubcategories = group.subcategories.isNotEmpty()
+
+                        item(key = "parent_$parentId") {
                             BudgetCategoryProgressItem(
                                 category = group.parentCategory,
                                 currency = uiState.currency,
-                                onClick = { viewModel.selectCategory(group.parentCategory) }
+                                onClick = { viewModel.selectCategory(group.parentCategory) },
+                                isExpanded = isExpanded,
+                                onToggleExpand = if (hasSubcategories) {
+                                    { viewModel.toggleGroupExpanded(parentId) }
+                                } else null
                             )
                         }
-                        items(group.subcategories, key = { "sub_${it.id}" }) { sub ->
-                            BudgetCategoryProgressItem(
-                                category = sub,
-                                currency = uiState.currency,
-                                onClick = { viewModel.selectCategory(sub) }
-                            )
+                        if (isExpanded) {
+                            items(group.subcategories, key = { "sub_${it.id}" }) { sub ->
+                                BudgetCategoryProgressItem(
+                                    category = sub,
+                                    currency = uiState.currency,
+                                    onClick = { viewModel.selectCategory(sub) }
+                                )
+                            }
                         }
                     }
                 }

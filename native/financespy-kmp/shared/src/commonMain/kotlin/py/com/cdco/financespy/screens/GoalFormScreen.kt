@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
@@ -158,7 +159,9 @@ fun GoalFormScreen(
                         Text(
                             text = iconCode,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (isSelected) Color.White else FinancePyColors.textPrimary()
+                            color = if (isSelected) Color.White else FinancePyColors.textPrimary(),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }

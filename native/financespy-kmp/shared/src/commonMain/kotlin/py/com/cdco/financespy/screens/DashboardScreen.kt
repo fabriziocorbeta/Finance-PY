@@ -189,6 +189,35 @@ fun DashboardScreen(
             }
         }
 
+        val hasNoAccounts = dashboard != null &&
+            dashboard.balance_sheet?.classification_groups.isNullOrEmpty()
+
+        if (hasNoAccounts) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(FinancePyColors.container())
+                        .padding(16.dp)
+                ) {
+                    Column {
+                        Text(
+                            text = "Todavía no tenés cuentas",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = FinancePyColors.textPrimary()
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Agregá una desde la web o pedile a tu asesor que te dé acceso.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = FinancePyColors.textSecondary()
+                        )
+                    }
+                }
+            }
+        }
+
         item {
             SankeyFlowChart(sankeyDto = dashboard?.cashflow_sankey, currency = dashboard?.currency ?: "PYG")
         }

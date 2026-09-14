@@ -55,6 +55,7 @@ import py.com.cdco.financespy.screens.components.parseColorString
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.utils.formatMoney
+import py.com.cdco.financespy.utils.formatPercent
 
 @Composable
 fun ReportsScreen(
@@ -284,7 +285,7 @@ private fun SummaryMetricsCard(
                             color = FinancePyColors.textSecondary()
                         )
                         Text(
-                            text = "${pct}%",
+                            text = formatPercent(pct),
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = if (pct > 100) FinancePyColors.destructive() else FinancePyColors.textPrimary()
                         )
@@ -329,7 +330,7 @@ private fun MetricItem(
                 }
                 val arrow = if (isPositive) "▲" else "▼"
                 Text(
-                    text = "$arrow ${if (isPositive) "+" else ""}${changePct}%",
+                    text = "$arrow ${if (isPositive) "+" else ""}${formatPercent(changePct)}",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     color = color
                 )
@@ -629,7 +630,7 @@ private fun NetWorthReportCard(
                     val color = if (isPositive) FinancePyColors.success() else FinancePyColors.destructive()
                     val arrow = if (isPositive) "▲" else "▼"
                     Text(
-                        text = "$arrow ${if (isPositive) "+" else ""}${pct}%",
+                        text = "$arrow ${if (isPositive) "+" else ""}${formatPercent(pct)}",
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                         color = color
                     )

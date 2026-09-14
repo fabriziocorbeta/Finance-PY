@@ -1,6 +1,7 @@
 package py.com.cdco.financespy.navigation
 
 object Routes {
+    const val ONBOARDING = "onboarding"
     const val DASHBOARD = "dashboard"
     const val BUDGETS = "budgets"
     const val TRANSACTIONS = "transactions"
@@ -8,6 +9,8 @@ object Routes {
     const val GOALS = "goals"
     const val RECEIVABLES = "receivables"
     const val REPORTS = "reports"
+    const val FLEET = "fleet"
+    const val FLEET_VEHICLE_DETAIL = "fleet_vehicle/{vehicleId}"
     const val ACCOUNT_DETAIL = "account/{accountId}"
     const val RULE_DETAIL = "rule/{ruleId}"
     const val RULE_FORM = "rule_form?ruleId={ruleId}"
@@ -45,6 +48,7 @@ object Routes {
     fun purchaseOrderDetail(purchaseOrderId: String) = "purchase_order/$purchaseOrderId"
     fun purchaseOrderFormEdit(purchaseOrderId: String) = "purchase_order_form?purchaseOrderId=$purchaseOrderId"
     fun purchaseOrderFormCreate() = "purchase_order_form"
+    fun fleetVehicleDetail(vehicleId: String) = "fleet_vehicle/$vehicleId"
     fun budgetAllocationEditor(budgetId: String) = "budget_editor/$budgetId"
     fun transactionFormEdit(transactionId: String) = "transaction_form?transactionId=$transactionId"
     fun transactionFormCreate() = "transaction_form"

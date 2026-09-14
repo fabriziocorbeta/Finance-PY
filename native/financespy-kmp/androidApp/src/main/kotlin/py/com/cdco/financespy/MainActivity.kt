@@ -23,6 +23,7 @@ import py.com.cdco.financespy.screens.BudgetAllocationEditorViewModel
 import py.com.cdco.financespy.screens.BudgetDashboardViewModel
 import py.com.cdco.financespy.screens.DashboardViewModel
 import py.com.cdco.financespy.screens.GoalDetailViewModel
+import py.com.cdco.financespy.screens.OnboardingViewModel
 import py.com.cdco.financespy.screens.GoalFormViewModel
 import py.com.cdco.financespy.screens.GoalsListViewModel
 import py.com.cdco.financespy.screens.ProductFormViewModel
@@ -31,6 +32,8 @@ import py.com.cdco.financespy.screens.PurchaseOrderDetailViewModel
 import py.com.cdco.financespy.screens.PurchaseOrderFormViewModel
 import py.com.cdco.financespy.screens.PurchaseOrdersListViewModel
 import py.com.cdco.financespy.screens.ReceivableDetailViewModel
+import py.com.cdco.financespy.screens.FleetListViewModel
+import py.com.cdco.financespy.screens.FleetVehicleDetailViewModel
 import py.com.cdco.financespy.screens.ReceivableFormViewModel
 import py.com.cdco.financespy.screens.ReceivablesListViewModel
 import py.com.cdco.financespy.screens.ReportsViewModel
@@ -45,6 +48,7 @@ import py.com.cdco.financespy.screens.TransactionFormViewModel
 import py.com.cdco.financespy.screens.TransactionsViewModel
 import py.com.cdco.financespy.sync.SyncEngine
 import py.com.cdco.financespy.sync.currentIsoDate
+import py.com.cdco.financespy.wallet.WalletCaptureHandler
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -52,6 +56,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val isLoggedIn = mutableStateOf<Boolean?>(null)
+    private val needsOnboarding = mutableStateOf(false)
 
     private val tokenStorage by lazy { AndroidTokenStorage(applicationContext) }
     private val httpClient by lazy { ApiClient.create(tokenStorage) }
@@ -128,6 +133,12 @@ class MainActivity : ComponentActivity() {
             api = api
         )
     }
+    private val fleetListViewModel by lazy {
+        FleetListViewModel(
+            scope = lifecycleScope,
+            api = api
+        )
+    }
     private val settingsViewModel by lazy {
         SettingsViewModel(
             scope = lifecycleScope,
@@ -139,6 +150,12 @@ class MainActivity : ComponentActivity() {
         ReportsViewModel(
             scope = lifecycleScope,
             syncEngine = syncEngine,
+            api = api
+        )
+    }
+    private val onboardingViewModel by lazy {
+        OnboardingViewModel(
+            scope = lifecycleScope,
             api = api
         )
     }
@@ -156,9 +173,19 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             val tAuthStart = System.currentTimeMillis()
             val loggedIn = authRepository.isLoggedIn()
+            var onboardingNeeded = false
+            if (loggedIn) {
+                try {
+                    val settings = api.fetchFamilySettings()
+                    onboardingNeeded = settings.current_user?.needs_onboarding == true
+                } catch (e: Exception) {
+                    onboardingNeeded = false
+                }
+            }
             val tAuthEnd = System.currentTimeMillis()
-            Log.d("ColdStartProfile", "[Optimized] Auth check on IO completed in ${tAuthEnd - tAuthStart} ms (isLoggedIn=$loggedIn)")
+            Log.d("ColdStartProfile", "[Optimized] Auth check on IO completed in ${tAuthEnd - tAuthStart} ms (isLoggedIn=$loggedIn, needsOnboarding=$onboardingNeeded)")
             withContext(Dispatchers.Main) {
+                needsOnboarding.value = onboardingNeeded
                 isLoggedIn.value = loggedIn
             }
         }
@@ -171,6 +198,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             App(
                 isLoggedIn = isLoggedIn.value,
+                api = api,
+                needsOnboarding = needsOnboarding.value,
                 onLoginClick = {
                     val url = authRepository.buildAuthorizationUrl()
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -178,6 +207,7 @@ class MainActivity : ComponentActivity() {
                 onLoggedOut = {
                     isLoggedIn.value = false
                 },
+                onboardingViewModelFactory = { onboardingViewModel },
                 dashboardViewModelFactory = { dashboardViewModel },
                 budgetDashboardViewModelFactory = { budgetDashboardViewModel },
                 budgetAllocationEditorViewModelFactory = { budgetId ->
@@ -244,6 +274,14 @@ class MainActivity : ComponentActivity() {
                 purchaseOrderFormViewModelFactory = { poId ->
                     PurchaseOrderFormViewModel(purchaseOrderId = poId, api = api)
                 },
+                fleetListViewModelFactory = { fleetListViewModel },
+                fleetVehicleDetailViewModelFactory = { vehicleId ->
+                    FleetVehicleDetailViewModel(
+                        scope = lifecycleScope,
+                        vehicleId = vehicleId,
+                        api = api
+                    )
+                },
                 accountDetailViewModelFactory = { accountId ->
                     AccountDetailViewModel(
                         scope = lifecycleScope,
@@ -254,9 +292,20 @@ class MainActivity : ComponentActivity() {
                     )
                 },
                 settingsViewModelFactory = { settingsViewModel },
-                reportsViewModelFactory = { reportsViewModel }
+                reportsViewModelFactory = { reportsViewModel },
+                onOpenNotificationSettings = {
+                    val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    startActivity(intent)
+                }
             )
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        WalletCaptureHandler.retryPending(applicationContext)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -271,7 +320,11 @@ class MainActivity : ComponentActivity() {
         val code = uri.getQueryParameter("code") ?: return
         lifecycleScope.launch {
             authRepository.exchangeCode(code)
-                .onSuccess { isLoggedIn.value = true }
+                .onSuccess {
+                    val settings = try { api.fetchFamilySettings() } catch (e: Exception) { null }
+                    needsOnboarding.value = settings?.current_user?.needs_onboarding == true
+                    isLoggedIn.value = true
+                }
                 .onFailure { e -> Log.e("FinancePYAuth", "exchangeCode failed", e) }
         }
     }

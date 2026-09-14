@@ -509,6 +509,9 @@ Rails.application.routes.draw do
           post :cancel
         end
       end
+      resources :fleet_vehicles, only: %i[index show create update destroy] do
+        resources :fuel_logs, only: %i[create update destroy], controller: "fuel_logs"
+      end
 
       resources :transactions, only: [ :index, :show, :create, :update, :destroy ]
       resources :transfers, only: [ :create ]
@@ -538,6 +541,7 @@ Rails.application.routes.draw do
       get "users/reset/status", to: "users#reset_status"
       delete "users/reset", to: "users#reset"
       delete "users/me", to: "users#destroy"
+      patch "users/me", to: "users#update"
 
       # Test routes for API controller testing (only available in test environment)
       if Rails.env.test?

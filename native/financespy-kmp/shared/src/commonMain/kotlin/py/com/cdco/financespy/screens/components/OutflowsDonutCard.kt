@@ -30,6 +30,7 @@ import py.com.cdco.financespy.api.dto.OutflowsDonutDto
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.utils.formatMoney
+import py.com.cdco.financespy.utils.formatPercent
 
 @Composable
 fun OutflowsDonutCard(
@@ -180,7 +181,7 @@ private fun OutflowCategoryRow(
             category.percentage?.let { pct ->
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "${pct}%",
+                    text = formatPercent(pct),
                     style = MaterialTheme.typography.bodySmall,
                     color = FinancePyColors.textSecondary()
                 )

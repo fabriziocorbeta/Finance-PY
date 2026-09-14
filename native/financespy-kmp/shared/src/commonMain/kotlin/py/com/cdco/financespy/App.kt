@@ -15,7 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -23,6 +25,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import py.com.cdco.financespy.api.FinancePyApi
+import py.com.cdco.financespy.api.dto.FamilySettingsDto
 import py.com.cdco.financespy.navigation.Routes
 import py.com.cdco.financespy.screens.AccountDetailScreen
 import py.com.cdco.financespy.screens.AccountDetailViewModel
@@ -32,6 +36,10 @@ import py.com.cdco.financespy.screens.BudgetDashboardScreen
 import py.com.cdco.financespy.screens.BudgetDashboardViewModel
 import py.com.cdco.financespy.screens.DashboardScreen
 import py.com.cdco.financespy.screens.DashboardViewModel
+import py.com.cdco.financespy.screens.FleetListScreen
+import py.com.cdco.financespy.screens.FleetListViewModel
+import py.com.cdco.financespy.screens.FleetVehicleDetailScreen
+import py.com.cdco.financespy.screens.FleetVehicleDetailViewModel
 import py.com.cdco.financespy.screens.GoalDetailScreen
 import py.com.cdco.financespy.screens.GoalDetailViewModel
 import py.com.cdco.financespy.screens.GoalFormScreen
@@ -39,6 +47,8 @@ import py.com.cdco.financespy.screens.GoalFormViewModel
 import py.com.cdco.financespy.screens.GoalsListScreen
 import py.com.cdco.financespy.screens.GoalsListViewModel
 import py.com.cdco.financespy.screens.LoginScreen
+import py.com.cdco.financespy.screens.OnboardingScreen
+import py.com.cdco.financespy.screens.OnboardingViewModel
 import py.com.cdco.financespy.screens.ReceivableDetailScreen
 import py.com.cdco.financespy.screens.ReceivableDetailViewModel
 import py.com.cdco.financespy.screens.ReceivableFormScreen
@@ -81,8 +91,11 @@ import py.com.cdco.financespy.theme.FinancePyTheme
 @Composable
 fun App(
     isLoggedIn: Boolean?,
+    api: FinancePyApi,
+    needsOnboarding: Boolean = false,
     onLoginClick: () -> Unit,
     onLoggedOut: () -> Unit,
+    onboardingViewModelFactory: () -> OnboardingViewModel,
     dashboardViewModelFactory: () -> DashboardViewModel,
     budgetDashboardViewModelFactory: () -> BudgetDashboardViewModel,
     budgetAllocationEditorViewModelFactory: (String) -> BudgetAllocationEditorViewModel,
@@ -105,9 +118,12 @@ fun App(
     purchaseOrdersListViewModelFactory: () -> PurchaseOrdersListViewModel,
     purchaseOrderDetailViewModelFactory: (String) -> PurchaseOrderDetailViewModel,
     purchaseOrderFormViewModelFactory: (String?) -> PurchaseOrderFormViewModel,
+    fleetListViewModelFactory: () -> FleetListViewModel,
+    fleetVehicleDetailViewModelFactory: (String) -> FleetVehicleDetailViewModel,
     accountDetailViewModelFactory: (String) -> AccountDetailViewModel,
     settingsViewModelFactory: () -> SettingsViewModel,
-    reportsViewModelFactory: () -> ReportsViewModel
+    reportsViewModelFactory: () -> ReportsViewModel,
+    onOpenNotificationSettings: (() -> Unit)? = null
 ) {
     FinancePyTheme {
         if (isLoggedIn != null) {
@@ -134,7 +150,7 @@ fun App(
                         .statusBarsPadding()
                         .navigationBarsPadding()
                 ) {
-                    val businessRoutes = listOf(Routes.PRODUCTS, Routes.SALES, Routes.PURCHASE_ORDERS)
+                    val businessRoutes = listOf(Routes.PRODUCTS, Routes.SALES, Routes.PURCHASE_ORDERS, Routes.FLEET)
                     val isTopLevelRoute = currentRoute == Routes.DASHBOARD ||
                         currentRoute == Routes.BUDGETS ||
                         currentRoute == Routes.TRANSACTIONS ||
@@ -155,6 +171,7 @@ fun App(
                             Routes.SALES -> if (isBusinessModeEnabled) 7 else 0
                             Routes.PURCHASE_ORDERS -> if (isBusinessModeEnabled) 8 else 0
                             Routes.REPORTS -> if (isBusinessModeEnabled) 9 else 6
+                            Routes.FLEET -> if (isBusinessModeEnabled) 10 else 0
                             else -> 0
                         }
                         ScrollableTabRow(
@@ -303,10 +320,37 @@ fun App(
                                     )
                                 }
                             )
+                            if (isBusinessModeEnabled) {
+                                Tab(
+                                    selected = currentRoute == Routes.FLEET,
+                                    onClick = { navController.navigate(Routes.FLEET) { launchSingleTop = true } },
+                                    text = {
+                                        Text(
+                                            "Flota",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = if (currentRoute == Routes.FLEET) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                )
+                            }
                         }
                     }
 
-                    NavHost(navController = navController, startDestination = Routes.DASHBOARD) {
+                    val startDestination = if (needsOnboarding) Routes.ONBOARDING else Routes.DASHBOARD
+
+                    NavHost(navController = navController, startDestination = startDestination) {
+                        composable(Routes.ONBOARDING) {
+                            OnboardingScreen(
+                                viewModel = remember { onboardingViewModelFactory() },
+                                onComplete = {
+                                    navController.navigate(Routes.DASHBOARD) {
+                                        popUpTo(Routes.ONBOARDING) { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
                         composable(Routes.DASHBOARD) {
                             DashboardScreen(
                                 viewModel = remember { dashboardViewModelFactory() },
@@ -318,7 +362,8 @@ fun App(
                             SettingsScreen(
                                 viewModel = settingsVm,
                                 onBack = { navController.popBackStack() },
-                                onLoggedOut = onLoggedOut
+                                onLoggedOut = onLoggedOut,
+                                onOpenNotificationSettings = onOpenNotificationSettings
                             )
                         }
                         composable(Routes.BUDGETS) {
@@ -500,6 +545,19 @@ fun App(
                         composable(Routes.REPORTS) {
                             ReportsScreen(
                                 viewModel = remember { reportsViewModelFactory() }
+                            )
+                        }
+                        composable(Routes.FLEET) {
+                            FleetListScreen(
+                                viewModel = remember { fleetListViewModelFactory() },
+                                onVehicleClick = { vehicleId -> navController.navigate(Routes.fleetVehicleDetail(vehicleId)) }
+                            )
+                        }
+                        composable(Routes.FLEET_VEHICLE_DETAIL) { entry ->
+                            val vehicleId = entry.arguments?.getString("vehicleId") ?: return@composable
+                            FleetVehicleDetailScreen(
+                                viewModel = remember(vehicleId) { fleetVehicleDetailViewModelFactory(vehicleId) },
+                                onBack = { navController.popBackStack() }
                             )
                         }
                     }
