@@ -321,4 +321,12 @@ class Api::V1::BaseController < ApplicationController
         render_json({ error: "feature_disabled", message: "AI features are not enabled for this user" }, status: :forbidden)
       end
     end
+
+    def require_business_mode!
+      unless current_resource_owner&.family&.business_mode_enabled?
+        render_json({ error: "business_mode_disabled", message: "Business mode is not enabled for your family" }, status: :forbidden)
+        return false
+      end
+      true
+    end
 end

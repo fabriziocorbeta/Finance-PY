@@ -49,6 +49,15 @@ import py.com.cdco.financespy.api.dto.GoalDto
 import py.com.cdco.financespy.api.dto.GoalEnvelope
 import py.com.cdco.financespy.api.dto.GoalsEnvelope
 import py.com.cdco.financespy.api.dto.MerchantDto
+import py.com.cdco.financespy.api.dto.ProductDto
+import py.com.cdco.financespy.api.dto.ProductResponseDto
+import py.com.cdco.financespy.api.dto.ProductsResponseDto
+import py.com.cdco.financespy.api.dto.PurchaseOrderDto
+import py.com.cdco.financespy.api.dto.PurchaseOrderResponseDto
+import py.com.cdco.financespy.api.dto.PurchaseOrdersResponseDto
+import py.com.cdco.financespy.api.dto.SaleDto
+import py.com.cdco.financespy.api.dto.SaleResponseDto
+import py.com.cdco.financespy.api.dto.SalesResponseDto
 import py.com.cdco.financespy.api.dto.ReceivableDto
 import py.com.cdco.financespy.api.dto.ReportsSummaryDto
 import py.com.cdco.financespy.api.dto.ReceivableEnvelope
@@ -404,6 +413,125 @@ open class FinancePyApi(private val http: HttpClient) {
     }
 
     open suspend fun fetchFamilySettings(): FamilySettingsDto = http.get("/api/v1/family_settings").body()
+
+    // --- Products ---
+    open suspend fun fetchAllProducts(): List<ProductDto> {
+        val response: ProductsResponseDto = http.get("/api/v1/products") {
+            parameter("per_page", 100)
+        }.body()
+        return response.data
+    }
+
+    open suspend fun fetchProduct(id: String): ProductDto {
+        val response: ProductResponseDto = http.get("/api/v1/products/$id").body()
+        return response.data
+    }
+
+    open suspend fun createProduct(product: ProductDto): ProductDto {
+        val response: ProductResponseDto = http.post("/api/v1/products") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("product" to product))
+        }.body()
+        return response.data
+    }
+
+    open suspend fun updateProduct(id: String, product: ProductDto): ProductDto {
+        val response: ProductResponseDto = http.patch("/api/v1/products/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("product" to product))
+        }.body()
+        return response.data
+    }
+
+    open suspend fun deleteProduct(id: String) {
+        http.delete("/api/v1/products/$id")
+    }
+
+    // --- Sales ---
+    open suspend fun fetchAllSales(): List<SaleDto> {
+        val response: SalesResponseDto = http.get("/api/v1/sales") {
+            parameter("per_page", 100)
+        }.body()
+        return response.data
+    }
+
+    open suspend fun fetchSale(id: String): SaleDto {
+        val response: SaleResponseDto = http.get("/api/v1/sales/$id").body()
+        return response.data
+    }
+
+    open suspend fun createSale(salePayload: Map<String, Any?>): SaleDto {
+        val response: SaleResponseDto = http.post("/api/v1/sales") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("sale" to salePayload))
+        }.body()
+        return response.data
+    }
+
+    open suspend fun updateSale(id: String, salePayload: Map<String, Any?>): SaleDto {
+        val response: SaleResponseDto = http.patch("/api/v1/sales/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("sale" to salePayload))
+        }.body()
+        return response.data
+    }
+
+    open suspend fun deleteSale(id: String) {
+        http.delete("/api/v1/sales/$id")
+    }
+
+    open suspend fun completeSale(id: String): SaleDto {
+        val response: SaleResponseDto = http.post("/api/v1/sales/$id/complete").body()
+        return response.data
+    }
+
+    open suspend fun cancelSale(id: String): SaleDto {
+        val response: SaleResponseDto = http.post("/api/v1/sales/$id/cancel").body()
+        return response.data
+    }
+
+    // --- Purchase Orders ---
+    open suspend fun fetchAllPurchaseOrders(): List<PurchaseOrderDto> {
+        val response: PurchaseOrdersResponseDto = http.get("/api/v1/purchase_orders") {
+            parameter("per_page", 100)
+        }.body()
+        return response.data
+    }
+
+    open suspend fun fetchPurchaseOrder(id: String): PurchaseOrderDto {
+        val response: PurchaseOrderResponseDto = http.get("/api/v1/purchase_orders/$id").body()
+        return response.data
+    }
+
+    open suspend fun createPurchaseOrder(poPayload: Map<String, Any?>): PurchaseOrderDto {
+        val response: PurchaseOrderResponseDto = http.post("/api/v1/purchase_orders") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("purchase_order" to poPayload))
+        }.body()
+        return response.data
+    }
+
+    open suspend fun updatePurchaseOrder(id: String, poPayload: Map<String, Any?>): PurchaseOrderDto {
+        val response: PurchaseOrderResponseDto = http.patch("/api/v1/purchase_orders/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("purchase_order" to poPayload))
+        }.body()
+        return response.data
+    }
+
+    open suspend fun deletePurchaseOrder(id: String) {
+        http.delete("/api/v1/purchase_orders/$id")
+    }
+
+    open suspend fun receivePurchaseOrder(id: String): PurchaseOrderDto {
+        val response: PurchaseOrderResponseDto = http.post("/api/v1/purchase_orders/$id/receive").body()
+        return response.data
+    }
+
+    open suspend fun cancelPurchaseOrder(id: String): PurchaseOrderDto {
+        val response: PurchaseOrderResponseDto = http.post("/api/v1/purchase_orders/$id/cancel").body()
+        return response.data
+    }
 
     open suspend fun fetchReportsSummary(
         periodType: String = "monthly",
