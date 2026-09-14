@@ -62,7 +62,7 @@ class Api::V1::SalesController < Api::V1::BaseController
 
   def update
     unless @sale.draft?
-      return render_validation_error([ "Only draft sales can be updated" ])
+      return render_validation_error(["Only draft sales can be updated"])
     end
 
     if @sale.update(sale_params)
@@ -84,7 +84,7 @@ class Api::V1::SalesController < Api::V1::BaseController
 
   def destroy
     unless @sale.draft?
-      return render_validation_error([ "Cannot delete a sale that is not in draft status. Cancel it first." ])
+      return render_validation_error(["Cannot delete a sale that is not in draft status. Cancel it first."])
     end
 
     if @sale.destroy

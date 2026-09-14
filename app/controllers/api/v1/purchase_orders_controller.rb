@@ -62,7 +62,7 @@ class Api::V1::PurchaseOrdersController < Api::V1::BaseController
 
   def update
     unless @purchase_order.draft?
-      return render_validation_error([ "Only draft purchase orders can be updated" ])
+      return render_validation_error(["Only draft purchase orders can be updated"])
     end
 
     if @purchase_order.update(purchase_order_params)
@@ -84,7 +84,7 @@ class Api::V1::PurchaseOrdersController < Api::V1::BaseController
 
   def destroy
     unless @purchase_order.draft?
-      return render_validation_error([ "Cannot delete a purchase order that is not in draft status. Cancel it first." ])
+      return render_validation_error(["Cannot delete a purchase order that is not in draft status. Cancel it first."])
     end
 
     if @purchase_order.destroy

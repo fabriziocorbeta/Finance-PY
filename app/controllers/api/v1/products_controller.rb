@@ -46,12 +46,12 @@ class Api::V1::ProductsController < Api::V1::BaseController
     initial_stock = (raw[:initial_stock] || raw[:stock] || 0).to_i
 
     if initial_stock < 0
-      return render_validation_error([ "Initial stock must be zero or positive" ])
+      return render_validation_error(["Initial stock must be zero or positive"])
     end
 
     @product = current_resource_owner.family.products.new(cleaned_params)
 
-    saved = Product.transaction do
+    Product.transaction do
       if @product.save
         if initial_stock > 0
           @product.stock_movements.create!(
@@ -59,20 +59,10 @@ class Api::V1::ProductsController < Api::V1::BaseController
             quantity_delta: initial_stock
           )
         end
-        true
+        render :show, status: :created
       else
-        false
+        render_validation_error(@product.errors.full_messages)
       end
-    end
-
-    # render fuera de la transacción: ProductStockMovement actualiza
-    # Product#stock en un after_create_commit, que solo corre una vez el
-    # commit real sucede — si renderizás adentro del bloque .transaction,
-    # el commit todavía no pasó y @product.stock queda con el valor viejo.
-    if saved
-      render :show, status: :created
-    else
-      render_validation_error(@product.errors.full_messages)
     end
   rescue ActiveRecord::RecordInvalid => e
     render_validation_error(e.record.errors.full_messages)
