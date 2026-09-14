@@ -2,15 +2,10 @@ package py.com.cdco.financespy
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -182,23 +177,15 @@ fun App(
                             .statusBarsPadding()
                             .navigationBarsPadding(),
                         containerColor = FinancePyColors.surface(),
-                        topBar = {
-                            if (isTopLevelRoute) {
-                                IconButton(onClick = { showHamburgerMenu = true }) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Menu,
-                                        contentDescription = "Más opciones",
-                                        tint = FinancePyColors.textPrimary()
-                                    )
-                                }
-                            }
-                        },
                         bottomBar = {
                             if (isTopLevelRoute) {
                                 AppBottomNav(
                                     items = barItems,
                                     currentRoute = currentRoute,
-                                    onNavigate = { item -> navigateToItem(item) }
+                                    onNavigate = { item -> navigateToItem(item) },
+                                    onMoreClick = if (overflowItems.isNotEmpty()) {
+                                        { showHamburgerMenu = true }
+                                    } else null
                                 )
                             }
                         }
