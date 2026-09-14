@@ -14,9 +14,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.remember
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -38,7 +43,9 @@ fun BudgetCategoryProgressItem(
     category: BudgetCategoryUiModel,
     currency: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isExpanded: Boolean? = null,
+    onToggleExpand: (() -> Unit)? = null
 ) {
     val categoryColor = parseHexColor(category.color)
     val startIndent = if (category.isSubcategory) 24.dp else 0.dp
@@ -69,6 +76,25 @@ fun BudgetCategoryProgressItem(
                             tint = FinancePyColors.textSecondary(),
                             modifier = Modifier.size(16.dp)
                         )
+                        Spacer(modifier = Modifier.width(4.dp))
+                    } else if (onToggleExpand != null && isExpanded != null) {
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = onToggleExpand
+                                )
+                                .padding(2.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                contentDescription = if (isExpanded) "Colapsar subcategorías" else "Expandir subcategorías",
+                                tint = FinancePyColors.textPrimary(),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                         Spacer(modifier = Modifier.width(4.dp))
                     }
 

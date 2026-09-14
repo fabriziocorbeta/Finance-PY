@@ -94,6 +94,7 @@ data class BudgetDashboardUiState(
     val donutSegments: List<DonutSegmentUiModel> = emptyList(),
     val categories: List<BudgetCategoryUiModel> = emptyList(),
     val categoryGroups: List<BudgetCategoryGroupUiModel> = emptyList(),
+    val expandedGroupIds: Set<String> = emptySet(),
     val hasOverBudgetCategories: Boolean = false,
 
     // Selected category for detail sheet/modal
@@ -206,6 +207,13 @@ class BudgetDashboardViewModel(
 
     fun setCategoryFilterTab(filter: String) {
         _uiState.value = _uiState.value.copy(categoryFilterTab = filter)
+    }
+
+    fun toggleGroupExpanded(groupId: String) {
+        val current = _uiState.value.expandedGroupIds
+        _uiState.value = _uiState.value.copy(
+            expandedGroupIds = if (groupId in current) current - groupId else current + groupId
+        )
     }
 
     fun selectCategory(category: BudgetCategoryUiModel?) {
@@ -367,6 +375,7 @@ class BudgetDashboardViewModel(
                     } ?: emptyList()
 
                     val categoryGroups = buildCategoryGroups(categoryList)
+                    val parentGroupIds = categoryGroups.map { it.parentCategory.id }.toSet()
                     val hasOverBudget = categoryList.any { it.status == BudgetCategoryStatus.OVER_BUDGET }
 
                     val donutList = found.donut_segments?.map { d ->
@@ -405,6 +414,7 @@ class BudgetDashboardViewModel(
                         surplusPercent = found.surplus_percent ?: 0.0,
                         categories = categoryList,
                         categoryGroups = categoryGroups,
+                        expandedGroupIds = parentGroupIds,
                         hasOverBudgetCategories = hasOverBudget,
                         donutSegments = donutList
                     )
@@ -423,6 +433,7 @@ class BudgetDashboardViewModel(
                         availableToAllocate = 0.0,
                         categories = emptyList(),
                         categoryGroups = emptyList(),
+                        expandedGroupIds = emptySet(),
                         hasOverBudgetCategories = false,
                         donutSegments = emptyList()
                     )
