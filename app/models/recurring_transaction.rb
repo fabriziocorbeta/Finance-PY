@@ -19,6 +19,7 @@ class RecurringTransaction < ApplicationRecord
   validates :occurrence_count, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validate :merchant_or_name_present
   validate :amount_variance_consistency
+  validate :account_belongs_to_family
 
   def merchant_or_name_present
     if merchant_id.blank? && name.blank?
@@ -34,6 +35,11 @@ class RecurringTransaction < ApplicationRecord
         errors.add(:expected_amount_min, "cannot be greater than expected_amount_max")
       end
     end
+  end
+
+  def account_belongs_to_family
+    return if account.nil? || family.nil?
+    errors.add(:account, "must belong to the same family") unless account.family_id == family_id
   end
 
   scope :for_family, ->(family) { where(family: family) }
