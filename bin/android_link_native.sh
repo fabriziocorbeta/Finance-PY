@@ -92,12 +92,3 @@ PY_EOF
   echo "✅ Service inyectado en $MANIFEST (auto-fix aplicado)"
 fi
 
-# --- secrets.xml: no se automatiza (secreto, no versionado) ---
-SECRETS="android/app/src/main/res/values/secrets.xml"
-if [ -f "$SECRETS" ] && grep -qF "wallet_webhook_token" "$SECRETS"; then
-  echo "✅ secrets.xml presente con wallet_webhook_token"
-else
-  echo "⚠️  Falta $SECRETS con el string resource wallet_webhook_token."
-  echo "    Su valor debe coincidir con ANDROID_WEBHOOK_TOKEN del backend (.env.local)."
-  echo "    Este archivo NO se versiona ni se auto-genera acá a propósito (secreto)."
-fi

@@ -500,6 +500,7 @@ Rails.application.routes.draw do
         resources :fuel_logs, only: %i[create update destroy], controller: "fuel_logs"
       end
 
+      resources :android_purchases, only: [ :create ]
       resources :transactions, only: [ :index, :show, :create, :update, :destroy ]
       resources :transfers, only: [ :create ]
       resources :trades, only: [ :index, :show, :create, :update, :destroy ]
@@ -623,7 +624,6 @@ Rails.application.routes.draw do
     post "plaid"
     post "plaid_eu"
     post "stripe"
-    post "android_purchase"
   end
 
   get "redis-configuration-error", to: "pages#redis_configuration_error"

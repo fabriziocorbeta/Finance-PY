@@ -3,16 +3,20 @@ require "test_helper"
 class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
   setup do
     @account = accounts(:depository)
+    @family = @account.family
   end
 
   test "creates a positive-amount entry with the merchant/item as the name" do
     result = AndroidPurchase::WebhookProcessor.new(
-      account_id: @account.id,
-      amount: 50000,
-      merchant: "Google Play",
-      item: "Some App Pro",
-      timestamp: "2026-07-28T10:15:00-04:00",
-      raw_text: "Some App Pro - Gs. 50.000"
+      {
+        account_id: @account.id,
+        amount: 50000,
+        merchant: "Google Play",
+        item: "Some App Pro",
+        timestamp: "2026-07-28T10:15:00-04:00",
+        raw_text: "Some App Pro - Gs. 50.000"
+      },
+      family: @family
     ).process
 
     assert_equal :created, result
@@ -28,12 +32,15 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
 
   test "forces the amount positive even if a negative number is sent" do
     AndroidPurchase::WebhookProcessor.new(
-      account_id: @account.id,
-      amount: -50000,
-      merchant: "Google Play",
-      item: "Some App Pro",
-      timestamp: "2026-07-28T10:15:00-04:00",
-      raw_text: "x"
+      {
+        account_id: @account.id,
+        amount: -50000,
+        merchant: "Google Play",
+        item: "Some App Pro",
+        timestamp: "2026-07-28T10:15:00-04:00",
+        raw_text: "x"
+      },
+      family: @family
     ).process
 
     entry = @account.entries.order(created_at: :desc).first
@@ -50,11 +57,11 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
       raw_text: "x"
     }
 
-    first_result = AndroidPurchase::WebhookProcessor.new(params).process
+    first_result = AndroidPurchase::WebhookProcessor.new(params, family: @family).process
     assert_equal :created, first_result
 
     assert_no_difference -> { Entry.count } do
-      second_result = AndroidPurchase::WebhookProcessor.new(params).process
+      second_result = AndroidPurchase::WebhookProcessor.new(params, family: @family).process
       assert_equal :duplicate, second_result
     end
   end
@@ -62,12 +69,15 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
   test "raises Error for a missing account_id" do
     error = assert_raises(AndroidPurchase::WebhookProcessor::Error) do
       AndroidPurchase::WebhookProcessor.new(
-        account_id: nil,
-        amount: 1000,
-        merchant: "x",
-        item: "x",
-        timestamp: "2026-07-28T09:00:00-04:00",
-        raw_text: "x"
+        {
+          account_id: nil,
+          amount: 1000,
+          merchant: "x",
+          item: "x",
+          timestamp: "2026-07-28T09:00:00-04:00",
+          raw_text: "x"
+        },
+        family: @family
       ).process
     end
     assert_match(/account_id/, error.message)
@@ -76,12 +86,15 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
   test "raises Error for an unknown account_id" do
     error = assert_raises(AndroidPurchase::WebhookProcessor::Error) do
       AndroidPurchase::WebhookProcessor.new(
-        account_id: "00000000-0000-0000-0000-000000000000",
-        amount: 1000,
-        merchant: "x",
-        item: "x",
-        timestamp: "2026-07-28T09:00:00-04:00",
-        raw_text: "x"
+        {
+          account_id: "00000000-0000-0000-0000-000000000000",
+          amount: 1000,
+          merchant: "x",
+          item: "x",
+          timestamp: "2026-07-28T09:00:00-04:00",
+          raw_text: "x"
+        },
+        family: @family
       ).process
     end
     assert_match(/Unknown account_id/, error.message)
@@ -89,12 +102,15 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
 
   test "falls back to today's date when timestamp is unparseable" do
     AndroidPurchase::WebhookProcessor.new(
-      account_id: @account.id,
-      amount: 1000,
-      merchant: "Google Play",
-      item: "x",
-      timestamp: "not-a-real-timestamp",
-      raw_text: "x"
+      {
+        account_id: @account.id,
+        amount: 1000,
+        merchant: "Google Play",
+        item: "x",
+        timestamp: "not-a-real-timestamp",
+        raw_text: "x"
+      },
+      family: @family
     ).process
 
     entry = @account.entries.order(created_at: :desc).first
@@ -104,12 +120,15 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
   test "raises Error for a missing amount instead of silently creating a zero-amount entry" do
     error = assert_raises(AndroidPurchase::WebhookProcessor::Error) do
       AndroidPurchase::WebhookProcessor.new(
-        account_id: @account.id,
-        amount: nil,
-        merchant: "x",
-        item: "x",
-        timestamp: "2026-07-28T09:00:00-04:00",
-        raw_text: "x"
+        {
+          account_id: @account.id,
+          amount: nil,
+          merchant: "x",
+          item: "x",
+          timestamp: "2026-07-28T09:00:00-04:00",
+          raw_text: "x"
+        },
+        family: @family
       ).process
     end
     assert_match(/amount/, error.message)
@@ -118,12 +137,15 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
   test "raises Error for a non-numeric amount" do
     error = assert_raises(AndroidPurchase::WebhookProcessor::Error) do
       AndroidPurchase::WebhookProcessor.new(
-        account_id: @account.id,
-        amount: "not-a-number",
-        merchant: "x",
-        item: "x",
-        timestamp: "2026-07-28T09:00:00-04:00",
-        raw_text: "x"
+        {
+          account_id: @account.id,
+          amount: "not-a-number",
+          merchant: "x",
+          item: "x",
+          timestamp: "2026-07-28T09:00:00-04:00",
+          raw_text: "x"
+        },
+        family: @family
       ).process
     end
     assert_match(/amount/, error.message)
@@ -132,12 +154,15 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
   test "treats a real Google Wallet PYG comma-thousands amount as whole guaranies, not a 1000x-smaller decimal" do
     # Confirmed against a real notification: "PYG112,000 con GNB GOOGLE ••6536"
     result = AndroidPurchase::WebhookProcessor.new(
-      account_id: @account.id,
-      amount: "112,000",
-      merchant: "Google Play",
-      item: "Real Wallet notification format",
-      timestamp: "2026-07-28T09:00:00-04:00",
-      raw_text: "PYG112,000 con GNB GOOGLE ••6536"
+      {
+        account_id: @account.id,
+        amount: "112,000",
+        merchant: "Google Play",
+        item: "Real Wallet notification format",
+        timestamp: "2026-07-28T09:00:00-04:00",
+        raw_text: "PYG112,000 con GNB GOOGLE ••6536"
+      },
+      family: @family
     ).process
 
     assert_equal :created, result
@@ -147,12 +172,15 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
 
   test "treats a multi-group comma-thousands amount correctly" do
     result = AndroidPurchase::WebhookProcessor.new(
-      account_id: @account.id,
-      amount: "1,250,000",
-      merchant: "Google Play",
-      item: "Large comma-thousands amount",
-      timestamp: "2026-07-28T09:00:00-04:00",
-      raw_text: "x"
+      {
+        account_id: @account.id,
+        amount: "1,250,000",
+        merchant: "Google Play",
+        item: "Large comma-thousands amount",
+        timestamp: "2026-07-28T09:00:00-04:00",
+        raw_text: "x"
+      },
+      family: @family
     ).process
 
     assert_equal :created, result
@@ -162,12 +190,15 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
 
   test "treats an unconfirmed dot-thousands string amount as whole guaranies, not a 1000x-smaller decimal" do
     result = AndroidPurchase::WebhookProcessor.new(
-      account_id: @account.id,
-      amount: "150.000",
-      merchant: "Google Play",
-      item: "PYG thousands format",
-      timestamp: "2026-07-28T09:00:00-04:00",
-      raw_text: "x"
+      {
+        account_id: @account.id,
+        amount: "150.000",
+        merchant: "Google Play",
+        item: "PYG thousands format",
+        timestamp: "2026-07-28T09:00:00-04:00",
+        raw_text: "x"
+      },
+      family: @family
     ).process
 
     assert_equal :created, result
@@ -177,12 +208,15 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
 
   test "treats a multi-group dot-thousands string amount correctly" do
     result = AndroidPurchase::WebhookProcessor.new(
-      account_id: @account.id,
-      amount: "1.250.000",
-      merchant: "Google Play",
-      item: "Large PYG amount",
-      timestamp: "2026-07-28T09:00:00-04:00",
-      raw_text: "x"
+      {
+        account_id: @account.id,
+        amount: "1.250.000",
+        merchant: "Google Play",
+        item: "Large PYG amount",
+        timestamp: "2026-07-28T09:00:00-04:00",
+        raw_text: "x"
+      },
+      family: @family
     ).process
 
     assert_equal :created, result
@@ -192,12 +226,15 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
 
   test "still treats a plain decimal string amount as a decimal, not thousands-separated" do
     result = AndroidPurchase::WebhookProcessor.new(
-      account_id: @account.id,
-      amount: "12.50",
-      merchant: "Google Play",
-      item: "USD-style decimal",
-      timestamp: "2026-07-28T09:00:00-04:00",
-      raw_text: "x"
+      {
+        account_id: @account.id,
+        amount: "12.50",
+        merchant: "Google Play",
+        item: "USD-style decimal",
+        timestamp: "2026-07-28T09:00:00-04:00",
+        raw_text: "x"
+      },
+      family: @family
     ).process
 
     assert_equal :created, result
@@ -207,12 +244,15 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
 
   test "treats a comma-decimal string amount (LatAm format) correctly" do
     result = AndroidPurchase::WebhookProcessor.new(
-      account_id: @account.id,
-      amount: "1.250.000,50",
-      merchant: "Google Play",
-      item: "Comma decimal format",
-      timestamp: "2026-07-28T09:00:00-04:00",
-      raw_text: "x"
+      {
+        account_id: @account.id,
+        amount: "1.250.000,50",
+        merchant: "Google Play",
+        item: "Comma decimal format",
+        timestamp: "2026-07-28T09:00:00-04:00",
+        raw_text: "x"
+      },
+      family: @family
     ).process
 
     assert_equal :created, result
@@ -222,12 +262,15 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
 
   test "accepts a numeric amount sent as a string" do
     result = AndroidPurchase::WebhookProcessor.new(
-      account_id: @account.id,
-      amount: "7500",
-      merchant: "Google Play",
-      item: "String amount",
-      timestamp: "2026-07-28T09:00:00-04:00",
-      raw_text: "x"
+      {
+        account_id: @account.id,
+        amount: "7500",
+        merchant: "Google Play",
+        item: "String amount",
+        timestamp: "2026-07-28T09:00:00-04:00",
+        raw_text: "x"
+      },
+      family: @family
     ).process
 
     assert_equal :created, result
@@ -245,7 +288,7 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
       raw_text: "x"
     }
 
-    AndroidPurchase::WebhookProcessor.new(params).process
+    AndroidPurchase::WebhookProcessor.new(params, family: @family).process
 
     # Simulate two near-simultaneous requests: the app-level uniqueness
     # validation only sees committed rows, so stub it to report "not taken"
@@ -255,66 +298,63 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
     Entry.any_instance.stubs(:valid?).returns(true)
 
     assert_no_difference -> { Entry.count } do
-      result = AndroidPurchase::WebhookProcessor.new(params).process
+      result = AndroidPurchase::WebhookProcessor.new(params, family: @family).process
       assert_equal :duplicate, result
     end
   end
 
-  test "does not require ANDROID_WEBHOOK_FAMILY_ID and allows any account when unset" do
-    assert_nil ENV["ANDROID_WEBHOOK_FAMILY_ID"]
-
+  test "allows any account when family is nil/unset" do
     result = AndroidPurchase::WebhookProcessor.new(
-      account_id: @account.id,
-      amount: 1000,
-      merchant: "Google Play",
-      item: "x",
-      timestamp: "2026-07-28T09:00:00-04:00",
-      raw_text: "x"
+      {
+        account_id: @account.id,
+        amount: 1000,
+        merchant: "Google Play",
+        item: "x",
+        timestamp: "2026-07-28T09:00:00-04:00",
+        raw_text: "x"
+      },
+      family: nil
     ).process
 
     assert_equal :created, result
   end
 
-  test "rejects an account_id belonging to a different family than ANDROID_WEBHOOK_FAMILY_ID, with the same message as an unknown account" do
+  test "rejects an account_id belonging to a different family than provided family, with the same message as an unknown account" do
     other_family = families(:inactive_trial)
     other_account = Account.create!(
       family: other_family, name: "Other Family Account", balance: 0, currency: "USD",
       accountable: Depository.new
     )
 
-    previous = ENV["ANDROID_WEBHOOK_FAMILY_ID"]
-    ENV["ANDROID_WEBHOOK_FAMILY_ID"] = @account.family_id
-
     error = assert_raises(AndroidPurchase::WebhookProcessor::Error) do
       AndroidPurchase::WebhookProcessor.new(
-        account_id: other_account.id,
-        amount: 1000,
-        merchant: "x",
-        item: "x",
-        timestamp: "2026-07-28T09:00:00-04:00",
-        raw_text: "x"
+        {
+          account_id: other_account.id,
+          amount: 1000,
+          merchant: "x",
+          item: "x",
+          timestamp: "2026-07-28T09:00:00-04:00",
+          raw_text: "x"
+        },
+        family: @family
       ).process
     end
     assert_match(/Unknown account_id/, error.message)
-  ensure
-    ENV["ANDROID_WEBHOOK_FAMILY_ID"] = previous
   end
 
-  test "allows an account_id in the configured family when ANDROID_WEBHOOK_FAMILY_ID is set" do
-    previous = ENV["ANDROID_WEBHOOK_FAMILY_ID"]
-    ENV["ANDROID_WEBHOOK_FAMILY_ID"] = @account.family_id
-
+  test "allows an account_id in the provided family" do
     result = AndroidPurchase::WebhookProcessor.new(
-      account_id: @account.id,
-      amount: 1000,
-      merchant: "Google Play",
-      item: "x",
-      timestamp: "2026-07-28T09:00:00-04:00",
-      raw_text: "x"
+      {
+        account_id: @account.id,
+        amount: 1000,
+        merchant: "Google Play",
+        item: "x",
+        timestamp: "2026-07-28T09:00:00-04:00",
+        raw_text: "x"
+      },
+      family: @family
     ).process
 
     assert_equal :created, result
-  ensure
-    ENV["ANDROID_WEBHOOK_FAMILY_ID"] = previous
   end
 end
