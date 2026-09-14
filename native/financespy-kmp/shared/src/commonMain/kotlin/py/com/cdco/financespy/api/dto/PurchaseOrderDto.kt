@@ -26,6 +26,7 @@ data class PurchaseOrderDto(
     val currency: String = "pyg",
     val expected_date: String? = null,
     val notes: String? = null,
+    val account_id: String? = null,
     val total: Double = 0.0,
     val created_at: String? = null,
     val updated_at: String? = null,

@@ -43,6 +43,7 @@ class Api::V1::PurchaseOrdersControllerTest < ActionDispatch::IntegrationTest
       family: @family,
       supplier_name: "Acme Supplies",
       currency: "pyg",
+      account: accounts(:depository),
       purchase_order_items_attributes: [
         { product_id: @product.id, quantity: 10, unit_cost: 8 }
       ]
@@ -76,6 +77,7 @@ class Api::V1::PurchaseOrdersControllerTest < ActionDispatch::IntegrationTest
              purchase_order: {
                supplier_name: "Global Corp",
                currency: "pyg",
+               account_id: accounts(:depository).id,
                purchase_order_items_attributes: [
                  { product_id: @product.id, quantity: 5, unit_cost: 10 }
                ]

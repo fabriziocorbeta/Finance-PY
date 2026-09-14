@@ -13,9 +13,11 @@ es:
       success: Pedido actualizado exitosamente.
       title: Editar pedido a proveedor
     form:
+      account: Cuenta
       cancel: Cancelar
       currency: Moneda
       expected_date: Fecha esperada
+      select_account: Seleccione una cuenta
       items: Artículos
       items_help: Agregue los artículos a pedir. Los campos vacíos serán ignorados.
       notes: Notas

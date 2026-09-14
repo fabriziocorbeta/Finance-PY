@@ -275,7 +275,7 @@ class MainActivity : ComponentActivity() {
                     PurchaseOrderDetailViewModel(purchaseOrderId = poId, api = api)
                 },
                 purchaseOrderFormViewModelFactory = { poId ->
-                    PurchaseOrderFormViewModel(purchaseOrderId = poId, api = api)
+                    PurchaseOrderFormViewModel(purchaseOrderId = poId, api = api, accountDao = database.accountDao())
                 },
                 fleetListViewModelFactory = { fleetListViewModel },
                 fleetVehicleDetailViewModelFactory = { vehicleId ->

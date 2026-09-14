@@ -14,7 +14,8 @@ class PurchaseOrdersControllerTest < ActionDispatch::IntegrationTest
 
     @purchase_order = @dylan_family.purchase_orders.create!(
       supplier_name: "Test Supplier",
-      status: "draft"
+      status: "draft",
+      account: accounts(:depository)
     )
 
     @purchase_order_item = @purchase_order.purchase_order_items.create!(
@@ -39,6 +40,7 @@ class PurchaseOrdersControllerTest < ActionDispatch::IntegrationTest
       post purchase_orders_url, params: {
         purchase_order: {
           supplier_name: "New Supplier",
+          account_id: accounts(:depository).id,
           purchase_order_items_attributes: {
             "0" => {
               product_id: @product.id,
@@ -149,9 +151,11 @@ class PurchaseOrdersControllerTest < ActionDispatch::IntegrationTest
 
   test "cannot access purchase order from another family" do
     other_family = Family.create!(name: "Other Family", business_mode_enabled: true)
+    other_account = Account.create!(family: other_family, name: "Cuenta Other", currency: "USD", balance: 0, accountable: Depository.new)
     other_purchase_order = other_family.purchase_orders.create!(
       supplier_name: "Other Supplier",
-      status: "draft"
+      status: "draft",
+      account: other_account
     )
 
     get purchase_order_url(other_purchase_order)

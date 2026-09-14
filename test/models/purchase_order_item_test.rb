@@ -4,7 +4,7 @@ class PurchaseOrderItemTest < ActiveSupport::TestCase
   setup do
     @family = families(:dylan_family)
     @product = products(:dylan_product_1)
-    @purchase_order = PurchaseOrder.create!(family: @family)
+    @purchase_order = PurchaseOrder.create!(family: @family, account: accounts(:depository))
   end
 
   test "validates quantity > 0" do
