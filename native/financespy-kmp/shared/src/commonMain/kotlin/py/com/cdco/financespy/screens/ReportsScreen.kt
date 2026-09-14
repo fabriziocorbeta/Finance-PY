@@ -47,6 +47,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.api.dto.ReportCategoryBreakdownDto
+import py.com.cdco.financespy.api.dto.ReportInvestmentFlowsDto
+import py.com.cdco.financespy.api.dto.ReportInvestmentMetricsDto
 import py.com.cdco.financespy.api.dto.ReportNetWorthDto
 import py.com.cdco.financespy.api.dto.ReportSummaryMetricsDto
 import py.com.cdco.financespy.api.dto.ReportTrendItemDto
@@ -137,6 +139,20 @@ fun ReportsScreen(
 
                     item {
                         TrendsChartCard(trends = summaryDto.trends)
+                    }
+
+                    val investmentMetrics = summaryDto.investmentMetrics
+                    if (investmentMetrics != null && investmentMetrics.hasInvestments) {
+                        item {
+                            InvestmentPerformanceCard(investmentMetrics = investmentMetrics, currency = summaryDto.currency)
+                        }
+                    }
+
+                    val investmentFlows = summaryDto.investmentFlows
+                    if (investmentFlows != null && (investmentFlows.contributions > 0 || investmentFlows.withdrawals > 0)) {
+                        item {
+                            InvestmentFlowsCard(investmentFlows = investmentFlows, currency = summaryDto.currency)
+                        }
                     }
 
                     item {
@@ -602,6 +618,234 @@ private fun CategoryBreakdownRow(
                             color = FinancePyColors.textSecondary()
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InvestmentPerformanceCard(
+    investmentMetrics: ReportInvestmentMetricsDto,
+    currency: String?,
+    modifier: Modifier = Modifier
+) {
+    AppCard(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Rendimiento de Inversiones",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = FinancePyColors.textPrimary()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Valor del Portafolio",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = FinancePyColors.textSecondary()
+                        )
+                        Text(
+                            text = formatMoney(investmentMetrics.portfolioValue, currency),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = FinancePyColors.textPrimary()
+                        )
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Ganancia No Realizada",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = FinancePyColors.textSecondary()
+                        )
+                        val isPositive = investmentMetrics.unrealizedGain >= 0
+                        val gainColor = if (isPositive) FinancePyColors.success() else FinancePyColors.destructive()
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = formatMoney(investmentMetrics.unrealizedGain, currency),
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = gainColor
+                            )
+                            investmentMetrics.unrealizedGainPct?.let { pct ->
+                                val arrow = if (pct >= 0) "▲" else "▼"
+                                Text(
+                                    text = "($arrow ${formatPercent(pct)})",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = gainColor
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Contribuciones del Período",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = FinancePyColors.textSecondary()
+                        )
+                        Text(
+                            text = formatMoney(investmentMetrics.periodContributions, currency),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = FinancePyColors.textPrimary()
+                        )
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Retiros del Período",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = FinancePyColors.textSecondary()
+                        )
+                        Text(
+                            text = formatMoney(investmentMetrics.periodWithdrawals, currency),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = FinancePyColors.textPrimary()
+                        )
+                    }
+                }
+            }
+
+            if (investmentMetrics.topHoldings.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Principales Activos",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = FinancePyColors.textPrimary()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    investmentMetrics.topHoldings.forEach { holding ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = holding.ticker,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = FinancePyColors.textPrimary()
+                                )
+                                Text(
+                                    text = holding.name,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = FinancePyColors.textSecondary(),
+                                    maxLines = 1
+                                )
+                            }
+
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = formatMoney(holding.amount, currency),
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = FinancePyColors.textPrimary()
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        text = "${formatPercent(holding.weight)} del portafolio",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = FinancePyColors.textSecondary()
+                                    )
+                                    holding.returnPct?.let { retPct ->
+                                        val isRetPos = retPct >= 0
+                                        val retColor = if (isRetPos) FinancePyColors.success() else FinancePyColors.destructive()
+                                        Text(
+                                            text = "• ${formatPercent(retPct)}",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = retColor
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InvestmentFlowsCard(
+    investmentFlows: ReportInvestmentFlowsDto,
+    currency: String?,
+    modifier: Modifier = Modifier
+) {
+    AppCard(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Flujos de Inversión",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = FinancePyColors.textPrimary()
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "Entradas y salidas de dinero en tus cuentas de inversión.",
+                style = MaterialTheme.typography.bodySmall,
+                color = FinancePyColors.textSecondary()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Contribuciones",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = FinancePyColors.textSecondary()
+                    )
+                    Text(
+                        text = formatMoney(investmentFlows.contributions, currency),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = FinancePyColors.success()
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Retiros",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = FinancePyColors.textSecondary()
+                    )
+                    Text(
+                        text = formatMoney(investmentFlows.withdrawals, currency),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = FinancePyColors.destructive()
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "Flujo Neto",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = FinancePyColors.textSecondary()
+                    )
+                    val netColor = if (investmentFlows.netFlow >= 0) FinancePyColors.success() else FinancePyColors.destructive()
+                    Text(
+                        text = formatMoney(investmentFlows.netFlow, currency),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = netColor
+                    )
                 }
             }
         }
