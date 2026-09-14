@@ -59,7 +59,7 @@ fun parseColorString(
     }
 }
 
-private data class NodeLayout(
+internal data class NodeLayout(
     val nodeIdx: Int,
     val layer: Int,
     val x: Float,
@@ -298,11 +298,23 @@ private fun SankeyCanvasLayout(
         val labelSmallStyle = MaterialTheme.typography.labelSmall
         val bodySmallStyle = MaterialTheme.typography.bodySmall
 
+        val isCompactLayerMap = (0..maxLayer).associateWith { layer ->
+            val colNodeIndices = nodesByLayer[layer] ?: emptyList()
+            colNodeIndices.size > 4
+        }
+
         val nodeLabelHeightsPx = nodes.indices.associateWith { idx ->
             val node = nodes[idx]
-            val titleH = textMeasurer.measure(node.name, labelSmallStyle).size.height
-            val valH = textMeasurer.measure(formatMoney(node.value, currency), bodySmallStyle).size.height
-            (titleH + valH).toFloat()
+            val layer = layerMap[idx] ?: centerLayer
+            val isCompact = isCompactLayerMap[layer] == true && idx != centerIdx
+            if (isCompact) {
+                val lineH = textMeasurer.measure("${node.name} • ${formatMoney(node.value, currency)}", labelSmallStyle).size.height
+                lineH.toFloat()
+            } else {
+                val titleH = textMeasurer.measure(node.name, labelSmallStyle).size.height
+                val valH = textMeasurer.measure(formatMoney(node.value, currency), bodySmallStyle).size.height
+                (titleH + valH).toFloat()
+            }
         }
 
         val centerNodeLayout = nodeLayouts[centerIdx]
@@ -310,62 +322,54 @@ private fun SankeyCanvasLayout(
         val centerLabelWidthPx = with(density) { centerLabelWidthDp.toPx() }
         val centerBarX = centerNodeLayout?.x ?: (widthPx / 2f)
 
+        val centerLeftBoundPx = centerBarX - (centerLabelWidthPx / 2f) - with(density) { 4.dp.toPx() }
+        val centerRightBoundPx = centerBarX + barWidth + (centerLabelWidthPx / 2f) + with(density) { 4.dp.toPx() }
+
         val labelYMap = mutableMapOf<Int, Dp>()
         val minSpacingPx = with(density) { 4.dp.toPx() }
         val minYPx = with(density) { 4.dp.toPx() }
         val maxYPx = heightPx - with(density) { 4.dp.toPx() }
 
-        if (centerNodeLayout != null) {
-            val centerH = nodeLabelHeightsPx[centerIdx] ?: 36f
-            val idealY = (centerNodeLayout.centerY - centerH / 2f).coerceIn(minYPx, maxYPx - centerH)
-            labelYMap[centerIdx] = with(density) { idealY.toDp() }
-        }
+        // Compute vertical positions PER LAYER to avoid cross-layer vertical collisions
+        (0..maxLayer).forEach { layer ->
+            val colNodeIndices = nodesByLayer[layer] ?: emptyList()
+            if (colNodeIndices.isEmpty()) return@forEach
 
-        val leftNodes = nodeLayouts.values
-            .filter { it.nodeIdx != centerIdx && it.x < widthPx / 2f }
-            .sortedBy { it.centerY }
-
-        if (leftNodes.isNotEmpty()) {
-            val idealYs = leftNodes.map { layout ->
-                val h = nodeLabelHeightsPx[layout.nodeIdx] ?: 32f
-                layout.centerY - h / 2f
-            }
-            val heights = leftNodes.map { nodeLabelHeightsPx[it.nodeIdx] ?: 32f }
-            val computedYs = computeVerticalLabelPositions(idealYs, heights, minSpacingPx, maxYPx, minYPx)
-            leftNodes.forEachIndexed { i, layout ->
-                labelYMap[layout.nodeIdx] = with(density) { computedYs[i].toDp() }
-            }
-        }
-
-        val rightNodes = nodeLayouts.values
-            .filter { it.nodeIdx != centerIdx && it.x >= widthPx / 2f }
-            .sortedBy { it.centerY }
-
-        if (rightNodes.isNotEmpty()) {
-            val idealYs = rightNodes.map { layout ->
-                val h = nodeLabelHeightsPx[layout.nodeIdx] ?: 32f
-                layout.centerY - h / 2f
-            }
-            val heights = rightNodes.map { nodeLabelHeightsPx[it.nodeIdx] ?: 32f }
-            val computedYs = computeVerticalLabelPositions(idealYs, heights, minSpacingPx, maxYPx, minYPx)
-            rightNodes.forEachIndexed { i, layout ->
-                labelYMap[layout.nodeIdx] = with(density) { computedYs[i].toDp() }
+            val sortedByCenterY = colNodeIndices.mapNotNull { nodeLayouts[it] }.sortedBy { it.centerY }
+            if (layer == centerLayer) {
+                val centerLayout = sortedByCenterY.firstOrNull { it.nodeIdx == centerIdx } ?: sortedByCenterY.firstOrNull()
+                if (centerLayout != null) {
+                    val h = nodeLabelHeightsPx[centerLayout.nodeIdx] ?: 36f
+                    val idealY = (centerLayout.centerY - h / 2f).coerceIn(minYPx, maxYPx - h)
+                    labelYMap[centerLayout.nodeIdx] = with(density) { idealY.toDp() }
+                }
+            } else {
+                val idealYs = sortedByCenterY.map { layout ->
+                    val h = nodeLabelHeightsPx[layout.nodeIdx] ?: 32f
+                    layout.centerY - h / 2f
+                }
+                val heights = sortedByCenterY.map { nodeLabelHeightsPx[it.nodeIdx] ?: 32f }
+                val computedYs = computeVerticalLabelPositions(idealYs, heights, minSpacingPx, maxYPx, minYPx)
+                sortedByCenterY.forEachIndexed { i, layout ->
+                    labelYMap[layout.nodeIdx] = with(density) { computedYs[i].toDp() }
+                }
             }
         }
 
-        val centerLeftBoundPx = centerBarX - (centerLabelWidthPx / 2f) - with(density) { 4.dp.toPx() }
-        val centerRightBoundPx = centerBarX + barWidth + (centerLabelWidthPx / 2f) + with(density) { 4.dp.toPx() }
+        val layerBarXMap = (0..maxLayer).associateWith { layer ->
+            val layoutsInLayer = nodeLayouts.values.filter { it.layer == layer }
+            layoutsInLayer.firstOrNull()?.x ?: (edgeMargin + layer * colSpacing)
+        }
 
         Box(modifier = Modifier.fillMaxSize()) {
             nodeLayouts.values.forEach { layout ->
                 val node = nodes[layout.nodeIdx]
-                val isLeftHalf = layout.x < widthPx / 2f
+                val layer = layout.layer
                 val isCenterNode = layout.nodeIdx == centerIdx
+                val isCompact = isCompactLayerMap[layer] == true && !isCenterNode
 
-                val xDp = with(density) { layout.x.toDp() }
                 val labelHPx = nodeLabelHeightsPx[layout.nodeIdx] ?: 32f
                 val yDp = labelYMap[layout.nodeIdx] ?: with(density) { (layout.centerY - labelHPx / 2f).toDp() }
-                val barWidthDp = with(density) { barWidth.toDp() }
 
                 if (isCenterNode) {
                     val centerOffsetX = with(density) { (centerBarX - centerLabelWidthPx / 2f + barWidth / 2f).toDp() }
@@ -379,6 +383,7 @@ private fun SankeyCanvasLayout(
                             node = node,
                             currency = currency,
                             isCenter = true,
+                            isCompact = false,
                             maxWidthDp = centerLabelWidthDp,
                             successColor = successColor,
                             destructiveColor = destructiveColor,
@@ -387,14 +392,21 @@ private fun SankeyCanvasLayout(
                             textSecondaryColor = textSecondaryColor
                         )
                     }
-                } else if (isLeftHalf) {
+                } else if (layer < centerLayer) {
                     val startXPx = layout.x + barWidth + with(density) { 4.dp.toPx() }
-                    val maxW = (centerLeftBoundPx - startXPx).coerceAtLeast(with(density) { 50.dp.toPx() })
+                    val nextLayerX = layerBarXMap[layer + 1]
+                    val endBoundPx = if (layer + 1 == centerLayer || nextLayerX == null) {
+                        centerLeftBoundPx
+                    } else {
+                        nextLayerX - with(density) { 4.dp.toPx() }
+                    }
+                    val maxW = (endBoundPx - startXPx).coerceAtLeast(with(density) { 30.dp.toPx() })
                     val maxWDp = with(density) { maxW.toDp() }
+                    val xDp = with(density) { startXPx.toDp() }
 
                     Box(
                         modifier = Modifier
-                            .offset(x = xDp + barWidthDp + 4.dp, y = yDp)
+                            .offset(x = xDp, y = yDp)
                             .width(maxWDp)
                     ) {
                         SankeyNodeLabel(
@@ -402,6 +414,7 @@ private fun SankeyCanvasLayout(
                             currency = currency,
                             isCenter = false,
                             alignEnd = false,
+                            isCompact = isCompact,
                             maxWidthDp = maxWDp,
                             successColor = successColor,
                             destructiveColor = destructiveColor,
@@ -410,16 +423,22 @@ private fun SankeyCanvasLayout(
                             textSecondaryColor = textSecondaryColor
                         )
                     }
-                } else {
+                } else { // layer > centerLayer
                     val endXPx = layout.x - with(density) { 4.dp.toPx() }
-                    val maxW = (endXPx - centerRightBoundPx).coerceAtLeast(with(density) { 50.dp.toPx() })
+                    val prevLayerX = layerBarXMap[layer - 1]
+                    val startBoundPx = if (layer - 1 == centerLayer || prevLayerX == null) {
+                        centerRightBoundPx
+                    } else {
+                        prevLayerX + barWidth + with(density) { 4.dp.toPx() }
+                    }
+                    val maxW = (endXPx - startBoundPx).coerceAtLeast(with(density) { 30.dp.toPx() })
                     val maxWDp = with(density) { maxW.toDp() }
-                    val startXPx = (endXPx - maxW).coerceAtLeast(0f)
-                    val startWDp = with(density) { startXPx.toDp() }
+                    val boxStartXPx = (endXPx - maxW).coerceAtLeast(startBoundPx)
+                    val boxStartWDp = with(density) { boxStartXPx.toDp() }
 
                     Box(
                         modifier = Modifier
-                            .offset(x = startWDp, y = yDp)
+                            .offset(x = boxStartWDp, y = yDp)
                             .width(maxWDp),
                         contentAlignment = Alignment.CenterEnd
                     ) {
@@ -428,6 +447,7 @@ private fun SankeyCanvasLayout(
                             currency = currency,
                             isCenter = false,
                             alignEnd = true,
+                            isCompact = isCompact,
                             maxWidthDp = maxWDp,
                             successColor = successColor,
                             destructiveColor = destructiveColor,
@@ -484,6 +504,27 @@ internal fun computeVerticalLabelPositions(
         }
     }
 
+    // Pass 4: Compression / scaling pass if bottom STILL exceeds maxBottom after Pass 3
+    if (count > 0 && positions[count - 1] + labelHeights[count - 1] > maxBottom) {
+        val availableHeight = maxBottom - minYPx
+        val totalLabelHeight = labelHeights.sum()
+
+        if (totalLabelHeight < availableHeight && count > 1) {
+            val dynamicSpacing = (availableHeight - totalLabelHeight) / (count - 1)
+            positions[0] = minYPx
+            for (i in 1 until count) {
+                positions[i] = positions[i - 1] + labelHeights[i - 1] + dynamicSpacing
+            }
+        } else if (availableHeight > 0f) {
+            val currentSpan = (positions[count - 1] + labelHeights[count - 1] - positions[0]).coerceAtLeast(1f)
+            val scale = (availableHeight - labelHeights[count - 1]) / (currentSpan - labelHeights[count - 1]).coerceAtLeast(1f)
+            val base = positions[0]
+            for (i in 0 until count) {
+                positions[i] = minYPx + (positions[i] - base) * scale
+            }
+        }
+    }
+
     return positions.toList()
 }
 
@@ -493,6 +534,7 @@ private fun SankeyNodeLabel(
     currency: String,
     isCenter: Boolean = false,
     alignEnd: Boolean = false,
+    isCompact: Boolean = false,
     maxWidthDp: Dp,
     successColor: Color,
     destructiveColor: Color,
@@ -532,22 +574,33 @@ private fun SankeyNodeLabel(
             modifier = Modifier.weight(1f, fill = false),
             horizontalAlignment = horizAlignment
         ) {
-            Text(
-                text = node.name,
-                style = MaterialTheme.typography.labelSmall,
-                color = FinancePyColors.textPrimary(),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = textAlign
-            )
-            Text(
-                text = formatMoney(node.value, currency),
-                style = MaterialTheme.typography.bodySmall,
-                color = FinancePyColors.textSecondary(),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = textAlign
-            )
+            if (isCompact && !isCenter) {
+                Text(
+                    text = "${node.name} • ${formatMoney(node.value, currency)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = FinancePyColors.textPrimary(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = textAlign
+                )
+            } else {
+                Text(
+                    text = node.name,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = FinancePyColors.textPrimary(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = textAlign
+                )
+                Text(
+                    text = formatMoney(node.value, currency),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = FinancePyColors.textSecondary(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = textAlign
+                )
+            }
         }
         if (!isCenter && alignEnd) {
             Spacer(modifier = Modifier.width(4.dp))
