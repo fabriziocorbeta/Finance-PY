@@ -38,8 +38,13 @@ jobs:
       # saltearlo -- Google sacó ese paquete legacy del repositorio del SDK
       # y la action rompe siempre con "Failed to find package 'tools'".
       # ubuntu-latest ya trae el Android SDK preinstalado (ANDROID_HOME
-      # seteado), así que solo hace falta aceptar licencias e instalar los
-      # paquetes puntuales que necesitamos.
+      # seteado) pero el cmdline-tools/sdkmanager no está en PATH por
+      # default, así que lo agregamos a mano antes de usarlo.
+      - name: Add Android cmdline-tools to PATH
+        run: |
+          CMDLINE_TOOLS_BIN=$(dirname "$(find "$ANDROID_HOME/cmdline-tools" -maxdepth 2 -name sdkmanager | sort -V | tail -1)")
+          echo "$CMDLINE_TOOLS_BIN" >> "$GITHUB_PATH"
+
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses > /dev/null || true
 
