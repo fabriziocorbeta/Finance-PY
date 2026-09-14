@@ -34,8 +34,14 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # android-actions/setup-android@v3 corre `sdkmanager tools` sin poder
+      # saltearlo -- Google sacó ese paquete legacy del repositorio del SDK
+      # y la action rompe siempre con "Failed to find package 'tools'".
+      # ubuntu-latest ya trae el Android SDK preinstalado (ANDROID_HOME
+      # seteado), así que solo hace falta aceptar licencias e instalar los
+      # paquetes puntuales que necesitamos.
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null || true
 
       - name: Install Android SDK platform & build-tools
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
