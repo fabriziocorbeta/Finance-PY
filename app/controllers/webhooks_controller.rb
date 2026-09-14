@@ -56,5 +56,4 @@ class WebhooksController < ApplicationController
       head :bad_request
     end
   end
-
 end
