@@ -132,7 +132,7 @@ fun ReportsScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     item {
-                        SummaryMetricsCard(summary = summaryDto.summary)
+                        SummaryMetricsCard(summary = summaryDto.summary, currency = summaryDto.currency)
                     }
 
                     item {
@@ -140,11 +140,11 @@ fun ReportsScreen(
                     }
 
                     item {
-                        CategoryBreakdownCard(breakdown = summaryDto.transactionsBreakdown)
+                        CategoryBreakdownCard(breakdown = summaryDto.transactionsBreakdown, currency = summaryDto.currency)
                     }
 
                     item {
-                        NetWorthReportCard(netWorth = summaryDto.netWorth)
+                        NetWorthReportCard(netWorth = summaryDto.netWorth, currency = summaryDto.currency)
                     }
 
                     item {
@@ -205,6 +205,7 @@ private fun PeriodFilterChips(
 @Composable
 private fun SummaryMetricsCard(
     summary: ReportSummaryMetricsDto,
+    currency: String?,
     modifier: Modifier = Modifier
 ) {
     AppCard(modifier = modifier.fillMaxWidth()) {
@@ -224,13 +225,15 @@ private fun SummaryMetricsCard(
                             label = "Ingresos",
                             amount = summary.income,
                             changePct = summary.incomeChangePct,
-                            isIncome = true
+                            isIncome = true,
+                            currency = currency
                         )
                         MetricItem(
                             label = "Gastos",
                             amount = summary.expense,
                             changePct = summary.expenseChangePct,
-                            isIncome = false
+                            isIncome = false,
+                            currency = currency
                         )
                     }
                 } else {
@@ -243,6 +246,7 @@ private fun SummaryMetricsCard(
                             amount = summary.income,
                             changePct = summary.incomeChangePct,
                             isIncome = true,
+                            currency = currency,
                             modifier = Modifier.weight(1f)
                         )
                         Spacer(modifier = Modifier.width(16.dp))
@@ -251,6 +255,7 @@ private fun SummaryMetricsCard(
                             amount = summary.expense,
                             changePct = summary.expenseChangePct,
                             isIncome = false,
+                            currency = currency,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -271,7 +276,7 @@ private fun SummaryMetricsCard(
                         color = FinancePyColors.textSecondary()
                     )
                     Text(
-                        text = formatMoney(summary.netSavings, null),
+                        text = formatMoney(summary.netSavings, currency),
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                         color = if (summary.netSavings >= 0) FinancePyColors.success() else FinancePyColors.destructive()
                     )
@@ -302,6 +307,7 @@ private fun MetricItem(
     amount: Double,
     changePct: Double,
     isIncome: Boolean,
+    currency: String?,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -316,7 +322,7 @@ private fun MetricItem(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
-                text = formatMoney(amount, null),
+                text = formatMoney(amount, currency),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = FinancePyColors.textPrimary()
             )
@@ -462,6 +468,7 @@ private fun TrendsCanvasChart(
 @Composable
 private fun CategoryBreakdownCard(
     breakdown: py.com.cdco.financespy.api.dto.ReportTransactionsBreakdownDto,
+    currency: String?,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(0) } // 0: Gastos, 1: Ingresos
@@ -518,6 +525,7 @@ private fun CategoryBreakdownCard(
                     list.forEach { category ->
                         CategoryBreakdownRow(
                             category = category,
+                            currency = currency,
                             successColor = successColor,
                             destructiveColor = destructiveColor,
                             warningColor = warningColor,
@@ -533,6 +541,7 @@ private fun CategoryBreakdownCard(
 @Composable
 private fun CategoryBreakdownRow(
     category: ReportCategoryBreakdownDto,
+    currency: String?,
     successColor: Color,
     destructiveColor: Color,
     warningColor: Color,
@@ -565,7 +574,7 @@ private fun CategoryBreakdownRow(
             }
 
             Text(
-                text = formatMoney(category.total, null),
+                text = formatMoney(category.total, currency),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 color = FinancePyColors.textPrimary()
             )
@@ -588,7 +597,7 @@ private fun CategoryBreakdownRow(
                             color = FinancePyColors.textSecondary()
                         )
                         Text(
-                            text = formatMoney(sub.total, null),
+                            text = formatMoney(sub.total, currency),
                             style = MaterialTheme.typography.bodySmall,
                             color = FinancePyColors.textSecondary()
                         )
@@ -602,6 +611,7 @@ private fun CategoryBreakdownRow(
 @Composable
 private fun NetWorthReportCard(
     netWorth: ReportNetWorthDto,
+    currency: String?,
     modifier: Modifier = Modifier
 ) {
     AppCard(modifier = modifier.fillMaxWidth()) {
@@ -620,7 +630,7 @@ private fun NetWorthReportCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = formatMoney(netWorth.current, null),
+                    text = formatMoney(netWorth.current, currency),
                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                     color = FinancePyColors.textPrimary()
                 )
@@ -650,7 +660,7 @@ private fun NetWorthReportCard(
                         color = FinancePyColors.textSecondary()
                     )
                     Text(
-                        text = formatMoney(netWorth.totalAssets, null),
+                        text = formatMoney(netWorth.totalAssets, currency),
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = FinancePyColors.success()
                     )
@@ -663,7 +673,7 @@ private fun NetWorthReportCard(
                         color = FinancePyColors.textSecondary()
                     )
                     Text(
-                        text = formatMoney(netWorth.totalLiabilities, null),
+                        text = formatMoney(netWorth.totalLiabilities, currency),
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = FinancePyColors.destructive()
                     )

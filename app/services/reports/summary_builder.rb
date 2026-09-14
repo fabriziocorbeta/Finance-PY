@@ -24,6 +24,7 @@ module Reports
           end_date: end_date.to_s,
           type: period_type.to_s
         },
+        currency: family.currency,
         summary: build_summary_metrics,
         trends: build_trends_data,
         net_worth: build_net_worth_metrics,

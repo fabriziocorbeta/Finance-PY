@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ReportsSummaryDto(
     val period: ReportPeriodDto,
+    val currency: String? = null,
     val summary: ReportSummaryMetricsDto,
     val trends: List<ReportTrendItemDto> = emptyList(),
     @SerialName("net_worth") val netWorth: ReportNetWorthDto,
