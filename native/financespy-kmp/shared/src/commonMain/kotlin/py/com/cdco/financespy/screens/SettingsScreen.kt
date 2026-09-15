@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Rule
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -54,7 +55,8 @@ fun SettingsScreen(
     onOpenNotificationSettings: (() -> Unit)? = null,
     onShareFile: ((ByteArray, String, String) -> Unit)? = null,
     onNavigateToRules: (() -> Unit)? = null,
-    onNavigateToNavCustomization: (() -> Unit)? = null
+    onNavigateToNavCustomization: (() -> Unit)? = null,
+    onNavigateToUpayImport: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -237,7 +239,7 @@ fun SettingsScreen(
                     }
                 }
 
-                if (onNavigateToRules != null || onNavigateToNavCustomization != null) {
+                if (onNavigateToRules != null || onNavigateToNavCustomization != null || (onNavigateToUpayImport != null && state.businessModeEnabled)) {
                     item {
                         Text(
                             text = "Navegación",
@@ -259,6 +261,13 @@ fun SettingsScreen(
                                         icon = Icons.Filled.Tune,
                                         label = "Personalizar navegación",
                                         onClick = onNavigateToNavCustomization
+                                    )
+                                }
+                                if (onNavigateToUpayImport != null && state.businessModeEnabled) {
+                                    SettingsNavRow(
+                                        icon = Icons.Filled.UploadFile,
+                                        label = "Importar liquidación Upay",
+                                        onClick = onNavigateToUpayImport
                                     )
                                 }
                             }

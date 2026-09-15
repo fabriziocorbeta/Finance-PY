@@ -83,6 +83,8 @@ import py.com.cdco.financespy.screens.RulesListScreen
 import py.com.cdco.financespy.screens.RulesListViewModel
 import py.com.cdco.financespy.screens.SettingsScreen
 import py.com.cdco.financespy.screens.SettingsViewModel
+import py.com.cdco.financespy.screens.UpayImportScreen
+import py.com.cdco.financespy.screens.UpayImportViewModel
 import py.com.cdco.financespy.screens.TransactionFormScreen
 import py.com.cdco.financespy.screens.TransactionFormViewModel
 import py.com.cdco.financespy.screens.TransactionsScreen
@@ -126,8 +128,10 @@ fun App(
     accountDetailViewModelFactory: (String) -> AccountDetailViewModel,
     settingsViewModelFactory: () -> SettingsViewModel,
     reportsViewModelFactory: () -> ReportsViewModel,
+    upayImportViewModelFactory: () -> UpayImportViewModel,
     onOpenNotificationSettings: (() -> Unit)? = null,
-    onShareFile: ((ByteArray, String, String) -> Unit)? = null
+    onShareFile: ((ByteArray, String, String) -> Unit)? = null,
+    onPickUpayCsv: ((onPicked: (ByteArray, String) -> Unit) -> Unit)? = null
 ) {
     FinancePyTheme {
         if (isLoggedIn != null) {
@@ -226,7 +230,16 @@ fun App(
                                 onOpenNotificationSettings = onOpenNotificationSettings,
                                 onShareFile = onShareFile,
                                 onNavigateToRules = { navController.navigate(Routes.RULES) },
-                                onNavigateToNavCustomization = { navController.navigate(Routes.NAV_CUSTOMIZATION) }
+                                onNavigateToNavCustomization = { navController.navigate(Routes.NAV_CUSTOMIZATION) },
+                                onNavigateToUpayImport = { navController.navigate(Routes.UPAY_IMPORT) }
+                            )
+                        }
+                        composable(Routes.UPAY_IMPORT) {
+                            val upayImportVm = remember { upayImportViewModelFactory() }
+                            UpayImportScreen(
+                                viewModel = upayImportVm,
+                                onPickCsvFile = { onPicked -> onPickUpayCsv?.invoke(onPicked) },
+                                onBack = { navController.popBackStack() }
                             )
                         }
                         composable(Routes.NAV_CUSTOMIZATION) {

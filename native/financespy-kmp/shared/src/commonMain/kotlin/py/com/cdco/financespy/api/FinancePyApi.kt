@@ -3,6 +3,8 @@ package py.com.cdco.financespy.api
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
+import io.ktor.client.request.forms.formData
+import io.ktor.client.request.forms.submitFormWithBinaryData
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
@@ -11,12 +13,16 @@ import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsBytes
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import py.com.cdco.financespy.api.dto.FamilyExportDto
 import py.com.cdco.financespy.api.dto.FamilyExportEnvelope
 import py.com.cdco.financespy.api.dto.FamilyExportsEnvelope
 import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.NavPreferencesDto
+import py.com.cdco.financespy.api.dto.UpayImportResponseDto
+import py.com.cdco.financespy.api.dto.UpayImportResultDto
 import py.com.cdco.financespy.api.dto.BalanceSeriesDto
 import py.com.cdco.financespy.api.dto.AccountsResponse
 import py.com.cdco.financespy.api.dto.BalanceSheetResponse
@@ -430,6 +436,27 @@ open class FinancePyApi(private val http: HttpClient) {
     }
 
     open suspend fun fetchFamilySettings(): FamilySettingsDto = http.get("/api/v1/family_settings").body()
+
+    open suspend fun uploadUpayImport(accountId: String, fileBytes: ByteArray, fileName: String): UpayImportResultDto {
+        val response: UpayImportResponseDto = http.submitFormWithBinaryData(
+            url = "/api/v1/imports",
+            formData = formData {
+                append("type", "UpayImport")
+                append("account_id", accountId)
+                append("publish", "true")
+                append("file", fileBytes, Headers.build {
+                    append(HttpHeaders.ContentType, "text/csv")
+                    append(HttpHeaders.ContentDisposition, "form-data; name=\"file\"; filename=\"$fileName\"")
+                })
+            }
+        ).body()
+        return response.data
+    }
+
+    open suspend fun fetchImport(importId: String): UpayImportResultDto {
+        val response: UpayImportResponseDto = http.get("/api/v1/imports/$importId").body()
+        return response.data
+    }
 
     // --- Products ---
     open suspend fun fetchAllProducts(): List<ProductDto> {
