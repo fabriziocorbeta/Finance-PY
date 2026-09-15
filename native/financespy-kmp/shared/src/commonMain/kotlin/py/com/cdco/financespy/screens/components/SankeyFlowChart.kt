@@ -449,8 +449,19 @@ private fun SankeyCanvasLayout(
         }
 
         val centerNodeLayout = nodeLayouts[centerIdx]
-        val centerLabelWidthDp = 100.dp
-        val centerLabelWidthPx = with(density) { centerLabelWidthDp.toPx() }
+        // El ancho de la etiqueta central era fijo en 100dp sin importar cuántas
+        // capas hubiera. Con 4 columnas (ingresos con sub-categorías + gastos, el
+        // caso reportado) esa caja fija de 100dp deja a las columnas ADYACENTES
+        // al centro con ~31dp reales de ancho (el piso mínimo del código de abajo),
+        // de ahí el truncamiento severo ("Com...", "Seg..."). Con 2-3 columnas
+        // (colSpacing más generoso) 100dp entra sin apretar a nadie, así que solo
+        // se achica cuando realmente hace falta.
+        val centerLabelWidthPx = if (maxLayer > 2) {
+            with(density) { 70.dp.toPx() }
+        } else {
+            with(density) { 100.dp.toPx() }
+        }
+        val centerLabelWidthDp = with(density) { centerLabelWidthPx.toDp() }
         val centerBarX = centerNodeLayout?.x ?: (widthPx / 2f)
 
         val centerLeftBoundPx = centerBarX - (centerLabelWidthPx / 2f) - with(density) { 4.dp.toPx() }
