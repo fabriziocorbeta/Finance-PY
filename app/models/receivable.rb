@@ -18,9 +18,12 @@ class Receivable < ApplicationRecord
     base_amount = (total / installment_count).round(2)
     remainder = total - (base_amount * installment_count)
 
-    # Inflow transfers (entries with positive amount usually representing a payment received for an asset)
-    inflow_entries = account.entries.where('amount > 0').order(date: :asc)
-    payments = inflow_entries.map { |e| { amount: e.amount, date: e.date } }
+    # Convención de signos del proyecto: amount positivo = egreso, amount
+    # negativo = ingreso. Un pago cobrado hacia esta cuenta es un ingreso,
+    # así que las entries vienen con amount negativo -- se usa el valor
+    # absoluto para las cuentas de la cuota.
+    inflow_entries = account.entries.where("amount < 0").order(date: :asc)
+    payments = inflow_entries.map { |e| { amount: e.amount.abs, date: e.date } }
 
     schedule = []
     current_due_date = nil
@@ -31,10 +34,10 @@ class Receivable < ApplicationRecord
 
       if due_day
         if i == 1
-          candidate = Date.new(start_date.year, start_date.month, [due_day, Date.new(start_date.year, start_date.month, -1).day].min)
-          current_due_date = candidate < start_date ? Date.new(start_date.next_month.year, start_date.next_month.month, [due_day, Date.new(start_date.next_month.year, start_date.next_month.month, -1).day].min) : candidate
+          candidate = Date.new(start_date.year, start_date.month, [ due_day, Date.new(start_date.year, start_date.month, -1).day ].min)
+          current_due_date = candidate < start_date ? Date.new(start_date.next_month.year, start_date.next_month.month, [ due_day, Date.new(start_date.next_month.year, start_date.next_month.month, -1).day ].min) : candidate
         else
-          current_due_date = Date.new(current_due_date.next_month.year, current_due_date.next_month.month, [due_day, Date.new(current_due_date.next_month.year, current_due_date.next_month.month, -1).day].min)
+          current_due_date = Date.new(current_due_date.next_month.year, current_due_date.next_month.month, [ due_day, Date.new(current_due_date.next_month.year, current_due_date.next_month.month, -1).day ].min)
         end
       else
         current_due_date = i == 1 ? start_date.next_month : current_due_date.next_month

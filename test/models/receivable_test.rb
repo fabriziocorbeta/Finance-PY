@@ -1,6 +1,8 @@
-require 'test_helper'
+require "test_helper"
 
 class ReceivableTest < ActiveSupport::TestCase
+  include EntriesTestHelper
+
   test "classification is asset" do
     assert_equal "asset", Receivable.classification
   end
@@ -45,10 +47,11 @@ class ReceivableTest < ActiveSupport::TestCase
     assert_equal 250, schedule[0][:amount]
     assert_equal :pending, schedule[0][:status]
 
-    # Add a payment of 300 (covers 1st installment + 50 of 2nd)
-    Entry.create!(
+    # Add a payment of 300 (covers 1st installment + 50 of 2nd) -- ingreso,
+    # amount negativo por la convención de signos del proyecto.
+    create_transaction(
       account: account,
-      amount: 300,
+      amount: -300,
       date: Date.current - 1.day,
       currency: "USD",
       name: "Payment"
