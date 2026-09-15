@@ -268,9 +268,13 @@ fun SankeyFlowChart(
                 // las de menor valor en "Otros". Alto todavía se calcula
                 // dinámico sobre el dataset YA acotado (máx. 6 nodos reales
                 // por columna, así que el piso de 280dp cubre casi siempre).
+                // 56dp/nodo (antes 44dp): con el modo compacto deshabilitado,
+                // cada label ahora es siempre 2 líneas (nombre + monto) en
+                // vez de 1 -- ese alto extra hay que reservarlo acá o las
+                // etiquetas de columnas con muchos nodos se pisan entre sí.
                 val cappedDto = remember(sankeyDto) { capNodesPerLayer(sankeyDto!!) }
                 val maxNodesInColumn = maxNodesInAnyLayer(cappedDto)
-                val chartHeight = maxOf(280.dp, (maxNodesInColumn * 44).dp)
+                val chartHeight = maxOf(280.dp, (maxNodesInColumn * 56).dp)
                 SankeyCanvasLayout(
                     sankeyDto = cappedDto,
                     currency = currency,
@@ -421,18 +425,15 @@ private fun SankeyCanvasLayout(
         val labelSmallStyle = MaterialTheme.typography.labelSmall
         val bodySmallStyle = MaterialTheme.typography.bodySmall
 
-        // Revertido a >4. El intento anterior bajó esto a >=4, pero el modo
-        // compacto concatena "nombre • monto" en una sola línea -- eso pide
-        // MÁS ancho horizontal por línea, no menos, y en un teléfono angosto
-        // con poco espacio lateral eso truncaba peor que el problema
-        // original (labels como "Sala..."/"Tr... ₲..." que ni siquiera
-        // estaban en el reporte anterior). El problema real siempre fue
-        // altura vertical, no el modo de línea -- ver chartHeight dinámico
-        // más abajo, que es lo que de verdad hace falta reforzar.
-        val isCompactLayerMap = (0..maxLayer).associateWith { layer ->
-            val colNodeIndices = nodesByLayer[layer] ?: emptyList()
-            colNodeIndices.size > 4
-        }
+        // El modo compacto (concatenar "nombre • monto" en una sola línea para
+        // ahorrar altura en columnas con muchos nodos) se probó y revirtió una
+        // vez ya (threshold >=4 -> >4) intentando arreglar el ancho, pero el
+        // problema de fondo es el modo en sí: pide MÁS ancho horizontal por
+        // línea justo en las columnas que YA tienen menos ancho disponible
+        // (las adyacentes al centro). Deshabilitado del todo -- siempre 2
+        // líneas (nombre / monto), cada una más corta que el combo. El costo
+        // en altura que esto agrega se compensa en chartHeight más abajo.
+        val isCompactLayerMap = (0..maxLayer).associateWith { false }
 
         val nodeLabelHeightsPx = nodes.indices.associateWith { idx ->
             val node = nodes[idx]
