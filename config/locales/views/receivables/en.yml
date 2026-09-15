@@ -18,6 +18,9 @@ en:
       completed: Completed (%{count})
       overdue: Overdue
       due_day: Due day
+      original_balance: Original Balance
+      remaining_balance: Remaining Balance
+      installments: Installments
     index:
       title: Receivables
       new: New receivable

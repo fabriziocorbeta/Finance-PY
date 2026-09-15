@@ -28,3 +28,16 @@ json.name receivable.account.name
 json.currency receivable.account.currency
 json.notes receivable.account.notes
 json.updated_at receivable.account.updated_at
+
+if receivable.respond_to?(:installment_schedule) && (schedule = receivable.installment_schedule).any?
+  json.installment_schedule schedule do |item|
+    json.number item[:number]
+    json.due_date item[:due_date]
+    json.amount item[:amount]
+    json.paid_amount item[:paid_amount]
+    json.status item[:status]
+    json.paid_at item[:paid_at]
+  end
+else
+  json.installment_schedule []
+end

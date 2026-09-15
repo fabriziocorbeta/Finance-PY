@@ -10,6 +10,9 @@ es:
       new: Nueva cuenta a cobrar
       register_payment: Registrar Pago
       title: Cuentas a Cobrar
+      original_balance: Monto Original
+      remaining_balance: Saldo Pendiente
+      installments: Cuotas
     edit:
       edit: Editar %{account}
     form:
