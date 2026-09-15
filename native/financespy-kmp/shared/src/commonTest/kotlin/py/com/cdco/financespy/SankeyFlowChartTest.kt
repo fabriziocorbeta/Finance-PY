@@ -4,6 +4,7 @@ import py.com.cdco.financespy.api.dto.CashflowSankeyDto
 import py.com.cdco.financespy.api.dto.SankeyLinkDto
 import py.com.cdco.financespy.api.dto.SankeyNodeDto
 import py.com.cdco.financespy.screens.components.computeVerticalLabelPositions
+import py.com.cdco.financespy.screens.components.capNodesPerLayer
 import py.com.cdco.financespy.screens.components.maxNodesInAnyLayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -155,4 +156,78 @@ class SankeyFlowChartTest {
         // (centerLayer + 1) -- 4 nodos, la columna más cargada del diagrama.
         assertEquals(4, maxNodesInAnyLayer(dto))
     }
+
+    // Reproduce el segundo reporte (más grave que el primero): con 7
+    // categorías de gasto reales en una sola columna, ni el alto dinámico
+    // ni bajar el umbral de modo compacto alcanzaban -- las labels
+    // terminaban truncadas incluso en el lado de ingresos ("Sala...",
+    // "Tr... ₲..."). Fix real: acotar cada columna a un techo fijo de
+    // nodos, agrupando el resto en "Otros".
+    @Test
+    fun testCapNodesPerLayer_groupsExcessIntoOtros() {
+        val nodes = listOf(
+            SankeyNodeDto(name = "Salario", value = 9300000.0, color = "#10A861"),
+            SankeyNodeDto(name = "Venta de Mercaderías", value = 1220000.0, color = "#10A861"),
+            SankeyNodeDto(name = "Flujo de caja", value = 2150000.0, color = "#9E9E9E"),
+            SankeyNodeDto(name = "Comisión bancaria", value = 900000.0, color = "#EC2222"),
+            SankeyNodeDto(name = "Seguro Sportage", value = 800000.0, color = "#EC2222"),
+            SankeyNodeDto(name = "Healthcare", value = 700000.0, color = "#EC2222"),
+            SankeyNodeDto(name = "Fees", value = 600000.0, color = "#EC2222"),
+            SankeyNodeDto(name = "Transportation", value = 500000.0, color = "#EC2222"),
+            SankeyNodeDto(name = "Schatzi", value = 400000.0, color = "#EC2222"),
+            SankeyNodeDto(name = "Sin categoría", value = 100000.0, color = "#EC2222")
+        )
+
+        val links = listOf(
+            SankeyLinkDto(source = 0, target = 2, value = 9300000.0, color = "#10A861"),
+            SankeyLinkDto(source = 1, target = 2, value = 1220000.0, color = "#10A861"),
+            SankeyLinkDto(source = 2, target = 3, value = 900000.0, color = "#EC2222"),
+            SankeyLinkDto(source = 2, target = 4, value = 800000.0, color = "#EC2222"),
+            SankeyLinkDto(source = 2, target = 5, value = 700000.0, color = "#EC2222"),
+            SankeyLinkDto(source = 2, target = 6, value = 600000.0, color = "#EC2222"),
+            SankeyLinkDto(source = 2, target = 7, value = 500000.0, color = "#EC2222"),
+            SankeyLinkDto(source = 2, target = 8, value = 400000.0, color = "#EC2222"),
+            SankeyLinkDto(source = 2, target = 9, value = 100000.0, color = "#EC2222")
+        )
+
+        val dto = CashflowSankeyDto(nodes = nodes, links = links)
+        assertEquals(7, maxNodesInAnyLayer(dto)) // reproduce el dataset real reportado
+
+        val capped = capNodesPerLayer(dto, maxPerLayer = 6)
+        assertEquals(5, capped.maxNodesInAnyLayerHelper()) // 4 reales + "Otros"
+
+        val otros = capped.nodes.find { it.name == "Otros" }
+        assertTrue(otros != null, "debe existir un nodo Otros agrupando las categorías de menor valor")
+        // Fees(600k) + Transportation(500k) + Schatzi(400k) + Sin categoría(100k) = 1.600.000
+        assertEquals(1600000.0, otros!!.value)
+
+        // Las de mayor valor se mantienen individuales, sin agrupar
+        assertTrue(capped.nodes.any { it.name == "Comisión bancaria" })
+        assertTrue(capped.nodes.any { it.name == "Seguro Sportage" })
+        assertTrue(capped.nodes.any { it.name == "Healthcare" })
+
+        // El total no se pierde en el proceso de agrupar
+        val originalExpenseTotal = links.filter { it.source == 2 }.sumOf { it.value }
+        val cappedExpenseTotal = capped.links.filter { it.source == capped.nodes.indexOfFirst { n -> n.name == "Flujo de caja" } }.sumOf { it.value }
+        assertEquals(originalExpenseTotal, cappedExpenseTotal)
+    }
+
+    @Test
+    fun testCapNodesPerLayer_leavesSmallDatasetsUntouched() {
+        val nodes = listOf(
+            SankeyNodeDto(name = "Salario", value = 930000.0, color = "#10A861"),
+            SankeyNodeDto(name = "Flujo de caja", value = 930000.0, color = "#9E9E9E"),
+            SankeyNodeDto(name = "Comida", value = 500000.0, color = "#EC2222")
+        )
+        val links = listOf(
+            SankeyLinkDto(source = 0, target = 1, value = 930000.0, color = "#10A861"),
+            SankeyLinkDto(source = 1, target = 2, value = 500000.0, color = "#EC2222")
+        )
+        val dto = CashflowSankeyDto(nodes = nodes, links = links)
+
+        val capped = capNodesPerLayer(dto, maxPerLayer = 6)
+        assertEquals(dto, capped)
+    }
+
+    private fun CashflowSankeyDto.maxNodesInAnyLayerHelper(): Int = maxNodesInAnyLayer(this)
 }

@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -156,6 +157,72 @@ internal fun maxNodesInAnyLayer(sankeyDto: CashflowSankeyDto): Int {
         .maxOrNull() ?: 1
 }
 
+// Ajustar altura/modo-compacto sigue teniendo un techo: con 7-8+ categorías
+// reales en una columna (visto en prod: familias con varias categorías de
+// gasto activas) no hay combinación de alto dinámico ni ancho de columna que
+// entre cómodo en una pantalla de teléfono sin scroll horizontal, que este
+// chart no soporta. En vez de perseguir constantes cada vez que aparece una
+// family con más categorías, se acota cada columna a máximo `maxPerLayer`
+// nodos reales, agrupando el resto (los de menor valor) en un nodo "Otros"
+// -- balancea la vista del negocio sin importar cuántas categorías tenga la
+// family, en vez de romperse de nuevo con la próxima que tenga 9.
+internal fun capNodesPerLayer(sankeyDto: CashflowSankeyDto, maxPerLayer: Int = 6): CashflowSankeyDto {
+    if (sankeyDto.nodes.size <= maxPerLayer + 1) return sankeyDto
+
+    val info = computeSankeyLayers(sankeyDto)
+    val byLayer = sankeyDto.nodes.indices
+        .filter { it != info.centerIdx }
+        .groupBy { info.layerMap[it] ?: info.centerLayer }
+
+    val keepIndices = mutableSetOf(info.centerIdx)
+    val mergeGroups = mutableMapOf<Int, List<Int>>()
+
+    byLayer.forEach { (layer, indices) ->
+        if (indices.size <= maxPerLayer) {
+            keepIndices.addAll(indices)
+        } else {
+            val sorted = indices.sortedByDescending { sankeyDto.nodes[it].value }
+            keepIndices.addAll(sorted.take(maxPerLayer - 1))
+            mergeGroups[layer] = sorted.drop(maxPerLayer - 1)
+        }
+    }
+
+    if (mergeGroups.isEmpty()) return sankeyDto
+
+    val newNodes = mutableListOf<SankeyNodeDto>()
+    val oldToNew = mutableMapOf<Int, Int>()
+    sankeyDto.nodes.indices.forEach { idx ->
+        if (idx in keepIndices) {
+            oldToNew[idx] = newNodes.size
+            newNodes.add(sankeyDto.nodes[idx])
+        }
+    }
+
+    mergeGroups.forEach { (_, indices) ->
+        val totalValue = indices.sumOf { sankeyDto.nodes[it].value }
+        val otrosIdx = newNodes.size
+        newNodes.add(SankeyNodeDto(name = "Otros", value = totalValue, color = sankeyDto.nodes[indices.first()].color))
+        indices.forEach { oldToNew[it] = otrosIdx }
+    }
+
+    val linkAgg = linkedMapOf<Pair<Int, Int>, Double>()
+    val linkColor = mutableMapOf<Pair<Int, Int>, String?>()
+    sankeyDto.links.forEach { link ->
+        val newSource = oldToNew[link.source] ?: return@forEach
+        val newTarget = oldToNew[link.target] ?: return@forEach
+        if (newSource == newTarget) return@forEach
+        val key = newSource to newTarget
+        linkAgg[key] = (linkAgg[key] ?: 0.0) + link.value
+        linkColor.putIfAbsent(key, link.color)
+    }
+
+    val newLinks = linkAgg.map { (key, value) ->
+        SankeyLinkDto(source = key.first, target = key.second, value = value, color = linkColor[key])
+    }
+
+    return sankeyDto.copy(nodes = newNodes, links = newLinks)
+}
+
 @Composable
 fun SankeyFlowChart(
     sankeyDto: CashflowSankeyDto?,
@@ -195,15 +262,17 @@ fun SankeyFlowChart(
                 }
             } else {
                 Spacer(modifier = Modifier.height(16.dp))
-                // Alto fijo (280dp) hacía que las labels se pisaran cuando
-                // había 5+ categorías en una columna (ver captura de
-                // Fabrizio 2026-09-14: "Segu..."/"Fees..." superpuestos).
-                // Cada nodo necesita ~44dp para sus dos líneas de label sin
-                // amontonarse; 280dp sigue siendo el piso para charts chicos.
-                val maxNodesInColumn = maxNodesInAnyLayer(sankeyDto!!)
+                // Capar nodos por columna (ver capNodesPerLayer) antes que
+                // nada más -- con muchas categorías reales no hay alto ni
+                // ancho que alcance en una pantalla de teléfono sin agrupar
+                // las de menor valor en "Otros". Alto todavía se calcula
+                // dinámico sobre el dataset YA acotado (máx. 6 nodos reales
+                // por columna, así que el piso de 280dp cubre casi siempre).
+                val cappedDto = remember(sankeyDto) { capNodesPerLayer(sankeyDto!!) }
+                val maxNodesInColumn = maxNodesInAnyLayer(cappedDto)
                 val chartHeight = maxOf(280.dp, (maxNodesInColumn * 44).dp)
                 SankeyCanvasLayout(
-                    sankeyDto = sankeyDto,
+                    sankeyDto = cappedDto,
                     currency = currency,
                     modifier = Modifier.fillMaxWidth().height(chartHeight)
                 )
@@ -352,14 +421,17 @@ private fun SankeyCanvasLayout(
         val labelSmallStyle = MaterialTheme.typography.labelSmall
         val bodySmallStyle = MaterialTheme.typography.bodySmall
 
-        // Con 4+ nodos en una columna, las labels de 2 líneas (nombre +
-        // monto apilados) ya no entran sin invadir el espacio de columnas
-        // vecinas -- bajado de >4 a >=4 tras el reporte de labels
-        // superpuestas con categorías de negocio (Transportation/Healthcare/
-        // Fees/Schatzi, 4 nodos en una sola columna).
+        // Revertido a >4. El intento anterior bajó esto a >=4, pero el modo
+        // compacto concatena "nombre • monto" en una sola línea -- eso pide
+        // MÁS ancho horizontal por línea, no menos, y en un teléfono angosto
+        // con poco espacio lateral eso truncaba peor que el problema
+        // original (labels como "Sala..."/"Tr... ₲..." que ni siquiera
+        // estaban en el reporte anterior). El problema real siempre fue
+        // altura vertical, no el modo de línea -- ver chartHeight dinámico
+        // más abajo, que es lo que de verdad hace falta reforzar.
         val isCompactLayerMap = (0..maxLayer).associateWith { layer ->
             val colNodeIndices = nodesByLayer[layer] ?: emptyList()
-            colNodeIndices.size >= 4
+            colNodeIndices.size > 4
         }
 
         val nodeLabelHeightsPx = nodes.indices.associateWith { idx ->
