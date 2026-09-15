@@ -6,6 +6,7 @@ class Import::ConfigurationsController < ApplicationController
   def show
     # PDF imports are auto-configured from AI extraction, skip to clean step
     redirect_to import_clean_path(@import) and return if @import.is_a?(PdfImport)
+    redirect_to import_clean_path(@import) and return if @import.is_a?(UpayImport)
     redirect_to import_qif_category_selection_path(@import) and return if @import.is_a?(QifImport)
   end
 

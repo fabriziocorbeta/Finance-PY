@@ -25,7 +25,12 @@ module ImportsHelper
       entity_type: "Type",
       category_parent: "Parent category",
       category_color: "Color",
-      category_icon: "Lucide icon"
+      category_icon: "Lucide icon",
+      gross_amount: "Monto bruto",
+      commission_amount: "Comisión",
+      receipt_number: "Boleta Nº",
+      auth_code: "Autorización",
+      card_brand: "Marca"
     }[key]
   end
 

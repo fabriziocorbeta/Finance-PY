@@ -97,6 +97,14 @@ en:
         qif_file_prompt: to add your QIF file here
         qif_file_hint: .qif files only
         qif_submit: Upload QIF
+        upay_title: Upload Upay statement
+        upay_description: Select the account this settlement was deposited to, then upload the .csv export from Upay.
+        upay_account_label: Account
+        upay_account_placeholder: Select an account…
+        upay_file_prompt: to add your Upay CSV file here
+        upay_file_hint: .csv files only
+        upay_submit: Upload Upay file
+        upay_invalid: Must be a valid CSV file exported by Upay
         browse: Browse
         csv_file_prompt: to add your CSV file here
         description: Paste or upload your CSV file below.  Please review the instructions
@@ -184,6 +192,7 @@ en:
       tab_raw_data: Raw Data
       coming_soon: Coming soon
       import_ynab: Import from YNAB
+      import_upay: Import Upay settlement (CSV)
       import_accounts: Import accounts
       import_categories: Import categories
       import_mint: Import from Mint
