@@ -16,6 +16,7 @@ import kotlinx.coroutines.withContext
 import py.com.cdco.financespy.auth.AndroidTokenStorage
 import py.com.cdco.financespy.auth.AuthRepository
 import py.com.cdco.financespy.api.FinancePyApi
+import py.com.cdco.financespy.cache.AndroidDashboardCache
 import py.com.cdco.financespy.db.buildDatabase
 import py.com.cdco.financespy.db.initDatabaseBuilder
 import py.com.cdco.financespy.navigation.AndroidNavPreferences
@@ -72,6 +73,7 @@ class MainActivity : ComponentActivity() {
 
     private val tokenStorage by lazy { AndroidTokenStorage(applicationContext) }
     private val navPreferences by lazy { AndroidNavPreferences(applicationContext) }
+    private val dashboardCache by lazy { AndroidDashboardCache(applicationContext) }
     private val httpClient by lazy { ApiClient.create(tokenStorage) }
     private val authRepository by lazy { AuthRepository(httpClient, tokenStorage) }
     private val api by lazy { FinancePyApi(httpClient) }
@@ -95,7 +97,8 @@ class MainActivity : ComponentActivity() {
             syncEngine = syncEngine,
             api = api,
             accountDao = database.accountDao(),
-            entryDao = database.entryDao()
+            entryDao = database.entryDao(),
+            dashboardCache = dashboardCache
         )
     }
     private val budgetDashboardViewModel by lazy {
