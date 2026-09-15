@@ -6667,6 +6667,7 @@ CREATE POLICY valuations_family_isolation_policy ON public.valuations USING ((fa
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260915033428'),
 ('20260915022634'),
 ('20260915015304'),
 ('20260914211237'),
