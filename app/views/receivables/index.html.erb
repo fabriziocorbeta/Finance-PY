@@ -30,8 +30,9 @@
   </div>
 
   <% if @completed.any? %>
-    <details class="mt-6">
-      <summary class="text-sm text-subdued cursor-pointer">
+    <details class="mt-6 group">
+      <summary class="flex items-center gap-1.5 text-sm text-subdued cursor-pointer list-none [&::-webkit-details-marker]:hidden font-medium">
+        <%= icon "chevron-right", size: "sm", class: "text-subdued group-open:rotate-90 transition-transform" %>
         <%= t("receivables.dashboard.completed", count: @completed.size) %>
       </summary>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">

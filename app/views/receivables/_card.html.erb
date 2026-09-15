@@ -5,11 +5,18 @@
 <% paid = Money.new(total.amount - pending.amount, account.currency) %>
 <% progress_percent = total.amount.zero? ? 100 : (((total.amount - pending.amount) / total.amount) * 100).round %>
 
+<% is_overdue = pending.amount.positive? && receivable.due_day.present? && Date.current.day > receivable.due_day.to_i %>
+
 <div class="bg-container rounded-xl shadow-border-xs p-6">
-  <%= link_to account, class: "block", data: { turbo_frame: "_top" } do %>
+  <%= link_to receivable_path(receivable), class: "block", data: { turbo_frame: "_top" } do %>
     <div class="flex items-start gap-3">
       <div class="min-w-0 flex-1">
-        <p class="text-base font-medium text-primary truncate"><%= account.name %></p>
+        <div class="flex items-center gap-2">
+          <p class="text-base font-medium text-primary truncate"><%= account.name %></p>
+          <% if is_overdue %>
+            <%= render DS::Pill.new(label: t("receivables.dashboard.overdue", default: "Vencido"), tone: :error, marker: false) %>
+          <% end %>
+        </div>
         <% if receivable.due_day.present? %>
           <p class="text-xs text-subdued mt-0.5"><%= t("receivables.dashboard.due_day") %>: <%= receivable.due_day %></p>
         <% end %>

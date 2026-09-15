@@ -3,6 +3,7 @@ es:
   receivables:
     dashboard:
       completed: Completadas (%{count})
+      overdue: Vencido
       due_day: Vence el día
       empty: Todavía no tenés cuentas a cobrar. Creá una para empezar a hacer seguimiento
         de lo que te deben.
