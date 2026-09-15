@@ -25,6 +25,15 @@ class Api::V1::AccountsControllerTest < ActionDispatch::IntegrationTest
       source: "web",
       display_key: "other_family_read_#{SecureRandom.hex(8)}"
     )
+
+    @write_api_key = ApiKey.create!(
+      user: @user,
+      name: "Test Write Key",
+      scopes: [ "read_write" ],
+      source: "mobile",
+      display_key: "test_write_#{SecureRandom.hex(8)}"
+    )
+    Redis.new.del("api_rate_limit:#{@write_api_key.id}")
   end
 
   test "should require authentication" do
@@ -347,6 +356,88 @@ class Api::V1::AccountsControllerTest < ActionDispatch::IntegrationTest
     account = accounts(:depository)
     get "/api/v1/accounts/#{account.id}/balance_series", headers: api_headers(@other_family_api_key)
     assert_response :not_found
+  end
+
+  test "should create a Depository account" do
+    assert_difference "Account.count", 1 do
+      post "/api/v1/accounts",
+           params: {
+             account: {
+               accountable_type: "Depository",
+               name: "Cuenta corriente",
+               balance: 500000,
+               currency: "PYG"
+             }
+           },
+           headers: api_headers(@write_api_key)
+    end
+
+    assert_response :created
+    json_response = JSON.parse(response.body)
+    assert_equal "Cuenta corriente", json_response["name"]
+
+    account = Account.order(:created_at).last
+    assert_instance_of Depository, account.accountable
+    assert_equal @user.family, account.family
+    assert_equal @user, account.owner
+  end
+
+  test "should create a CreditCard account with type-specific attributes" do
+    assert_difference "Account.count", 1 do
+      post "/api/v1/accounts",
+           params: {
+             account: {
+               accountable_type: "CreditCard",
+               name: "Tarjeta Visa",
+               balance: 100000,
+               currency: "PYG",
+               accountable_attributes: { available_credit: 900000, apr: 45.5 }
+             }
+           },
+           headers: api_headers(@write_api_key)
+    end
+
+    assert_response :created
+    account = Account.order(:created_at).last
+    assert_instance_of CreditCard, account.accountable
+    assert_equal 900000, account.accountable.available_credit.to_i
+  end
+
+  test "should reject unsupported accountable types" do
+    assert_no_difference "Account.count" do
+      post "/api/v1/accounts",
+           params: { account: { accountable_type: "Property", name: "Casa" } },
+           headers: api_headers(@write_api_key)
+    end
+
+    assert_response :unprocessable_entity
+    assert_equal "unsupported_accountable_type", JSON.parse(response.body)["error"]
+  end
+
+  test "should reject account creation without write scope" do
+    post "/api/v1/accounts",
+         params: { account: { accountable_type: "Depository", name: "Cuenta" } },
+         headers: api_headers(@api_key)
+
+    assert_response :forbidden
+  end
+
+  test "should ignore accountable_attributes not permitted for the given type" do
+    post "/api/v1/accounts",
+         params: {
+           account: {
+             accountable_type: "Depository",
+             name: "Cuenta con extras no permitidos",
+             balance: 0,
+             currency: "PYG",
+             accountable_attributes: { apr: 99, available_credit: 12345 }
+           }
+         },
+         headers: api_headers(@write_api_key)
+
+    assert_response :created
+    account = Account.order(:created_at).last
+    assert_instance_of Depository, account.accountable
   end
 
   private
