@@ -20,6 +20,8 @@ import py.com.cdco.financespy.api.dto.FamilyExportDto
 import py.com.cdco.financespy.api.dto.FamilyExportEnvelope
 import py.com.cdco.financespy.api.dto.FamilyExportsEnvelope
 import py.com.cdco.financespy.api.dto.AccountDto
+import py.com.cdco.financespy.api.dto.CreateAccountBody
+import py.com.cdco.financespy.api.dto.CreateAccountRequest
 import py.com.cdco.financespy.api.dto.NavPreferencesDto
 import py.com.cdco.financespy.api.dto.UpayImportResponseDto
 import py.com.cdco.financespy.api.dto.UpayImportResultDto
@@ -121,6 +123,13 @@ open class FinancePyApi(private val http: HttpClient) {
     open suspend fun fetchAccountBalanceSeries(accountId: String, period: String = "last_30_days"): BalanceSeriesDto {
         return http.get("/api/v1/accounts/$accountId/balance_series") {
             parameter("period", period)
+        }.body()
+    }
+
+    open suspend fun createAccount(body: CreateAccountBody): AccountDto {
+        return http.post("/api/v1/accounts") {
+            contentType(ContentType.Application.Json)
+            setBody(CreateAccountRequest(account = body))
         }.body()
     }
 

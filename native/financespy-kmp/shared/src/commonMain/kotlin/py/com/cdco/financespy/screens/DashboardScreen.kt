@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -48,7 +49,8 @@ import py.com.cdco.financespy.theme.components.AppButton
 fun DashboardScreen(
     viewModel: DashboardViewModel,
     onAccountClick: (String) -> Unit = {},
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    onAddAccount: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     val dashboard = state.dashboard
@@ -209,10 +211,14 @@ fun DashboardScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Agregá una desde la web o pedile a tu asesor que te dé acceso.",
+                            text = "Agregá una cuenta para empezar a ver tus finanzas.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = FinancePyColors.textSecondary()
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(onClick = onAddAccount) {
+                            Text("Agregar cuenta")
+                        }
                     }
                 }
             }

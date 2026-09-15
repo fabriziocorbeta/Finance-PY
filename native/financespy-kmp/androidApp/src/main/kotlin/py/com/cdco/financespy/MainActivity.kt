@@ -21,6 +21,7 @@ import py.com.cdco.financespy.db.initDatabaseBuilder
 import py.com.cdco.financespy.navigation.AndroidNavPreferences
 import py.com.cdco.financespy.network.ApiClient
 import py.com.cdco.financespy.screens.AccountDetailViewModel
+import py.com.cdco.financespy.screens.AccountFormViewModel
 import py.com.cdco.financespy.screens.BudgetAllocationEditorViewModel
 import py.com.cdco.financespy.screens.BudgetDashboardViewModel
 import py.com.cdco.financespy.screens.DashboardViewModel
@@ -303,6 +304,9 @@ class MainActivity : ComponentActivity() {
                         entryDao = database.entryDao(),
                         api = api
                     )
+                },
+                accountFormViewModelFactory = {
+                    AccountFormViewModel(scope = lifecycleScope, api = api, accountDao = database.accountDao())
                 },
                 settingsViewModelFactory = { settingsViewModel },
                 reportsViewModelFactory = { reportsViewModel },
