@@ -31,9 +31,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.api.dto.CashflowSankeyDto
@@ -225,6 +228,81 @@ internal fun capNodesPerLayer(sankeyDto: CashflowSankeyDto, maxPerLayer: Int = 6
     return sankeyDto.copy(nodes = newNodes, links = newLinks)
 }
 
+// Ancho (en px) que necesita cada columna para mostrar su texto sin
+// truncar, más el de la columna central. Reemplaza el reparto uniforme
+// de ancho entre columnas (colSpacing) que nunca convergía con 4 columnas
+// -- acá cada columna recibe exactamente lo que su contenido más largo
+// necesita, medido de verdad con el TextMeasurer, en vez de adivinar una
+// constante en dp y recortar lo que no entra.
+internal data class ColumnWidths(
+    val labelWidthPx: Map<Int, Float>,
+    val centerLabelWidthPx: Float
+)
+
+private const val MIN_LABEL_WIDTH_DP = 40
+private const val MAX_LABEL_WIDTH_DP = 200
+
+internal fun computeColumnWidths(
+    sankeyDto: CashflowSankeyDto,
+    layerInfo: SankeyLayerInfo,
+    currency: String,
+    textMeasurer: TextMeasurer,
+    labelSmallStyle: TextStyle,
+    bodySmallStyle: TextStyle,
+    density: Density
+): ColumnWidths {
+    val nodes = sankeyDto.nodes
+    val nodesByLayer = nodes.indices.groupBy { layerInfo.layerMap[it] ?: layerInfo.centerLayer }
+    val minPx = with(density) { MIN_LABEL_WIDTH_DP.dp.toPx() }
+    val maxPx = with(density) { MAX_LABEL_WIDTH_DP.dp.toPx() }
+
+    fun measureNodeWidth(idx: Int): Float {
+        val node = nodes[idx]
+        val nameW = textMeasurer.measure(node.name, labelSmallStyle).size.width.toFloat()
+        val valW = textMeasurer.measure(formatMoney(node.value, currency), bodySmallStyle).size.width.toFloat()
+        return maxOf(nameW, valW)
+    }
+
+    val labelWidthPx = mutableMapOf<Int, Float>()
+    (0..layerInfo.maxLayer).forEach { layer ->
+        if (layer == layerInfo.centerLayer) return@forEach
+        val indices = nodesByLayer[layer] ?: emptyList()
+        val maxW = indices.maxOfOrNull { measureNodeWidth(it) } ?: minPx
+        labelWidthPx[layer] = maxW.coerceIn(minPx, maxPx)
+    }
+
+    val centerW = measureNodeWidth(layerInfo.centerIdx).coerceIn(minPx, maxPx)
+
+    return ColumnWidths(labelWidthPx = labelWidthPx, centerLabelWidthPx = centerW)
+}
+
+// Ancho total "natural" del gráfico entero (todas las columnas a su ancho
+// medido, sin recortar) -- usado para decidir si entra en la pantalla tal
+// cual o si hace falta hacerlo scrolleable.
+internal fun computeNaturalChartWidthPx(
+    layerInfo: SankeyLayerInfo,
+    columnWidths: ColumnWidths,
+    density: Density
+): Float {
+    val barWidth = with(density) { 10.dp.toPx() }
+    val edgeMargin = with(density) { 16.dp.toPx() }
+    val barLabelGap = with(density) { 4.dp.toPx() }
+    val interSlotGap = with(density) { 12.dp.toPx() }
+    val minCenterSlot = with(density) { 60.dp.toPx() }
+
+    var total = edgeMargin * 2
+    for (layer in 0 until layerInfo.centerLayer) {
+        val labelW = columnWidths.labelWidthPx[layer] ?: 0f
+        total += barWidth + barLabelGap + labelW + interSlotGap
+    }
+    total += maxOf(columnWidths.centerLabelWidthPx, minCenterSlot) + barLabelGap * 2
+    for (layer in (layerInfo.centerLayer + 1)..layerInfo.maxLayer) {
+        val labelW = columnWidths.labelWidthPx[layer] ?: 0f
+        total += interSlotGap + labelW + barLabelGap + barWidth
+    }
+    return total
+}
+
 @Composable
 fun SankeyFlowChart(
     sankeyDto: CashflowSankeyDto?,
@@ -270,35 +348,45 @@ fun SankeyFlowChart(
                 // las de menor valor en "Otros". Alto todavía se calcula
                 // dinámico sobre el dataset YA acotado (máx. 6 nodos reales
                 // por columna, así que el piso de 280dp cubre casi siempre).
-                // 56dp/nodo (antes 44dp): con el modo compacto deshabilitado,
-                // cada label ahora es siempre 2 líneas (nombre + monto) en
-                // vez de 1 -- ese alto extra hay que reservarlo acá o las
-                // etiquetas de columnas con muchos nodos se pisan entre sí.
+                // 56dp/nodo: cada label es siempre 2 líneas (nombre + monto),
+                // sin modo compacto -- ver comentario de isCompact más abajo.
                 val cappedDto = remember(sankeyDto) { capNodesPerLayer(sankeyDto!!) }
                 val maxNodesInColumn = maxNodesInAnyLayer(cappedDto)
                 val chartHeight = maxOf(280.dp, (maxNodesInColumn * 56).dp)
 
-                // Repartir el ancho de pantalla entre las columnas (colSpacing)
-                // nunca convergió: con 4 columnas (ingresos con sub-categorías +
-                // gastos) no hay forma de darle a cada una ancho legible sin
-                // angostar a las demás -- ya se intentó achicar la etiqueta
-                // central y sacar el modo compacto, mejoró pero seguía apretado.
-                // En vez de seguir repartiendo un ancho fijo insuficiente, cada
-                // columna recibe un ancho cómodo fijo (130dp) y el gráfico entero
-                // scrollea horizontalmente cuando no entra en la pantalla.
-                val maxLayer = remember(cappedDto) { computeSankeyLayers(cappedDto).maxLayer }
-                val naturalChartWidth = ((maxLayer + 1) * 130).dp
+                // Ancho por columna medido de verdad (auto-width): cada
+                // columna recibe exactamente el ancho que necesita su texto
+                // más largo, en vez de repartir un ancho fijo/uniforme entre
+                // todas -- eso nunca convergía con 4 columnas (ingresos con
+                // sub-categorías + gastos), sin importar cuánto se achicara
+                // la etiqueta central o se sacara el modo compacto (ver
+                // historial de este archivo, van 3 intentos previos sobre
+                // exactamente este problema). Si el ancho natural resultante
+                // entra en la pantalla, se centra con el margen sobrante; si
+                // no entra, el gráfico crece y el Box de abajo lo hace
+                // scrolleable horizontalmente.
+                val layerInfo = remember(cappedDto) { computeSankeyLayers(cappedDto) }
+                val textMeasurer = rememberTextMeasurer()
+                val labelSmallStyle = MaterialTheme.typography.labelSmall
+                val bodySmallStyle = MaterialTheme.typography.bodySmall
+                val density = LocalDensity.current
+                val columnWidths = remember(cappedDto, layerInfo, currency, labelSmallStyle, bodySmallStyle, density) {
+                    computeColumnWidths(cappedDto, layerInfo, currency, textMeasurer, labelSmallStyle, bodySmallStyle, density)
+                }
+                val naturalWidthPx = remember(columnWidths, layerInfo, density) {
+                    computeNaturalChartWidthPx(layerInfo, columnWidths, density)
+                }
+                val naturalWidthDp = with(density) { naturalWidthPx.toDp() }
+
                 BoxWithConstraints {
-                    // maxWidth acá es el ancho real disponible (la card) -- si
-                    // el ancho natural (130dp x columna) entra, usamos ese
-                    // disponible tal cual (mismo comportamiento que antes,
-                    // fillMaxWidth). Si no entra, el chart crece más allá de
-                    // la pantalla y el Box de abajo lo hace scrolleable.
-                    val chartWidth = maxOf(maxWidth, naturalChartWidth)
+                    val chartWidth = maxOf(maxWidth, naturalWidthDp)
                     Box(modifier = Modifier.horizontalScroll(rememberScrollState())) {
                         SankeyCanvasLayout(
                             sankeyDto = cappedDto,
                             currency = currency,
+                            layerInfo = layerInfo,
+                            columnWidths = columnWidths,
+                            naturalWidthPx = naturalWidthPx,
                             modifier = Modifier.width(chartWidth).height(chartHeight)
                         )
                     }
@@ -312,6 +400,9 @@ fun SankeyFlowChart(
 private fun SankeyCanvasLayout(
     sankeyDto: CashflowSankeyDto,
     currency: String,
+    layerInfo: SankeyLayerInfo,
+    columnWidths: ColumnWidths,
+    naturalWidthPx: Float,
     modifier: Modifier = Modifier
 ) {
     val nodes = sankeyDto.nodes
@@ -324,7 +415,6 @@ private fun SankeyCanvasLayout(
     val textSecondaryColor = FinancePyColors.textSecondary()
     val defaultColor = FinancePyColors.textSecondary()
 
-    val layerInfo = computeSankeyLayers(sankeyDto)
     val centerIdx = layerInfo.centerIdx
     val centerLayer = layerInfo.centerLayer
     val maxLayer = layerInfo.maxLayer
@@ -346,7 +436,42 @@ private fun SankeyCanvasLayout(
 
         val barWidth = with(density) { 10.dp.toPx() }
         val edgeMargin = with(density) { 16.dp.toPx() }
-        val colSpacing = if (maxLayer > 0) (widthPx - 2 * edgeMargin - barWidth) / maxLayer else 0f
+        val barLabelGap = with(density) { 4.dp.toPx() }
+        val interSlotGap = with(density) { 12.dp.toPx() }
+        val minCenterSlot = with(density) { 60.dp.toPx() }
+
+        // Si el ancho real disponible (widthPx) es mayor al natural (el
+        // gráfico entra sobrado en la card), el sobrante se reparte como
+        // margen extra a los costados en vez de estirar las columnas -- el
+        // texto siempre queda a su ancho medido, nunca más ancho de lo que
+        // necesita ni más angosto.
+        val extraSpace = (widthPx - naturalWidthPx).coerceAtLeast(0f)
+        val effectiveEdgeMargin = edgeMargin + extraSpace / 2f
+
+        val barXByLayer = mutableMapOf<Int, Float>()
+        val labelBoxByLayer = mutableMapOf<Int, Pair<Float, Float>>()
+
+        var cursor = effectiveEdgeMargin
+        for (layer in 0 until centerLayer) {
+            val labelW = columnWidths.labelWidthPx[layer] ?: 0f
+            barXByLayer[layer] = cursor
+            labelBoxByLayer[layer] = (cursor + barWidth + barLabelGap) to labelW
+            cursor += barWidth + barLabelGap + labelW + interSlotGap
+        }
+        val centerSlot = maxOf(columnWidths.centerLabelWidthPx, minCenterSlot) + barLabelGap * 2
+        val centerBarX = cursor + (centerSlot - barWidth) / 2f
+        val centerLabelX = cursor + (centerSlot - columnWidths.centerLabelWidthPx) / 2f
+        barXByLayer[centerLayer] = centerBarX
+        labelBoxByLayer[centerLayer] = centerLabelX to columnWidths.centerLabelWidthPx
+        cursor += centerSlot
+        for (layer in (centerLayer + 1)..maxLayer) {
+            val labelW = columnWidths.labelWidthPx[layer] ?: 0f
+            cursor += interSlotGap
+            labelBoxByLayer[layer] = cursor to labelW
+            cursor += labelW + barLabelGap
+            barXByLayer[layer] = cursor
+            cursor += barWidth
+        }
 
         val nodesByLayer = nodes.indices.groupBy { layerMap[it] ?: centerLayer }
         val nodeLayouts = mutableMapOf<Int, NodeLayout>()
@@ -355,7 +480,7 @@ private fun SankeyCanvasLayout(
             val colNodeIndices = nodesByLayer[layer] ?: emptyList()
             if (colNodeIndices.isEmpty()) return@forEach
 
-            val colX = edgeMargin + layer * colSpacing
+            val colX = barXByLayer[layer] ?: effectiveEdgeMargin
             val colTotalVal = colNodeIndices.sumOf { nodes[it].value }.let { if (it <= 0) 1.0 else it }
 
             val verticalMargin = with(density) { 20.dp.toPx() }
@@ -448,48 +573,17 @@ private fun SankeyCanvasLayout(
         val labelSmallStyle = MaterialTheme.typography.labelSmall
         val bodySmallStyle = MaterialTheme.typography.bodySmall
 
-        // El modo compacto (concatenar "nombre • monto" en una sola línea para
-        // ahorrar altura en columnas con muchos nodos) se probó y revirtió una
-        // vez ya (threshold >=4 -> >4) intentando arreglar el ancho, pero el
-        // problema de fondo es el modo en sí: pide MÁS ancho horizontal por
-        // línea justo en las columnas que YA tienen menos ancho disponible
-        // (las adyacentes al centro). Deshabilitado del todo -- siempre 2
-        // líneas (nombre / monto), cada una más corta que el combo. El costo
-        // en altura que esto agrega se compensa en chartHeight más abajo.
-        val isCompactLayerMap = (0..maxLayer).associateWith { false }
-
+        // Modo compacto (concatenar "nombre • monto" en una sola línea)
+        // eliminado -- pedía más ancho horizontal justo en las columnas que
+        // menos tenían. Con el ancho ahora medido por columna (ver
+        // ColumnWidths más arriba) cada label ya tiene el ancho exacto que
+        // necesita en 2 líneas, así que siempre se usa ese modo.
         val nodeLabelHeightsPx = nodes.indices.associateWith { idx ->
             val node = nodes[idx]
-            val layer = layerMap[idx] ?: centerLayer
-            val isCompact = isCompactLayerMap[layer] == true && idx != centerIdx
-            if (isCompact) {
-                val lineH = textMeasurer.measure("${node.name} • ${formatMoney(node.value, currency)}", labelSmallStyle).size.height
-                lineH.toFloat()
-            } else {
-                val titleH = textMeasurer.measure(node.name, labelSmallStyle).size.height
-                val valH = textMeasurer.measure(formatMoney(node.value, currency), bodySmallStyle).size.height
-                (titleH + valH).toFloat()
-            }
+            val titleH = textMeasurer.measure(node.name, labelSmallStyle).size.height
+            val valH = textMeasurer.measure(formatMoney(node.value, currency), bodySmallStyle).size.height
+            (titleH + valH).toFloat()
         }
-
-        val centerNodeLayout = nodeLayouts[centerIdx]
-        // El ancho de la etiqueta central era fijo en 100dp sin importar cuántas
-        // capas hubiera. Con 4 columnas (ingresos con sub-categorías + gastos, el
-        // caso reportado) esa caja fija de 100dp deja a las columnas ADYACENTES
-        // al centro con ~31dp reales de ancho (el piso mínimo del código de abajo),
-        // de ahí el truncamiento severo ("Com...", "Seg..."). Con 2-3 columnas
-        // (colSpacing más generoso) 100dp entra sin apretar a nadie, así que solo
-        // se achica cuando realmente hace falta.
-        val centerLabelWidthPx = if (maxLayer > 2) {
-            with(density) { 70.dp.toPx() }
-        } else {
-            with(density) { 100.dp.toPx() }
-        }
-        val centerLabelWidthDp = with(density) { centerLabelWidthPx.toDp() }
-        val centerBarX = centerNodeLayout?.x ?: (widthPx / 2f)
-
-        val centerLeftBoundPx = centerBarX - (centerLabelWidthPx / 2f) - with(density) { 4.dp.toPx() }
-        val centerRightBoundPx = centerBarX + barWidth + (centerLabelWidthPx / 2f) + with(density) { 4.dp.toPx() }
 
         val labelYMap = mutableMapOf<Int, Dp>()
         val minSpacingPx = with(density) { 4.dp.toPx() }
@@ -522,27 +616,28 @@ private fun SankeyCanvasLayout(
             }
         }
 
-        val layerBarXMap = (0..maxLayer).associateWith { layer ->
-            val layoutsInLayer = nodeLayouts.values.filter { it.layer == layer }
-            layoutsInLayer.firstOrNull()?.x ?: (edgeMargin + layer * colSpacing)
-        }
-
         Box(modifier = Modifier.fillMaxSize()) {
             nodeLayouts.values.forEach { layout ->
                 val node = nodes[layout.nodeIdx]
                 val layer = layout.layer
                 val isCenterNode = layout.nodeIdx == centerIdx
-                val isCompact = isCompactLayerMap[layer] == true && !isCenterNode
 
                 val labelHPx = nodeLabelHeightsPx[layout.nodeIdx] ?: 32f
                 val yDp = labelYMap[layout.nodeIdx] ?: with(density) { (layout.centerY - labelHPx / 2f).toDp() }
 
+                // Ancho de la etiqueta: ya viene exacto de columnWidths (medido
+                // de verdad con TextMeasurer), no hay que recortar contra la
+                // columna vecina como antes -- por eso ya no existen
+                // centerLeftBoundPx/centerRightBoundPx/layerBarXMap.
+                val (boxXPx, boxWPx) = labelBoxByLayer[layer] ?: (layout.x to 40f)
+                val xDp = with(density) { boxXPx.toDp() }
+                val wDp = with(density) { boxWPx.toDp() }
+
                 if (isCenterNode) {
-                    val centerOffsetX = with(density) { (centerBarX - centerLabelWidthPx / 2f + barWidth / 2f).toDp() }
                     Box(
                         modifier = Modifier
-                            .offset(x = centerOffsetX.coerceAtLeast(0.dp), y = yDp)
-                            .width(centerLabelWidthDp),
+                            .offset(x = xDp.coerceAtLeast(0.dp), y = yDp)
+                            .width(wDp),
                         contentAlignment = Alignment.Center
                     ) {
                         SankeyNodeLabel(
@@ -550,7 +645,7 @@ private fun SankeyCanvasLayout(
                             currency = currency,
                             isCenter = true,
                             isCompact = false,
-                            maxWidthDp = centerLabelWidthDp,
+                            maxWidthDp = wDp,
                             successColor = successColor,
                             destructiveColor = destructiveColor,
                             warningColor = warningColor,
@@ -559,29 +654,18 @@ private fun SankeyCanvasLayout(
                         )
                     }
                 } else if (layer < centerLayer) {
-                    val startXPx = layout.x + barWidth + with(density) { 4.dp.toPx() }
-                    val nextLayerX = layerBarXMap[layer + 1]
-                    val endBoundPx = if (layer + 1 == centerLayer || nextLayerX == null) {
-                        centerLeftBoundPx
-                    } else {
-                        nextLayerX - with(density) { 4.dp.toPx() }
-                    }
-                    val maxW = (endBoundPx - startXPx).coerceAtLeast(with(density) { 30.dp.toPx() })
-                    val maxWDp = with(density) { maxW.toDp() }
-                    val xDp = with(density) { startXPx.toDp() }
-
                     Box(
                         modifier = Modifier
                             .offset(x = xDp, y = yDp)
-                            .width(maxWDp)
+                            .width(wDp)
                     ) {
                         SankeyNodeLabel(
                             node = node,
                             currency = currency,
                             isCenter = false,
                             alignEnd = false,
-                            isCompact = isCompact,
-                            maxWidthDp = maxWDp,
+                            isCompact = false,
+                            maxWidthDp = wDp,
                             successColor = successColor,
                             destructiveColor = destructiveColor,
                             warningColor = warningColor,
@@ -590,22 +674,10 @@ private fun SankeyCanvasLayout(
                         )
                     }
                 } else { // layer > centerLayer
-                    val endXPx = layout.x - with(density) { 4.dp.toPx() }
-                    val prevLayerX = layerBarXMap[layer - 1]
-                    val startBoundPx = if (layer - 1 == centerLayer || prevLayerX == null) {
-                        centerRightBoundPx
-                    } else {
-                        prevLayerX + barWidth + with(density) { 4.dp.toPx() }
-                    }
-                    val maxW = (endXPx - startBoundPx).coerceAtLeast(with(density) { 30.dp.toPx() })
-                    val maxWDp = with(density) { maxW.toDp() }
-                    val boxStartXPx = (endXPx - maxW).coerceAtLeast(startBoundPx)
-                    val boxStartWDp = with(density) { boxStartXPx.toDp() }
-
                     Box(
                         modifier = Modifier
-                            .offset(x = boxStartWDp, y = yDp)
-                            .width(maxWDp),
+                            .offset(x = xDp, y = yDp)
+                            .width(wDp),
                         contentAlignment = Alignment.CenterEnd
                     ) {
                         SankeyNodeLabel(
@@ -613,8 +685,8 @@ private fun SankeyCanvasLayout(
                             currency = currency,
                             isCenter = false,
                             alignEnd = true,
-                            isCompact = isCompact,
-                            maxWidthDp = maxWDp,
+                            isCompact = false,
+                            maxWidthDp = wDp,
                             successColor = successColor,
                             destructiveColor = destructiveColor,
                             warningColor = warningColor,
