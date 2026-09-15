@@ -8,7 +8,7 @@ import androidx.room.RoomDatabase
         AccountEntity::class, EntryEntity::class, TransactionEntity::class,
         RuleEntity::class, RuleRunEntity::class, GoalEntity::class, ReceivableEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class FinancePyDatabase : RoomDatabase() {

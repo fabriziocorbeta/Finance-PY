@@ -1,9 +1,12 @@
 package py.com.cdco.financespy
 
+import py.com.cdco.financespy.api.dto.InstallmentDto
 import py.com.cdco.financespy.api.dto.ReceivableDto
 import py.com.cdco.financespy.db.ReceivableEntity
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class ReceivableTest {
     @Test
@@ -23,7 +26,25 @@ class ReceivableTest {
             due_day = 15,
             currency = "USD",
             notes = "Cuota mensual",
-            updated_at = "2026-08-25T12:00:00Z"
+            updated_at = "2026-08-25T12:00:00Z",
+            installment_schedule = listOf(
+                InstallmentDto(
+                    number = 1,
+                    due_date = "2023-11-01",
+                    amount = 100.0,
+                    paid_amount = 100.0,
+                    status = "paid",
+                    paid_at = "2023-10-31"
+                ),
+                InstallmentDto(
+                    number = 2,
+                    due_date = "2023-12-01",
+                    amount = 100.0,
+                    paid_amount = 0.0,
+                    status = "pending",
+                    paid_at = null
+                )
+            )
         )
 
         val entity = ReceivableEntity(
@@ -41,7 +62,8 @@ class ReceivableTest {
             dueDay = dto.due_day,
             currency = dto.currency ?: "PYG",
             notes = dto.notes,
-            updatedAt = dto.updated_at ?: ""
+            updatedAt = dto.updated_at ?: "",
+            installmentScheduleJson = dto.installment_schedule?.let { kotlinx.serialization.json.Json.encodeToString(kotlinx.serialization.builtins.ListSerializer(py.com.cdco.financespy.api.dto.InstallmentDto.serializer()), it) }
         )
 
         assertEquals("rec-123", entity.id)
@@ -53,5 +75,9 @@ class ReceivableTest {
         assertEquals(10, entity.installmentCount)
         assertEquals(15, entity.dueDay)
         assertEquals("USD", entity.currency)
+
+        assertNotNull(entity.installmentScheduleJson)
+        assertTrue(entity.installmentScheduleJson!!.contains("paid"))
+        assertTrue(entity.installmentScheduleJson!!.contains("pending"))
     }
 }

@@ -41,6 +41,7 @@ import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.theme.components.AppTextField
 import py.com.cdco.financespy.theme.components.ButtonVariant
 import py.com.cdco.financespy.utils.formatMoney
+import py.com.cdco.financespy.api.dto.InstallmentDto
 
 @Composable
 fun ReceivableDetailScreen(
@@ -132,6 +133,25 @@ fun ReceivableDetailScreen(
                     }
                 }
             }
+
+            val currentInstallments = state.installments
+            if (!currentInstallments.isNullOrEmpty()) {
+                item {
+                    AppCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(
+                                text = "Cronograma de cuotas",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = FinancePyColors.textPrimary()
+                            )
+
+                            currentInstallments.forEach { installment ->
+                                InstallmentRow(installment = installment, currency = receivable.currency)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -149,6 +169,72 @@ fun ReceivableDetailScreen(
             onConfirm = { viewModel.registerPayment(onDone = {}) },
             onDismiss = { viewModel.closePaymentDialog() }
         )
+    }
+}
+
+@Composable
+private fun InstallmentRow(installment: InstallmentDto, currency: String) {
+    val statusColor = when (installment.status) {
+        "paid" -> FinancePyColors.success()
+        "partial" -> FinancePyColors.warning()
+        "overdue" -> FinancePyColors.destructive()
+        else -> FinancePyColors.textSecondary()
+    }
+
+    val statusText = when (installment.status) {
+        "paid" -> "Pagada"
+        "partial" -> "Parcial"
+        "overdue" -> "Vencida"
+        else -> "Pendiente"
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = "Cuota ${installment.number}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = FinancePyColors.textPrimary()
+            )
+            val dateInfo = buildString {
+                append("Vence: ${installment.due_date}")
+                if (installment.paid_at != null) {
+                    append(" • Pagada: ${installment.paid_at}")
+                }
+            }
+            Text(
+                text = dateInfo,
+                style = MaterialTheme.typography.bodySmall,
+                color = FinancePyColors.textSecondary()
+            )
+        }
+
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            val amountText = if (installment.status == "partial") {
+                "${formatMoney(installment.paid_amount, currency)} / ${formatMoney(installment.amount, currency)}"
+            } else {
+                formatMoney(installment.amount, currency)
+            }
+
+            Text(
+                text = amountText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = FinancePyColors.textPrimary()
+            )
+            Text(
+                text = statusText,
+                style = MaterialTheme.typography.labelSmall,
+                color = statusColor
+            )
+        }
     }
 }
 

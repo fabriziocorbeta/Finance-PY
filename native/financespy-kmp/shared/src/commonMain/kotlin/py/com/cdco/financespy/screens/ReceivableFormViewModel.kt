@@ -162,5 +162,6 @@ private fun ReceivableDto.toEntity() = ReceivableEntity(
     dueDay = due_day,
     currency = currency ?: "PYG",
     notes = notes,
-    updatedAt = updated_at ?: ""
+    updatedAt = updated_at ?: "",
+    installmentScheduleJson = installment_schedule?.let { kotlinx.serialization.json.Json.encodeToString(kotlinx.serialization.builtins.ListSerializer(py.com.cdco.financespy.api.dto.InstallmentDto.serializer()), it) }
 )

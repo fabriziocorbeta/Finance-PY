@@ -144,7 +144,8 @@ private fun ReceivableDto.toEntity() = ReceivableEntity(
     dueDay = due_day,
     currency = currency ?: "PYG",
     notes = notes,
-    updatedAt = updated_at ?: ""
+    updatedAt = updated_at ?: "",
+    installmentScheduleJson = installment_schedule?.let { kotlinx.serialization.json.Json.encodeToString(kotlinx.serialization.builtins.ListSerializer(py.com.cdco.financespy.api.dto.InstallmentDto.serializer()), it) }
 )
 
 // Wave 1b solo soporta reglas de 1 condicion + 1 accion (ver spec). Una regla real
