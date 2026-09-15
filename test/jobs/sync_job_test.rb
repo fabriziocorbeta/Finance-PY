@@ -35,4 +35,21 @@ class SyncJobTest < ActiveJob::TestCase
 
     SyncJob.perform_now(sync)
   end
+
+  # Regression más profunda: hacer `family` público no alcanzaba. En el
+  # momento en que ActiveJobRowLevelSecurity llama a `sync.family` para
+  # decidir qué contexto setear, el contexto TODAVÍA no está seteado -- así
+  # que si `family` dependiera de `syncable.family` (una query contra una
+  # tabla con FORCE ROW LEVEL SECURITY, como accounts), esa misma query
+  # fallaría exactamente en ese momento, huevo y gallina. `family` debe poder
+  # resolverse sin tocar `syncable` en absoluto cuando family_id ya está
+  # denormalizado en la fila.
+  test "family resolves from the denormalized family_id without touching syncable" do
+    syncable = accounts(:depository)
+    sync = syncable.syncs.create!(window_start_date: 2.days.ago.to_date)
+    assert sync.family_id.present?, "family_id should be denormalized on create"
+
+    sync.expects(:syncable).never
+    assert_equal syncable.family, sync.family
+  end
 end
