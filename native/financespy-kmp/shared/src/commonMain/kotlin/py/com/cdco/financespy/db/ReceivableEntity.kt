@@ -19,5 +19,6 @@ data class ReceivableEntity(
     val dueDay: Int?,
     val currency: String,
     val notes: String?,
-    val updatedAt: String
+    val updatedAt: String,
+    val installmentScheduleJson: String? = null
 )

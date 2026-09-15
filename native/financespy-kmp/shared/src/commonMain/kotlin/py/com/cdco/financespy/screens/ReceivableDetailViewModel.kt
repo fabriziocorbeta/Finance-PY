@@ -10,11 +10,15 @@ import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.CreateTransferBody
 import py.com.cdco.financespy.db.ReceivableDao
+import py.com.cdco.financespy.api.dto.InstallmentDto
 import py.com.cdco.financespy.db.ReceivableEntity
 import py.com.cdco.financespy.sync.currentIsoDate
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.builtins.ListSerializer
 
 data class ReceivableDetailState(
     val receivable: ReceivableEntity? = null,
+    val installments: List<InstallmentDto>? = null,
     val isDeleting: Boolean = false,
     val deleteError: String? = null,
     val showPaymentDialog: Boolean = false,
@@ -39,7 +43,10 @@ class ReceivableDetailViewModel(
     init {
         scope.launch {
             receivableDao.observeById(receivableId).collect { receivable ->
-                _state.update { it.copy(receivable = receivable) }
+                val installments = receivable?.installmentScheduleJson?.let { json ->
+                    runCatching { Json.decodeFromString(ListSerializer(InstallmentDto.serializer()), json) }.getOrNull()
+                }
+                _state.update { it.copy(receivable = receivable, installments = installments) }
             }
         }
     }

@@ -59,6 +59,16 @@ data class ReceivablesMetaDto(
 )
 
 @Serializable
+data class InstallmentDto(
+    val number: Int,
+    val due_date: String,
+    val amount: Double,
+    val paid_amount: Double,
+    val status: String,
+    val paid_at: String? = null
+)
+
+@Serializable
 data class ReceivableDto(
     val id: String,
     val account_id: String? = null,
@@ -75,7 +85,8 @@ data class ReceivableDto(
     val due_day: Int? = null,
     val currency: String? = null,
     val notes: String? = null,
-    val updated_at: String? = null
+    val updated_at: String? = null,
+    val installment_schedule: List<InstallmentDto>? = null
 )
 
 @Serializable
