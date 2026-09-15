@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import py.com.cdco.financespy.api.dto.CashflowSankeyDto
 import py.com.cdco.financespy.api.dto.SankeyLinkDto
 import py.com.cdco.financespy.api.dto.SankeyNodeDto
@@ -284,11 +285,13 @@ internal fun computeNaturalChartWidthPx(
     columnWidths: ColumnWidths,
     density: Density
 ): Float {
-    val barWidth = with(density) { 10.dp.toPx() }
-    val edgeMargin = with(density) { 16.dp.toPx() }
-    val barLabelGap = with(density) { 4.dp.toPx() }
-    val interSlotGap = with(density) { 12.dp.toPx() }
-    val minCenterSlot = with(density) { 60.dp.toPx() }
+    // Márgenes/gaps recortados al mínimo legible -- cada dp que se ahorra
+    // acá es un dp más de ancho real para el texto de las columnas.
+    val barWidth = with(density) { 8.dp.toPx() }
+    val edgeMargin = with(density) { 10.dp.toPx() }
+    val barLabelGap = with(density) { 2.dp.toPx() }
+    val interSlotGap = with(density) { 8.dp.toPx() }
+    val minCenterSlot = with(density) { 50.dp.toPx() }
 
     var total = edgeMargin * 2
     for (layer in 0 until layerInfo.centerLayer) {
@@ -352,7 +355,9 @@ fun SankeyFlowChart(
                 // sin modo compacto -- ver comentario de isCompact más abajo.
                 val cappedDto = remember(sankeyDto) { capNodesPerLayer(sankeyDto!!) }
                 val maxNodesInColumn = maxNodesInAnyLayer(cappedDto)
-                val chartHeight = maxOf(280.dp, (maxNodesInColumn * 56).dp)
+                // 48dp/nodo (antes 56dp): con la fuente del Sankey reducida a
+                // 10sp cada label 2-líneas ocupa menos alto real.
+                val chartHeight = maxOf(280.dp, (maxNodesInColumn * 48).dp)
 
                 // Ancho por columna medido de verdad (auto-width): cada
                 // columna recibe exactamente el ancho que necesita su texto
@@ -367,8 +372,14 @@ fun SankeyFlowChart(
                 // scrolleable horizontalmente.
                 val layerInfo = remember(cappedDto) { computeSankeyLayers(cappedDto) }
                 val textMeasurer = rememberTextMeasurer()
-                val labelSmallStyle = MaterialTheme.typography.labelSmall
-                val bodySmallStyle = MaterialTheme.typography.bodySmall
+                // Fuente propia del Sankey, mas chica que labelSmall/bodySmall
+                // del resto de la app (~11-12sp) -- la web muestra nombres
+                // largos ('Venta de Mercaderias', 'Pago de prestamos') en una
+                // sola linea sin wrap, y a 4 columnas en un telefono real eso
+                // no entra con el tamano de fuente estandar sin importar
+                // cuanto se recorten margenes/gaps.
+                val labelSmallStyle = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, lineHeight = 12.sp)
+                val bodySmallStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp, lineHeight = 12.sp)
                 val density = LocalDensity.current
                 val columnWidths = remember(cappedDto, layerInfo, currency, labelSmallStyle, bodySmallStyle, density) {
                     computeColumnWidths(cappedDto, layerInfo, currency, textMeasurer, labelSmallStyle, bodySmallStyle, density)
@@ -434,11 +445,14 @@ private fun SankeyCanvasLayout(
         val widthPx = constraints.maxWidth.toFloat()
         val heightPx = constraints.maxHeight.toFloat()
 
-        val barWidth = with(density) { 10.dp.toPx() }
-        val edgeMargin = with(density) { 16.dp.toPx() }
-        val barLabelGap = with(density) { 4.dp.toPx() }
-        val interSlotGap = with(density) { 12.dp.toPx() }
-        val minCenterSlot = with(density) { 60.dp.toPx() }
+        // Deben coincidir exactamente con los mismos valores en
+        // computeNaturalChartWidthPx -- si difieren, el ancho 'natural'
+        // calculado para decidir scroll no corresponde al layout real.
+        val barWidth = with(density) { 8.dp.toPx() }
+        val edgeMargin = with(density) { 10.dp.toPx() }
+        val barLabelGap = with(density) { 2.dp.toPx() }
+        val interSlotGap = with(density) { 8.dp.toPx() }
+        val minCenterSlot = with(density) { 50.dp.toPx() }
 
         // Si el ancho real disponible (widthPx) es mayor al natural (el
         // gráfico entra sobrado en la card), el sobrante se reparte como
@@ -570,8 +584,11 @@ private fun SankeyCanvasLayout(
         }
 
         val textMeasurer = rememberTextMeasurer()
-        val labelSmallStyle = MaterialTheme.typography.labelSmall
-        val bodySmallStyle = MaterialTheme.typography.bodySmall
+        // Misma fuente reducida que en SankeyFlowChart (10sp) -- tiene que
+        // coincidir para que el alto medido acá corresponda al ancho medido
+        // allá.
+        val labelSmallStyle = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, lineHeight = 12.sp)
+        val bodySmallStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp, lineHeight = 12.sp)
 
         // Modo compacto (concatenar "nombre • monto" en una sola línea)
         // eliminado -- pedía más ancho horizontal justo en las columnas que
@@ -646,6 +663,8 @@ private fun SankeyCanvasLayout(
                             isCenter = true,
                             isCompact = false,
                             maxWidthDp = wDp,
+                            nameStyle = labelSmallStyle,
+                            valueStyle = bodySmallStyle,
                             successColor = successColor,
                             destructiveColor = destructiveColor,
                             warningColor = warningColor,
@@ -666,6 +685,8 @@ private fun SankeyCanvasLayout(
                             alignEnd = false,
                             isCompact = false,
                             maxWidthDp = wDp,
+                            nameStyle = labelSmallStyle,
+                            valueStyle = bodySmallStyle,
                             successColor = successColor,
                             destructiveColor = destructiveColor,
                             warningColor = warningColor,
@@ -687,6 +708,8 @@ private fun SankeyCanvasLayout(
                             alignEnd = true,
                             isCompact = false,
                             maxWidthDp = wDp,
+                            nameStyle = labelSmallStyle,
+                            valueStyle = bodySmallStyle,
                             successColor = successColor,
                             destructiveColor = destructiveColor,
                             warningColor = warningColor,
@@ -774,6 +797,8 @@ private fun SankeyNodeLabel(
     alignEnd: Boolean = false,
     isCompact: Boolean = false,
     maxWidthDp: Dp,
+    nameStyle: TextStyle,
+    valueStyle: TextStyle,
     successColor: Color,
     destructiveColor: Color,
     warningColor: Color,
@@ -815,7 +840,7 @@ private fun SankeyNodeLabel(
             if (isCompact && !isCenter) {
                 Text(
                     text = "${node.name} • ${formatMoney(node.value, currency)}",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = nameStyle,
                     color = FinancePyColors.textPrimary(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -824,7 +849,7 @@ private fun SankeyNodeLabel(
             } else {
                 Text(
                     text = node.name,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = nameStyle,
                     color = FinancePyColors.textPrimary(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -832,7 +857,7 @@ private fun SankeyNodeLabel(
                 )
                 Text(
                     text = formatMoney(node.value, currency),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = valueStyle,
                     color = FinancePyColors.textSecondary(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
