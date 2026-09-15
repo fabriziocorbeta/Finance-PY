@@ -237,11 +237,49 @@ internal fun capNodesPerLayer(sankeyDto: CashflowSankeyDto, maxPerLayer: Int = 6
 // constante en dp y recortar lo que no entra.
 internal data class ColumnWidths(
     val labelWidthPx: Map<Int, Float>,
-    val centerLabelWidthPx: Float
+    val centerLabelWidthPx: Float,
+    // Nombre a mostrar por nodo -- puede ser el original o una versión
+    // abreviada (ver abbreviateSankeyName) si el original no entraba en
+    // una línea sin scroll ni fuente ilegible.
+    val displayNames: Map<Int, String>
 )
 
 private const val MIN_LABEL_WIDTH_DP = 40
 private const val MAX_LABEL_WIDTH_DP = 200
+
+// Ancho "objetivo" por nombre antes de recurrir a abreviar -- nombres de
+// 1-2 palabras cortas (la mayoría) nunca lo tocan. Solo entra en juego
+// con nombres largos tipo "Venta de Mercaderías" o "Pago de préstamos"
+// que, incluso a 10sp, no entran en una columna sin forzar scroll en
+// cualquier teléfono real con 4 columnas -- confirmado con captura real
+// comparando contra la web.
+private const val NAME_TARGET_WIDTH_DP = 95
+private val SANKEY_CONNECTOR_WORDS = setOf("de", "del", "la", "el", "los", "las", "y")
+
+// Abrevia un nombre largo en 2 pasos, cada uno cortando por palabra
+// completa (nunca a mitad de palabra como hace el ellipsis por defecto):
+// 1) saca conectores cortos ("Venta de Mercaderías" -> "Venta Mercaderías")
+// 2) si sigue sin entrar, abrevia las palabras que no sean la primera a
+//    4 letras + "." ("Venta Mercaderías" -> "Venta Merc.")
+// Si ni así entra, devuelve el mejor intento y que el Text con
+// maxLines=1 + ellipsis se encargue como último recurso.
+internal fun abbreviateSankeyName(name: String, textMeasurer: TextMeasurer, style: TextStyle, maxWidthPx: Float): String {
+    fun widthOf(s: String) = textMeasurer.measure(s, style).size.width.toFloat()
+    if (widthOf(name) <= maxWidthPx) return name
+
+    val words = name.split(" ").filter { it.isNotBlank() }
+    if (words.size <= 1) return name
+
+    val withoutConnectors = words.filterIndexed { i, w -> i == 0 || w.lowercase() !in SANKEY_CONNECTOR_WORDS }
+    var candidate = withoutConnectors.joinToString(" ")
+    if (widthOf(candidate) <= maxWidthPx) return candidate
+
+    val abbreviated = withoutConnectors.mapIndexed { i, w ->
+        if (i == 0 || w.length <= 4) w else w.take(4) + "."
+    }
+    candidate = abbreviated.joinToString(" ")
+    return candidate
+}
 
 internal fun computeColumnWidths(
     sankeyDto: CashflowSankeyDto,
@@ -256,11 +294,15 @@ internal fun computeColumnWidths(
     val nodesByLayer = nodes.indices.groupBy { layerInfo.layerMap[it] ?: layerInfo.centerLayer }
     val minPx = with(density) { MIN_LABEL_WIDTH_DP.dp.toPx() }
     val maxPx = with(density) { MAX_LABEL_WIDTH_DP.dp.toPx() }
+    val nameTargetPx = with(density) { NAME_TARGET_WIDTH_DP.dp.toPx() }
+
+    val displayNames = nodes.indices.associateWith { idx ->
+        abbreviateSankeyName(nodes[idx].name, textMeasurer, labelSmallStyle, nameTargetPx)
+    }
 
     fun measureNodeWidth(idx: Int): Float {
-        val node = nodes[idx]
-        val nameW = textMeasurer.measure(node.name, labelSmallStyle).size.width.toFloat()
-        val valW = textMeasurer.measure(formatMoney(node.value, currency), bodySmallStyle).size.width.toFloat()
+        val nameW = textMeasurer.measure(displayNames[idx] ?: nodes[idx].name, labelSmallStyle).size.width.toFloat()
+        val valW = textMeasurer.measure(formatMoney(nodes[idx].value, currency), bodySmallStyle).size.width.toFloat()
         return maxOf(nameW, valW)
     }
 
@@ -274,7 +316,7 @@ internal fun computeColumnWidths(
 
     val centerW = measureNodeWidth(layerInfo.centerIdx).coerceIn(minPx, maxPx)
 
-    return ColumnWidths(labelWidthPx = labelWidthPx, centerLabelWidthPx = centerW)
+    return ColumnWidths(labelWidthPx = labelWidthPx, centerLabelWidthPx = centerW, displayNames = displayNames)
 }
 
 // Ancho total "natural" del gráfico entero (todas las columnas a su ancho
@@ -597,7 +639,8 @@ private fun SankeyCanvasLayout(
         // necesita en 2 líneas, así que siempre se usa ese modo.
         val nodeLabelHeightsPx = nodes.indices.associateWith { idx ->
             val node = nodes[idx]
-            val titleH = textMeasurer.measure(node.name, labelSmallStyle).size.height
+            val displayName = columnWidths.displayNames[idx] ?: node.name
+            val titleH = textMeasurer.measure(displayName, labelSmallStyle).size.height
             val valH = textMeasurer.measure(formatMoney(node.value, currency), bodySmallStyle).size.height
             (titleH + valH).toFloat()
         }
@@ -635,7 +678,12 @@ private fun SankeyCanvasLayout(
 
         Box(modifier = Modifier.fillMaxSize()) {
             nodeLayouts.values.forEach { layout ->
-                val node = nodes[layout.nodeIdx]
+                // Usa el nombre a mostrar (original o abreviado -- ver
+                // ColumnWidths.displayNames) para que lo que se mide y lo
+                // que se renderiza sea siempre lo mismo.
+                val node = nodes[layout.nodeIdx].let { n ->
+                    columnWidths.displayNames[layout.nodeIdx]?.let { n.copy(name = it) } ?: n
+                }
                 val layer = layout.layer
                 val isCenterNode = layout.nodeIdx == centerIdx
 
