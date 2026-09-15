@@ -146,6 +146,23 @@ class Sync < ApplicationRecord
     )
   end
 
+  # Pública a propósito: ActiveJobRowLevelSecurity#extract_family usa
+  # `arg.respond_to?(:family)` para detectar la family de un job y setear el
+  # contexto RLS antes de correr -- respond_to? no ve métodos privados, así
+  # que si este método estuviera en la sección private de abajo (como estaba
+  # hasta ahora), esa detección fallaba en silencio para todo SyncJob y
+  # revienta al intentar resolver `syncable` bajo FORCE ROW LEVEL SECURITY
+  # sin contexto seteado (encontrado en prod: "undefined method 'family' for
+  # nil" en SyncJob, sync bloqueado en "syncing" para siempre -- por eso el
+  # patrimonio neto no actualizaba).
+  def family
+    if syncable.is_a?(Family)
+      syncable
+    else
+      syncable.family
+    end
+  end
+
   private
     def log_status_change
       Rails.logger.info("changing from #{aasm.from_state} to #{aasm.to_state} (event: #{aasm.current_event})")
@@ -205,13 +222,5 @@ class Sync < ApplicationRecord
 
     def update_family_sync_timestamp
       family.touch(:latest_sync_activity_at)
-    end
-
-    def family
-      if syncable.is_a?(Family)
-        syncable
-      else
-        syncable.family
-      end
     end
 end
