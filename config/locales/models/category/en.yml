@@ -5,3 +5,24 @@ en:
       uncategorized: Uncategorized
       other_investments: Other Investments
       investment_contributions: Investment Contributions
+      default_income: Income
+      default_food_and_drink: Food & Drink
+      default_groceries: Groceries
+      default_shopping: Shopping
+      default_transportation: Transportation
+      default_travel: Travel
+      default_entertainment: Entertainment
+      default_healthcare: Healthcare
+      default_personal_care: Personal Care
+      default_home_improvement: Home Improvement
+      default_mortgage_rent: Mortgage / Rent
+      default_utilities: Utilities
+      default_subscriptions: Subscriptions
+      default_insurance: Insurance
+      default_sports_and_fitness: Sports & Fitness
+      default_gifts_and_donations: Gifts & Donations
+      default_taxes: Taxes
+      default_loan_payments: Loan Payments
+      default_services: Services
+      default_fees: Fees
+      default_savings_and_investments: Savings & Investments

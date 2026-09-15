@@ -5,3 +5,24 @@ es:
       investment_contributions: Aportaciones a inversiones
       other_investments: Otras inversiones
       uncategorized: Sin clasificar
+      default_income: Ingresos
+      default_food_and_drink: Comidas y bebidas
+      default_groceries: Almacén
+      default_shopping: Compras
+      default_transportation: Transporte
+      default_travel: Viajes
+      default_entertainment: Entretenimiento
+      default_healthcare: Salud
+      default_personal_care: Cuidado personal
+      default_home_improvement: Mejoras del hogar
+      default_mortgage_rent: Hipoteca / Alquiler
+      default_utilities: Servicios básicos
+      default_subscriptions: Suscripciones
+      default_insurance: Seguros
+      default_sports_and_fitness: Deportes y fitness
+      default_gifts_and_donations: Regalos y donaciones
+      default_taxes: Impuestos
+      default_loan_payments: Pago de préstamos
+      default_services: Servicios
+      default_fees: Comisiones
+      default_savings_and_investments: Ahorros e inversiones
