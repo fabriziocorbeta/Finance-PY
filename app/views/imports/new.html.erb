@@ -195,6 +195,17 @@
                 disabled_message: requires_account_message %>
             <% end %>
 
+            <% if params[:type].nil? || params[:type] == "UpayImport" %>
+              <%= render "imports/import_option",
+                type: "UpayImport",
+                icon_name: "credit-card",
+                icon_bg_class: "bg-pink-500/5",
+                icon_text_class: "text-pink-500",
+                label: t(".import_upay"),
+                enabled: has_accounts,
+                disabled_message: requires_account_message %>
+            <% end %>
+
             <% if params[:type].nil? || params[:type] == "AccountImport" %>
               <%= render "imports/import_option",
                 type: "AccountImport",

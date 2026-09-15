@@ -16,6 +16,8 @@ class Import::UploadsController < ApplicationController
   def update
     if @import.is_a?(QifImport)
       handle_qif_upload
+    elsif @import.is_a?(UpayImport)
+      handle_upay_upload
     elsif @import.is_a?(SureImport)
       update_sure_import_upload
     elsif csv_valid?(csv_str)
@@ -66,6 +68,27 @@ class Import::UploadsController < ApplicationController
       @import = Current.family.imports.find(params[:import_id])
     end
 
+    def handle_upay_upload
+      unless csv_valid?(csv_str, col_sep: ";")
+        flash.now[:alert] = t("import.uploads.show.upay_invalid", default: "Must be a valid CSV file exported by Upay")
+        render :show, status: :unprocessable_entity and return
+      end
+
+      unless import_account_id.present?
+        flash.now[:alert] = "Seleccioná una cuenta para el import de Upay"
+        render :show, status: :unprocessable_entity and return
+      end
+
+      ActiveRecord::Base.transaction do
+        @import.account = accessible_accounts.find(import_account_id)
+        @import.raw_file_str = csv_str
+        @import.save!
+        @import.generate_rows_from_csv
+      end
+
+      redirect_to import_clean_path(@import), notice: t("imports.create.csv_uploaded")
+    end
+
     def handle_qif_upload
       unless QifParser.valid?(csv_str)
         flash.now[:alert] = "Must be a valid QIF file"
@@ -92,9 +115,9 @@ class Import::UploadsController < ApplicationController
       @csv_str ||= upload_params[:import_file]&.read || upload_params[:raw_file_str]
     end
 
-    def csv_valid?(str)
+    def csv_valid?(str, col_sep: upload_params[:col_sep])
       begin
-        csv = Import.parse_csv_str(str, col_sep: upload_params[:col_sep])
+        csv = Import.parse_csv_str(str, col_sep: col_sep)
         return false if csv.headers.empty?
         return false if csv.count == 0
         true

@@ -1076,6 +1076,12 @@ CREATE TABLE public.import_rows (
     conditions text,
     actions text,
     source_row_number integer NOT NULL,
+    gross_amount character varying,
+    commission_amount character varying,
+    receipt_number character varying,
+    auth_code character varying,
+    card_brand character varying,
+    card_type character varying,
     CONSTRAINT chk_import_rows_source_row_number_positive CHECK ((source_row_number > 0))
 );
 
@@ -6661,6 +6667,7 @@ CREATE POLICY valuations_family_isolation_policy ON public.valuations USING ((fa
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260915022634'),
 ('20260915015304'),
 ('20260914211237'),
 ('20260914175626'),

@@ -124,6 +124,15 @@ es:
         qif_submit: Subir QIF
         qif_title: Subir archivo QIF
         title: Importa tus datos
+        upay_account_label: Cuenta
+        upay_account_placeholder: Seleccionar una cuenta…
+        upay_description: Selecciona la cuenta donde se depositó esta liquidación
+          y sube el archivo .csv exportado de Upay.
+        upay_file_hint: Solo archivos .csv
+        upay_file_prompt: para añadir tu archivo CSV de Upay aquí
+        upay_invalid: Debe ser un archivo CSV válido exportado por Upay
+        upay_submit: Subir liquidación Upay
+        upay_title: Subir liquidación Upay
       sure_import:
         browse: Explorar
         browse_hint: para agregar tu archivo all.ndjson acá
@@ -196,6 +205,7 @@ es:
       import_sure: Importar desde Sure
       import_sure_description: Archivo .ndjson de exportación completa
       import_transactions: Importar transacciones
+      import_upay: Importar liquidación Upay (CSV)
       import_ynab: Importar desde YNAB
       requires_account: Importa cuentas primero para desbloquear esta opción.
       resume: Reanudar %{type}

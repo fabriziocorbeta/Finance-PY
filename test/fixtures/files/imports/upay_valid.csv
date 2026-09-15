@@ -1,0 +1,3 @@
+Nombre de comercio;Código de comercio;Fecha de venta;Hora de venta;Boleta Nº;Código de autorización;Monto bruto;Monto neto;Comisión;IVA Comisión;Retención;IVA Retención;Marca;Tipo de tarjeta;Número de tarjeta;Fecha de Acreditación;Estado de pago;Nro. de referencia de la Factura;Nro. de comprobante de pago;Código de cadena;Trx ID;Canal;Fuente de modo de entrada
+CD Co;900000000307831;31-08-2026;23:08:49;624402298749;444605;35.000;34.230;700;70;0;0;VISA;Débito;45217603XXXX5913;2026-09-01T10:41:07;Aprobado;;31972346881588;GGUGUB;;;READER
+CD Co;900000000307831;01-09-2026;19:28:29;624422313949;921272;80.000;75.921;2.320;232;800;727;MASTERCARD;Crédito;54456992XXXX2285;2026-09-03T11:07:06;Aprobado;;31962346973275;GGUGUB;;;READER
