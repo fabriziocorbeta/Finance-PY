@@ -266,6 +266,63 @@ class Api::V1::ImportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "-10.00", import.rows.first.amount # Normalized
   end
 
+  test "should create UpayImport from an uploaded CSV file with the fixed Upay headers" do
+    upay_csv = Rack::Test::UploadedFile.new(
+      file_fixture("imports/upay_valid.csv"),
+      "text/csv",
+      original_filename: "upay_valid.csv"
+    )
+
+    assert_difference("Import.count" => 1, "Import::Row.count" => 2) do
+      post api_v1_imports_url,
+           params: {
+             type: "UpayImport",
+             account_id: @account.id,
+             file: upay_csv
+           },
+           headers: api_headers(@api_key)
+    end
+
+    assert_response :created
+    json_response = JSON.parse(response.body)
+
+    import = Import.find(json_response["data"]["id"])
+    assert_instance_of UpayImport, import
+    assert_equal 2, import.rows_count
+    assert_equal "35000", import.rows_ordered.first.gross_amount
+  end
+
+  test "should auto-publish UpayImport and record the entries when requested" do
+    upay_csv = Rack::Test::UploadedFile.new(
+      file_fixture("imports/upay_valid.csv"),
+      "text/csv",
+      original_filename: "upay_valid.csv"
+    )
+
+    assert_enqueued_with(job: ImportJob) do
+      post api_v1_imports_url,
+           params: {
+             type: "UpayImport",
+             account_id: @account.id,
+             file: upay_csv,
+             publish: "true"
+           },
+           headers: api_headers(@api_key)
+    end
+
+    assert_response :created
+    json_response = JSON.parse(response.body)
+    assert_equal "importing", json_response["data"]["status"]
+
+    import = Import.find(json_response["data"]["id"])
+    perform_enqueued_jobs
+
+    import.reload
+    assert_equal "complete", import.status
+    # 2 filas en el CSV, ninguna matchea una Sale -> ingreso + comisión por fila
+    assert_equal 4, @account.entries.where(import: import).count
+  end
+
   test "should instantiate RuleImport before generating rows" do
     @family.categories.create!(
       name: "Groceries",

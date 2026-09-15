@@ -90,6 +90,13 @@ class UpayImport < Import
     end
 
     rows.insert_all!(mapped_rows)
+    # `rows.destroy_all` above cached the association as loaded-empty;
+    # insert_all! bypasses AR entirely and doesn't invalidate that cache, so
+    # anything reading `rows`/`rows_ordered` on this same in-memory object
+    # afterwards (like import! in the same request) would see nothing until
+    # a reload. reset here so every caller gets fresh data without having to
+    # remember that.
+    rows.reset
     update_column(:rows_count, rows.count)
   end
 
