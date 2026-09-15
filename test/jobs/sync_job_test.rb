@@ -10,4 +10,29 @@ class SyncJobTest < ActiveJob::TestCase
 
     SyncJob.perform_now(sync)
   end
+
+  # Regression: Sync#family estaba en la sección `private` del modelo.
+  # ActiveJobRowLevelSecurity#extract_family detecta la family de un job con
+  # `arg.respond_to?(:family)`, que no ve métodos privados -- con el método
+  # privado, esto fallaba en silencio, RLS nunca se seteaba, y `sync.perform`
+  # reventaba al no poder resolver `syncable` bajo FORCE ROW LEVEL SECURITY
+  # (encontrado en prod: "undefined method 'family' for nil", patrimonio
+  # neto sin actualizar porque los syncs de cuenta quedaban rotos).
+  test "family is a public method so ActiveJobRowLevelSecurity can detect it via respond_to?" do
+    syncable = accounts(:depository)
+    sync = syncable.syncs.create!(window_start_date: 2.days.ago.to_date)
+
+    assert sync.respond_to?(:family), "Sync#family must stay public for job-level RLS context detection"
+    assert_equal syncable.family, sync.family
+  end
+
+  test "sets the RLS family context before performing an account sync" do
+    syncable = accounts(:depository)
+    sync = syncable.syncs.create!(window_start_date: 2.days.ago.to_date)
+
+    RlsContext.expects(:with_family).with(syncable.family).at_least_once.yields
+    sync.expects(:perform).once
+
+    SyncJob.perform_now(sync)
+  end
 end
