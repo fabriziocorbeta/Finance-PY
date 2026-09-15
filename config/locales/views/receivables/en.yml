@@ -17,6 +17,9 @@ en:
       register_payment: Register Payment
       completed: Completed (%{count})
       due_day: Due day
+      original_balance: Original Balance
+      remaining_balance: Remaining Balance
+      installments: Installments
     index:
       title: Receivables
       new: New receivable

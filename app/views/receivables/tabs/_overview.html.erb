@@ -1,0 +1,85 @@
+<%# locals: (account:) %>
+<% receivable = account.receivable %>
+<% schedule = receivable.installment_schedule %>
+
+<div class="space-y-6">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <%= summary_card title: t("receivables.dashboard.original_balance") do %>
+      <%= format_money receivable.original_balance %>
+    <% end %>
+
+    <%= summary_card title: t("receivables.dashboard.remaining_balance") do %>
+      <%= format_money account.balance_money %>
+    <% end %>
+
+    <%= summary_card title: t("receivables.dashboard.installments") do %>
+      <%= receivable.installment_count %>
+    <% end %>
+
+    <%= summary_card title: t("receivables.dashboard.due_day") do %>
+      <%= receivable.due_day.present? ? receivable.due_day : "-" %>
+    <% end %>
+  </div>
+
+  <% if schedule.any? %>
+    <div class="bg-container rounded-xl shadow-border-xs overflow-hidden">
+      <div class="px-6 py-4 border-b border-border/40">
+        <h3 class="text-base font-medium text-primary">Cronograma de cuotas</h3>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+          <thead class="text-xs text-subdued uppercase bg-subtle/50">
+            <tr>
+              <th scope="col" class="px-6 py-3 font-medium">Cuota</th>
+              <th scope="col" class="px-6 py-3 font-medium">Vencimiento</th>
+              <th scope="col" class="px-6 py-3 font-medium">Monto</th>
+              <th scope="col" class="px-6 py-3 font-medium">Estado</th>
+              <th scope="col" class="px-6 py-3 font-medium">Pagado</th>
+              <th scope="col" class="px-6 py-3 font-medium">Fecha de pago</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border/40">
+            <% schedule.each do |item| %>
+              <tr class="hover:bg-subtle/30">
+                <td class="px-6 py-4 tabular-nums"><%= item[:number] %> / <%= receivable.installment_count %></td>
+                <td class="px-6 py-4 tabular-nums text-subdued whitespace-nowrap"><%= l(item[:due_date], format: :short) %></td>
+                <td class="px-6 py-4 tabular-nums font-medium"><%= format_money(Money.new(item[:amount], account.currency)) %></td>
+                <td class="px-6 py-4">
+                  <% case item[:status]
+                     when :paid %>
+                    <%= render DS::Pill.new(label: "Pagada", tone: :success, marker: false) %>
+                  <% when :partial %>
+                    <%= render DS::Pill.new(label: "Parcial", tone: :warning, marker: false) %>
+                  <% when :overdue %>
+                    <%= render DS::Pill.new(label: "Vencida", tone: :error, marker: false) %>
+                  <% else %>
+                    <%= render DS::Pill.new(label: "Pendiente", tone: :neutral, marker: false) %>
+                  <% end %>
+                </td>
+                <td class="px-6 py-4 tabular-nums text-subdued">
+                  <% if item[:paid_amount] > 0 %>
+                    <%= format_money(Money.new(item[:paid_amount], account.currency)) %>
+                  <% else %>
+                    -
+                  <% end %>
+                </td>
+                <td class="px-6 py-4 tabular-nums text-subdued whitespace-nowrap">
+                  <%= item[:paid_at] ? l(item[:paid_at].to_date, format: :short) : "-" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="flex justify-center py-8">
+    <%= render DS::Link.new(
+      text: "Editar",
+      variant: "ghost",
+      href: edit_receivable_path(account),
+      frame: :modal
+    ) %>
+  </div>
+</div>

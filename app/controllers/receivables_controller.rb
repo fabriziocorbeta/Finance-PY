@@ -16,4 +16,8 @@ class ReceivablesController < ApplicationController
     @active = accounts.reject { |a| a.balance.zero? }
     @completed = accounts.select { |a| a.balance.zero? }
   end
+
+  def show
+    super
+  end
 end
