@@ -32,6 +32,8 @@ import py.com.cdco.financespy.theme.components.AppBottomNav
 import py.com.cdco.financespy.theme.components.AppHamburgerMenu
 import py.com.cdco.financespy.screens.AccountDetailScreen
 import py.com.cdco.financespy.screens.AccountDetailViewModel
+import py.com.cdco.financespy.screens.AccountFormScreen
+import py.com.cdco.financespy.screens.AccountFormViewModel
 import py.com.cdco.financespy.screens.BudgetAllocationEditorScreen
 import py.com.cdco.financespy.screens.BudgetAllocationEditorViewModel
 import py.com.cdco.financespy.screens.BudgetDashboardScreen
@@ -126,6 +128,7 @@ fun App(
     fleetListViewModelFactory: () -> FleetListViewModel,
     fleetVehicleDetailViewModelFactory: (String) -> FleetVehicleDetailViewModel,
     accountDetailViewModelFactory: (String) -> AccountDetailViewModel,
+    accountFormViewModelFactory: () -> AccountFormViewModel,
     settingsViewModelFactory: () -> SettingsViewModel,
     reportsViewModelFactory: () -> ReportsViewModel,
     upayImportViewModelFactory: () -> UpayImportViewModel,
@@ -219,7 +222,8 @@ fun App(
                             DashboardScreen(
                                 viewModel = remember { dashboardViewModelFactory() },
                                 onAccountClick = { accountId -> navController.navigate(Routes.accountDetail(accountId)) },
-                                onSettingsClick = { navController.navigate(Routes.SETTINGS) }
+                                onSettingsClick = { navController.navigate(Routes.SETTINGS) },
+                                onAddAccount = { navController.navigate(Routes.ACCOUNT_FORM) }
                             )
                         }
                         composable(Routes.SETTINGS) {
@@ -307,6 +311,13 @@ fun App(
                         composable(Routes.ACCOUNT_DETAIL) { entry ->
                             val accountId = entry.arguments?.getString("accountId") ?: return@composable
                             AccountDetailScreen(viewModel = remember(accountId) { accountDetailViewModelFactory(accountId) })
+                        }
+                        composable(Routes.ACCOUNT_FORM) {
+                            AccountFormScreen(
+                                viewModel = remember { accountFormViewModelFactory() },
+                                onSaved = { navController.popBackStack() },
+                                onCancel = { navController.popBackStack() }
+                            )
                         }
                         composable(Routes.RULE_DETAIL) { entry ->
                             val ruleId = entry.arguments?.getString("ruleId") ?: return@composable
