@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
@@ -45,6 +46,7 @@ import py.com.cdco.financespy.screens.RuleDetailViewModel
 import py.com.cdco.financespy.screens.RuleFormViewModel
 import py.com.cdco.financespy.screens.RulesListViewModel
 import py.com.cdco.financespy.screens.SettingsViewModel
+import py.com.cdco.financespy.screens.UpayImportViewModel
 import py.com.cdco.financespy.screens.TransactionFormViewModel
 import py.com.cdco.financespy.screens.TransactionsViewModel
 import py.com.cdco.financespy.sync.SyncEngine
@@ -58,6 +60,14 @@ class MainActivity : ComponentActivity() {
 
     private val isLoggedIn = mutableStateOf<Boolean?>(null)
     private val needsOnboarding = mutableStateOf(false)
+
+    // registerForActivityResult debe llamarse antes de que la Activity entre
+    // en STARTED -- por eso es una property de clase (eager), no algo armado
+    // dentro de onCreate ni lazy.
+    private var upayCsvPickedCallback: ((ByteArray, String) -> Unit)? = null
+    private val upayCsvPickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { handleUpayCsvPicked(it) }
+    }
 
     private val tokenStorage by lazy { AndroidTokenStorage(applicationContext) }
     private val navPreferences by lazy { AndroidNavPreferences(applicationContext) }
@@ -296,6 +306,9 @@ class MainActivity : ComponentActivity() {
                 },
                 settingsViewModelFactory = { settingsViewModel },
                 reportsViewModelFactory = { reportsViewModel },
+                upayImportViewModelFactory = {
+                    UpayImportViewModel(scope = lifecycleScope, api = api, accountDao = database.accountDao())
+                },
                 onOpenNotificationSettings = {
                     val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -304,7 +317,8 @@ class MainActivity : ComponentActivity() {
                 },
                 onShareFile = { bytes, filename, mimeType ->
                     shareFile(bytes, filename, mimeType)
-                }
+                },
+                onPickUpayCsv = { onPicked -> pickUpayCsv(onPicked) }
             )
         }
     }
@@ -329,6 +343,34 @@ class MainActivity : ComponentActivity() {
                 }
             } catch (e: Exception) {
                 Log.e("FinancePYShare", "Error sharing file", e)
+            }
+        }
+    }
+
+    private fun pickUpayCsv(onPicked: (ByteArray, String) -> Unit) {
+        upayCsvPickedCallback = onPicked
+        upayCsvPickerLauncher.launch("*/*")
+    }
+
+    private fun handleUpayCsvPicked(uri: Uri) {
+        val callback = upayCsvPickedCallback ?: return
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val fileName = contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (cursor.moveToFirst() && nameIndex >= 0) cursor.getString(nameIndex) else null
+                } ?: uri.lastPathSegment ?: "upay.csv"
+
+                val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: throw IllegalStateException("No se pudo leer el archivo seleccionado")
+
+                withContext(Dispatchers.Main) {
+                    callback(bytes, fileName)
+                }
+            } catch (e: Exception) {
+                Log.e("FinancePYUpayImport", "Error reading picked CSV", e)
+            } finally {
+                upayCsvPickedCallback = null
             }
         }
     }
