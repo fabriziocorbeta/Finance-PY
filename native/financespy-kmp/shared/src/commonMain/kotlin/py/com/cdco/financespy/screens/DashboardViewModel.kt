@@ -6,8 +6,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.DashboardDto
+import py.com.cdco.financespy.cache.DashboardCache
 import py.com.cdco.financespy.db.AccountDao
 import py.com.cdco.financespy.db.EntryDao
 import py.com.cdco.financespy.sync.SyncEngine
@@ -16,25 +18,43 @@ data class DashboardState(
     val dashboard: DashboardDto? = null,
     val selectedPeriod: String? = null,
     val isSyncing: Boolean = false,
-    val syncError: String? = null
+    val syncError: String? = null,
+    val isShowingCachedData: Boolean = false
 )
+
+private val dashboardCacheJson = Json { ignoreUnknownKeys = true; isLenient = true }
 
 class DashboardViewModel(
     private val scope: CoroutineScope,
     private val syncEngine: SyncEngine,
     private val api: FinancePyApi,
     accountDao: AccountDao? = null,
-    entryDao: EntryDao? = null
+    entryDao: EntryDao? = null,
+    private val dashboardCache: DashboardCache? = null
 ) {
     private val _state = MutableStateFlow(DashboardState())
     val state: StateFlow<DashboardState> = _state.asStateFlow()
 
     init {
+        loadFromCache()
         refresh()
+    }
+
+    private fun loadFromCache() {
+        val period = _state.value.selectedPeriod
+        val cachedDashboard = dashboardCache?.load(period)?.let { cachedJson ->
+            runCatching { dashboardCacheJson.decodeFromString(DashboardDto.serializer(), cachedJson) }.getOrNull()
+        }
+        // Sin cache para este período: no dejar visible el dashboard del período
+        // anterior con la etiqueta cambiada -- mejor volver a null/loading.
+        _state.update {
+            it.copy(dashboard = cachedDashboard, isShowingCachedData = cachedDashboard != null)
+        }
     }
 
     fun selectPeriod(periodKey: String?) {
         _state.update { it.copy(selectedPeriod = periodKey) }
+        loadFromCache()
         loadDashboard()
     }
 
@@ -60,11 +80,16 @@ class DashboardViewModel(
         runCatching {
             api.fetchDashboard(period)
         }.onSuccess { dto ->
+            val resolvedPeriod = dto.period?.key ?: period
+            runCatching {
+                dashboardCache?.save(resolvedPeriod, dashboardCacheJson.encodeToString(DashboardDto.serializer(), dto))
+            }
             _state.update {
                 it.copy(
                     isSyncing = false,
                     dashboard = dto,
-                    selectedPeriod = dto.period?.key ?: period
+                    selectedPeriod = resolvedPeriod,
+                    isShowingCachedData = false
                 )
             }
         }.onFailure { e ->
