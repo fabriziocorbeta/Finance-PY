@@ -15,6 +15,8 @@ class Sync < ApplicationRecord
   belongs_to :parent, class_name: "Sync", optional: true
   has_many :children, class_name: "Sync", foreign_key: :parent_id, dependent: :destroy
 
+  before_validation :denormalize_family_id, on: :create
+
   scope :ordered, -> { order(created_at: :desc) }
   scope :incomplete, -> { where("syncs.status IN (?)", %w[pending syncing]) }
   scope :visible, -> { incomplete.where("syncs.created_at > ?", VISIBLE_FOR.ago) }
@@ -150,13 +152,24 @@ class Sync < ApplicationRecord
   # `arg.respond_to?(:family)` para detectar la family de un job y setear el
   # contexto RLS antes de correr -- respond_to? no ve métodos privados, así
   # que si este método estuviera en la sección private de abajo (como estaba
-  # hasta ahora), esa detección fallaba en silencio para todo SyncJob y
-  # revienta al intentar resolver `syncable` bajo FORCE ROW LEVEL SECURITY
-  # sin contexto seteado (encontrado en prod: "undefined method 'family' for
-  # nil" en SyncJob, sync bloqueado en "syncing" para siempre -- por eso el
-  # patrimonio neto no actualizaba).
+  # antes), esa detección fallaba en silencio para todo SyncJob.
+  #
+  # Usa family_id (denormalizado, poblado en denormalize_family_id más abajo)
+  # en vez de `syncable.family` como primera opción: en el momento en que
+  # ActiveJobRowLevelSecurity llama a este método, el contexto RLS TODAVÍA NO
+  # está seteado -- es justo lo que este método ayuda a decidir. `syncable`
+  # casi siempre apunta a una tabla con FORCE ROW LEVEL SECURITY (accounts,
+  # simplefin_items, etc), así que resolverlo acá es la misma query que RLS
+  # bloquea sin contexto (huevo y gallina). `families` no tiene RLS, así que
+  # leer por family_id sí funciona sin contexto previo. El fallback a
+  # `syncable.family` solo cubre syncs históricos creados antes de esta
+  # columna (ver migración) -- para esos, el detector de family del job
+  # simplemente vuelve a fallar como antes, no hay forma de evitarlo sin
+  # dato denormalizado.
   def family
-    if syncable.is_a?(Family)
+    if family_id.present?
+      Family.find_by(id: family_id)
+    elsif syncable.is_a?(Family)
       syncable
     else
       syncable.family
@@ -164,6 +177,16 @@ class Sync < ApplicationRecord
   end
 
   private
+    # Corre en request-time (creación siempre pasa por `syncable.syncs.create!`
+    # o `Sync.create!(syncable: x)`, con `syncable` ya cargado en memoria y el
+    # contexto RLS de la request ya seteado por Authentication), así que
+    # resolver family acá nunca pega contra el problema de huevo y gallina que
+    # sí existe más tarde, en el job.
+    def denormalize_family_id
+      return if family_id.present? || syncable.nil?
+      self.family_id = syncable.is_a?(Family) ? syncable.id : syncable.family&.id
+    end
+
     def log_status_change
       Rails.logger.info("changing from #{aasm.from_state} to #{aasm.to_state} (event: #{aasm.current_event})")
     end

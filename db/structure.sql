@@ -2259,7 +2259,8 @@ CREATE TABLE public.syncs (
     failed_at timestamp(6) without time zone,
     window_start_date date,
     window_end_date date,
-    sync_stats text
+    sync_stats text,
+    family_id uuid
 );
 
 
@@ -5119,6 +5120,13 @@ CREATE UNIQUE INDEX index_subscriptions_on_family_id ON public.subscriptions USI
 
 
 --
+-- Name: index_syncs_on_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_syncs_on_family_id ON public.syncs USING btree (family_id);
+
+
+--
 -- Name: index_syncs_on_parent_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6225,6 +6233,14 @@ ALTER TABLE ONLY public.holdings
 
 
 --
+-- Name: syncs fk_rails_f0514606e3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.syncs
+    ADD CONSTRAINT fk_rails_f0514606e3 FOREIGN KEY (family_id) REFERENCES public.families(id);
+
+
+--
 -- Name: purchase_order_items fk_rails_f247068a39; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6645,6 +6661,7 @@ CREATE POLICY valuations_family_isolation_policy ON public.valuations USING ((fa
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260915015304'),
 ('20260914211237'),
 ('20260914175626'),
 ('20260902020000'),
