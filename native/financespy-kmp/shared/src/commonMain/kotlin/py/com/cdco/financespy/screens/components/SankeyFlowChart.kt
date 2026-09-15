@@ -2,6 +2,7 @@ package py.com.cdco.financespy.screens.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -275,11 +277,32 @@ fun SankeyFlowChart(
                 val cappedDto = remember(sankeyDto) { capNodesPerLayer(sankeyDto!!) }
                 val maxNodesInColumn = maxNodesInAnyLayer(cappedDto)
                 val chartHeight = maxOf(280.dp, (maxNodesInColumn * 56).dp)
-                SankeyCanvasLayout(
-                    sankeyDto = cappedDto,
-                    currency = currency,
-                    modifier = Modifier.fillMaxWidth().height(chartHeight)
-                )
+
+                // Repartir el ancho de pantalla entre las columnas (colSpacing)
+                // nunca convergió: con 4 columnas (ingresos con sub-categorías +
+                // gastos) no hay forma de darle a cada una ancho legible sin
+                // angostar a las demás -- ya se intentó achicar la etiqueta
+                // central y sacar el modo compacto, mejoró pero seguía apretado.
+                // En vez de seguir repartiendo un ancho fijo insuficiente, cada
+                // columna recibe un ancho cómodo fijo (130dp) y el gráfico entero
+                // scrollea horizontalmente cuando no entra en la pantalla.
+                val maxLayer = remember(cappedDto) { computeSankeyLayers(cappedDto).maxLayer }
+                val naturalChartWidth = ((maxLayer + 1) * 130).dp
+                BoxWithConstraints {
+                    // maxWidth acá es el ancho real disponible (la card) -- si
+                    // el ancho natural (130dp x columna) entra, usamos ese
+                    // disponible tal cual (mismo comportamiento que antes,
+                    // fillMaxWidth). Si no entra, el chart crece más allá de
+                    // la pantalla y el Box de abajo lo hace scrolleable.
+                    val chartWidth = maxOf(maxWidth, naturalChartWidth)
+                    Box(modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                        SankeyCanvasLayout(
+                            sankeyDto = cappedDto,
+                            currency = currency,
+                            modifier = Modifier.width(chartWidth).height(chartHeight)
+                        )
+                    }
+                }
             }
         }
     }
