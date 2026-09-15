@@ -21,7 +21,7 @@
             <% end %>
           </span>
           <% if additional_condition_count.positive? %>
-            and <%= additional_condition_count %> more <%= additional_condition_count == 1 ? "condition" : "conditions" %>
+            <%= t("rules.item.and_more_conditions", count: additional_condition_count) %>
           <% end %>
         </p>
       </div>
@@ -36,14 +36,14 @@
             <%= t("rules.no_action") %>
           <% else %>
             <% if rule.actions.first.value && rule.actions.first.options %>
-              <%= rule.actions.first.executor.label %> to <%= rule.actions.first.value_display %>
+              <%= rule.actions.first.executor.label %> <%= t("rules.item.to") %> <%= rule.actions.first.value_display %>
             <% else %>
               <%= rule.actions.first.executor.label %>
             <% end %>
           <% end %>
         </span>
         <% if rule.actions.count > 1 %>
-          and <%= rule.actions.count - 1 %> more <%= rule.actions.count - 1 == 1 ? "action" : "actions" %>
+          <%= t("rules.item.and_more_actions", count: rule.actions.count - 1) %>
         <% end %>
       </p>
     </div>
@@ -54,9 +54,9 @@
       <p class="flex items-center flex-wrap gap-1.5 m-0">
         <span class="px-2 py-1 border border-secondary rounded-full">
           <% if rule.effective_date.nil? %>
-            All past and future <%= rule.resource_type.pluralize %>
+            <%= t("rules.form.all_past_and_future", resource_type: rule.resource_type) %>
           <% else %>
-            <%= rule.resource_type.pluralize %> on or after <%= rule.effective_date.strftime("%b %-d, %Y") %>
+            <%= t("rules.item.on_or_after", resource_type: rule.resource_type, date: rule.effective_date.strftime("%b %-d, %Y")) %>
           <% end %>
         </span>
       </p>
@@ -67,11 +67,11 @@
       <%= f.toggle :active, { data: { auto_submit_form_target: "auto" } } %>
     <% end %>
     <%= render DS::Menu.new do |menu| %>
-      <% menu.with_item(variant: "link", text: "Edit", href: edit_rule_path(rule), icon: "pencil", data: { turbo_frame: "modal" }) %>
-      <% menu.with_item(variant: "link", text: "Re-apply rule", href: confirm_rule_path(rule), icon: "refresh-cw", data: { turbo_frame: "modal" }) %>
+      <% menu.with_item(variant: "link", text: t("rules.item.edit"), href: edit_rule_path(rule), icon: "pencil", data: { turbo_frame: "modal" }) %>
+      <% menu.with_item(variant: "link", text: t("rules.item.reapply"), href: confirm_rule_path(rule), icon: "refresh-cw", data: { turbo_frame: "modal" }) %>
       <% menu.with_item(
         variant: "button",
-        text: "Delete",
+        text: t("rules.item.delete"),
         href: rule_path(rule),
         icon: "trash-2",
         method: :delete,

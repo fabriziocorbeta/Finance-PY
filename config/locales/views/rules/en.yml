@@ -45,8 +45,109 @@ en:
       confirm_button: Reset Cache
       success: AI cache is being cleared. This may take a few moments.
     condition_filters:
+      transaction_account:
+        label: Account
+      transaction_amount:
+        label: Amount
+      transaction_category:
+        label: Category
+      transaction_details:
+        label: Details
+      transaction_merchant:
+        label: Merchant
+      transaction_name:
+        label: Transaction name
+      transaction_notes:
+        label: Notes
       transaction_type:
         income: Income
         expense: Expense
         transfer: Transfer
         equal_to: Equal to
+        label: Transaction type
+    action_executors:
+      auto_categorize:
+        label: Auto-categorize
+      auto_detect_merchants:
+        label: Auto-detect merchant
+      exclude_transaction:
+        label: Exclude transaction
+      set_as_transfer_or_payment:
+        label: Set as transfer or payment
+      set_investment_activity_label:
+        label: Set investment activity label
+      set_transaction_category:
+        label: Set category
+      set_transaction_merchant:
+        label: Set merchant
+      set_transaction_name:
+        label: Set name
+      set_transaction_tags:
+        label: Set tags
+    operators:
+      contains: Contains
+      equal_to: Equal to
+      is_empty: Is empty
+      greater_than: Greater than
+      greater_or_equal_to: Greater or equal to
+      less_than: Less than
+      less_or_equal_to: Less than or equal to
+    condition:
+      and: and
+      enter_a_value: Enter a value
+    condition_group:
+      match: match
+      of_the_following: of the following conditions
+    form:
+      name_optional: Rule name (optional)
+      enter_a_name: Enter a name for this rule
+      if: IF
+      then: THEN
+      for: FOR
+      add_condition: Add condition
+      add_condition_group: Add condition group
+      add_action: Add action
+      all_past_and_future: "All past and future %{resource_type}s"
+      starting_from: Starting from
+    index:
+      title: Rules
+      new_rule: New rule
+      sort_by: "Sort by:"
+      sort_name: Name
+      sort_updated_at: Updated At
+      toggle_sort: Toggle sort direction
+      delete_all: Delete all rules
+      ai_rules_cost_warning: AI-enabled rule actions will cost money. Be sure to filter as narrowly as possible to avoid unnecessary costs.
+      empty_title: No rules yet
+      empty_description: Set up rules to perform actions to your transactions and other data on every account sync.
+    new:
+      title: "New %{resource_type} rule"
+    edit:
+      back_to_rules: Back to rules
+      title: "Edit %{resource_type} rule"
+      title_named: 'Edit %{resource_type} rule "%{name}"'
+    confirm:
+      title: Confirm changes
+      title_named: 'Confirm changes to "%{name}"'
+      body: You are about to apply this rule to
+      body_criteria: that meet the specified rule criteria. Please confirm if you wish to proceed with this change.
+      ai_cost_title: AI Cost Estimation
+      apply_button: Confirm changes
+    item:
+      and_more_conditions:
+        one: and %{count} more condition
+        other: and %{count} more conditions
+      and_more_actions:
+        one: and %{count} more action
+        other: and %{count} more actions
+      to: to
+      on_or_after: "%{resource_type}s on or after %{date}"
+      edit: Edit
+      reapply: Re-apply rule
+      delete: Delete
+    cta:
+      updated_to: "Updated to %{category}"
+      description: You can create a rule to automatically categorize transactions like this one
+      dont_show_again: "Don't show this again"
+      dismiss: Dismiss
+      create_rule: Create rule

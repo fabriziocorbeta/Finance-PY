@@ -1,6 +1,25 @@
 ---
 es:
   rules:
+    action_executors:
+      auto_categorize:
+        label: Categorizar automáticamente
+      auto_detect_merchants:
+        label: Detectar comercio automáticamente
+      exclude_transaction:
+        label: Excluir transacción
+      set_as_transfer_or_payment:
+        label: Marcar como transferencia o pago
+      set_investment_activity_label:
+        label: Establecer tipo de actividad de inversión
+      set_transaction_category:
+        label: Establecer categoría
+      set_transaction_merchant:
+        label: Establecer comercio
+      set_transaction_name:
+        label: Establecer nombre
+      set_transaction_tags:
+        label: Establecer etiquetas
     actions:
       value_placeholder: Introduce un valor
     apply_all:
@@ -27,14 +46,100 @@ es:
       confirm_button: Restablecer caché
       confirm_title: "¿Restablecer caché de IA?"
       success: Se está limpiando la caché de IA. Esto puede tardar unos momentos.
+    condition:
+      and: y
+      enter_a_value: Introduce un valor
     condition_filters:
+      transaction_account:
+        label: Cuenta
+      transaction_amount:
+        label: Monto
+      transaction_category:
+        label: Categoría
+      transaction_details:
+        label: Detalles
+      transaction_merchant:
+        label: Comercio
+      transaction_name:
+        label: Nombre de la transacción
+      transaction_notes:
+        label: Notas
       transaction_type:
         equal_to: Igual a
         expense: Gasto
         income: Ingreso
+        label: Tipo de transacción
         transfer: Transferencia
+    condition_group:
+      match: coincida con
+      of_the_following: de las siguientes condiciones
+    confirm:
+      ai_cost_title: Estimación de costes de IA
+      apply_button: Confirmar cambios
+      body: Estás a punto de aplicar esta regla a
+      body_criteria: que cumplen los criterios especificados. Por favor, confirma
+        si deseas continuar con este cambio.
+      title: Confirmar cambios
+      title_named: 'Confirmar cambios a "%{name}"'
+    cta:
+      create_rule: Crear regla
+      description: Podés crear una regla para categorizar automáticamente transacciones
+        como esta
+      dismiss: Descartar
+      dont_show_again: No volver a mostrar
+      updated_to: Actualizado a %{category}
+    edit:
+      back_to_rules: Volver a reglas
+      title: 'Editar regla de %{resource_type}'
+      title_named: 'Editar regla de %{resource_type} "%{name}"'
+    form:
+      add_action: Agregar acción
+      add_condition: Agregar condición
+      add_condition_group: Agregar grupo de condiciones
+      all_past_and_future: Todas las %{resource_type}s pasadas y futuras
+      enter_a_name: Introduce un nombre para esta regla
+      for: PARA
+      if: SI
+      name_optional: Nombre de la regla (opcional)
+      starting_from: A partir de
+      then: ENTONCES
+    index:
+      ai_rules_cost_warning: Las acciones de reglas con IA tienen un costo. Filtrá
+        lo más específico posible para evitar costos innecesarios.
+      delete_all: Eliminar todas las reglas
+      empty_description: Configurá reglas para ejecutar acciones sobre tus transacciones
+        y otros datos en cada sincronización de cuenta.
+      empty_title: Todavía no hay reglas
+      new_rule: Nueva regla
+      sort_by: Ordenar por
+      sort_name: Nombre
+      sort_updated_at: Última actualización
+      title: Reglas
+      toggle_sort: Cambiar orden
+    item:
+      and_more_actions:
+        one: y %{count} acción más
+        other: y %{count} acciones más
+      and_more_conditions:
+        one: y %{count} condición más
+        other: y %{count} condiciones más
+      delete: Eliminar
+      edit: Editar
+      on_or_after: '%{resource_type}s el %{date} o después'
+      reapply: Volver a aplicar regla
+      to: a
+    new:
+      title: 'Nueva regla de %{resource_type}'
     no_action: Sin acción
     no_condition: Sin condición
+    operators:
+      contains: Contiene
+      equal_to: Igual a
+      greater_or_equal_to: Mayor o igual que
+      greater_than: Mayor que
+      is_empty: Está vacío
+      less_or_equal_to: Menor o igual que
+      less_than: Menor que
     recent_runs:
       columns:
         date_time: Fecha/Hora
