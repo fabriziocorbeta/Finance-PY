@@ -27,7 +27,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -499,44 +498,49 @@ private fun SankeyCanvasLayout(
                 val srcLayout = nodeLayouts[link.source] ?: return@forEach
                 val dstLayout = nodeLayouts[link.target] ?: return@forEach
 
+                // Banda rellena que ahusa del grosor real del link en cada
+                // extremo (proporcional a su value dentro del stack del
+                // nodo) -- igual que d3.sankeyLinkHorizontal en la web, no
+                // una línea de ancho fijo por el centro del nodo.
                 val outgoingLinksForSrc = outgoingMap[link.source] ?: emptyList()
                 val incomingLinksForDst = incomingMap[link.target] ?: emptyList()
 
-                val srcIndexInOutgoing = outgoingLinksForSrc.indexOf(link).coerceAtLeast(0)
-                val dstIndexInIncoming = incomingLinksForDst.indexOf(link).coerceAtLeast(0)
+                val srcIdx = outgoingLinksForSrc.indexOfFirst { it === link }.coerceAtLeast(0)
+                val dstIdx = incomingLinksForDst.indexOfFirst { it === link }.coerceAtLeast(0)
 
-                val srcY = if (outgoingLinksForSrc.size > 1) {
-                    srcLayout.y + (srcIndexInOutgoing + 0.5f) * (srcLayout.height / outgoingLinksForSrc.size)
-                } else {
-                    srcLayout.centerY
-                }
+                val srcTotal = outgoingLinksForSrc.sumOf { it.value }.let { if (it <= 0.0) 1.0 else it }
+                val dstTotal = incomingLinksForDst.sumOf { it.value }.let { if (it <= 0.0) 1.0 else it }
 
-                val dstY = if (incomingLinksForDst.size > 1) {
-                    dstLayout.y + (dstIndexInIncoming + 0.5f) * (dstLayout.height / incomingLinksForDst.size)
-                } else {
-                    dstLayout.centerY
-                }
+                val srcOffset = outgoingLinksForSrc.take(srcIdx).sumOf { it.value }
+                val dstOffset = incomingLinksForDst.take(dstIdx).sumOf { it.value }
+
+                val srcY0 = srcLayout.y + (srcOffset / srcTotal * srcLayout.height).toFloat()
+                val srcThickness = (link.value / srcTotal * srcLayout.height).toFloat().coerceAtLeast(1.5f)
+                val srcY1 = srcY0 + srcThickness
+
+                val dstY0 = dstLayout.y + (dstOffset / dstTotal * dstLayout.height).toFloat()
+                val dstThickness = (link.value / dstTotal * dstLayout.height).toFloat().coerceAtLeast(1.5f)
+                val dstY1 = dstY0 + dstThickness
 
                 val startX = srcLayout.x + barWidth
                 val endX = dstLayout.x
                 val dx = (endX - startX).coerceAtLeast(4f)
+                val cx = dx * 0.5f
 
                 val path = Path().apply {
-                    moveTo(startX, srcY)
-                    cubicTo(
-                        startX + dx * 0.5f, srcY,
-                        startX + dx * 0.5f, dstY,
-                        endX, dstY
-                    )
+                    moveTo(startX, srcY0)
+                    cubicTo(startX + cx, srcY0, startX + cx, dstY0, endX, dstY0)
+                    lineTo(endX, dstY1)
+                    cubicTo(startX + cx, dstY1, startX + cx, srcY1, startX, srcY1)
+                    close()
                 }
 
-                val strokeW = (minOf(srcLayout.height, dstLayout.height) * 0.6f).coerceIn(2f, 18f)
                 val rawLinkColor = parseColorString(
                     link.color, defaultColor, successColor, destructiveColor, warningColor, primaryColor
                 )
                 val linkColor = rawLinkColor.copy(alpha = 0.4f)
 
-                drawPath(path = path, color = linkColor, style = Stroke(width = strokeW))
+                drawPath(path = path, color = linkColor)
             }
         }
 
