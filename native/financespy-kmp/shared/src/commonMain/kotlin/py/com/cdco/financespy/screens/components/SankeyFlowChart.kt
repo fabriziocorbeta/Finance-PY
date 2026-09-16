@@ -499,7 +499,20 @@ private fun SankeyCanvasLayout(
                 )
             }
 
-            links.forEach { link ->
+            // Dibuja primero los hilos que saltan varias columnas (ej.
+            // "Salario" directo a "Flujo de caja", sin pasar por
+            // "Negocio") para que queden detrás de los hilos cortos entre
+            // columnas vecinas -- si no, el cruce entre un hilo largo y
+            // uno corto arma un pico filoso en vez de leerse como dos
+            // capas separadas, igual que pasa en la web con el z-order de
+            // los links.
+            val orderedLinks = links.sortedByDescending { link ->
+                val srcLayer = layerMap[link.source] ?: centerLayer
+                val dstLayer = layerMap[link.target] ?: centerLayer
+                kotlin.math.abs(dstLayer - srcLayer)
+            }
+
+            orderedLinks.forEach { link ->
                 val srcLayout = nodeLayouts[link.source] ?: return@forEach
                 val dstLayout = nodeLayouts[link.target] ?: return@forEach
 
