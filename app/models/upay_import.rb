@@ -4,15 +4,16 @@
 # que a diferencia de TransactionImport no hay wizard de mapeo de columnas:
 # se parsea directo por nombre de columna conocido.
 #
+# El bruto de la venta ya lo carga el usuario a mano vía Sale (venta con
+# tarjeta) -- este import NUNCA genera un ingreso, solo existe para sacar la
+# comisión real que cobró la procesadora, algo que ninguna Sale registra.
+#
 # Por cada fila se generan hasta 2 movimientos:
-#   1. Ingreso por el monto bruto de la venta, salvo que la fila matchee con
-#      una Sale ya completada en el sistema (misma family, mismo total,
-#      fecha cercana) -- en ese caso Sale#complete! ya creó ese ingreso, así
-#      que acá solo se anota la conciliación en el Entry de esa Sale para no
-#      duplicar el ingreso.
+#   1. Si la fila matchea con una Sale ya completada en el sistema (misma
+#      family, mismo total, fecha cercana), se anota la conciliación en el
+#      Entry de esa Sale (solo una nota, no mueve plata).
 #   2. Egreso por la comisión total que cobró la procesadora (comisión + IVA
-#      comisión + retención + IVA retención) -- esto la venta nunca lo
-#      registra, sea cual sea el camino.
+#      comisión + retención + IVA retención).
 class UpayImport < Import
   RECONCILE_WINDOW = 3.days
 
@@ -30,11 +31,7 @@ class UpayImport < Import
         date = row.date_iso
         matched_sale = matching_sale_for(gross, date)
 
-        if matched_sale
-          annotate_matched_sale(matched_sale, row)
-        else
-          new_transactions << income_transaction(row, gross, date)
-        end
+        annotate_matched_sale(matched_sale, row) if matched_sale
 
         if commission > 0
           new_transactions << commission_transaction(row, commission, date)
@@ -142,22 +139,6 @@ class UpayImport < Import
       sale.entry.update!(notes: combined_notes)
     end
 
-    def income_transaction(row, gross, date)
-      Transaction.new(
-        category: sale_category,
-        entry: Entry.new(
-          account: account,
-          date: date,
-          amount: -gross,
-          name: row.name,
-          currency: row.currency,
-          notes: row.notes,
-          import: self,
-          import_locked: true
-        )
-      )
-    end
-
     def commission_transaction(row, commission, date)
       Transaction.new(
         category: commission_category,
@@ -172,13 +153,6 @@ class UpayImport < Import
           import_locked: true
         )
       )
-    end
-
-    def sale_category
-      @sale_category ||= family.categories.find_or_create_by!(name: "Ventas con tarjeta") do |category|
-        category.color = "#10b981"
-        category.lucide_icon = "credit-card"
-      end
     end
 
     def commission_category
