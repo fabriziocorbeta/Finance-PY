@@ -319,8 +319,8 @@ class Api::V1::ImportsControllerTest < ActionDispatch::IntegrationTest
 
     import.reload
     assert_equal "complete", import.status
-    # 2 filas en el CSV, ninguna matchea una Sale -> ingreso + comisión por fila
-    assert_equal 4, @account.entries.where(import: import).count
+    # 2 filas en el CSV, ninguna matchea una Sale -> solo comisión por fila (nunca ingreso)
+    assert_equal 2, @account.entries.where(import: import).count
   end
 
   test "should instantiate RuleImport before generating rows" do
