@@ -2,7 +2,6 @@ package py.com.cdco.financespy.screens.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -283,35 +281,6 @@ internal fun computeColumnWidths(
     return ColumnWidths(labelWidthPx = labelWidthPx, centerLabelWidthPx = centerW)
 }
 
-// Ancho total "natural" del gráfico entero (todas las columnas a su ancho
-// medido, sin recortar) -- usado para decidir si entra en la pantalla tal
-// cual o si hace falta hacerlo scrolleable.
-internal fun computeNaturalChartWidthPx(
-    layerInfo: SankeyLayerInfo,
-    columnWidths: ColumnWidths,
-    density: Density
-): Float {
-    // Márgenes/gaps recortados al mínimo legible -- cada dp que se ahorra
-    // acá es un dp más de ancho real para el texto de las columnas.
-    val barWidth = with(density) { 8.dp.toPx() }
-    val edgeMargin = with(density) { 10.dp.toPx() }
-    val barLabelGap = with(density) { 2.dp.toPx() }
-    val interSlotGap = with(density) { 8.dp.toPx() }
-    val minCenterSlot = with(density) { 50.dp.toPx() }
-
-    var total = edgeMargin * 2
-    for (layer in 0 until layerInfo.centerLayer) {
-        val labelW = columnWidths.labelWidthPx[layer] ?: 0f
-        total += barWidth + barLabelGap + labelW + interSlotGap
-    }
-    total += maxOf(columnWidths.centerLabelWidthPx, minCenterSlot) + barLabelGap * 2
-    for (layer in (layerInfo.centerLayer + 1)..layerInfo.maxLayer) {
-        val labelW = columnWidths.labelWidthPx[layer] ?: 0f
-        total += interSlotGap + labelW + barLabelGap + barWidth
-    }
-    return total
-}
-
 @Composable
 fun SankeyFlowChart(
     sankeyDto: CashflowSankeyDto?,
@@ -365,17 +334,14 @@ fun SankeyFlowChart(
                 // 10sp cada label 2-líneas ocupa menos alto real.
                 val chartHeight = maxOf(280.dp, (maxNodesInColumn * 48).dp)
 
-                // Ancho por columna medido de verdad (auto-width): cada
-                // columna recibe exactamente el ancho que necesita su texto
-                // más largo, en vez de repartir un ancho fijo/uniforme entre
-                // todas -- eso nunca convergía con 4 columnas (ingresos con
-                // sub-categorías + gastos), sin importar cuánto se achicara
-                // la etiqueta central o se sacara el modo compacto (ver
-                // historial de este archivo, van 3 intentos previos sobre
-                // exactamente este problema). Si el ancho natural resultante
-                // entra en la pantalla, se centra con el margen sobrante; si
-                // no entra, el gráfico crece y el Box de abajo lo hace
-                // scrolleable horizontalmente.
+                // 10mo intento -- pedido explícito de duplicar el layout de
+                // la web (d3-sankey): columnas repartidas parejo en el ancho
+                // fijo de pantalla (como el .extent() de d3), nunca creciendo
+                // por el contenido. Las etiquetas se dibujan sueltas al lado
+                // de cada barra sin caja que las recorte (overflow=Visible
+                // en SankeyNodeLabel) -- si dos columnas quedan cerca el
+                // texto se puede superponer, igual que en la web, pero
+                // siempre entra todo en una sola pantalla sin scroll.
                 val layerInfo = remember(cappedDto) { computeSankeyLayers(cappedDto) }
                 val textMeasurer = rememberTextMeasurer()
                 // Fuente propia del Sankey, mas chica que labelSmall/bodySmall
@@ -390,24 +356,14 @@ fun SankeyFlowChart(
                 val columnWidths = remember(cappedDto, layerInfo, currency, labelSmallStyle, bodySmallStyle, density) {
                     computeColumnWidths(cappedDto, layerInfo, currency, textMeasurer, labelSmallStyle, bodySmallStyle, density)
                 }
-                val naturalWidthPx = remember(columnWidths, layerInfo, density) {
-                    computeNaturalChartWidthPx(layerInfo, columnWidths, density)
-                }
-                val naturalWidthDp = with(density) { naturalWidthPx.toDp() }
 
-                BoxWithConstraints {
-                    val chartWidth = maxOf(maxWidth, naturalWidthDp)
-                    Box(modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                        SankeyCanvasLayout(
-                            sankeyDto = cappedDto,
-                            currency = currency,
-                            layerInfo = layerInfo,
-                            columnWidths = columnWidths,
-                            naturalWidthPx = naturalWidthPx,
-                            modifier = Modifier.width(chartWidth).height(chartHeight)
-                        )
-                    }
-                }
+                SankeyCanvasLayout(
+                    sankeyDto = cappedDto,
+                    currency = currency,
+                    layerInfo = layerInfo,
+                    columnWidths = columnWidths,
+                    modifier = Modifier.fillMaxWidth().height(chartHeight)
+                )
             }
         }
     }
@@ -419,7 +375,6 @@ private fun SankeyCanvasLayout(
     currency: String,
     layerInfo: SankeyLayerInfo,
     columnWidths: ColumnWidths,
-    naturalWidthPx: Float,
     modifier: Modifier = Modifier
 ) {
     val nodes = sankeyDto.nodes
@@ -451,46 +406,42 @@ private fun SankeyCanvasLayout(
         val widthPx = constraints.maxWidth.toFloat()
         val heightPx = constraints.maxHeight.toFloat()
 
-        // Deben coincidir exactamente con los mismos valores en
-        // computeNaturalChartWidthPx -- si difieren, el ancho 'natural'
-        // calculado para decidir scroll no corresponde al layout real.
         val barWidth = with(density) { 8.dp.toPx() }
         val edgeMargin = with(density) { 10.dp.toPx() }
         val barLabelGap = with(density) { 2.dp.toPx() }
-        val interSlotGap = with(density) { 8.dp.toPx() }
-        val minCenterSlot = with(density) { 50.dp.toPx() }
+        val minLabelW = with(density) { MIN_LABEL_WIDTH_DP.dp.toPx() }
 
-        // Si el ancho real disponible (widthPx) es mayor al natural (el
-        // gráfico entra sobrado en la card), el sobrante se reparte como
-        // margen extra a los costados en vez de estirar las columnas -- el
-        // texto siempre queda a su ancho medido, nunca más ancho de lo que
-        // necesita ni más angosto.
-        val extraSpace = (widthPx - naturalWidthPx).coerceAtLeast(0f)
-        val effectiveEdgeMargin = edgeMargin + extraSpace / 2f
+        // Columnas repartidas parejo en el ancho fijo disponible -- igual
+        // que d3-sankey con un .extent() fijo: la posición de cada capa
+        // depende solo de su profundidad, nunca del ancho del texto que
+        // muestra. Con solo 1 profundidad (maxLayer=0) todo va a
+        // edgeMargin.
+        val totalDepths = maxLayer + 1
+        val usableWidth = (widthPx - 2 * edgeMargin - barWidth).coerceAtLeast(barWidth)
+        val depthStep = if (totalDepths > 1) usableWidth / (totalDepths - 1) else 0f
 
-        val barXByLayer = mutableMapOf<Int, Float>()
+        val barXByLayer = (0..maxLayer).associateWith { layer -> edgeMargin + layer * depthStep }
+
+        // Ancho "nominal" de la etiqueta por columna, solo para saber dónde
+        // arrancar/terminar su caja -- no recorta el texto (SankeyNodeLabel
+        // usa overflow=Visible), así que un nombre largo puede pintar más
+        // allá de este ancho hacia la columna vecina, igual que en la web.
+        val nominalLabelW = (depthStep - barWidth - 2 * barLabelGap).coerceAtLeast(minLabelW)
+
         val labelBoxByLayer = mutableMapOf<Int, Pair<Float, Float>>()
-
-        var cursor = effectiveEdgeMargin
-        for (layer in 0 until centerLayer) {
-            val labelW = columnWidths.labelWidthPx[layer] ?: 0f
-            barXByLayer[layer] = cursor
-            labelBoxByLayer[layer] = (cursor + barWidth + barLabelGap) to labelW
-            cursor += barWidth + barLabelGap + labelW + interSlotGap
+        (0..maxLayer).forEach { layer ->
+            if (layer == centerLayer) return@forEach
+            val barX = barXByLayer[layer] ?: edgeMargin
+            if (layer < centerLayer) {
+                labelBoxByLayer[layer] = (barX + barWidth + barLabelGap) to nominalLabelW
+            } else {
+                labelBoxByLayer[layer] = (barX - barLabelGap - nominalLabelW) to nominalLabelW
+            }
         }
-        val centerSlot = maxOf(columnWidths.centerLabelWidthPx, minCenterSlot) + barLabelGap * 2
-        val centerBarX = cursor + (centerSlot - barWidth) / 2f
-        val centerLabelX = cursor + (centerSlot - columnWidths.centerLabelWidthPx) / 2f
-        barXByLayer[centerLayer] = centerBarX
-        labelBoxByLayer[centerLayer] = centerLabelX to columnWidths.centerLabelWidthPx
-        cursor += centerSlot
-        for (layer in (centerLayer + 1)..maxLayer) {
-            val labelW = columnWidths.labelWidthPx[layer] ?: 0f
-            cursor += interSlotGap
-            labelBoxByLayer[layer] = cursor to labelW
-            cursor += labelW + barLabelGap
-            barXByLayer[layer] = cursor
-            cursor += barWidth
+        labelBoxByLayer[centerLayer] = run {
+            val barX = barXByLayer[centerLayer] ?: edgeMargin
+            val centerW = columnWidths.centerLabelWidthPx
+            (barX + barWidth / 2f - centerW / 2f) to centerW
         }
 
         val nodesByLayer = nodes.indices.groupBy { layerMap[it] ?: centerLayer }
@@ -500,7 +451,7 @@ private fun SankeyCanvasLayout(
             val colNodeIndices = nodesByLayer[layer] ?: emptyList()
             if (colNodeIndices.isEmpty()) return@forEach
 
-            val colX = barXByLayer[layer] ?: effectiveEdgeMargin
+            val colX = barXByLayer[layer] ?: edgeMargin
             val colTotalVal = colNodeIndices.sumOf { nodes[it].value }.let { if (it <= 0) 1.0 else it }
 
             val verticalMargin = with(density) { 20.dp.toPx() }
