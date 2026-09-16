@@ -669,7 +669,7 @@ private fun SankeyCanvasLayout(
         // cajas se solapan horizontalmente, en vez de un caso especial
         // solo para el nodo central.
         val allIndices = nodes.indices.toList()
-        repeat(4) {
+        repeat(8) {
             for (i in allIndices.indices) {
                 for (j in i + 1 until allIndices.size) {
                     val a = allIndices[i]
@@ -691,13 +691,33 @@ private fun SankeyCanvasLayout(
                     if (!vertOverlap) continue
 
                     val overlapAmount = (minSpacingPx + minOf(ay + ah, by + bh) - maxOf(ay, by)).coerceAtLeast(0f)
-                    val push = overlapAmount / 2f
-                    if (ay <= by) {
-                        ay = (ay - push).coerceIn(minYPx, maxYPx - ah)
-                        by = (by + push).coerceIn(minYPx, maxYPx - bh)
-                    } else {
-                        by = (by - push).coerceIn(minYPx, maxYPx - bh)
-                        ay = (ay + push).coerceIn(minYPx, maxYPx - ah)
+
+                    // El centro nunca se mueve -- su bar está centrado a
+                    // propósito (pedido explícito) y con 5 categorías de
+                    // gasto ahora compartiendo la columna vecina, dejar
+                    // que el resolver lo empuje a él también generaba
+                    // ping-pong entre pares que no convergía en pocas
+                    // pasadas. Si uno de los dos es el centro, se empuja
+                    // SIEMPRE al otro, el overlap completo.
+                    when {
+                        a == centerIdx -> {
+                            by = if (by >= ay) (by + overlapAmount).coerceIn(minYPx, maxYPx - bh)
+                                 else (by - overlapAmount).coerceIn(minYPx, maxYPx - bh)
+                        }
+                        b == centerIdx -> {
+                            ay = if (ay >= by) (ay + overlapAmount).coerceIn(minYPx, maxYPx - ah)
+                                 else (ay - overlapAmount).coerceIn(minYPx, maxYPx - ah)
+                        }
+                        else -> {
+                            val push = overlapAmount / 2f
+                            if (ay <= by) {
+                                ay = (ay - push).coerceIn(minYPx, maxYPx - ah)
+                                by = (by + push).coerceIn(minYPx, maxYPx - bh)
+                            } else {
+                                by = (by - push).coerceIn(minYPx, maxYPx - bh)
+                                ay = (ay + push).coerceIn(minYPx, maxYPx - ah)
+                            }
+                        }
                     }
                     labelYMap[a] = with(density) { ay.toDp() }
                     labelYMap[b] = with(density) { by.toDp() }
