@@ -245,7 +245,11 @@ internal data class ColumnWidths(
 )
 
 private const val MIN_LABEL_WIDTH_DP = 40
-private const val MAX_LABEL_WIDTH_DP = 200
+// Sube de 200 a 220 -- con la reserva del punto de color (ver
+// dotAndSpacerPx en computeColumnWidths) un nombre de una sola palabra
+// como "Transporte" que ya estaba justo en el tope de 200dp volvía a
+// quedar cortado por el coerceIn de abajo, esta vez por 1-2 caracteres.
+private const val MAX_LABEL_WIDTH_DP = 220
 
 // Ancho "objetivo" por nombre antes de recurrir a abreviar -- nombres de
 // 1-2 palabras cortas (la mayoría) nunca lo tocan. Solo entra en juego
