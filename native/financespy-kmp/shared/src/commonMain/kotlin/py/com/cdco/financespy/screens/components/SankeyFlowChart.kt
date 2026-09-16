@@ -237,53 +237,10 @@ internal fun capNodesPerLayer(sankeyDto: CashflowSankeyDto, maxPerLayer: Int = 6
 // constante en dp y recortar lo que no entra.
 internal data class ColumnWidths(
     val labelWidthPx: Map<Int, Float>,
-    val centerLabelWidthPx: Float,
-    // Nombre a mostrar por nodo -- puede ser el original o una versión
-    // abreviada (ver abbreviateSankeyName) si el original no entraba en
-    // una línea sin scroll ni fuente ilegible.
-    val displayNames: Map<Int, String>
+    val centerLabelWidthPx: Float
 )
 
 private const val MIN_LABEL_WIDTH_DP = 40
-// Sube de 200 a 220 -- con la reserva del punto de color (ver
-// dotAndSpacerPx en computeColumnWidths) un nombre de una sola palabra
-// como "Transporte" que ya estaba justo en el tope de 200dp volvía a
-// quedar cortado por el coerceIn de abajo, esta vez por 1-2 caracteres.
-private const val MAX_LABEL_WIDTH_DP = 220
-
-// Ancho "objetivo" por nombre antes de recurrir a abreviar -- nombres de
-// 1-2 palabras cortas (la mayoría) nunca lo tocan. Solo entra en juego
-// con nombres largos tipo "Venta de Mercaderías" o "Pago de préstamos"
-// que, incluso a 10sp, no entran en una columna sin forzar scroll en
-// cualquier teléfono real con 4 columnas -- confirmado con captura real
-// comparando contra la web.
-private const val NAME_TARGET_WIDTH_DP = 95
-private val SANKEY_CONNECTOR_WORDS = setOf("de", "del", "la", "el", "los", "las", "y")
-
-// Abrevia un nombre largo en 2 pasos, cada uno cortando por palabra
-// completa (nunca a mitad de palabra como hace el ellipsis por defecto):
-// 1) saca conectores cortos ("Venta de Mercaderías" -> "Venta Mercaderías")
-// 2) si sigue sin entrar, abrevia las palabras que no sean la primera a
-//    4 letras + "." ("Venta Mercaderías" -> "Venta Merc.")
-// Si ni así entra, devuelve el mejor intento y que el Text con
-// maxLines=1 + ellipsis se encargue como último recurso.
-internal fun abbreviateSankeyName(name: String, textMeasurer: TextMeasurer, style: TextStyle, maxWidthPx: Float): String {
-    fun widthOf(s: String) = textMeasurer.measure(s, style).size.width.toFloat()
-    if (widthOf(name) <= maxWidthPx) return name
-
-    val words = name.split(" ").filter { it.isNotBlank() }
-    if (words.size <= 1) return name
-
-    val withoutConnectors = words.filterIndexed { i, w -> i == 0 || w.lowercase() !in SANKEY_CONNECTOR_WORDS }
-    var candidate = withoutConnectors.joinToString(" ")
-    if (widthOf(candidate) <= maxWidthPx) return candidate
-
-    val abbreviated = withoutConnectors.mapIndexed { i, w ->
-        if (i == 0 || w.length <= 4) w else w.take(4) + "."
-    }
-    candidate = abbreviated.joinToString(" ")
-    return candidate
-}
 
 internal fun computeColumnWidths(
     sankeyDto: CashflowSankeyDto,
@@ -297,20 +254,17 @@ internal fun computeColumnWidths(
     val nodes = sankeyDto.nodes
     val nodesByLayer = nodes.indices.groupBy { layerInfo.layerMap[it] ?: layerInfo.centerLayer }
     val minPx = with(density) { MIN_LABEL_WIDTH_DP.dp.toPx() }
-    val maxPx = with(density) { MAX_LABEL_WIDTH_DP.dp.toPx() }
-    val nameTargetPx = with(density) { NAME_TARGET_WIDTH_DP.dp.toPx() }
     // SankeyNodeLabel antepone un punto de color (6dp) + spacer (4dp) al
     // texto en columnas no centrales -- si no se reserva ese ancho acá, el
-    // Text termina con 10dp menos de lo medido y siempre trunca con
-    // ellipsis, sin importar cuánto se abrevie el nombre.
+    // Text termina con 10dp menos de lo medido y trunca.
     val dotAndSpacerPx = with(density) { 10.dp.toPx() }
 
-    val displayNames = nodes.indices.associateWith { idx ->
-        abbreviateSankeyName(nodes[idx].name, textMeasurer, labelSmallStyle, nameTargetPx)
-    }
-
+    // Sin tope de ancho ni abreviación: la web (d3-sankey) muestra los
+    // nombres siempre completos, tolerando que las columnas vecinas se
+    // acerquen o el texto se superponga visualmente antes que cortar
+    // información -- reproducir ese comportamiento acá en vez de abreviar.
     fun measureNodeWidth(idx: Int, reserveDotWidth: Boolean): Float {
-        val nameW = textMeasurer.measure(displayNames[idx] ?: nodes[idx].name, labelSmallStyle).size.width.toFloat()
+        val nameW = textMeasurer.measure(nodes[idx].name, labelSmallStyle).size.width.toFloat()
         val valW = textMeasurer.measure(formatMoney(nodes[idx].value, currency), bodySmallStyle).size.width.toFloat()
         val reserve = if (reserveDotWidth) dotAndSpacerPx else 0f
         return maxOf(nameW, valW) + reserve
@@ -321,12 +275,12 @@ internal fun computeColumnWidths(
         if (layer == layerInfo.centerLayer) return@forEach
         val indices = nodesByLayer[layer] ?: emptyList()
         val maxW = indices.maxOfOrNull { measureNodeWidth(it, reserveDotWidth = true) } ?: minPx
-        labelWidthPx[layer] = maxW.coerceIn(minPx, maxPx)
+        labelWidthPx[layer] = maxW.coerceAtLeast(minPx)
     }
 
-    val centerW = measureNodeWidth(layerInfo.centerIdx, reserveDotWidth = false).coerceIn(minPx, maxPx)
+    val centerW = measureNodeWidth(layerInfo.centerIdx, reserveDotWidth = false).coerceAtLeast(minPx)
 
-    return ColumnWidths(labelWidthPx = labelWidthPx, centerLabelWidthPx = centerW, displayNames = displayNames)
+    return ColumnWidths(labelWidthPx = labelWidthPx, centerLabelWidthPx = centerW)
 }
 
 // Ancho total "natural" del gráfico entero (todas las columnas a su ancho
@@ -649,8 +603,7 @@ private fun SankeyCanvasLayout(
         // necesita en 2 líneas, así que siempre se usa ese modo.
         val nodeLabelHeightsPx = nodes.indices.associateWith { idx ->
             val node = nodes[idx]
-            val displayName = columnWidths.displayNames[idx] ?: node.name
-            val titleH = textMeasurer.measure(displayName, labelSmallStyle).size.height
+            val titleH = textMeasurer.measure(node.name, labelSmallStyle).size.height
             val valH = textMeasurer.measure(formatMoney(node.value, currency), bodySmallStyle).size.height
             (titleH + valH).toFloat()
         }
@@ -688,12 +641,7 @@ private fun SankeyCanvasLayout(
 
         Box(modifier = Modifier.fillMaxSize()) {
             nodeLayouts.values.forEach { layout ->
-                // Usa el nombre a mostrar (original o abreviado -- ver
-                // ColumnWidths.displayNames) para que lo que se mide y lo
-                // que se renderiza sea siempre lo mismo.
-                val node = nodes[layout.nodeIdx].let { n ->
-                    columnWidths.displayNames[layout.nodeIdx]?.let { n.copy(name = it) } ?: n
-                }
+                val node = nodes[layout.nodeIdx]
                 val layer = layout.layer
                 val isCenterNode = layout.nodeIdx == centerIdx
 
@@ -895,13 +843,19 @@ private fun SankeyNodeLabel(
             modifier = Modifier.weight(1f, fill = false),
             horizontalAlignment = horizAlignment
         ) {
+            // overflow=Visible + softWrap=false -- igual que la web (d3-sankey
+            // dibuja el texto suelto al lado del nodo, sin caja que lo
+            // recorte): el nombre nunca se corta con ellipsis, en el peor
+            // caso se superpone a la columna vecina antes que perder
+            // información.
             if (isCompact && !isCenter) {
                 Text(
                     text = "${node.name} • ${formatMoney(node.value, currency)}",
                     style = nameStyle,
                     color = FinancePyColors.textPrimary(),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false,
+                    overflow = TextOverflow.Visible,
                     textAlign = textAlign
                 )
             } else {
@@ -910,7 +864,8 @@ private fun SankeyNodeLabel(
                     style = nameStyle,
                     color = FinancePyColors.textPrimary(),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false,
+                    overflow = TextOverflow.Visible,
                     textAlign = textAlign
                 )
                 Text(
@@ -918,7 +873,8 @@ private fun SankeyNodeLabel(
                     style = valueStyle,
                     color = FinancePyColors.textSecondary(),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false,
+                    overflow = TextOverflow.Visible,
                     textAlign = textAlign
                 )
             }
