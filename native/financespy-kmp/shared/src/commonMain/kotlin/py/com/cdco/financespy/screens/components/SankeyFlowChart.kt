@@ -295,26 +295,32 @@ internal fun computeColumnWidths(
     val minPx = with(density) { MIN_LABEL_WIDTH_DP.dp.toPx() }
     val maxPx = with(density) { MAX_LABEL_WIDTH_DP.dp.toPx() }
     val nameTargetPx = with(density) { NAME_TARGET_WIDTH_DP.dp.toPx() }
+    // SankeyNodeLabel antepone un punto de color (6dp) + spacer (4dp) al
+    // texto en columnas no centrales -- si no se reserva ese ancho acá, el
+    // Text termina con 10dp menos de lo medido y siempre trunca con
+    // ellipsis, sin importar cuánto se abrevie el nombre.
+    val dotAndSpacerPx = with(density) { 10.dp.toPx() }
 
     val displayNames = nodes.indices.associateWith { idx ->
         abbreviateSankeyName(nodes[idx].name, textMeasurer, labelSmallStyle, nameTargetPx)
     }
 
-    fun measureNodeWidth(idx: Int): Float {
+    fun measureNodeWidth(idx: Int, reserveDotWidth: Boolean): Float {
         val nameW = textMeasurer.measure(displayNames[idx] ?: nodes[idx].name, labelSmallStyle).size.width.toFloat()
         val valW = textMeasurer.measure(formatMoney(nodes[idx].value, currency), bodySmallStyle).size.width.toFloat()
-        return maxOf(nameW, valW)
+        val reserve = if (reserveDotWidth) dotAndSpacerPx else 0f
+        return maxOf(nameW, valW) + reserve
     }
 
     val labelWidthPx = mutableMapOf<Int, Float>()
     (0..layerInfo.maxLayer).forEach { layer ->
         if (layer == layerInfo.centerLayer) return@forEach
         val indices = nodesByLayer[layer] ?: emptyList()
-        val maxW = indices.maxOfOrNull { measureNodeWidth(it) } ?: minPx
+        val maxW = indices.maxOfOrNull { measureNodeWidth(it, reserveDotWidth = true) } ?: minPx
         labelWidthPx[layer] = maxW.coerceIn(minPx, maxPx)
     }
 
-    val centerW = measureNodeWidth(layerInfo.centerIdx).coerceIn(minPx, maxPx)
+    val centerW = measureNodeWidth(layerInfo.centerIdx, reserveDotWidth = false).coerceIn(minPx, maxPx)
 
     return ColumnWidths(labelWidthPx = labelWidthPx, centerLabelWidthPx = centerW, displayNames = displayNames)
 }
