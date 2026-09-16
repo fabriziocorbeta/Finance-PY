@@ -633,37 +633,49 @@ private fun SankeyCanvasLayout(
             }
         }
 
-        // El label del centro ahora que el nodo está centrado verticalmente
-        // coincide en Y con las columnas vecinas (ej. "Negocio" a la
-        // izquierda, "Transporte" a la derecha) -- ambas caen naturalmente
-        // cerca del medio de la pantalla también. El cálculo de arriba
-        // resuelve colisiones DENTRO de cada columna, no ENTRE columnas
-        // vecinas, así que acá se empuja el label del centro fuera del
-        // rango vertical que ya ocupan sus vecinas inmediatas.
-        run {
-            val centerH = nodeLabelHeightsPx[centerIdx] ?: 36f
-            var centerY = with(density) { (labelYMap[centerIdx] ?: 0.dp).toPx() }
+        // El cálculo de arriba resuelve colisiones DENTRO de cada columna,
+        // no ENTRE columnas vecinas -- y con las capas asignadas por
+        // cantidad de saltos (no por índice fijo) cualquier columna puede
+        // terminar compartiendo rango vertical Y horizontal con su vecina
+        // (no solo el centro: ej. "Transporte" comparte columna con las
+        // categorías de gasto que van directo al centro). Se resuelve
+        // con pasadas de empuje pairwise entre todo par de labels cuyas
+        // cajas se solapan horizontalmente, en vez de un caso especial
+        // solo para el nodo central.
+        val allIndices = nodes.indices.toList()
+        repeat(4) {
+            for (i in allIndices.indices) {
+                for (j in i + 1 until allIndices.size) {
+                    val a = allIndices[i]
+                    val b = allIndices[j]
+                    val layerA = layerMap[a] ?: centerLayer
+                    val layerB = layerMap[b] ?: centerLayer
+                    if (layerA == layerB) continue // ya resuelto por columna arriba
 
-            val neighborRanges = nodes.indices
-                .filter { idx -> idx != centerIdx && (layerMap[idx] == centerLayer - 1 || layerMap[idx] == centerLayer + 1) }
-                .mapNotNull { idx ->
-                    val y = with(density) { (labelYMap[idx] ?: return@mapNotNull null).toPx() }
-                    val h = nodeLabelHeightsPx[idx] ?: 32f
-                    y to (y + h)
+                    val (ax, aw) = labelBoxByLayer[layerA] ?: continue
+                    val (bx, bw) = labelBoxByLayer[layerB] ?: continue
+                    if (!(ax < bx + bw && ax + aw > bx)) continue // sin solape horizontal
+
+                    val ah = nodeLabelHeightsPx[a] ?: 32f
+                    val bh = nodeLabelHeightsPx[b] ?: 32f
+                    var ay = with(density) { (labelYMap[a] ?: 0.dp).toPx() }
+                    var by = with(density) { (labelYMap[b] ?: 0.dp).toPx() }
+
+                    val vertOverlap = ay < by + bh + minSpacingPx && ay + ah > by - minSpacingPx
+                    if (!vertOverlap) continue
+
+                    val overlapAmount = (minSpacingPx + minOf(ay + ah, by + bh) - maxOf(ay, by)).coerceAtLeast(0f)
+                    val push = overlapAmount / 2f
+                    if (ay <= by) {
+                        ay = (ay - push).coerceIn(minYPx, maxYPx - ah)
+                        by = (by + push).coerceIn(minYPx, maxYPx - bh)
+                    } else {
+                        by = (by - push).coerceIn(minYPx, maxYPx - bh)
+                        ay = (ay + push).coerceIn(minYPx, maxYPx - ah)
+                    }
+                    labelYMap[a] = with(density) { ay.toDp() }
+                    labelYMap[b] = with(density) { by.toDp() }
                 }
-
-            fun overlaps(y0: Float, y1: Float) =
-                neighborRanges.any { (ry0, ry1) -> y0 < ry1 + minSpacingPx && y1 > ry0 - minSpacingPx }
-
-            if (overlaps(centerY, centerY + centerH)) {
-                val belowY = (neighborRanges.maxOfOrNull { it.second } ?: centerY) + minSpacingPx
-                val aboveY = (neighborRanges.minOfOrNull { it.first } ?: centerY) - minSpacingPx - centerH
-                centerY = when {
-                    belowY + centerH <= maxYPx -> belowY
-                    aboveY >= minYPx -> aboveY
-                    else -> belowY.coerceIn(minYPx, maxYPx - centerH)
-                }
-                labelYMap[centerIdx] = with(density) { centerY.toDp() }
             }
         }
 
