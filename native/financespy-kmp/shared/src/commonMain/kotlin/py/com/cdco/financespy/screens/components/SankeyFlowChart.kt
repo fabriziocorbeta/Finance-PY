@@ -607,6 +607,40 @@ private fun SankeyCanvasLayout(
             }
         }
 
+        // El label del centro ahora que el nodo está centrado verticalmente
+        // coincide en Y con las columnas vecinas (ej. "Negocio" a la
+        // izquierda, "Transporte" a la derecha) -- ambas caen naturalmente
+        // cerca del medio de la pantalla también. El cálculo de arriba
+        // resuelve colisiones DENTRO de cada columna, no ENTRE columnas
+        // vecinas, así que acá se empuja el label del centro fuera del
+        // rango vertical que ya ocupan sus vecinas inmediatas.
+        run {
+            val centerH = nodeLabelHeightsPx[centerIdx] ?: 36f
+            var centerY = with(density) { (labelYMap[centerIdx] ?: 0.dp).toPx() }
+
+            val neighborRanges = nodes.indices
+                .filter { idx -> idx != centerIdx && (layerMap[idx] == centerLayer - 1 || layerMap[idx] == centerLayer + 1) }
+                .mapNotNull { idx ->
+                    val y = with(density) { (labelYMap[idx] ?: return@mapNotNull null).toPx() }
+                    val h = nodeLabelHeightsPx[idx] ?: 32f
+                    y to (y + h)
+                }
+
+            fun overlaps(y0: Float, y1: Float) =
+                neighborRanges.any { (ry0, ry1) -> y0 < ry1 + minSpacingPx && y1 > ry0 - minSpacingPx }
+
+            if (overlaps(centerY, centerY + centerH)) {
+                val belowY = (neighborRanges.maxOfOrNull { it.second } ?: centerY) + minSpacingPx
+                val aboveY = (neighborRanges.minOfOrNull { it.first } ?: centerY) - minSpacingPx - centerH
+                centerY = when {
+                    belowY + centerH <= maxYPx -> belowY
+                    aboveY >= minYPx -> aboveY
+                    else -> belowY.coerceIn(minYPx, maxYPx - centerH)
+                }
+                labelYMap[centerIdx] = with(density) { centerY.toDp() }
+            }
+        }
+
         Box(modifier = Modifier.fillMaxSize()) {
             nodeLayouts.values.forEach { layout ->
                 val node = nodes[layout.nodeIdx]
