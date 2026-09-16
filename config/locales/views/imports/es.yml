@@ -277,7 +277,7 @@ es:
       map: Mapear
       select: Seleccionar
       upload: Subir
-      progress: "Paso %{current} de %{total}"
+      progress: "Paso %{step} de %{total}"
     table:
       empty: Aún no hay importaciones.
       header:
