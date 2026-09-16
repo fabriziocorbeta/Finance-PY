@@ -466,14 +466,19 @@ private fun SankeyCanvasLayout(
                     ((node.value / colTotalVal) * availableH).toFloat().coerceAtLeast(8f)
                 }
 
+                // "Flujo de caja" es columna de un solo nodo -- centrarlo
+                // en el alto total en vez de heredar el mismo anclaje
+                // arriba que usan las columnas apiladas.
+                val nodeY = if (nodeIdx == centerIdx) (heightPx - nodeH) / 2f else currentY
+
                 val nodeLayout = NodeLayout(
                     nodeIdx = nodeIdx,
                     layer = layer,
                     x = colX,
-                    y = currentY,
+                    y = nodeY,
                     width = barWidth,
                     height = nodeH,
-                    centerY = currentY + nodeH / 2f
+                    centerY = nodeY + nodeH / 2f
                 )
                 nodeLayouts[nodeIdx] = nodeLayout
                 currentY += nodeH + gap
