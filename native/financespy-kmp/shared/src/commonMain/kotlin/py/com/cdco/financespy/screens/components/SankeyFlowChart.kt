@@ -128,17 +128,27 @@ internal fun computeSankeyLayers(sankeyDto: CashflowSankeyDto): SankeyLayerInfo 
 
         if (isIncome) {
             val hasIncoming = incomingMap[idx]?.isNotEmpty() == true
-            if (hasIncomeSubs) {
-                layerMap[idx] = if (hasIncoming) 1 else 0
-            } else {
-                layerMap[idx] = 0
+            // Una categoría como "Salario" sin subcategorías puede, aun
+            // así, ir DIRECTO al centro (no ser subcategoría de nadie) --
+            // en ese caso necesita 1 solo salto, igual que "Negocio", y
+            // no debe compartir la columna lejana con categorías que sí
+            // son subcategorías de otra (ej. "Venta de Mercaderías" bajo
+            // "Negocio"). Meterla en esa columna lejana fuerza que su
+            // link salte 2 columnas de ancho, cruzando por detrás del
+            // link corto vecino y generando el pico feo en el cruce.
+            val linksToCenterDirectly = outgoingMap[idx]?.any { it.target == centerIdx } == true
+            layerMap[idx] = when {
+                !hasIncomeSubs -> 0
+                hasIncoming || linksToCenterDirectly -> centerLayer - 1
+                else -> 0
             }
         } else {
             val hasOutgoing = outgoingMap[idx]?.isNotEmpty() == true
-            if (hasOutgoing) {
-                layerMap[idx] = centerLayer + 1
-            } else {
-                layerMap[idx] = maxLayer
+            val linksFromCenterDirectly = incomingMap[idx]?.any { it.source == centerIdx } == true
+            layerMap[idx] = when {
+                !hasExpenseSubs -> centerLayer + 1
+                hasOutgoing || linksFromCenterDirectly -> centerLayer + 1
+                else -> maxLayer
             }
         }
     }
