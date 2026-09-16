@@ -461,7 +461,7 @@ private fun SankeyCanvasLayout(
             colNodeIndices.forEach { nodeIdx ->
                 val node = nodes[nodeIdx]
                 val nodeH = if (nodeIdx == centerIdx) {
-                    (heightPx * 0.45f).coerceAtLeast(36f)
+                    (heightPx * 0.32f).coerceAtLeast(36f)
                 } else {
                     ((node.value / colTotalVal) * availableH).toFloat().coerceAtLeast(8f)
                 }
@@ -514,12 +514,20 @@ private fun SankeyCanvasLayout(
                 val srcOffset = outgoingLinksForSrc.take(srcIdx).sumOf { it.value }
                 val dstOffset = incomingLinksForDst.take(dstIdx).sumOf { it.value }
 
+                // Tope de grosor para que un nodo alto (ej. el central,
+                // con pocos links) no genere una banda gigante que se
+                // come el gráfico -- el resto de las proporciones se
+                // mantiene, solo se recorta el extremo.
+                val maxThickness = with(density) { 40.dp.toPx() }
+
                 val srcY0 = srcLayout.y + (srcOffset / srcTotal * srcLayout.height).toFloat()
-                val srcThickness = (link.value / srcTotal * srcLayout.height).toFloat().coerceAtLeast(1.5f)
+                val srcThickness = (link.value / srcTotal * srcLayout.height).toFloat()
+                    .coerceIn(1.5f, maxThickness)
                 val srcY1 = srcY0 + srcThickness
 
                 val dstY0 = dstLayout.y + (dstOffset / dstTotal * dstLayout.height).toFloat()
-                val dstThickness = (link.value / dstTotal * dstLayout.height).toFloat().coerceAtLeast(1.5f)
+                val dstThickness = (link.value / dstTotal * dstLayout.height).toFloat()
+                    .coerceIn(1.5f, maxThickness)
                 val dstY1 = dstY0 + dstThickness
 
                 val startX = srcLayout.x + barWidth
@@ -538,7 +546,7 @@ private fun SankeyCanvasLayout(
                 val rawLinkColor = parseColorString(
                     link.color, defaultColor, successColor, destructiveColor, warningColor, primaryColor
                 )
-                val linkColor = rawLinkColor.copy(alpha = 0.4f)
+                val linkColor = rawLinkColor.copy(alpha = 0.28f)
 
                 drawPath(path = path, color = linkColor)
             }
