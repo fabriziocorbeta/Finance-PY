@@ -602,6 +602,32 @@ private fun SankeyCanvasLayout(
             (titleH + valH).toFloat()
         }
 
+        // Ancho REAL renderizado (no el nominal de columna) -- con
+        // TextOverflow.Visible un nombre largo como "Venta de
+        // Mercaderías" pinta bastante más allá de su caja nominal, así
+        // que la detección de colisión de más abajo necesita este ancho
+        // de verdad para no dejar pasar solapes que sí se ven en pantalla.
+        val nodeLabelWidthsPx = nodes.indices.associateWith { idx ->
+            val node = nodes[idx]
+            val nameW = textMeasurer.measure(node.name, labelSmallStyle).size.width
+            val valW = textMeasurer.measure(formatMoney(node.value, currency), bodySmallStyle).size.width
+            maxOf(nameW, valW).toFloat()
+        }
+
+        fun labelSpanPx(idx: Int): Pair<Float, Float> {
+            val layer = layerMap[idx] ?: centerLayer
+            val w = nodeLabelWidthsPx[idx] ?: 32f
+            val (boxX, boxW) = labelBoxByLayer[layer] ?: (0f to 40f)
+            return when {
+                idx == centerIdx -> {
+                    val mid = boxX + boxW / 2f
+                    (mid - w / 2f) to (mid + w / 2f)
+                }
+                layer < centerLayer -> boxX to (boxX + w)
+                else -> (boxX + boxW - w) to (boxX + boxW)
+            }
+        }
+
         val labelYMap = mutableMapOf<Int, Dp>()
         val minSpacingPx = with(density) { 4.dp.toPx() }
         val minYPx = with(density) { 4.dp.toPx() }
@@ -652,9 +678,9 @@ private fun SankeyCanvasLayout(
                     val layerB = layerMap[b] ?: centerLayer
                     if (layerA == layerB) continue // ya resuelto por columna arriba
 
-                    val (ax, aw) = labelBoxByLayer[layerA] ?: continue
-                    val (bx, bw) = labelBoxByLayer[layerB] ?: continue
-                    if (!(ax < bx + bw && ax + aw > bx)) continue // sin solape horizontal
+                    val (ax0, ax1) = labelSpanPx(a)
+                    val (bx0, bx1) = labelSpanPx(b)
+                    if (!(ax0 < bx1 && ax1 > bx0)) continue // sin solape horizontal real
 
                     val ah = nodeLabelHeightsPx[a] ?: 32f
                     val bh = nodeLabelHeightsPx[b] ?: 32f
