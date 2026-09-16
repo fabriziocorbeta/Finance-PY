@@ -551,7 +551,10 @@ private fun SankeyCanvasLayout(
                 val rawLinkColor = parseColorString(
                     link.color, defaultColor, successColor, destructiveColor, warningColor, primaryColor
                 )
-                val linkColor = rawLinkColor.copy(alpha = 0.28f)
+                // La web usa hilos bien tenues -- un lavado parejo, no
+                // colores saturados por categoría -- así que baja mucho la
+                // opacidad respecto a lo que se usa en nodos/dots.
+                val linkColor = rawLinkColor.copy(alpha = 0.14f)
 
                 drawPath(path = path, color = linkColor)
             }
