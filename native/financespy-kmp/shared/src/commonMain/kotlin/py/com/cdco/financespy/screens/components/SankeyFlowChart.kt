@@ -130,27 +130,28 @@ internal fun computeSankeyLayers(sankeyDto: CashflowSankeyDto): SankeyLayerInfo 
 
         if (isIncome) {
             val hasIncoming = incomingMap[idx]?.isNotEmpty() == true
-            // Una categoría como "Salario" sin subcategorías puede, aun
-            // así, ir DIRECTO al centro (no ser subcategoría de nadie) --
-            // en ese caso necesita 1 solo salto, igual que "Negocio", y
-            // no debe compartir la columna lejana con categorías que sí
-            // son subcategorías de otra (ej. "Venta de Mercaderías" bajo
-            // "Negocio"). Meterla en esa columna lejana fuerza que su
-            // link salte 2 columnas de ancho, cruzando por detrás del
-            // link corto vecino y generando el pico feo en el cruce.
-            val linksToCenterDirectly = outgoingMap[idx]?.any { it.target == centerIdx } == true
-            layerMap[idx] = when {
-                !hasIncomeSubs -> 0
-                hasIncoming || linksToCenterDirectly -> centerLayer - 1
-                else -> 0
+            // d3-sankey real usa nodeAlign "justify" (el default): TODO
+            // nodo sin incoming edges va a la columna 0, sin importar
+            // cuántos saltos tenga hasta el centro -- confirmado
+            // inspeccionando el SVG real de la web (Salario, sin
+            // subcategorías, queda en la MISMA columna x que "Venta de
+            // Mercaderías", no con "Negocio"). El cruce en pico que un
+            // fix anterior "corrigió" moviendo a Salario a la columna de
+            // Negocio era en realidad comportamiento correcto de la web,
+            // no un bug -- se revierte a la regla real: solo el nodo
+            // agregador (con incoming) va a la columna adyacente al
+            // centro, cualquier nodo sin incoming va a la columna 0.
+            if (hasIncomeSubs) {
+                layerMap[idx] = if (hasIncoming) 1 else 0
+            } else {
+                layerMap[idx] = 0
             }
         } else {
             val hasOutgoing = outgoingMap[idx]?.isNotEmpty() == true
-            val linksFromCenterDirectly = incomingMap[idx]?.any { it.source == centerIdx } == true
-            layerMap[idx] = when {
-                !hasExpenseSubs -> centerLayer + 1
-                hasOutgoing || linksFromCenterDirectly -> centerLayer + 1
-                else -> maxLayer
+            if (hasExpenseSubs) {
+                layerMap[idx] = if (hasOutgoing) centerLayer + 1 else maxLayer
+            } else {
+                layerMap[idx] = centerLayer + 1
             }
         }
     }
