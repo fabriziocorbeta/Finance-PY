@@ -211,9 +211,6 @@ class MainActivity : ComponentActivity() {
             withContext(Dispatchers.Main) {
                 needsOnboarding.value = onboardingNeeded
                 isLoggedIn.value = loggedIn
-                if (loggedIn) {
-                    appLifecycleObserver.resetClock()
-                }
             }
         }
 
@@ -430,7 +427,6 @@ class MainActivity : ComponentActivity() {
                     val settings = try { api.fetchFamilySettings() } catch (e: Exception) { null }
                     needsOnboarding.value = settings?.current_user?.needs_onboarding == true
                     isLoggedIn.value = true
-                    appLifecycleObserver.resetClock()
                 }
                 .onFailure { e -> Log.e("FinancePYAuth", "exchangeCode failed", e) }
         }

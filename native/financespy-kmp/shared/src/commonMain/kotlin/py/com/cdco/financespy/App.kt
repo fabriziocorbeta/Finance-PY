@@ -96,7 +96,6 @@ import py.com.cdco.financespy.theme.FinancePyTheme
 
 @Composable
 fun App(
-    modifier: Modifier = Modifier,
     isLoggedIn: Boolean?,
     api: FinancePyApi,
     navPreferences: NavPreferences,
@@ -181,7 +180,7 @@ fun App(
                     showHamburgerMenu = false
                 }
 
-                Box(modifier = modifier.fillMaxSize()) {
+                Box(modifier = Modifier.fillMaxSize()) {
                     Scaffold(
                         modifier = Modifier
                             .fillMaxSize()
