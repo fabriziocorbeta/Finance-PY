@@ -2,6 +2,7 @@ package py.com.cdco.financespy.screens.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -410,6 +411,12 @@ private fun SankeyCanvasLayout(
     }
 
     val density = LocalDensity.current
+    // Alpha fijo se ve bien sobre fondo blanco pero se vuelve una mancha
+    // oscura sobre fondo casi negro (mismo % de un verde mezclado con
+    // negro sigue siendo oscuro) -- en modo oscuro el hilo necesita más
+    // opacidad para leerse como el mismo lavado parejo que en claro.
+    val isDarkTheme = isSystemInDarkTheme()
+    val linkAlpha = if (isDarkTheme) 0.30f else 0.14f
 
     BoxWithConstraints(modifier = modifier) {
         val widthPx = constraints.maxWidth.toFloat()
@@ -577,7 +584,7 @@ private fun SankeyCanvasLayout(
                 // La web usa hilos bien tenues -- un lavado parejo, no
                 // colores saturados por categoría -- así que baja mucho la
                 // opacidad respecto a lo que se usa en nodos/dots.
-                val linkColor = rawLinkColor.copy(alpha = 0.14f)
+                val linkColor = rawLinkColor.copy(alpha = linkAlpha)
 
                 drawPath(path = path, color = linkColor)
             }
