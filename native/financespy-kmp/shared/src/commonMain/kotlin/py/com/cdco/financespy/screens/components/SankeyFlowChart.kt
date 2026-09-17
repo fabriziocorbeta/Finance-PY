@@ -457,17 +457,35 @@ private fun SankeyCanvasLayout(
 
         val nodesByLayer = nodes.indices.groupBy { layerMap[it] ?: centerLayer }
         val nodeLayouts = mutableMapOf<Int, NodeLayout>()
+        val verticalMargin = with(density) { 20.dp.toPx() }
+        val gapPx = with(density) { 12.dp.toPx() }
+
+        // d3-sankey usa UNA sola escala de valor->pixel para todo el
+        // diagrama (ky), no una por columna -- una columna con menos
+        // value total termina más corta, no estirada a ocupar toda la
+        // altura disponible. Antes cada columna se normalizaba con su
+        // propio colTotalVal, por eso todas las columnas se veían
+        // "llenas" sin importar cuánto value real llevaban comparadas
+        // entre sí. Se calcula ky como el mínimo entre todas las
+        // columnas no-centrales (la columna más "apretada" es la que
+        // define la escala; el resto queda con margen de sobra, igual
+        // que en la web).
+        val globalKy = (0..maxLayer).mapNotNull { layer ->
+            if (layer == centerLayer) return@mapNotNull null
+            val colNodeIndices = nodesByLayer[layer] ?: return@mapNotNull null
+            if (colNodeIndices.isEmpty()) return@mapNotNull null
+            val colTotalVal = colNodeIndices.sumOf { nodes[it].value }.let { if (it <= 0.0) 1.0 else it }
+            val gap = if (colNodeIndices.size > 1) gapPx else 0f
+            val availableH = (heightPx - 2 * verticalMargin - (colNodeIndices.size - 1) * gap).coerceAtLeast(20f)
+            (availableH / colTotalVal).toFloat()
+        }.minOrNull() ?: 1f
 
         (0..maxLayer).forEach { layer ->
             val colNodeIndices = nodesByLayer[layer] ?: emptyList()
             if (colNodeIndices.isEmpty()) return@forEach
 
             val colX = barXByLayer[layer] ?: edgeMargin
-            val colTotalVal = colNodeIndices.sumOf { nodes[it].value }.let { if (it <= 0) 1.0 else it }
-
-            val verticalMargin = with(density) { 20.dp.toPx() }
-            val gap = if (colNodeIndices.size > 1) with(density) { 12.dp.toPx() } else 0f
-            val availableH = (heightPx - 2 * verticalMargin - (colNodeIndices.size - 1) * gap).coerceAtLeast(20f)
+            val gap = if (colNodeIndices.size > 1) gapPx else 0f
 
             var currentY = verticalMargin
             colNodeIndices.forEach { nodeIdx ->
@@ -475,7 +493,7 @@ private fun SankeyCanvasLayout(
                 val nodeH = if (nodeIdx == centerIdx) {
                     (heightPx * 0.32f).coerceAtLeast(36f)
                 } else {
-                    ((node.value / colTotalVal) * availableH).toFloat().coerceAtLeast(8f)
+                    (node.value * globalKy).toFloat().coerceAtLeast(8f)
                 }
 
                 // "Flujo de caja" es columna de un solo nodo -- centrarlo
@@ -548,7 +566,12 @@ private fun SankeyCanvasLayout(
                 val srcOffset = outgoingLinksForSrc.take(srcIdx).sumOf { it.value }
                 val dstOffset = incomingLinksForDst.take(dstIdx).sumOf { it.value }
 
-                val maxThickness = with(density) { 20.dp.toPx() }
+                // La web (stroke-width: Math.max(1, d.width)) no tiene
+                // tope artificial -- con la escala global ya realista
+                // (globalKy) el grosor sale proporcionalmente correcto
+                // solo, este tope queda como red de seguridad, no como
+                // el límite real de diseño.
+                val maxThickness = with(density) { 32.dp.toPx() }
 
                 val srcThickness = (link.value / srcTotal * srcLayout.height).toFloat()
                     .coerceIn(1.5f, maxThickness)
