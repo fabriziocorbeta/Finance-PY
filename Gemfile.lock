@@ -813,7 +813,7 @@ GEM
       public_suffix
     vcr (6.3.1)
       base64
-    vernier (1.8.0)
+    vernier (1.11.0)
     version_gem (1.1.15)
     view_component (4.15.0)
       actionview (>= 7.1.0)
