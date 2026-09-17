@@ -24,7 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -504,12 +505,31 @@ private fun SankeyCanvasLayout(
                 val nodeColor = parseColorString(
                     node.color, defaultColor, successColor, destructiveColor, warningColor, primaryColor
                 )
-                drawRoundRect(
-                    color = nodeColor,
-                    topLeft = Offset(layout.x, layout.y),
-                    size = Size(layout.width, layout.height),
-                    cornerRadius = CornerRadius(4f, 4f)
-                )
+                // #nodePath en la web solo redondea el lado EXTERNO --
+                // izquierda si el nodo es puramente fuente (sin
+                // incoming), derecha si es puramente destino (sin
+                // outgoing), recto si es intermedio (agregador). Antes
+                // se redondeaban las 4 esquinas siempre.
+                val hasOutgoing = outgoingMap[layout.nodeIdx]?.isNotEmpty() == true
+                val hasIncoming = incomingMap[layout.nodeIdx]?.isNotEmpty() == true
+                val isSourceNode = hasOutgoing && !hasIncoming
+                val isTargetNode = hasIncoming && !hasOutgoing
+                val r = 4f
+                val rect = Rect(layout.x, layout.y, layout.x + layout.width, layout.y + layout.height)
+                val roundRect = when {
+                    isSourceNode -> RoundRect(
+                        rect,
+                        topLeft = CornerRadius(r, r), bottomLeft = CornerRadius(r, r),
+                        topRight = CornerRadius.Zero, bottomRight = CornerRadius.Zero
+                    )
+                    isTargetNode -> RoundRect(
+                        rect,
+                        topRight = CornerRadius(r, r), bottomRight = CornerRadius(r, r),
+                        topLeft = CornerRadius.Zero, bottomLeft = CornerRadius.Zero
+                    )
+                    else -> RoundRect(rect)
+                }
+                drawPath(path = Path().apply { addRoundRect(roundRect) }, color = nodeColor)
             }
 
             // Dibuja primero los hilos que saltan varias columnas (ej.
