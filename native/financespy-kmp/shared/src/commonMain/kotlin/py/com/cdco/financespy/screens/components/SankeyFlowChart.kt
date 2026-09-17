@@ -2,7 +2,6 @@ package py.com.cdco.financespy.screens.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -26,8 +25,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -411,12 +412,6 @@ private fun SankeyCanvasLayout(
     }
 
     val density = LocalDensity.current
-    // Alpha fijo se ve bien sobre fondo blanco pero se vuelve una mancha
-    // oscura sobre fondo casi negro (mismo % de un verde mezclado con
-    // negro sigue siendo oscuro) -- en modo oscuro el hilo necesita más
-    // opacidad para leerse como el mismo lavado parejo que en claro.
-    val isDarkTheme = isSystemInDarkTheme()
-    val linkAlpha = if (isDarkTheme) 0.30f else 0.14f
 
     BoxWithConstraints(modifier = modifier) {
         val widthPx = constraints.maxWidth.toFloat()
@@ -533,10 +528,14 @@ private fun SankeyCanvasLayout(
                 val srcLayout = nodeLayouts[link.source] ?: return@forEach
                 val dstLayout = nodeLayouts[link.target] ?: return@forEach
 
-                // Banda rellena que ahusa del grosor real del link en cada
-                // extremo (proporcional a su value dentro del stack del
-                // nodo) -- igual que d3.sankeyLinkHorizontal en la web, no
-                // una línea de ancho fijo por el centro del nodo.
+                // Replica exacta de sankey_chart_controller.js#drawLinks:
+                // NO es una banda rellena (d3.sankeyLinkHorizontal) -- es
+                // un trazo (stroke) centrado, ancho = max(1, d.width), con
+                // un gradiente lineal horizontal del color del nodo
+                // origen al color del nodo destino, ambos a opacidad 0.1.
+                // Cada link se posiciona en el CENTRO de su porción
+                // dentro del stack del nodo (no como banda con bordes
+                // propios).
                 val outgoingLinksForSrc = outgoingMap[link.source] ?: emptyList()
                 val incomingLinksForDst = incomingMap[link.target] ?: emptyList()
 
@@ -549,21 +548,17 @@ private fun SankeyCanvasLayout(
                 val srcOffset = outgoingLinksForSrc.take(srcIdx).sumOf { it.value }
                 val dstOffset = incomingLinksForDst.take(dstIdx).sumOf { it.value }
 
-                // Tope de grosor para que un nodo alto (ej. el central,
-                // con pocos links) no genere una banda gigante que se
-                // come el gráfico -- el resto de las proporciones se
-                // mantiene, solo se recorta el extremo.
-                val maxThickness = with(density) { 40.dp.toPx() }
+                val maxThickness = with(density) { 20.dp.toPx() }
 
-                val srcY0 = srcLayout.y + (srcOffset / srcTotal * srcLayout.height).toFloat()
                 val srcThickness = (link.value / srcTotal * srcLayout.height).toFloat()
                     .coerceIn(1.5f, maxThickness)
-                val srcY1 = srcY0 + srcThickness
+                val srcY = srcLayout.y + ((srcOffset + link.value / 2.0) / srcTotal * srcLayout.height).toFloat()
 
-                val dstY0 = dstLayout.y + (dstOffset / dstTotal * dstLayout.height).toFloat()
                 val dstThickness = (link.value / dstTotal * dstLayout.height).toFloat()
                     .coerceIn(1.5f, maxThickness)
-                val dstY1 = dstY0 + dstThickness
+                val dstY = dstLayout.y + ((dstOffset + link.value / 2.0) / dstTotal * dstLayout.height).toFloat()
+
+                val strokeWidth = maxOf(srcThickness, dstThickness).coerceAtLeast(with(density) { 1.dp.toPx() })
 
                 val startX = srcLayout.x + barWidth
                 val endX = dstLayout.x
@@ -571,22 +566,23 @@ private fun SankeyCanvasLayout(
                 val cx = dx * 0.5f
 
                 val path = Path().apply {
-                    moveTo(startX, srcY0)
-                    cubicTo(startX + cx, srcY0, startX + cx, dstY0, endX, dstY0)
-                    lineTo(endX, dstY1)
-                    cubicTo(startX + cx, dstY1, startX + cx, srcY1, startX, srcY1)
-                    close()
+                    moveTo(startX, srcY)
+                    cubicTo(startX + cx, srcY, startX + cx, dstY, endX, dstY)
                 }
 
-                val rawLinkColor = parseColorString(
-                    link.color, defaultColor, successColor, destructiveColor, warningColor, primaryColor
+                val srcNodeColor = parseColorString(
+                    nodes[link.source].color, defaultColor, successColor, destructiveColor, warningColor, primaryColor
                 )
-                // La web usa hilos bien tenues -- un lavado parejo, no
-                // colores saturados por categoría -- así que baja mucho la
-                // opacidad respecto a lo que se usa en nodos/dots.
-                val linkColor = rawLinkColor.copy(alpha = linkAlpha)
+                val dstNodeColor = parseColorString(
+                    nodes[link.target].color, defaultColor, successColor, destructiveColor, warningColor, primaryColor
+                )
+                val gradientBrush = Brush.linearGradient(
+                    colors = listOf(srcNodeColor.copy(alpha = 0.1f), dstNodeColor.copy(alpha = 0.1f)),
+                    start = Offset(startX, 0f),
+                    end = Offset(endX, 0f)
+                )
 
-                drawPath(path = path, color = linkColor)
+                drawPath(path = path, brush = gradientBrush, style = Stroke(width = strokeWidth))
             }
         }
 
