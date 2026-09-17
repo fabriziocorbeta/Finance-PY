@@ -4,6 +4,7 @@ import android.content.Intent
 import android.util.Log
 import android.net.Uri
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -183,6 +184,8 @@ class MainActivity : ComponentActivity() {
         onCreateStartTime = System.currentTimeMillis()
         Log.d("ColdStartProfile", "[Optimized] onCreate STARTED at $onCreateStartTime ms")
         super.onCreate(savedInstanceState)
+
+        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
 
         initDatabaseBuilder(applicationContext)
 
