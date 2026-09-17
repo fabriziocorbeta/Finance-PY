@@ -57,6 +57,10 @@ android {
     namespace = "py.com.cdco.financespy.shared"
     compileSdk = 36
     defaultConfig { minSdk = 26 }
+    buildFeatures {
+        buildConfig = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11

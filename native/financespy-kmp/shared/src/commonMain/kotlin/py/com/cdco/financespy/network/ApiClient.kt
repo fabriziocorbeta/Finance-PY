@@ -18,7 +18,7 @@ object ApiClient {
         install(ContentNegotiation) {
             json(Json { ignoreUnknownKeys = true; isLenient = true })
         }
-        install(Logging) { level = LogLevel.INFO }
+        install(Logging) { level = if (isDebugBuild) LogLevel.INFO else LogLevel.NONE }
         install(HttpTimeout) {
             requestTimeoutMillis = 30_000
             connectTimeoutMillis = 30_000
@@ -31,3 +31,5 @@ object ApiClient {
 }
 
 expect fun createPlatformClient(tokenStorage: TokenStorage, config: HttpClientConfig<*>.() -> Unit): HttpClient
+
+expect val isDebugBuild: Boolean
