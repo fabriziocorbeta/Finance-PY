@@ -9,8 +9,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -181,7 +179,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val appLifecycleObserver by lazy {
-        AppLifecycleObserver(authRepository) { isLoggedIn.value = false }
+        AppLifecycleObserver(applicationContext, authRepository) { isLoggedIn.value = false }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -223,7 +221,6 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             App(
-                modifier = Modifier,
                 isLoggedIn = isLoggedIn.value,
                 api = api,
                 navPreferences = navPreferences,
