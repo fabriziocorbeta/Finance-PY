@@ -681,10 +681,16 @@ private fun SankeyCanvasLayout(
                 for (j in i + 1 until allIndices.size) {
                     val a = allIndices[i]
                     val b = allIndices[j]
-                    val layerA = layerMap[a] ?: centerLayer
-                    val layerB = layerMap[b] ?: centerLayer
-                    if (layerA == layerB) continue // ya resuelto por columna arriba
-
+                    // Antes se saltaban los pares de la MISMA columna acá
+                    // ("ya resueltos" por computeVerticalLabelPositions
+                    // arriba) -- pero cuando este resolver mueve un nodo
+                    // para esquivar al centro, puede romper el
+                    // espaciado que esa función ya había dejado bien
+                    // dentro de su propia columna, sin que nada lo vuelva
+                    // a corregir. Ahora TODO par se resuelve acá, cruzado
+                    // o no -- computeVerticalLabelPositions sigue siendo
+                    // el punto de partida (respeta el orden por value),
+                    // esto solo pule encima.
                     val (ax0, ax1) = labelSpanPx(a)
                     val (bx0, bx1) = labelSpanPx(b)
                     if (!(ax0 < bx1 && ax1 > bx0)) continue // sin solape horizontal real
