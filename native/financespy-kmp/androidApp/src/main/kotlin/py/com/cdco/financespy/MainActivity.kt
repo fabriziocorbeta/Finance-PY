@@ -11,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,6 +20,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -73,6 +77,18 @@ class MainActivity : FragmentActivity() {
     private val isLoggedIn = mutableStateOf<Boolean?>(null)
     private val needsOnboarding = mutableStateOf(false)
     private val isBiometricAuthenticated = mutableStateOf(false)
+    private val biometricUnavailable = mutableStateOf(false)
+
+    // App-level (not Activity-level) observer: fires only when the whole app
+    // truly leaves the foreground, not on rotation/config-change recreation
+    // (ProcessLifecycleOwner debounces those). Re-arms the gate so returning
+    // from background always re-prompts, instead of relying on Activity
+    // recreation which doesn't happen when the Activity is merely stopped.
+    private val processLifecycleObserver = object : DefaultLifecycleObserver {
+        override fun onStop(owner: LifecycleOwner) {
+            isBiometricAuthenticated.value = false
+        }
+    }
 
     // registerForActivityResult debe llamarse antes de que la Activity entre
     // en STARTED -- por eso es una property de clase (eager), no algo armado
@@ -195,6 +211,8 @@ class MainActivity : FragmentActivity() {
         Log.d("ColdStartProfile", "[Optimized] onCreate STARTED at $onCreateStartTime ms")
         super.onCreate(savedInstanceState)
 
+        ProcessLifecycleOwner.get().lifecycle.addObserver(processLifecycleObserver)
+
         initDatabaseBuilder(applicationContext)
 
         lifecycleScope.launch(Dispatchers.IO) {
@@ -224,12 +242,25 @@ class MainActivity : FragmentActivity() {
 
         setContent {
             if (isLoggedIn.value == true && !isBiometricAuthenticated.value) {
-                LaunchedEffect(Unit) {
-                    showBiometricPrompt()
-                }
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Button(onClick = { showBiometricPrompt() }) {
-                        Text("Desbloquear")
+                if (biometricUnavailable.value) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Configure un bloqueo de pantalla (PIN, patrón o huella) en su dispositivo para usar FinancePY.")
+                            Button(onClick = {
+                                startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
+                            }) {
+                                Text("Abrir configuración")
+                            }
+                        }
+                    }
+                } else {
+                    LaunchedEffect(Unit) {
+                        showBiometricPrompt()
+                    }
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Button(onClick = { showBiometricPrompt() }) {
+                            Text("Desbloquear")
+                        }
                     }
                 }
             } else {
@@ -380,7 +411,10 @@ class MainActivity : FragmentActivity() {
 
             biometricPrompt.authenticate(promptInfo)
         } else {
-            isBiometricAuthenticated.value = true
+            // No biometric enrolled AND no device credential (PIN/pattern/password)
+            // set -- fail CLOSED, not open. A financial app must never let an
+            // unsecured device through the gate silently.
+            biometricUnavailable.value = true
         }
     }
 
@@ -439,6 +473,17 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         WalletCaptureHandler.retryPending(applicationContext)
+        // Re-check in case the user just set up a screen lock from the
+        // "Abrir configuración" redirect -- otherwise they'd be stuck on
+        // that screen forever even after fixing it.
+        if (biometricUnavailable.value) {
+            biometricUnavailable.value = false
+        }
+    }
+
+    override fun onDestroy() {
+        ProcessLifecycleOwner.get().lifecycle.removeObserver(processLifecycleObserver)
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
