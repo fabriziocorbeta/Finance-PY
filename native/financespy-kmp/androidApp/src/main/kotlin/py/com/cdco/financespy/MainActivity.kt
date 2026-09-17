@@ -35,6 +35,7 @@ import py.com.cdco.financespy.db.buildDatabase
 import py.com.cdco.financespy.db.initDatabaseBuilder
 import py.com.cdco.financespy.navigation.AndroidNavPreferences
 import py.com.cdco.financespy.network.ApiClient
+import py.com.cdco.financespy.security.AndroidSecurityPreferences
 import py.com.cdco.financespy.screens.AccountDetailViewModel
 import py.com.cdco.financespy.screens.AccountFormViewModel
 import py.com.cdco.financespy.screens.BudgetAllocationEditorViewModel
@@ -78,6 +79,8 @@ class MainActivity : FragmentActivity() {
     private val needsOnboarding = mutableStateOf(false)
     private val isBiometricAuthenticated = mutableStateOf(false)
     private val biometricUnavailable = mutableStateOf(false)
+    private val securityPreferences by lazy { AndroidSecurityPreferences(applicationContext) }
+    private val biometricLockEnabled = mutableStateOf(false)
 
     // App-level (not Activity-level) observer: fires only when the whole app
     // truly leaves the foreground, not on rotation/config-change recreation
@@ -212,6 +215,7 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
 
         ProcessLifecycleOwner.get().lifecycle.addObserver(processLifecycleObserver)
+        biometricLockEnabled.value = securityPreferences.isBiometricLockEnabled()
 
         initDatabaseBuilder(applicationContext)
 
@@ -241,7 +245,7 @@ class MainActivity : FragmentActivity() {
         Log.d("ColdStartProfile", "[Optimized] Calling setContent at +${tSetContent - onCreateStartTime} ms from onCreate")
 
         setContent {
-            if (isLoggedIn.value == true && !isBiometricAuthenticated.value) {
+            if (isLoggedIn.value == true && biometricLockEnabled.value && !isBiometricAuthenticated.value) {
                 if (biometricUnavailable.value) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -364,6 +368,11 @@ class MainActivity : FragmentActivity() {
                     AccountFormViewModel(scope = lifecycleScope, api = api, accountDao = database.accountDao())
                 },
                 settingsViewModelFactory = { settingsViewModel },
+                isBiometricLockEnabled = biometricLockEnabled.value,
+                onToggleBiometricLock = { enabled ->
+                    securityPreferences.setBiometricLockEnabled(enabled)
+                    biometricLockEnabled.value = enabled
+                },
                 reportsViewModelFactory = { reportsViewModel },
                 upayImportViewModelFactory = {
                     UpayImportViewModel(scope = lifecycleScope, api = api, accountDao = database.accountDao())
