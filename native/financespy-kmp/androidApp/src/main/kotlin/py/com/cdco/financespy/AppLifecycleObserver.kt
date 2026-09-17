@@ -70,12 +70,27 @@ class AppLifecycleObserver(
         Log.d(TAG, "checkInactivity: timeout reached, logging out")
         inactivityJob?.cancel()
         prefs.edit().remove(KEY_LAST_INTERACTION).apply()
+        // lastInteractionTime is deliberately NOT reset here. Left stale, it
+        // would make every future check see "already timed out", which is
+        // fine while logged out (dispatchTouchEvent's isLoggedIn guard skips
+        // updateInteractionTime entirely) but would immediately re-trigger
+        // logout on the very first touch after the next login. resetClock()
+        // is the one that actually clears it, called on successful login.
         scope.launch(Dispatchers.IO) {
             authRepository.logout()
             withContext(Dispatchers.Main) {
                 onLogoutCallback()
             }
         }
+    }
+
+    // Call after a successful (re-)login so the next touch doesn't
+    // immediately see a stale lastInteractionTime and log the user right
+    // back out.
+    fun resetClock() {
+        val now = System.currentTimeMillis()
+        lastInteractionTime = now
+        persist(now)
     }
 
     /**
