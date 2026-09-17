@@ -4,7 +4,17 @@ import android.content.Intent
 import android.util.Log
 import android.net.Uri
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material.Button
+import androidx.compose.material.Text
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.mutableStateOf
@@ -55,13 +65,14 @@ import py.com.cdco.financespy.sync.SyncEngine
 import py.com.cdco.financespy.sync.currentIsoDate
 import py.com.cdco.financespy.wallet.WalletCaptureHandler
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     companion object {
         var onCreateStartTime: Long = 0L
     }
 
     private val isLoggedIn = mutableStateOf<Boolean?>(null)
     private val needsOnboarding = mutableStateOf(false)
+    private val isBiometricAuthenticated = mutableStateOf(false)
 
     // registerForActivityResult debe llamarse antes de que la Activity entre
     // en STARTED -- por eso es una property de clase (eager), no algo armado
@@ -212,7 +223,17 @@ class MainActivity : ComponentActivity() {
         Log.d("ColdStartProfile", "[Optimized] Calling setContent at +${tSetContent - onCreateStartTime} ms from onCreate")
 
         setContent {
-            App(
+            if (isLoggedIn.value == true && !isBiometricAuthenticated.value) {
+                LaunchedEffect(Unit) {
+                    showBiometricPrompt()
+                }
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Button(onClick = { showBiometricPrompt() }) {
+                        Text("Desbloquear")
+                    }
+                }
+            } else {
+                App(
                 isLoggedIn = isLoggedIn.value,
                 api = api,
                 navPreferences = navPreferences,
@@ -326,7 +347,40 @@ class MainActivity : ComponentActivity() {
                     shareFile(bytes, filename, mimeType)
                 },
                 onPickUpayCsv = { onPicked -> pickUpayCsv(onPicked) }
-            )
+                )
+            }
+        }
+    }
+
+
+    private fun showBiometricPrompt() {
+        val biometricManager = BiometricManager.from(this)
+        val canAuthenticate = biometricManager.canAuthenticate(
+            BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        )
+
+        if (canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS) {
+            val executor = ContextCompat.getMainExecutor(this)
+            val biometricPrompt = BiometricPrompt(this, executor,
+                object : BiometricPrompt.AuthenticationCallback() {
+                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                        super.onAuthenticationSucceeded(result)
+                        isBiometricAuthenticated.value = true
+                    }
+                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                        super.onAuthenticationError(errorCode, errString)
+                    }
+                })
+
+            val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Autenticación Requerida")
+                .setSubtitle("Desbloquee para acceder a FinanceSpy")
+                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                .build()
+
+            biometricPrompt.authenticate(promptInfo)
+        } else {
+            isBiometricAuthenticated.value = true
         }
     }
 

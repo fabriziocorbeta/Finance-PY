@@ -32,6 +32,11 @@ android {
 }
 
 dependencies {
+    implementation(compose.material)
+    implementation(compose.material3)
+    implementation(compose.foundation)
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.appcompat)
     implementation(project(":shared"))
     implementation(compose.runtime)
     implementation(libs.androidx.activity.compose)
