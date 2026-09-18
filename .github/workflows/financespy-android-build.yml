@@ -7,6 +7,14 @@ on:
         description: "Branch, tag or SHA to build (defaults to the branch this workflow is run from)"
         required: false
         default: ""
+      buildType:
+        description: "debug or release (release needs the FINANCESPY_RELEASE_* secrets)"
+        required: false
+        default: "debug"
+        type: choice
+        options:
+          - debug
+          - release
   pull_request:
     paths:
       - 'native/financespy-kmp/**'
@@ -60,13 +68,39 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      - name: Decode release keystore
+        if: inputs.buildType == 'release'
+        working-directory: .
+        run: |
+          echo "${{ secrets.FINANCESPY_RELEASE_KEYSTORE_B64 }}" | base64 -d > "$RUNNER_TEMP/financespy-release.keystore"
+          echo "FINANCESPY_RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/financespy-release.keystore" >> "$GITHUB_ENV"
+
       - name: Build debug APK
+        if: inputs.buildType != 'release'
         run: ./gradlew :androidApp:assembleDebug --no-daemon
 
-      - name: Upload APK artifact
+      - name: Build release APK
+        if: inputs.buildType == 'release'
+        env:
+          FINANCESPY_RELEASE_STORE_PASSWORD: ${{ secrets.FINANCESPY_RELEASE_STORE_PASSWORD }}
+          FINANCESPY_RELEASE_KEY_ALIAS: ${{ secrets.FINANCESPY_RELEASE_KEY_ALIAS }}
+          FINANCESPY_RELEASE_KEY_PASSWORD: ${{ secrets.FINANCESPY_RELEASE_KEY_PASSWORD }}
+        run: ./gradlew :androidApp:assembleRelease --no-daemon
+
+      - name: Upload debug APK artifact
+        if: inputs.buildType != 'release'
         uses: actions/upload-artifact@v7
         with:
           name: financespy-debug-apk
           path: native/financespy-kmp/androidApp/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload release APK artifact
+        if: inputs.buildType == 'release'
+        uses: actions/upload-artifact@v7
+        with:
+          name: financespy-release-apk
+          path: native/financespy-kmp/androidApp/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 30
