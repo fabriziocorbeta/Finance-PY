@@ -83,6 +83,7 @@ class MainActivity : FragmentActivity() {
     private val biometricUnavailable = mutableStateOf(false)
     private val securityPreferences by lazy { AndroidSecurityPreferences(applicationContext) }
     private val biometricLockEnabled = mutableStateOf(false)
+    private val screenCaptureBlockEnabled = mutableStateOf(true)
 
     // App-level (not Activity-level) observer: fires only when the whole app
     // truly leaves the foreground, not on rotation/config-change recreation
@@ -220,7 +221,8 @@ class MainActivity : FragmentActivity() {
         Log.d("ColdStartProfile", "[Optimized] onCreate STARTED at $onCreateStartTime ms")
         super.onCreate(savedInstanceState)
 
-        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        screenCaptureBlockEnabled.value = securityPreferences.isScreenCaptureBlockEnabled()
+        applyScreenCaptureBlock(screenCaptureBlockEnabled.value)
         ProcessLifecycleOwner.get().lifecycle.addObserver(processLifecycleObserver)
         biometricLockEnabled.value = securityPreferences.isBiometricLockEnabled()
 
@@ -387,6 +389,12 @@ class MainActivity : FragmentActivity() {
                     securityPreferences.setBiometricLockEnabled(enabled)
                     biometricLockEnabled.value = enabled
                 },
+                isScreenCaptureBlockEnabled = screenCaptureBlockEnabled.value,
+                onToggleScreenCaptureBlock = { enabled ->
+                    securityPreferences.setScreenCaptureBlockEnabled(enabled)
+                    screenCaptureBlockEnabled.value = enabled
+                    applyScreenCaptureBlock(enabled)
+                },
                 reportsViewModelFactory = { reportsViewModel },
                 upayImportViewModelFactory = {
                     UpayImportViewModel(scope = lifecycleScope, api = api, accountDao = database.accountDao())
@@ -406,6 +414,14 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+
+    private fun applyScreenCaptureBlock(enabled: Boolean) {
+        if (enabled) {
+            window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
+    }
 
     private fun showBiometricPrompt() {
         val biometricManager = BiometricManager.from(this)
