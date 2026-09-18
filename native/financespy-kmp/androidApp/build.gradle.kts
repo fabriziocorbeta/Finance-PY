@@ -46,4 +46,5 @@ dependencies {
     implementation(libs.ktor.client.core)
     implementation(libs.room.runtime)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.lifecycle.process)
 }

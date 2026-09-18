@@ -54,6 +54,8 @@ import py.com.cdco.financespy.screens.TransactionsViewModel
 import py.com.cdco.financespy.sync.SyncEngine
 import py.com.cdco.financespy.sync.currentIsoDate
 import py.com.cdco.financespy.wallet.WalletCaptureHandler
+import androidx.lifecycle.ProcessLifecycleOwner
+import android.view.MotionEvent
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -176,6 +178,10 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private val appLifecycleObserver by lazy {
+        AppLifecycleObserver(applicationContext, authRepository) { isLoggedIn.value = false }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         splashScreen.setKeepOnScreenCondition { isLoggedIn.value == null }
@@ -185,6 +191,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         initDatabaseBuilder(applicationContext)
+
+        ProcessLifecycleOwner.get().lifecycle.addObserver(appLifecycleObserver)
 
         lifecycleScope.launch(Dispatchers.IO) {
             val tAuthStart = System.currentTimeMillis()
@@ -328,6 +336,22 @@ class MainActivity : ComponentActivity() {
                 onPickUpayCsv = { onPicked -> pickUpayCsv(onPicked) }
             )
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        ProcessLifecycleOwner.get().lifecycle.removeObserver(appLifecycleObserver)
+        appLifecycleObserver.cleanUp()
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+        if (isLoggedIn.value == true) {
+            val loggedOut = appLifecycleObserver.updateInteractionTime()
+            if (loggedOut) {
+                return true
+            }
+        }
+        return super.dispatchTouchEvent(ev)
     }
 
     private fun shareFile(bytes: ByteArray, filename: String, mimeType: String) {
