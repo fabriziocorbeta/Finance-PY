@@ -14,10 +14,18 @@ class ApplicationController < ActionController::Base
   before_action :detect_os
   before_action :set_default_chat
   before_action :set_active_storage_url_options
+  before_action :set_paper_trail_whodunnit
 
   helper_method :demo_config, :demo_host_match?, :show_demo_warning?
 
   private
+    # Records the real actor for PaperTrail, not the impersonated user --
+    # so an admin acting through someone else's session still shows up as
+    # themselves in the audit trail, not as the person being impersonated.
+    def set_paper_trail_whodunnit
+      PaperTrail.request.whodunnit = Current.true_user&.id
+    end
+
     def accept_pending_invitation_for(user)
       return false if user.blank?
 

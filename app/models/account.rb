@@ -1,6 +1,10 @@
 class Account < ApplicationRecord
   include AASM, Syncable, Monetizable, Chartable, Linkable, Enrichable, Anchorable, Reconcileable, TaxTreatable, FamilyIdPropagatable
 
+  # Immutable audit trail: who changed the balance/name/currency, when,
+  # and the exact before/after diff.
+  has_paper_trail meta: { family_id: :family_id }
+
   before_validation :assign_default_owner, if: -> { owner_id.blank? }
 
   validates :name, :balance, :currency, presence: true
