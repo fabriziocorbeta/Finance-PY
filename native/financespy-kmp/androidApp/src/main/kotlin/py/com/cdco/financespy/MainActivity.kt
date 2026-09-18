@@ -69,7 +69,6 @@ import py.com.cdco.financespy.screens.TransactionsViewModel
 import py.com.cdco.financespy.sync.SyncEngine
 import py.com.cdco.financespy.sync.currentIsoDate
 import py.com.cdco.financespy.wallet.WalletCaptureHandler
-import androidx.lifecycle.ProcessLifecycleOwner
 import android.view.MotionEvent
 
 class MainActivity : FragmentActivity() {
@@ -435,12 +434,6 @@ class MainActivity : FragmentActivity() {
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        ProcessLifecycleOwner.get().lifecycle.removeObserver(appLifecycleObserver)
-        appLifecycleObserver.cleanUp()
-    }
-
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
         if (isLoggedIn.value == true) {
             val loggedOut = appLifecycleObserver.updateInteractionTime()
@@ -516,6 +509,8 @@ class MainActivity : FragmentActivity() {
 
     override fun onDestroy() {
         ProcessLifecycleOwner.get().lifecycle.removeObserver(processLifecycleObserver)
+        ProcessLifecycleOwner.get().lifecycle.removeObserver(appLifecycleObserver)
+        appLifecycleObserver.cleanUp()
         super.onDestroy()
     }
 
