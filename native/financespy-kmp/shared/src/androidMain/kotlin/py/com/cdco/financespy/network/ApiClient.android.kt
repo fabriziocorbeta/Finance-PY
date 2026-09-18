@@ -7,6 +7,7 @@ import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.request.header
 import kotlinx.coroutines.runBlocking
 import py.com.cdco.financespy.auth.TokenStorage
+import py.com.cdco.financespy.shared.BuildConfig
 
 actual fun createPlatformClient(tokenStorage: TokenStorage, config: HttpClientConfig<*>.() -> Unit): HttpClient {
     val bearerPlugin = createClientPlugin("BearerAuthPlugin") {
@@ -20,3 +21,5 @@ actual fun createPlatformClient(tokenStorage: TokenStorage, config: HttpClientCo
         install(bearerPlugin)
     }
 }
+
+actual val isDebugBuild: Boolean = BuildConfig.DEBUG
