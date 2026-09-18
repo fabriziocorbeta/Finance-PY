@@ -518,7 +518,13 @@ GEM
       hashery (~> 2.0)
       ruby-rc4
       ttfunk
-    pg (1.5.9)
+    pg (1.6.3)
+    pg (1.6.3-aarch64-linux)
+    pg (1.6.3-aarch64-linux-musl)
+    pg (1.6.3-arm64-darwin)
+    pg (1.6.3-x86_64-darwin)
+    pg (1.6.3-x86_64-linux)
+    pg (1.6.3-x86_64-linux-musl)
     platform_agent (1.0.1)
       activesupport (>= 5.2.0)
       useragent (~> 0.16.3)
@@ -919,7 +925,7 @@ DEPENDENCIES
   pagy
   paper_trail
   pdf-reader (~> 2.12)
-  pg (~> 1.5)
+  pg (~> 1.6)
   posthog-ruby
   propshaft
   puma (>= 5.0)
