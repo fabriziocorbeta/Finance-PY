@@ -6,7 +6,7 @@ ruby "3.4.7"
 gem "rails", "~> 7.2.2"
 
 # Drivers
-gem "pg", "~> 1.5"
+gem "pg", "~> 1.6"
 gem "redis", "~> 6.0"
 
 # Deployment
