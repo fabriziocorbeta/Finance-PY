@@ -15,6 +15,7 @@ import kotlinx.serialization.json.Json
 import py.com.cdco.financespy.auth.TokenResponse
 import py.com.cdco.financespy.auth.TokenStorage
 import io.ktor.client.plugins.ClientRequestException
+import py.com.cdco.financespy.shared.BuildConfig
 
 private const val CLIENT_ID = "Ti8y1yGMsJVyNv35wsWE2taV7NR4B3zdKduf7E5IZEM"
 
@@ -69,3 +70,5 @@ actual fun createPlatformClient(tokenStorage: TokenStorage, config: HttpClientCo
         }
     }
 }
+
+actual val isDebugBuild: Boolean = BuildConfig.DEBUG

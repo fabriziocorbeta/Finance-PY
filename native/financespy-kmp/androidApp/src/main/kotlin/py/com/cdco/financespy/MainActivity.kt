@@ -4,11 +4,25 @@ import android.content.Intent
 import android.util.Log
 import android.net.Uri
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material.Button
+import androidx.compose.material.Text
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -21,6 +35,7 @@ import py.com.cdco.financespy.db.buildDatabase
 import py.com.cdco.financespy.db.initDatabaseBuilder
 import py.com.cdco.financespy.navigation.AndroidNavPreferences
 import py.com.cdco.financespy.network.ApiClient
+import py.com.cdco.financespy.security.AndroidSecurityPreferences
 import py.com.cdco.financespy.screens.AccountDetailViewModel
 import py.com.cdco.financespy.screens.AccountFormViewModel
 import py.com.cdco.financespy.screens.BudgetAllocationEditorViewModel
@@ -54,14 +69,31 @@ import py.com.cdco.financespy.screens.TransactionsViewModel
 import py.com.cdco.financespy.sync.SyncEngine
 import py.com.cdco.financespy.sync.currentIsoDate
 import py.com.cdco.financespy.wallet.WalletCaptureHandler
+import androidx.lifecycle.ProcessLifecycleOwner
+import android.view.MotionEvent
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     companion object {
         var onCreateStartTime: Long = 0L
     }
 
     private val isLoggedIn = mutableStateOf<Boolean?>(null)
     private val needsOnboarding = mutableStateOf(false)
+    private val isBiometricAuthenticated = mutableStateOf(false)
+    private val biometricUnavailable = mutableStateOf(false)
+    private val securityPreferences by lazy { AndroidSecurityPreferences(applicationContext) }
+    private val biometricLockEnabled = mutableStateOf(false)
+
+    // App-level (not Activity-level) observer: fires only when the whole app
+    // truly leaves the foreground, not on rotation/config-change recreation
+    // (ProcessLifecycleOwner debounces those). Re-arms the gate so returning
+    // from background always re-prompts, instead of relying on Activity
+    // recreation which doesn't happen when the Activity is merely stopped.
+    private val processLifecycleObserver = object : DefaultLifecycleObserver {
+        override fun onStop(owner: LifecycleOwner) {
+            isBiometricAuthenticated.value = false
+        }
+    }
 
     // registerForActivityResult debe llamarse antes de que la Activity entre
     // en STARTED -- por eso es una property de clase (eager), no algo armado
@@ -176,6 +208,10 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private val appLifecycleObserver by lazy {
+        AppLifecycleObserver(applicationContext, authRepository) { isLoggedIn.value = false }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         splashScreen.setKeepOnScreenCondition { isLoggedIn.value == null }
@@ -184,7 +220,12 @@ class MainActivity : ComponentActivity() {
         Log.d("ColdStartProfile", "[Optimized] onCreate STARTED at $onCreateStartTime ms")
         super.onCreate(savedInstanceState)
 
+        ProcessLifecycleOwner.get().lifecycle.addObserver(processLifecycleObserver)
+        biometricLockEnabled.value = securityPreferences.isBiometricLockEnabled()
+
         initDatabaseBuilder(applicationContext)
+
+        ProcessLifecycleOwner.get().lifecycle.addObserver(appLifecycleObserver)
 
         lifecycleScope.launch(Dispatchers.IO) {
             val tAuthStart = System.currentTimeMillis()
@@ -212,7 +253,30 @@ class MainActivity : ComponentActivity() {
         Log.d("ColdStartProfile", "[Optimized] Calling setContent at +${tSetContent - onCreateStartTime} ms from onCreate")
 
         setContent {
-            App(
+            if (isLoggedIn.value == true && biometricLockEnabled.value && !isBiometricAuthenticated.value) {
+                if (biometricUnavailable.value) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Configure un bloqueo de pantalla (PIN, patrón o huella) en su dispositivo para usar FinancePY.")
+                            Button(onClick = {
+                                startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
+                            }) {
+                                Text("Abrir configuración")
+                            }
+                        }
+                    }
+                } else {
+                    LaunchedEffect(Unit) {
+                        showBiometricPrompt()
+                    }
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Button(onClick = { showBiometricPrompt() }) {
+                            Text("Desbloquear")
+                        }
+                    }
+                }
+            } else {
+                App(
                 isLoggedIn = isLoggedIn.value,
                 api = api,
                 navPreferences = navPreferences,
@@ -312,6 +376,11 @@ class MainActivity : ComponentActivity() {
                     AccountFormViewModel(scope = lifecycleScope, api = api, accountDao = database.accountDao())
                 },
                 settingsViewModelFactory = { settingsViewModel },
+                isBiometricLockEnabled = biometricLockEnabled.value,
+                onToggleBiometricLock = { enabled ->
+                    securityPreferences.setBiometricLockEnabled(enabled)
+                    biometricLockEnabled.value = enabled
+                },
                 reportsViewModelFactory = { reportsViewModel },
                 upayImportViewModelFactory = {
                     UpayImportViewModel(scope = lifecycleScope, api = api, accountDao = database.accountDao())
@@ -326,8 +395,60 @@ class MainActivity : ComponentActivity() {
                     shareFile(bytes, filename, mimeType)
                 },
                 onPickUpayCsv = { onPicked -> pickUpayCsv(onPicked) }
-            )
+                )
+            }
         }
+    }
+
+
+    private fun showBiometricPrompt() {
+        val biometricManager = BiometricManager.from(this)
+        val canAuthenticate = biometricManager.canAuthenticate(
+            BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        )
+
+        if (canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS) {
+            val executor = ContextCompat.getMainExecutor(this)
+            val biometricPrompt = BiometricPrompt(this, executor,
+                object : BiometricPrompt.AuthenticationCallback() {
+                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                        super.onAuthenticationSucceeded(result)
+                        isBiometricAuthenticated.value = true
+                    }
+                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                        super.onAuthenticationError(errorCode, errString)
+                    }
+                })
+
+            val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Autenticación Requerida")
+                .setSubtitle("Desbloquee para acceder a FinanceSpy")
+                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                .build()
+
+            biometricPrompt.authenticate(promptInfo)
+        } else {
+            // No biometric enrolled AND no device credential (PIN/pattern/password)
+            // set -- fail CLOSED, not open. A financial app must never let an
+            // unsecured device through the gate silently.
+            biometricUnavailable.value = true
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        ProcessLifecycleOwner.get().lifecycle.removeObserver(appLifecycleObserver)
+        appLifecycleObserver.cleanUp()
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+        if (isLoggedIn.value == true) {
+            val loggedOut = appLifecycleObserver.updateInteractionTime()
+            if (loggedOut) {
+                return true
+            }
+        }
+        return super.dispatchTouchEvent(ev)
     }
 
     private fun shareFile(bytes: ByteArray, filename: String, mimeType: String) {
@@ -385,6 +506,17 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         WalletCaptureHandler.retryPending(applicationContext)
+        // Re-check in case the user just set up a screen lock from the
+        // "Abrir configuración" redirect -- otherwise they'd be stuck on
+        // that screen forever even after fixing it.
+        if (biometricUnavailable.value) {
+            biometricUnavailable.value = false
+        }
+    }
+
+    override fun onDestroy() {
+        ProcessLifecycleOwner.get().lifecycle.removeObserver(processLifecycleObserver)
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {

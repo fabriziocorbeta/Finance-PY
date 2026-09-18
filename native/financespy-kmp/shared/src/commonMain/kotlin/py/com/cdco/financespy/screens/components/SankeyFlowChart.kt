@@ -24,7 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -130,27 +131,28 @@ internal fun computeSankeyLayers(sankeyDto: CashflowSankeyDto): SankeyLayerInfo 
 
         if (isIncome) {
             val hasIncoming = incomingMap[idx]?.isNotEmpty() == true
-            // Una categoría como "Salario" sin subcategorías puede, aun
-            // así, ir DIRECTO al centro (no ser subcategoría de nadie) --
-            // en ese caso necesita 1 solo salto, igual que "Negocio", y
-            // no debe compartir la columna lejana con categorías que sí
-            // son subcategorías de otra (ej. "Venta de Mercaderías" bajo
-            // "Negocio"). Meterla en esa columna lejana fuerza que su
-            // link salte 2 columnas de ancho, cruzando por detrás del
-            // link corto vecino y generando el pico feo en el cruce.
-            val linksToCenterDirectly = outgoingMap[idx]?.any { it.target == centerIdx } == true
-            layerMap[idx] = when {
-                !hasIncomeSubs -> 0
-                hasIncoming || linksToCenterDirectly -> centerLayer - 1
-                else -> 0
+            // d3-sankey real usa nodeAlign "justify" (el default): TODO
+            // nodo sin incoming edges va a la columna 0, sin importar
+            // cuántos saltos tenga hasta el centro -- confirmado
+            // inspeccionando el SVG real de la web (Salario, sin
+            // subcategorías, queda en la MISMA columna x que "Venta de
+            // Mercaderías", no con "Negocio"). El cruce en pico que un
+            // fix anterior "corrigió" moviendo a Salario a la columna de
+            // Negocio era en realidad comportamiento correcto de la web,
+            // no un bug -- se revierte a la regla real: solo el nodo
+            // agregador (con incoming) va a la columna adyacente al
+            // centro, cualquier nodo sin incoming va a la columna 0.
+            if (hasIncomeSubs) {
+                layerMap[idx] = if (hasIncoming) 1 else 0
+            } else {
+                layerMap[idx] = 0
             }
         } else {
             val hasOutgoing = outgoingMap[idx]?.isNotEmpty() == true
-            val linksFromCenterDirectly = incomingMap[idx]?.any { it.source == centerIdx } == true
-            layerMap[idx] = when {
-                !hasExpenseSubs -> centerLayer + 1
-                hasOutgoing || linksFromCenterDirectly -> centerLayer + 1
-                else -> maxLayer
+            if (hasExpenseSubs) {
+                layerMap[idx] = if (hasOutgoing) centerLayer + 1 else maxLayer
+            } else {
+                layerMap[idx] = centerLayer + 1
             }
         }
     }
@@ -457,6 +459,8 @@ private fun SankeyCanvasLayout(
 
         val nodesByLayer = nodes.indices.groupBy { layerMap[it] ?: centerLayer }
         val nodeLayouts = mutableMapOf<Int, NodeLayout>()
+        val verticalMargin = with(density) { 20.dp.toPx() }
+        val gapPx = with(density) { 12.dp.toPx() }
 
         (0..maxLayer).forEach { layer ->
             val colNodeIndices = nodesByLayer[layer] ?: emptyList()
@@ -464,9 +468,7 @@ private fun SankeyCanvasLayout(
 
             val colX = barXByLayer[layer] ?: edgeMargin
             val colTotalVal = colNodeIndices.sumOf { nodes[it].value }.let { if (it <= 0) 1.0 else it }
-
-            val verticalMargin = with(density) { 20.dp.toPx() }
-            val gap = if (colNodeIndices.size > 1) with(density) { 12.dp.toPx() } else 0f
+            val gap = if (colNodeIndices.size > 1) gapPx else 0f
             val availableH = (heightPx - 2 * verticalMargin - (colNodeIndices.size - 1) * gap).coerceAtLeast(20f)
 
             var currentY = verticalMargin
@@ -503,12 +505,31 @@ private fun SankeyCanvasLayout(
                 val nodeColor = parseColorString(
                     node.color, defaultColor, successColor, destructiveColor, warningColor, primaryColor
                 )
-                drawRoundRect(
-                    color = nodeColor,
-                    topLeft = Offset(layout.x, layout.y),
-                    size = Size(layout.width, layout.height),
-                    cornerRadius = CornerRadius(4f, 4f)
-                )
+                // #nodePath en la web solo redondea el lado EXTERNO --
+                // izquierda si el nodo es puramente fuente (sin
+                // incoming), derecha si es puramente destino (sin
+                // outgoing), recto si es intermedio (agregador). Antes
+                // se redondeaban las 4 esquinas siempre.
+                val hasOutgoing = outgoingMap[layout.nodeIdx]?.isNotEmpty() == true
+                val hasIncoming = incomingMap[layout.nodeIdx]?.isNotEmpty() == true
+                val isSourceNode = hasOutgoing && !hasIncoming
+                val isTargetNode = hasIncoming && !hasOutgoing
+                val r = 4f
+                val rect = Rect(layout.x, layout.y, layout.x + layout.width, layout.y + layout.height)
+                val roundRect = when {
+                    isSourceNode -> RoundRect(
+                        rect,
+                        topLeft = CornerRadius(r, r), bottomLeft = CornerRadius(r, r),
+                        topRight = CornerRadius.Zero, bottomRight = CornerRadius.Zero
+                    )
+                    isTargetNode -> RoundRect(
+                        rect,
+                        topRight = CornerRadius(r, r), bottomRight = CornerRadius(r, r),
+                        topLeft = CornerRadius.Zero, bottomLeft = CornerRadius.Zero
+                    )
+                    else -> RoundRect(rect)
+                }
+                drawPath(path = Path().apply { addRoundRect(roundRect) }, color = nodeColor)
             }
 
             // Dibuja primero los hilos que saltan varias columnas (ej.
@@ -548,7 +569,12 @@ private fun SankeyCanvasLayout(
                 val srcOffset = outgoingLinksForSrc.take(srcIdx).sumOf { it.value }
                 val dstOffset = incomingLinksForDst.take(dstIdx).sumOf { it.value }
 
-                val maxThickness = with(density) { 20.dp.toPx() }
+                // La web (stroke-width: Math.max(1, d.width)) no tiene
+                // tope artificial -- con la escala global ya realista
+                // (globalKy) el grosor sale proporcionalmente correcto
+                // solo, este tope queda como red de seguridad, no como
+                // el límite real de diseño.
+                val maxThickness = with(density) { 32.dp.toPx() }
 
                 val srcThickness = (link.value / srcTotal * srcLayout.height).toFloat()
                     .coerceIn(1.5f, maxThickness)

@@ -29,6 +29,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -53,6 +55,8 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onLoggedOut: () -> Unit,
     onOpenNotificationSettings: (() -> Unit)? = null,
+    isBiometricLockEnabled: Boolean = false,
+    onToggleBiometricLock: ((Boolean) -> Unit)? = null,
     onShareFile: ((ByteArray, String, String) -> Unit)? = null,
     onNavigateToRules: (() -> Unit)? = null,
     onNavigateToNavCustomization: (() -> Unit)? = null,
@@ -320,6 +324,53 @@ fun SettingsScreen(
                                     }
                                 }
                             )
+                        }
+                    }
+                }
+
+                if (onToggleBiometricLock != null) {
+                    item {
+                        Text(
+                            text = "Seguridad",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = FinancePyColors.textPrimary()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        AppCard {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Bloqueo biométrico al abrir la app",
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        color = FinancePyColors.textPrimary(),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Switch(
+                                        checked = isBiometricLockEnabled,
+                                        onCheckedChange = onToggleBiometricLock,
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = FinancePyColors.surface(),
+                                            checkedTrackColor = FinancePyColors.buttonBgPrimary(),
+                                            uncheckedThumbColor = FinancePyColors.surface(),
+                                            uncheckedTrackColor = FinancePyColors.borderSecondary()
+                                        )
+                                    )
+                                }
+                                Text(
+                                    text = "Pide huella, rostro o PIN del dispositivo cada vez que abrís la app o volvés de segundo plano.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = FinancePyColors.textSecondary()
+                                )
+                            }
                         }
                     }
                 }
