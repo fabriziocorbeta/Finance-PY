@@ -4,6 +4,7 @@ import android.content.Intent
 import android.util.Log
 import android.net.Uri
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
@@ -219,6 +220,7 @@ class MainActivity : FragmentActivity() {
         Log.d("ColdStartProfile", "[Optimized] onCreate STARTED at $onCreateStartTime ms")
         super.onCreate(savedInstanceState)
 
+        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         ProcessLifecycleOwner.get().lifecycle.addObserver(processLifecycleObserver)
         biometricLockEnabled.value = securityPreferences.isBiometricLockEnabled()
 
@@ -433,7 +435,6 @@ class MainActivity : FragmentActivity() {
             biometricUnavailable.value = true
         }
     }
-
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
         if (isLoggedIn.value == true) {
