@@ -1,7 +1,6 @@
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
-SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -2447,6 +2446,42 @@ CREATE TABLE public.vehicles (
 
 
 --
+-- Name: versions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.versions (
+    id bigint NOT NULL,
+    whodunnit character varying,
+    created_at timestamp(6) without time zone,
+    item_id uuid NOT NULL,
+    item_type character varying NOT NULL,
+    event character varying NOT NULL,
+    object text,
+    family_id uuid NOT NULL,
+    object_changes text
+);
+
+
+--
+-- Name: versions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.versions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: versions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.versions_id_seq OWNED BY public.versions.id;
+
+
+--
 -- Name: webauthn_credentials; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2491,6 +2526,13 @@ ALTER TABLE ONLY public.oauth_applications ALTER COLUMN id SET DEFAULT nextval('
 --
 
 ALTER TABLE ONLY public.settings ALTER COLUMN id SET DEFAULT nextval('public.settings_id_seq'::regclass);
+
+
+--
+-- Name: versions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.versions ALTER COLUMN id SET DEFAULT nextval('public.versions_id_seq'::regclass);
 
 
 --
@@ -3379,6 +3421,14 @@ ALTER TABLE ONLY public.valuations
 
 ALTER TABLE ONLY public.vehicles
     ADD CONSTRAINT vehicles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: versions versions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.versions
+    ADD CONSTRAINT versions_pkey PRIMARY KEY (id);
 
 
 --
@@ -5329,6 +5379,20 @@ CREATE INDEX index_valuations_on_family_id ON public.valuations USING btree (fam
 
 
 --
+-- Name: index_versions_on_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_versions_on_family_id ON public.versions USING btree (family_id);
+
+
+--
+-- Name: index_versions_on_item_type_and_item_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_versions_on_item_type_and_item_id ON public.versions USING btree (item_type, item_id);
+
+
+--
 -- Name: index_webauthn_credentials_on_credential_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6661,12 +6725,28 @@ CREATE POLICY valuations_family_isolation_policy ON public.valuations USING ((fa
 
 
 --
+-- Name: versions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.versions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: versions versions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY versions_family_isolation_policy ON public.versions USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
 -- PostgreSQL database dump complete
 --
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260918030300'),
+('20260918030223'),
+('20260918030222'),
 ('20260915033428'),
 ('20260915022634'),
 ('20260915015304'),

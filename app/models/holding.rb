@@ -1,6 +1,10 @@
 class Holding < ApplicationRecord
   include Monetizable, Gapfillable
 
+  # Immutable audit trail: who changed a position's amount/price/cost
+  # basis, when, and the exact before/after diff.
+  has_paper_trail meta: { family_id: proc { |holding| holding.account&.family_id } }
+
   monetize :amount
 
   # Cost basis source priority (higher = takes precedence)

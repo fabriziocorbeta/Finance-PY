@@ -1,6 +1,12 @@
 class Entry < ApplicationRecord
   include Monetizable, Enrichable, FamilyIdPropagatable
 
+  # Immutable audit trail: who changed an amount/date/name, when, and the
+  # exact before/after diff. Entry has no family_id of its own (see
+  # FamilyIdPropagatable above), so versions.family_id is populated from
+  # the parent account.
+  has_paper_trail meta: { family_id: proc { |entry| entry.account&.family_id } }
+
   attr_accessor :unsplitting
 
   monetize :amount

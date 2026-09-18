@@ -505,6 +505,9 @@ GEM
     os (1.1.4)
     ostruct (0.6.3)
     pagy (9.3.5)
+    paper_trail (17.0.0)
+      activerecord (>= 7.1)
+      request_store (~> 1.4)
     parallel (1.27.0)
     parser (3.3.10.2)
       ast (~> 2.4.1)
@@ -626,6 +629,8 @@ GEM
       declarative (< 0.1.0)
       trailblazer-option (>= 0.1.1, < 0.2.0)
       uber (< 0.2.0)
+    request_store (1.7.0)
+      rack (>= 1.4)
     retriable (3.4.1)
     rexml (3.4.4)
     rotp (6.3.0)
@@ -912,6 +917,7 @@ DEPENDENCIES
   omniauth_openid_connect
   ostruct
   pagy
+  paper_trail
   pdf-reader (~> 2.12)
   pg (~> 1.5)
   posthog-ruby
