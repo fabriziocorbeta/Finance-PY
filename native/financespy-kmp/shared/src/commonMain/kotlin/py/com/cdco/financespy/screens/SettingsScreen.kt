@@ -57,6 +57,8 @@ fun SettingsScreen(
     onOpenNotificationSettings: (() -> Unit)? = null,
     isBiometricLockEnabled: Boolean = false,
     onToggleBiometricLock: ((Boolean) -> Unit)? = null,
+    isScreenCaptureBlockEnabled: Boolean = true,
+    onToggleScreenCaptureBlock: ((Boolean) -> Unit)? = null,
     onShareFile: ((ByteArray, String, String) -> Unit)? = null,
     onNavigateToRules: (() -> Unit)? = null,
     onNavigateToNavCustomization: (() -> Unit)? = null,
@@ -328,7 +330,7 @@ fun SettingsScreen(
                     }
                 }
 
-                if (onToggleBiometricLock != null) {
+                if (onToggleBiometricLock != null || onToggleScreenCaptureBlock != null) {
                     item {
                         Text(
                             text = "Seguridad",
@@ -341,35 +343,70 @@ fun SettingsScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "Bloqueo biométrico al abrir la app",
-                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                                        color = FinancePyColors.textPrimary(),
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Switch(
-                                        checked = isBiometricLockEnabled,
-                                        onCheckedChange = onToggleBiometricLock,
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = FinancePyColors.surface(),
-                                            checkedTrackColor = FinancePyColors.buttonBgPrimary(),
-                                            uncheckedThumbColor = FinancePyColors.surface(),
-                                            uncheckedTrackColor = FinancePyColors.borderSecondary()
+                                if (onToggleBiometricLock != null) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Bloqueo biométrico al abrir la app",
+                                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                color = FinancePyColors.textPrimary(),
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Switch(
+                                                checked = isBiometricLockEnabled,
+                                                onCheckedChange = onToggleBiometricLock,
+                                                colors = SwitchDefaults.colors(
+                                                    checkedThumbColor = FinancePyColors.surface(),
+                                                    checkedTrackColor = FinancePyColors.buttonBgPrimary(),
+                                                    uncheckedThumbColor = FinancePyColors.surface(),
+                                                    uncheckedTrackColor = FinancePyColors.borderSecondary()
+                                                )
+                                            )
+                                        }
+                                        Text(
+                                            text = "Pide huella, rostro o PIN del dispositivo cada vez que abrís la app o volvés de segundo plano.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = FinancePyColors.textSecondary()
                                         )
-                                    )
+                                    }
                                 }
-                                Text(
-                                    text = "Pide huella, rostro o PIN del dispositivo cada vez que abrís la app o volvés de segundo plano.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = FinancePyColors.textSecondary()
-                                )
+                                if (onToggleScreenCaptureBlock != null) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Bloquear capturas de pantalla",
+                                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                color = FinancePyColors.textPrimary(),
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Switch(
+                                                checked = isScreenCaptureBlockEnabled,
+                                                onCheckedChange = onToggleScreenCaptureBlock,
+                                                colors = SwitchDefaults.colors(
+                                                    checkedThumbColor = FinancePyColors.surface(),
+                                                    checkedTrackColor = FinancePyColors.buttonBgPrimary(),
+                                                    uncheckedThumbColor = FinancePyColors.surface(),
+                                                    uncheckedTrackColor = FinancePyColors.borderSecondary()
+                                                )
+                                            )
+                                        }
+                                        Text(
+                                            text = "Impide screenshots y grabación de pantalla, y oculta el contenido en la vista de apps recientes. Activado por defecto.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = FinancePyColors.textSecondary()
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
