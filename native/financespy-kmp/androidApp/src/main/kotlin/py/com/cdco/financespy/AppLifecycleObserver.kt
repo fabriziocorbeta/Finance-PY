@@ -44,6 +44,16 @@ class AppLifecycleObserver(
     private var isAppInForeground = false
     private var inactivityJob: Job? = null
 
+    // The timeout must never apply before the user has ever logged in --
+    // otherwise a login flow that takes long enough (or a process that's
+    // simply been sitting on the login screen a while) races the OAuth
+    // redirect: onStart()'s timeout check fires synchronously the instant
+    // the app comes back from the browser, calls performLogout() in a
+    // coroutine, and that can land AFTER handleOAuthRedirect sets
+    // isLoggedIn=true, silently flipping it back to false right after a
+    // successful login. MainActivity keeps this in sync with isLoggedIn.
+    var isLoggedIn: Boolean = false
+
     private val scope = CoroutineScope(Dispatchers.Main)
 
     init {
@@ -63,7 +73,7 @@ class AppLifecycleObserver(
         inactivityJob = scope.launch {
             while (isActive) {
                 delay(1000)
-                if (isAppInForeground) {
+                if (isAppInForeground && isLoggedIn) {
                     val now = System.currentTimeMillis()
                     val timeSinceLastInteraction = now - memoryLastInteractionTime
                     if (timeSinceLastInteraction > INACTIVITY_TIMEOUT_MS) {
@@ -86,10 +96,20 @@ class AppLifecycleObserver(
         }
     }
 
+    // Call after a successful (re-)login so a stale lastInteractionTime
+    // (from sitting on the login screen a while, or a prior session) can't
+    // immediately re-trigger a timeout the instant isLoggedIn flips true.
+    fun resetClock() {
+        val now = System.currentTimeMillis()
+        memoryLastInteractionTime = now
+        lastInteractionTime = now
+    }
+
     /**
      * Updates the interaction time. Returns true if the user was just logged out due to inactivity.
      */
     fun updateInteractionTime(): Boolean {
+        if (!isLoggedIn) return false
         val now = System.currentTimeMillis()
         val timeSinceLastInteraction = now - memoryLastInteractionTime
         if (timeSinceLastInteraction > INACTIVITY_TIMEOUT_MS) {
@@ -107,6 +127,8 @@ class AppLifecycleObserver(
         super.onStart(owner)
         isAppInForeground = true
         Log.d(TAG, "onStart: app entered foreground")
+
+        if (!isLoggedIn) return
 
         // Check if timeout was reached while in background using persistent time
         val now = System.currentTimeMillis()

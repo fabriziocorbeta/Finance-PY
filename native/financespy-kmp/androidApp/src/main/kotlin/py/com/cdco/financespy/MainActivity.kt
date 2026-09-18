@@ -245,6 +245,10 @@ class MainActivity : FragmentActivity() {
             withContext(Dispatchers.Main) {
                 needsOnboarding.value = onboardingNeeded
                 isLoggedIn.value = loggedIn
+                appLifecycleObserver.isLoggedIn = loggedIn
+                if (loggedIn) {
+                    appLifecycleObserver.resetClock()
+                }
             }
         }
 
@@ -288,6 +292,7 @@ class MainActivity : FragmentActivity() {
                 },
                 onLoggedOut = {
                     isLoggedIn.value = false
+                    appLifecycleObserver.isLoggedIn = false
                 },
                 onboardingViewModelFactory = { onboardingViewModel },
                 dashboardViewModelFactory = { dashboardViewModel },
@@ -532,6 +537,8 @@ class MainActivity : FragmentActivity() {
                     val settings = try { api.fetchFamilySettings() } catch (e: Exception) { null }
                     needsOnboarding.value = settings?.current_user?.needs_onboarding == true
                     isLoggedIn.value = true
+                    appLifecycleObserver.isLoggedIn = true
+                    appLifecycleObserver.resetClock()
                 }
                 .onFailure { e -> Log.e("FinancePYAuth", "exchangeCode failed", e) }
         }
