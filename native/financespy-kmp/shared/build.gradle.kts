@@ -29,6 +29,7 @@ kotlin {
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.ktor.client.logging)
+            implementation(libs.ktor.client.auth)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.room.runtime)
@@ -43,6 +44,7 @@ kotlin {
             implementation("androidx.security:security-crypto:1.1.0-alpha06")
         }
         commonTest.dependencies {
+            implementation(libs.ktor.client.mock)
             implementation(kotlin("test"))
         }
         androidUnitTest.dependencies {
