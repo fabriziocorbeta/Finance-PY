@@ -101,10 +101,17 @@ class SalesController < ApplicationController
     end
 
     def sale_params
-      params.require(:sale).permit(
+      permitted = params.require(:sale).permit(
         :client_name, :currency, :payment_method, :invoice_number, :condition, :notes,
-        :delivery_address, :delivery_date, :carrier, :account_id,
+        :delivery_address, :delivery_date, :carrier,
         sale_items_attributes: [ :id, :product_id, :quantity, :unit_price, :_destroy ]
       )
+
+      # account_id is deliberately NOT mass-assigned: resolve it inside the caller's
+      # own family so a foreign account id can never be attached.
+      if params[:sale].respond_to?(:key?) && params[:sale].key?(:account_id)
+        permitted[:account_id] = Current.family.accounts.find_by(id: params[:sale][:account_id])&.id
+      end
+      permitted
     end
 end

@@ -157,9 +157,16 @@ class Api::V1::PurchaseOrdersController < Api::V1::BaseController
 
     def purchase_order_params
       raw = params.key?(:purchase_order) ? params.require(:purchase_order) : params
-      raw.permit(
-        :supplier_name, :currency, :expected_date, :notes, :account_id,
+      permitted = raw.permit(
+        :supplier_name, :currency, :expected_date, :notes,
         purchase_order_items_attributes: [ :id, :product_id, :quantity, :unit_cost, :_destroy ]
       )
+
+      # account_id is deliberately NOT mass-assigned: resolve it inside the caller's
+      # own family so a foreign account id can never be attached.
+      if raw.respond_to?(:key?) && raw.key?(:account_id)
+        permitted[:account_id] = current_resource_owner.family.accounts.find_by(id: raw[:account_id])&.id
+      end
+      permitted
     end
 end
