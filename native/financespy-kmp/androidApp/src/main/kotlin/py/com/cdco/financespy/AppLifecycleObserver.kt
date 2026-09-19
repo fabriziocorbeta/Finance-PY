@@ -13,13 +13,10 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import py.com.cdco.financespy.auth.AuthRepository
 
 class AppLifecycleObserver(
     private val context: Context,
-    private val authRepository: AuthRepository,
-    private val onLogoutCallback: () -> Unit
+    private val onLockCallback: () -> Unit
 ) : DefaultLifecycleObserver {
 
     companion object {
@@ -48,11 +45,15 @@ class AppLifecycleObserver(
     // otherwise a login flow that takes long enough (or a process that's
     // simply been sitting on the login screen a while) races the OAuth
     // redirect: onStart()'s timeout check fires synchronously the instant
-    // the app comes back from the browser, calls performLogout() in a
+    // the app comes back from the browser, calls performLock() in a
     // coroutine, and that can land AFTER handleOAuthRedirect sets
     // isLoggedIn=true, silently flipping it back to false right after a
     // successful login. MainActivity keeps this in sync with isLoggedIn.
     var isLoggedIn: Boolean = false
+
+    // While locked, touches on the lock screen must not re-trigger the lock
+    // (they'd be swallowed) nor move the inactivity clock.
+    private var isLocked = false
 
     private val scope = CoroutineScope(Dispatchers.Main)
 
@@ -77,7 +78,7 @@ class AppLifecycleObserver(
                     val now = System.currentTimeMillis()
                     val timeSinceLastInteraction = now - memoryLastInteractionTime
                     if (timeSinceLastInteraction > INACTIVITY_TIMEOUT_MS) {
-                        performLogout()
+                        performLock()
                         break
                     }
                 }
@@ -85,21 +86,28 @@ class AppLifecycleObserver(
         }
     }
 
-    private fun performLogout() {
-        Log.d(TAG, "checkInactivity: timeout reached, logging out")
+    // Inactivity LOCKS the app, it never clears tokens. Wiping the refresh
+    // token here meant a server outage + 3 idle minutes = no way back in
+    // (login needs the server). Real logout stays an explicit user action.
+    private fun performLock() {
+        Log.d(TAG, "checkInactivity: timeout reached, locking")
         inactivityJob?.cancel()
-        scope.launch(Dispatchers.IO) {
-            authRepository.logout()
-            withContext(Dispatchers.Main) {
-                onLogoutCallback()
-            }
-        }
+        isLocked = true
+        onLockCallback()
+    }
+
+    // Call once the user re-authenticated locally after a lock.
+    fun onUnlocked() {
+        isLocked = false
+        resetClock()
+        if (isAppInForeground && isLoggedIn) startInactivityTimer()
     }
 
     // Call after a successful (re-)login so a stale lastInteractionTime
     // (from sitting on the login screen a while, or a prior session) can't
     // immediately re-trigger a timeout the instant isLoggedIn flips true.
     fun resetClock() {
+        isLocked = false
         val now = System.currentTimeMillis()
         memoryLastInteractionTime = now
         lastInteractionTime = now
@@ -109,11 +117,11 @@ class AppLifecycleObserver(
      * Updates the interaction time. Returns true if the user was just logged out due to inactivity.
      */
     fun updateInteractionTime(): Boolean {
-        if (!isLoggedIn) return false
+        if (!isLoggedIn || isLocked) return false
         val now = System.currentTimeMillis()
         val timeSinceLastInteraction = now - memoryLastInteractionTime
         if (timeSinceLastInteraction > INACTIVITY_TIMEOUT_MS) {
-            performLogout()
+            performLock()
             return true
         }
         memoryLastInteractionTime = now
@@ -128,14 +136,14 @@ class AppLifecycleObserver(
         isAppInForeground = true
         Log.d(TAG, "onStart: app entered foreground")
 
-        if (!isLoggedIn) return
+        if (!isLoggedIn || isLocked) return
 
         // Check if timeout was reached while in background using persistent time
         val now = System.currentTimeMillis()
         val timeSinceLastInteraction = now - lastInteractionTime
         if (timeSinceLastInteraction > INACTIVITY_TIMEOUT_MS) {
             Log.d(TAG, "onStart: timeout reached while in background")
-            performLogout()
+            performLock()
         } else {
             // Restore memory time from persistent time in case process died
             memoryLastInteractionTime = lastInteractionTime
