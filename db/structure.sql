@@ -1022,7 +1022,8 @@ CREATE TABLE public.impersonation_sessions (
     impersonated_id uuid NOT NULL,
     status character varying DEFAULT 'pending'::character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    approved_at timestamp(6) without time zone
 );
 
 
@@ -6767,6 +6768,7 @@ CREATE POLICY versions_family_isolation_policy ON public.versions USING ((family
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260919170000'),
 ('20260919060000'),
 ('20260918030300'),
 ('20260918030223'),

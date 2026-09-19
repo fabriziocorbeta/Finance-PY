@@ -17,10 +17,10 @@
         <%= button_to "Terminate", complete_impersonation_session_path(Current.session.active_impersonator_session), method: :put, class: "items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-red-500" %>
       </div>
     <% else %>
-      <% if Current.true_user.impersonator_support_sessions.in_progress.any? %>
+      <% if Current.true_user.impersonator_support_sessions.active.any? %>
         <%= form_with url: join_impersonation_sessions_path, class: "flex items-center space-x-2 mr-4" do |f| %>
           <%= f.select :impersonation_session_id,
-            Current.true_user.impersonator_support_sessions.in_progress.map { |session|
+            Current.true_user.impersonator_support_sessions.active.map { |session|
               ["#{session.impersonated.email} (#{session.status})", session.id]
             },
             { prompt: "Join a session" },
@@ -32,6 +32,10 @@
 
       <%= form_with model: ImpersonationSession.new, class: "flex items-center space-x-2" do |f| %>
         <%= f.text_field :impersonated_id, class: "rounded-md text-sm border-0 focus:ring-0 ring-0 text-black font-mono w-96", placeholder: "UUID", autocomplete: "off" %>
+        <%= password_field_tag :password, nil, class: "rounded-md text-sm border-0 focus:ring-0 ring-0 text-black font-mono w-40", placeholder: "Your password", autocomplete: "current-password", required: true %>
+        <% if Current.true_user.otp_required? %>
+          <%= text_field_tag :otp_code, nil, class: "rounded-md text-sm border-0 focus:ring-0 ring-0 text-black font-mono w-28", placeholder: "MFA code", autocomplete: "one-time-code", inputmode: "numeric", required: true %>
+        <% end %>
         <%= f.submit "Request Impersonation", class: "inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-red-500" %>
       <% end %>
     <% end %>
