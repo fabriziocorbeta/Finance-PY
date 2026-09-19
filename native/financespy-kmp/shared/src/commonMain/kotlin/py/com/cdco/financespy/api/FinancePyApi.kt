@@ -2,6 +2,7 @@ package py.com.cdco.financespy.api
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.delete
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.forms.submitFormWithBinaryData
@@ -103,6 +104,17 @@ import py.com.cdco.financespy.api.dto.UpdateUserBody
 import py.com.cdco.financespy.api.dto.UpdateUserRequest
 
 open class FinancePyApi(private val http: HttpClient) {
+    /** True if the server (or its proxy) answers with anything below 5xx within 3s. */
+    open suspend fun isServerReachable(): Boolean = try {
+        http.get("/up") {
+            timeout { requestTimeoutMillis = 3_000; connectTimeoutMillis = 3_000 }
+        }.status.value < 500
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        false
+    }
+
     open suspend fun updateUser(body: UpdateUserBody): FamilySettingsDto {
         return http.patch("/api/v1/users/me") {
             contentType(ContentType.Application.Json)

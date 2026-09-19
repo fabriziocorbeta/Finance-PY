@@ -35,7 +35,8 @@ class ReceivableDetailViewModel(
     private val scope: CoroutineScope,
     private val receivableId: String,
     private val api: FinancePyApi,
-    private val receivableDao: ReceivableDao
+    private val receivableDao: ReceivableDao,
+    private val outbox: py.com.cdco.financespy.sync.OfflineOutbox? = null
 ) {
     private val _state = MutableStateFlow(ReceivableDetailState())
     val state: StateFlow<ReceivableDetailState> = _state.asStateFlow()
@@ -117,19 +118,24 @@ class ReceivableDetailViewModel(
 
         _state.update { it.copy(isRegisteringPayment = true, paymentError = null) }
         scope.launch {
+            val transfer = CreateTransferBody(
+                from_account_id = fromAccountId,
+                to_account_id = toAccountId,
+                amount = amount,
+                date = current.paymentDate
+            )
             runCatching {
-                api.createTransfer(
-                    CreateTransferBody(
-                        from_account_id = fromAccountId,
-                        to_account_id = toAccountId,
-                        amount = amount,
-                        date = current.paymentDate
-                    )
-                )
+                api.createTransfer(transfer)
             }.onSuccess {
                 _state.update { it.copy(isRegisteringPayment = false, showPaymentDialog = false, paymentAmount = "") }
                 onDone()
             }.onFailure { error ->
+                if (outbox != null && outbox.shouldQueue(error)) {
+                    outbox.enqueueTransfer(transfer, "Pago cuenta a cobrar: $amount")
+                    _state.update { it.copy(isRegisteringPayment = false, showPaymentDialog = false, paymentAmount = "") }
+                    onDone()
+                    return@onFailure
+                }
                 _state.update { it.copy(isRegisteringPayment = false, paymentError = error.message ?: "No se pudo registrar el pago") }
             }
         }
