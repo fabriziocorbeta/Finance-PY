@@ -52,28 +52,24 @@ class UpayImportTest < ActiveSupport::TestCase
     assert_equal 4079.to_d, import.reload.rows.first.commission_amount.to_d # 2320+232+800+727
   end
 
-  test "import! creates income and commission entries when there is no matching sale" do
+  test "import! creates only the commission entry when there is no matching sale" do
     import = UpayImport.create!(family: @family, account: @account)
     import.raw_file_str = upay_csv([ sample_row ])
     import.save!(validate: false)
     import.generate_rows_from_csv
     import.reload
 
-    assert_difference -> { Entry.count }, 2 do
+    assert_difference -> { Entry.count }, 1 do
       import.import!
     end
 
-    entries = @account.entries.where(import: import).order(:amount)
-    income_entry = entries.find { |e| e.amount.negative? }
-    commission_entry = entries.find { |e| e.amount.positive? }
+    commission_entry = @account.entries.where(import: import).sole
 
-    assert_equal(-35000, income_entry.amount)
     assert_equal 770, commission_entry.amount
-    assert_equal "Ventas con tarjeta", income_entry.transaction.category.name
     assert_equal "Comisiones de tarjeta", commission_entry.transaction.category.name
   end
 
-  test "import! skips the duplicate income entry when a matching completed Sale exists" do
+  test "import! creates only the commission entry when a matching completed Sale exists" do
     sale = Sale.create!(family: @family, account: @account, client_name: "Test Client")
     sale.sale_items.create!(product: @product, quantity: 1, unit_price: 35000)
     sale.complete!
@@ -85,7 +81,7 @@ class UpayImportTest < ActiveSupport::TestCase
     import.generate_rows_from_csv
     import.reload
 
-    assert_difference -> { Entry.count }, 1 do # solo la comisión, no el ingreso duplicado
+    assert_difference -> { Entry.count }, 1 do # solo la comisión
       import.import!
     end
 
