@@ -1,4 +1,11 @@
 class Account < ApplicationRecord
+  include Encryptable
+
+  # User-entered free text: encrypted at rest (owner/DB-leak protection). Not queried in SQL.
+  if encryption_ready?
+    encrypts :notes
+  end
+
   include AASM, Syncable, Monetizable, Chartable, Linkable, Enrichable, Anchorable, Reconcileable, TaxTreatable, FamilyIdPropagatable
 
   # Immutable audit trail: who changed the balance/name/currency, when,

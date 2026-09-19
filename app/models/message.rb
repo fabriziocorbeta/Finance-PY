@@ -1,4 +1,11 @@
 class Message < ApplicationRecord
+  include Encryptable
+
+  # User-entered free text: encrypted at rest (owner/DB-leak protection). Not queried in SQL.
+  if encryption_ready?
+    encrypts :content
+  end
+
   belongs_to :chat
   has_many :tool_calls, dependent: :destroy
 
