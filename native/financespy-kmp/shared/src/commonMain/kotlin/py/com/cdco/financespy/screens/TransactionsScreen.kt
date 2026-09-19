@@ -124,6 +124,15 @@ fun TransactionsScreen(
             }
         }
 
+        if (state.isOffline) {
+            Text(
+                text = "Sin conexión: mostrando datos guardados (últimos 90 días)",
+                style = MaterialTheme.typography.labelMedium,
+                color = FinancePyColors.textSecondary(),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+        }
+
         Box(modifier = Modifier.fillMaxSize()) {
             when {
                 state.isLoading && state.transactions.isEmpty() -> {
@@ -150,8 +159,8 @@ fun TransactionsScreen(
                         items(state.transactions, key = { it.id }) { entry ->
                             TransactionRow(
                                 entry = entry,
-                                onClick = { onTransactionClick(entry.id) },
-                                onEditClick = { onTransactionClick(entry.id) },
+                                onClick = { if (!entry.pending) onTransactionClick(entry.id) },
+                                onEditClick = { if (!entry.pending) onTransactionClick(entry.id) },
                                 onDeleteClick = { transactionPendingDelete = entry }
                             )
                         }
@@ -271,9 +280,9 @@ private fun TransactionRow(
                         color = FinancePyColors.textPrimary()
                     )
                     Text(
-                        text = entry.date,
+                        text = if (entry.pending) "${entry.date} · Pendiente de sincronizar" else entry.date,
                         style = MaterialTheme.typography.labelMedium,
-                        color = FinancePyColors.textSubdued()
+                        color = if (entry.pending) FinancePyColors.textSecondary() else FinancePyColors.textSubdued()
                     )
                     // TransactionListItemDto (the list-row DTO) carries no tags field - only
                     // TransactionDetailDto does - so no tag chips render here on the list screen.
@@ -300,7 +309,7 @@ private fun TransactionRow(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
                 ) {
-                    DropdownMenuItem(
+                    if (!entry.pending) DropdownMenuItem(
                         text = { Text("Editar") },
                         onClick = {
                             showMenu = false
@@ -308,7 +317,7 @@ private fun TransactionRow(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Eliminar") },
+                        text = { Text(if (entry.pending) "Descartar" else "Eliminar") },
                         onClick = {
                             showMenu = false
                             onDeleteClick()

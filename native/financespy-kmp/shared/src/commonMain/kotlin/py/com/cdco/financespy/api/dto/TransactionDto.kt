@@ -18,7 +18,9 @@ data class TransactionListItemDto(
     val category: CategoryRefDto? = null,
     val merchant: MerchantRefDto? = null,
     val created_at: String,
-    val updated_at: String
+    val updated_at: String,
+    // Local-only: a create still waiting in the offline outbox (never sent by the server).
+    val pending: Boolean = false
 )
 
 @Serializable

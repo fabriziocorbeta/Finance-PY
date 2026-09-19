@@ -15,6 +15,10 @@ import py.com.cdco.financespy.api.dto.CreateGoalBody
 import py.com.cdco.financespy.api.dto.CreateGoalPledgeBody
 import py.com.cdco.financespy.api.dto.CreateReceivableBody
 import py.com.cdco.financespy.api.dto.CreateTransactionBody
+import py.com.cdco.financespy.api.dto.CreateTransferBody
+import py.com.cdco.financespy.api.dto.UpdateTransactionBody
+import kotlin.math.abs
+import kotlin.math.roundToLong
 
 // Small key/value persistence. Deliberately NOT Room: the database uses
 // destructive migrations, which would silently drop queued writes.
@@ -34,6 +38,9 @@ data class OutboxItem(
     val failed: Boolean = false,
     val lastError: String? = null
 )
+
+@Serializable
+private data class TransactionUpdateJob(val id: String, val body: UpdateTransactionBody)
 
 @Serializable
 private data class GoalPledgeJob(val goalId: String, val body: CreateGoalPledgeBody)
@@ -57,6 +64,8 @@ class OfflineOutbox(
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     private val mutex = Mutex()
     private var items: List<OutboxItem> = load()
+    private val _items = MutableStateFlow(items)
+    val pendingItems: StateFlow<List<OutboxItem>> = _items
     private val _pending = MutableStateFlow(items.count { !it.failed })
     private val _failed = MutableStateFlow(items.count { it.failed })
     val pendingCount: StateFlow<Int> = _pending
@@ -68,6 +77,7 @@ class OfflineOutbox(
 
     private fun persist(next: List<OutboxItem>) {
         items = next
+        _items.value = next
         store.put(KEY, json.encodeToString(ListSerializer(OutboxItem.serializer()), next))
         _pending.value = next.count { !it.failed }
         _failed.value = next.count { it.failed }
@@ -78,6 +88,22 @@ class OfflineOutbox(
 
     suspend fun enqueueTransaction(body: CreateTransactionBody, label: String) =
         enqueue("transaction", json.encodeToString(CreateTransactionBody.serializer(), body), label)
+
+    suspend fun enqueueTransactionUpdate(id: String, body: UpdateTransactionBody, label: String) =
+        enqueue("transaction_update", json.encodeToString(TransactionUpdateJob.serializer(), TransactionUpdateJob(id, body)), label)
+
+    suspend fun enqueueTransactionDelete(id: String, label: String) =
+        enqueue("transaction_delete", id, label)
+
+    /** Drop a queued item (user discards a pending row). */
+    suspend fun discard(itemId: String) = mutex.withLock { persist(items.filter { it.id != itemId }) }
+
+    fun decodeTransaction(item: OutboxItem): CreateTransactionBody? =
+        if (item.kind != "transaction") null
+        else runCatching { json.decodeFromString(CreateTransactionBody.serializer(), item.payload) }.getOrNull()
+
+    suspend fun enqueueTransfer(body: CreateTransferBody, label: String) =
+        enqueue("transfer", json.encodeToString(CreateTransferBody.serializer(), body), label)
 
     suspend fun enqueueGoalPledge(goalId: String, body: CreateGoalPledgeBody, label: String) =
         enqueue("goal_pledge", json.encodeToString(GoalPledgeJob.serializer(), GoalPledgeJob(goalId, body)), label)
@@ -126,6 +152,11 @@ class OfflineOutbox(
     private suspend fun send(item: OutboxItem) {
         when (item.kind) {
             "transaction" -> api.createTransaction(json.decodeFromString(CreateTransactionBody.serializer(), item.payload))
+            "transaction_update" -> json.decodeFromString(TransactionUpdateJob.serializer(), item.payload).let {
+                api.updateTransaction(it.id, it.body)
+            }
+            "transfer" -> api.createTransfer(json.decodeFromString(CreateTransferBody.serializer(), item.payload))
+            "transaction_delete" -> api.deleteTransaction(item.payload)
             "goal_pledge" -> json.decodeFromString(GoalPledgeJob.serializer(), item.payload).let {
                 api.createGoalPledge(it.goalId, it.body)
             }
@@ -155,3 +186,19 @@ class OfflineOutbox(
         const val KEY = "outbox_items"
     }
 }
+
+/** Server amount string ("1500" / "12.50") -> minor units, PYG has none. */
+fun amountTextToCents(text: String, currency: String?): Long {
+    val d = text.toDoubleOrNull() ?: 0.0
+    return if (isZeroMinorUnit(currency)) d.roundToLong() else (d * 100.0).roundToLong()
+}
+
+/** Minor units -> the plain amount string the API expects. */
+fun centsToAmountText(cents: Long, currency: String?): String {
+    val a = abs(cents)
+    if (isZeroMinorUnit(currency)) return a.toString()
+    val c = a % 100
+    return "${a / 100}.${if (c < 10) "0$c" else "$c"}"
+}
+
+private fun isZeroMinorUnit(currency: String?) = currency?.uppercase() in listOf("PYG", "GUARANI", "GUARANIES")

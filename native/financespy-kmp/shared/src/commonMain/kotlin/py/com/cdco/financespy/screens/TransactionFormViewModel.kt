@@ -11,7 +11,11 @@ import py.com.cdco.financespy.api.dto.CreateTransactionBody
 import py.com.cdco.financespy.api.dto.MerchantDto
 import py.com.cdco.financespy.api.dto.TagDto
 import py.com.cdco.financespy.api.dto.UpdateTransactionBody
+import py.com.cdco.financespy.db.EntryDao
+import py.com.cdco.financespy.db.TransactionDao
 import py.com.cdco.financespy.sync.OfflineOutbox
+import py.com.cdco.financespy.sync.centsToAmountText
+import kotlinx.coroutines.flow.first
 import py.com.cdco.financespy.sync.currentIsoDate
 
 data class TransactionFormState(
@@ -37,8 +41,14 @@ class TransactionFormViewModel(
     private val scope: CoroutineScope,
     private val api: FinancePyApi,
     private val transactionId: String?,
-    private val outbox: OfflineOutbox? = null
+    private val outbox: OfflineOutbox? = null,
+    private val entryDao: EntryDao? = null,
+    private val transactionDao: TransactionDao? = null
 ) {
+    // Edit prefilled from the local copy: notes/tags are unknown there, so an
+    // offline edit must not send them (it would wipe them on the server).
+    private var partialEdit = false
+
     val isEditMode: Boolean = transactionId != null
 
     private val _state = MutableStateFlow(TransactionFormState(isLoading = isEditMode))
@@ -80,10 +90,26 @@ class TransactionFormViewModel(
                         )
                     }
                     .onFailure { e ->
-                        _state.value = _state.value.copy(
-                            isLoading = false,
-                            error = e.message ?: "Error al cargar la transacción"
-                        )
+                        val entry = runCatching { entryDao?.observeAll()?.first()?.firstOrNull { it.id == transactionId } }.getOrNull()
+                        if (entry != null) {
+                            val tx = runCatching { transactionDao?.findById(transactionId) }.getOrNull()
+                            partialEdit = true
+                            _state.value = _state.value.copy(
+                                isLoading = false,
+                                accountId = entry.accountId,
+                                date = entry.date,
+                                amountText = centsToAmountText(entry.amountCents, entry.currency),
+                                nature = if (entry.amountCents > 0) "income" else "expense",
+                                name = entry.name,
+                                categoryId = tx?.categoryId,
+                                merchantId = tx?.merchantId
+                            )
+                        } else {
+                            _state.value = _state.value.copy(
+                                isLoading = false,
+                                error = e.message ?: "Error al cargar la transacción"
+                            )
+                        }
                     }
             }
         }
@@ -127,6 +153,7 @@ class TransactionFormViewModel(
             _state.value = s.copy(isSaving = true, error = null)
 
             var queuedBody: CreateTransactionBody? = null
+            var queuedUpdate: UpdateTransactionBody? = null
 
             val result = if (transactionId != null) {
                 val body = UpdateTransactionBody(
@@ -135,11 +162,12 @@ class TransactionFormViewModel(
                     amount = s.amountText,
                     nature = s.nature,
                     name = s.name,
-                    notes = s.notes.ifBlank { null },
+                    notes = if (partialEdit) null else s.notes.ifBlank { null },
                     category_id = s.categoryId,
                     merchant_id = s.merchantId,
-                    tag_ids = s.selectedTagIds.toList()
+                    tag_ids = if (partialEdit) null else s.selectedTagIds.toList()
                 )
+                queuedUpdate = body
                 runCatching { api.updateTransaction(transactionId, body) }
             } else {
                 val body = CreateTransactionBody(
@@ -163,6 +191,13 @@ class TransactionFormViewModel(
                     onSaved()
                 }
                 .onFailure { e ->
+                    val upd = queuedUpdate
+                    if (upd != null && transactionId != null && outbox != null && outbox.shouldQueue(e)) {
+                        outbox.enqueueTransactionUpdate(transactionId, upd, "Editar: ${upd.name}")
+                        _state.value = _state.value.copy(isSaving = false)
+                        onSaved()
+                        return@onFailure
+                    }
                     val body = queuedBody
                     if (body != null && outbox != null && outbox.shouldQueue(e)) {
                         outbox.enqueueTransaction(body, "${body.name}: ${body.amount}")

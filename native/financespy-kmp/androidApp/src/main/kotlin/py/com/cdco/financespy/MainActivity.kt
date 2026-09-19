@@ -158,7 +158,11 @@ class MainActivity : FragmentActivity() {
     private val transactionsViewModel by lazy {
         TransactionsViewModel(
             scope = lifecycleScope,
-            api = api
+            api = api,
+            entryDao = database.entryDao(),
+            transactionDao = database.transactionDao(),
+            accountDao = database.accountDao(),
+            outbox = outbox
         )
     }
     private val rulesListViewModel by lazy {
@@ -339,7 +343,8 @@ class MainActivity : FragmentActivity() {
                 },
                 transactionsViewModelFactory = { transactionsViewModel },
                 transactionFormViewModelFactory = { transactionId ->
-                    TransactionFormViewModel(scope = lifecycleScope, api = api, transactionId = transactionId, outbox = outbox)
+                    TransactionFormViewModel(scope = lifecycleScope, api = api, transactionId = transactionId, outbox = outbox,
+                        entryDao = database.entryDao(), transactionDao = database.transactionDao())
                 },
                 rulesListViewModelFactory = { rulesListViewModel },
                 ruleDetailViewModelFactory = { ruleId ->
@@ -369,7 +374,8 @@ class MainActivity : FragmentActivity() {
                 receivableDetailViewModelFactory = { receivableId ->
                     ReceivableDetailViewModel(
                         scope = lifecycleScope, receivableId = receivableId, api = api,
-                        receivableDao = database.receivableDao()
+                        receivableDao = database.receivableDao(),
+                        outbox = outbox
                     )
                 },
                 receivableFormViewModelFactory = { receivableId ->
