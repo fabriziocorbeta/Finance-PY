@@ -25,6 +25,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -112,6 +113,7 @@ class MainActivity : FragmentActivity() {
     private val tokenStorage by lazy { AndroidTokenStorage(applicationContext) }
     private val navPreferences by lazy { AndroidNavPreferences(applicationContext) }
     private val dashboardCache by lazy { AndroidDashboardCache(applicationContext) }
+    private val offlineStore by lazy { py.com.cdco.financespy.cache.AndroidOfflineStore(applicationContext) }
     private val httpClient by lazy { ApiClient.create(tokenStorage) }
     private val authRepository by lazy { AuthRepository(httpClient, tokenStorage) }
     private val api by lazy { FinancePyApi(httpClient) }
@@ -127,6 +129,14 @@ class MainActivity : FragmentActivity() {
             goalDao = database.goalDao(),
             receivableDao = database.receivableDao(),
             currentDateProvider = { currentIsoDate() }
+        )
+    }
+    private val outbox by lazy {
+        py.com.cdco.financespy.sync.OfflineOutbox(
+            api = api,
+            store = offlineStore,
+            now = { System.currentTimeMillis() },
+            onFlushed = { syncEngine.syncAll() }
         )
     }
     private val dashboardViewModel by lazy {
@@ -238,6 +248,17 @@ class MainActivity : FragmentActivity() {
 
         ProcessLifecycleOwner.get().lifecycle.addObserver(appLifecycleObserver)
 
+        // Deliver queued offline writes: on start/resume and every 30s while
+        // the app is visible. flush() stops at the first unreachable result.
+        lifecycleScope.launch {
+            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                while (true) {
+                    if (isLoggedIn.value == true) runCatching { outbox.flush() }
+                    kotlinx.coroutines.delay(30_000)
+                }
+            }
+        }
+
         lifecycleScope.launch(Dispatchers.IO) {
             val tAuthStart = System.currentTimeMillis()
             val loggedIn = authRepository.isLoggedIn()
@@ -318,7 +339,7 @@ class MainActivity : FragmentActivity() {
                 },
                 transactionsViewModelFactory = { transactionsViewModel },
                 transactionFormViewModelFactory = { transactionId ->
-                    TransactionFormViewModel(scope = lifecycleScope, api = api, transactionId = transactionId)
+                    TransactionFormViewModel(scope = lifecycleScope, api = api, transactionId = transactionId, outbox = outbox)
                 },
                 rulesListViewModelFactory = { rulesListViewModel },
                 ruleDetailViewModelFactory = { ruleId ->
@@ -333,13 +354,15 @@ class MainActivity : FragmentActivity() {
                 goalsListViewModelFactory = { goalsListViewModel },
                 goalDetailViewModelFactory = { goalId ->
                     GoalDetailViewModel(
-                        scope = lifecycleScope, goalId = goalId, api = api, goalDao = database.goalDao()
+                        scope = lifecycleScope, goalId = goalId, api = api, goalDao = database.goalDao(),
+                        outbox = outbox
                     )
                 },
                 goalFormViewModelFactory = { goalId ->
                     GoalFormViewModel(
                         scope = lifecycleScope, goalId = goalId, api = api,
-                        goalDao = database.goalDao(), accountDao = database.accountDao()
+                        goalDao = database.goalDao(), accountDao = database.accountDao(),
+                        outbox = outbox
                     )
                 },
                 receivablesListViewModelFactory = { receivablesListViewModel },
@@ -352,7 +375,8 @@ class MainActivity : FragmentActivity() {
                 receivableFormViewModelFactory = { receivableId ->
                     ReceivableFormViewModel(
                         scope = lifecycleScope, receivableId = receivableId, api = api,
-                        receivableDao = database.receivableDao()
+                        receivableDao = database.receivableDao(),
+                        outbox = outbox
                     )
                 },
                 productsListViewModelFactory = { productsListViewModel },
@@ -418,7 +442,8 @@ class MainActivity : FragmentActivity() {
                 onShareFile = { bytes, filename, mimeType ->
                     shareFile(bytes, filename, mimeType)
                 },
-                onPickUpayCsv = { onPicked -> pickUpayCsv(onPicked) }
+                onPickUpayCsv = { onPicked -> pickUpayCsv(onPicked) },
+                outbox = outbox
                 )
             }
         }

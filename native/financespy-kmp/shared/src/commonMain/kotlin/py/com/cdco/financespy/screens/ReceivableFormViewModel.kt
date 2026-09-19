@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
+import py.com.cdco.financespy.sync.OfflineOutbox
 import py.com.cdco.financespy.api.dto.CreateReceivableBody
 import py.com.cdco.financespy.api.dto.ReceivableDto
 import py.com.cdco.financespy.api.dto.UpdateReceivableBody
@@ -30,7 +31,8 @@ class ReceivableFormViewModel(
     private val scope: CoroutineScope,
     private val receivableId: String?,
     private val api: FinancePyApi,
-    private val receivableDao: ReceivableDao
+    private val receivableDao: ReceivableDao,
+    private val outbox: OfflineOutbox? = null
 ) {
     private val _state = MutableStateFlow(ReceivableFormState(isEditing = receivableId != null))
     val state: StateFlow<ReceivableFormState> = _state.asStateFlow()
@@ -111,6 +113,7 @@ class ReceivableFormViewModel(
         _state.update { it.copy(isSaving = true, error = null) }
 
         scope.launch {
+            var queuedBody: CreateReceivableBody? = null
             runCatching {
                 if (receivableId != null) {
                     val updateBody = UpdateReceivableBody(
@@ -134,6 +137,7 @@ class ReceivableFormViewModel(
                         currency = current.currency,
                         notes = current.notes.ifBlank { null }
                     )
+                    queuedBody = createBody
                     val dto = api.createReceivable(createBody)
                     receivableDao.upsert(dto.toEntity())
                 }
@@ -141,6 +145,13 @@ class ReceivableFormViewModel(
                 _state.update { it.copy(isSaving = false) }
                 onSaved()
             }.onFailure { error ->
+                val body = queuedBody
+                if (body != null && outbox != null && outbox.shouldQueue(error)) {
+                    outbox.enqueueReceivable(body, "Cuenta a cobrar: ${body.name}")
+                    _state.update { it.copy(isSaving = false) }
+                    onSaved()
+                    return@onFailure
+                }
                 _state.update { it.copy(isSaving = false, error = error.message ?: "Error al guardar") }
             }
         }

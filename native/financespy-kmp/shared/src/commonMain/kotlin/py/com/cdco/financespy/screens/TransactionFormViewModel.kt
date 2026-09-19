@@ -11,6 +11,7 @@ import py.com.cdco.financespy.api.dto.CreateTransactionBody
 import py.com.cdco.financespy.api.dto.MerchantDto
 import py.com.cdco.financespy.api.dto.TagDto
 import py.com.cdco.financespy.api.dto.UpdateTransactionBody
+import py.com.cdco.financespy.sync.OfflineOutbox
 import py.com.cdco.financespy.sync.currentIsoDate
 
 data class TransactionFormState(
@@ -35,7 +36,8 @@ data class TransactionFormState(
 class TransactionFormViewModel(
     private val scope: CoroutineScope,
     private val api: FinancePyApi,
-    private val transactionId: String?
+    private val transactionId: String?,
+    private val outbox: OfflineOutbox? = null
 ) {
     val isEditMode: Boolean = transactionId != null
 
@@ -44,19 +46,19 @@ class TransactionFormViewModel(
 
     init {
         scope.launch {
-            val accounts = runCatching { api.fetchAllAccounts() }.getOrDefault(emptyList())
+            val accounts = outbox?.cachedList("accounts", AccountDto.serializer()) { api.fetchAllAccounts() } ?: runCatching { api.fetchAllAccounts() }.getOrDefault(emptyList())
             _state.value = _state.value.copy(accounts = accounts)
         }
         scope.launch {
-            val categories = runCatching { api.fetchCategories() }.getOrDefault(emptyList())
+            val categories = outbox?.cachedList("categories", CategoryDto.serializer()) { api.fetchCategories() } ?: runCatching { api.fetchCategories() }.getOrDefault(emptyList())
             _state.value = _state.value.copy(categories = categories)
         }
         scope.launch {
-            val merchants = runCatching { api.fetchMerchants() }.getOrDefault(emptyList())
+            val merchants = outbox?.cachedList("merchants", MerchantDto.serializer()) { api.fetchMerchants() } ?: runCatching { api.fetchMerchants() }.getOrDefault(emptyList())
             _state.value = _state.value.copy(merchants = merchants)
         }
         scope.launch {
-            val tags = runCatching { api.fetchTags() }.getOrDefault(emptyList())
+            val tags = outbox?.cachedList("tags", TagDto.serializer()) { api.fetchTags() } ?: runCatching { api.fetchTags() }.getOrDefault(emptyList())
             _state.value = _state.value.copy(tags = tags)
         }
 
@@ -124,6 +126,8 @@ class TransactionFormViewModel(
         scope.launch {
             _state.value = s.copy(isSaving = true, error = null)
 
+            var queuedBody: CreateTransactionBody? = null
+
             val result = if (transactionId != null) {
                 val body = UpdateTransactionBody(
                     account_id = s.accountId,
@@ -149,6 +153,7 @@ class TransactionFormViewModel(
                     merchant_id = s.merchantId,
                     tag_ids = s.selectedTagIds.toList()
                 )
+                queuedBody = body
                 runCatching { api.createTransaction(body) }
             }
 
@@ -158,6 +163,13 @@ class TransactionFormViewModel(
                     onSaved()
                 }
                 .onFailure { e ->
+                    val body = queuedBody
+                    if (body != null && outbox != null && outbox.shouldQueue(e)) {
+                        outbox.enqueueTransaction(body, "${body.name}: ${body.amount}")
+                        _state.value = _state.value.copy(isSaving = false)
+                        onSaved()
+                        return@onFailure
+                    }
                     _state.value = _state.value.copy(isSaving = false, error = e.message ?: "Error al guardar")
                 }
         }

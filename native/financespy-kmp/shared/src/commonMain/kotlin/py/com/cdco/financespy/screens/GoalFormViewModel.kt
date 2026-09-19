@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
+import py.com.cdco.financespy.sync.OfflineOutbox
 import py.com.cdco.financespy.api.dto.CreateGoalBody
 import py.com.cdco.financespy.api.dto.GoalAccountAttributeDto
 import py.com.cdco.financespy.api.dto.UpdateGoalBody
@@ -34,7 +35,8 @@ class GoalFormViewModel(
     private val goalId: String?,
     private val api: FinancePyApi,
     private val goalDao: GoalDao,
-    private val accountDao: AccountDao
+    private val accountDao: AccountDao,
+    private val outbox: OfflineOutbox? = null
 ) {
     private val _state = MutableStateFlow(GoalFormState(isEditing = goalId != null))
     val state: StateFlow<GoalFormState> = _state
@@ -126,6 +128,8 @@ class GoalFormViewModel(
                 GoalAccountAttributeDto(account_id = accId, allocated_amount = s.allocations[accId]?.ifBlank { null })
             }.ifEmpty { null }
 
+            var queuedBody: CreateGoalBody? = null
+
             val result = if (goalId != null) {
                 val body = UpdateGoalBody(
                     name = s.name,
@@ -153,6 +157,7 @@ class GoalFormViewModel(
                     allocations = allocationsMap,
                     goal_accounts_attributes = goalAccountsAttrs
                 )
+                queuedBody = body
                 runCatching { api.createGoal(body) }
             }
 
@@ -180,6 +185,13 @@ class GoalFormViewModel(
                     onSaved()
                 }
                 .onFailure { e ->
+                    val body = queuedBody
+                    if (body != null && outbox != null && outbox.shouldQueue(e)) {
+                        outbox.enqueueGoal(body, "Meta: ${body.name}")
+                        _state.value = _state.value.copy(isSaving = false)
+                        onSaved()
+                        return@onFailure
+                    }
                     _state.value = _state.value.copy(isSaving = false, error = e.message ?: "Error al guardar")
                 }
         }

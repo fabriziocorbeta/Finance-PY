@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -17,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -133,6 +135,7 @@ fun App(
     isBiometricLockEnabled: Boolean = false,
     onToggleBiometricLock: ((Boolean) -> Unit)? = null,
     isScreenCaptureBlockEnabled: Boolean = true,
+    outbox: py.com.cdco.financespy.sync.OfflineOutbox? = null,
     onToggleScreenCaptureBlock: ((Boolean) -> Unit)? = null,
     reportsViewModelFactory: () -> ReportsViewModel,
     upayImportViewModelFactory: () -> UpayImportViewModel,
@@ -192,6 +195,24 @@ fun App(
                             .statusBarsPadding()
                             .navigationBarsPadding(),
                         containerColor = FinancePyColors.surface(),
+                        topBar = {
+                            val pending by (outbox?.pendingCount ?: kotlinx.coroutines.flow.MutableStateFlow(0)).collectAsState()
+                            val failed by (outbox?.failedCount ?: kotlinx.coroutines.flow.MutableStateFlow(0)).collectAsState()
+                            if (pending > 0 || failed > 0) {
+                                androidx.compose.material3.Text(
+                                    text = buildString {
+                                        if (pending > 0) append("$pending pendiente(s) de sincronizar")
+                                        if (pending > 0 && failed > 0) append(" · ")
+                                        if (failed > 0) append("$failed con error")
+                                    },
+                                    color = androidx.compose.ui.graphics.Color.White,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(androidx.compose.ui.graphics.Color(0xFF8A5A00))
+                                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                                )
+                            }
+                        },
                         bottomBar = {
                             if (isTopLevelRoute) {
                                 AppBottomNav(

@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
+import py.com.cdco.financespy.sync.OfflineOutbox
 import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.CreateGoalPledgeBody
 import py.com.cdco.financespy.api.dto.GoalPledgeDto
@@ -32,7 +33,8 @@ class GoalDetailViewModel(
     private val scope: CoroutineScope,
     private val goalId: String,
     private val api: FinancePyApi,
-    private val goalDao: GoalDao
+    private val goalDao: GoalDao,
+    private val outbox: OfflineOutbox? = null
 ) {
     private val _state = MutableStateFlow(GoalDetailState())
     val state: StateFlow<GoalDetailState> = _state
@@ -144,6 +146,16 @@ class GoalDetailViewModel(
                 loadPledges()
                 onDone()
             }.onFailure { e ->
+                if (outbox != null && outbox.shouldQueue(e)) {
+                    outbox.enqueueGoalPledge(
+                        goalId,
+                        CreateGoalPledgeBody(amount = amountDouble, account_id = accountId),
+                        "Aporte a meta: $amountDouble"
+                    )
+                    _state.value = _state.value.copy(isSavingPledge = false, showPledgeDialog = false)
+                    onDone()
+                    return@onFailure
+                }
                 _state.value = _state.value.copy(isSavingPledge = false, pledgeError = e.message ?: "Error al crear compromiso")
             }
         }

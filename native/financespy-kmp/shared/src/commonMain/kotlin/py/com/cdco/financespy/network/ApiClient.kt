@@ -21,7 +21,7 @@ object ApiClient {
         install(Logging) { level = if (isDebugBuild) LogLevel.INFO else LogLevel.NONE }
         install(HttpTimeout) {
             requestTimeoutMillis = 30_000
-            connectTimeoutMillis = 30_000
+            connectTimeoutMillis = 8_000
             socketTimeoutMillis = 30_000
         }
         defaultRequest {
