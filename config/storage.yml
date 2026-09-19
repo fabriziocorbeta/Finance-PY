@@ -1,5 +1,6 @@
 local:
-  service: Disk
+  # Encrypted at rest (AES-256-GCM); see lib/active_storage/service/encrypted_disk_service.rb
+  service: EncryptedDisk
   root: <%= Rails.root.join("storage") %>
 
 test:
