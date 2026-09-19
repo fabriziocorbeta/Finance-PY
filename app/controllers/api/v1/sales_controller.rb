@@ -157,10 +157,17 @@ class Api::V1::SalesController < Api::V1::BaseController
 
     def sale_params
       raw = params.key?(:sale) ? params.require(:sale) : params
-      raw.permit(
+      permitted = raw.permit(
         :client_name, :currency, :payment_method, :invoice_number, :condition, :notes,
-        :delivery_address, :delivery_date, :carrier, :account_id,
+        :delivery_address, :delivery_date, :carrier,
         sale_items_attributes: [ :id, :product_id, :quantity, :unit_price, :_destroy ]
       )
+
+      # account_id is deliberately NOT mass-assigned: resolve it inside the caller's
+      # own family so a foreign account id can never be attached.
+      if raw.respond_to?(:key?) && raw.key?(:account_id)
+        permitted[:account_id] = current_resource_owner.family.accounts.find_by(id: raw[:account_id])&.id
+      end
+      permitted
     end
 end

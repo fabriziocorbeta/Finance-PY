@@ -214,4 +214,15 @@ class SalesControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
     assert_equal "Other Client", other_sale.reload.client_name
   end
+
+  test "cannot attach an account from another family on create" do
+    foreign = families(:empty).accounts.create!(
+      name: "Foreign", balance: 0, currency: "USD",
+      accountable: Depository.new
+    )
+
+    assert_no_difference "Sale.count" do
+      post sales_url, params: { sale: { client_name: "X", account_id: foreign.id } }
+    end
+  end
 end

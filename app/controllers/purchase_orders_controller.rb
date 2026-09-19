@@ -72,9 +72,16 @@ class PurchaseOrdersController < ApplicationController
     end
 
     def purchase_order_params
-      params.require(:purchase_order).permit(
-        :supplier_name, :currency, :expected_date, :notes, :account_id,
+      permitted = params.require(:purchase_order).permit(
+        :supplier_name, :currency, :expected_date, :notes,
         purchase_order_items_attributes: [ :id, :product_id, :quantity, :unit_cost, :_destroy ]
       )
+
+      # account_id is deliberately NOT mass-assigned: resolve it inside the caller's
+      # own family so a foreign account id can never be attached.
+      if params[:purchase_order].respond_to?(:key?) && params[:purchase_order].key?(:account_id)
+        permitted[:account_id] = Current.family.accounts.find_by(id: params[:purchase_order][:account_id])&.id
+      end
+      permitted
     end
 end
