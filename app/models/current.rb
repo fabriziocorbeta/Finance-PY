@@ -10,7 +10,8 @@ class Current < ActiveSupport::CurrentAttributes
   end
 
   def impersonated_user
-    session&.active_impersonator_session&.impersonated
+    ims = session&.active_impersonator_session
+    ims.impersonated if ims&.active?
   end
 
   def true_user

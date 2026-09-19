@@ -1,0 +1,5 @@
+<p>Hola <%= @user.first_name.presence || "" %>,</p>
+<p>El equipo de soporte pidió acceso temporal a tu cuenta. <strong>No pasa nada hasta que vos lo apruebes</strong> dentro de la app (barra superior). Si no lo esperabas, no lo apruebes o recházalo. La solicitud vence en <%= @minutes %> minutos, y si la aprobás, el acceso termina solo a la hora (<%= @hours %> h) y podés cortarlo cuando quieras. Toda la actividad queda registrada.</p>
+<hr>
+<p>Hi <%= @user.first_name.presence || "" %>,</p>
+<p>Our support team asked for temporary access to your account. <strong>Nothing happens unless you approve it</strong> inside the app (top bar). If you weren't expecting this, don't approve it or reject it. The request expires in <%= @minutes %> minutes; if approved, access ends on its own after <%= @hours %> hour and you can end it any time. All activity is logged.</p>
