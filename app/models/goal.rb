@@ -1,4 +1,11 @@
 class Goal < ApplicationRecord
+  include Encryptable
+
+  # User-entered free text: encrypted at rest (owner/DB-leak protection). Not queried in SQL.
+  if encryption_ready?
+    encrypts :notes
+  end
+
   include AASM, Monetizable
 
   COLORS = Category::COLORS

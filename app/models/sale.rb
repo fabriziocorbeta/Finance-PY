@@ -1,4 +1,12 @@
 class Sale < ApplicationRecord
+  include Encryptable
+
+  # User-entered free text: encrypted at rest (owner/DB-leak protection). Not queried in SQL.
+  if encryption_ready?
+    encrypts :notes
+    encrypts :delivery_address
+  end
+
   belongs_to :family
   belongs_to :account
   belongs_to :entry, optional: true

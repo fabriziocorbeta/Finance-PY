@@ -1,4 +1,11 @@
 class Chat < ApplicationRecord
+  include Encryptable
+
+  # User-entered free text: encrypted at rest (owner/DB-leak protection). Not queried in SQL.
+  if encryption_ready?
+    encrypts :instructions
+  end
+
   include Debuggable
 
   RATE_LIMIT_PATTERNS = [

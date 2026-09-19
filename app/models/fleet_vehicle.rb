@@ -1,4 +1,11 @@
 class FleetVehicle < ApplicationRecord
+  include Encryptable
+
+  # User-entered free text: encrypted at rest (owner/DB-leak protection). Not queried in SQL.
+  if encryption_ready?
+    encrypts :notes
+  end
+
   belongs_to :family
   has_many :fuel_logs, foreign_key: :fleet_vehicle_id, dependent: :destroy
 

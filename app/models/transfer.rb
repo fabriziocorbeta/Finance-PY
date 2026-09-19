@@ -1,4 +1,11 @@
 class Transfer < ApplicationRecord
+  include Encryptable
+
+  # User-entered free text: encrypted at rest (owner/DB-leak protection). Not queried in SQL.
+  if encryption_ready?
+    encrypts :notes
+  end
+
   belongs_to :inflow_transaction, class_name: "Transaction"
   belongs_to :outflow_transaction, class_name: "Transaction"
 

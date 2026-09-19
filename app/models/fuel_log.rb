@@ -1,4 +1,11 @@
 class FuelLog < ApplicationRecord
+  include Encryptable
+
+  # User-entered free text: encrypted at rest (owner/DB-leak protection). Not queried in SQL.
+  if encryption_ready?
+    encrypts :notes
+  end
+
   belongs_to :fleet_vehicle
   belongs_to :account
   belongs_to :entry, optional: true

@@ -1,4 +1,11 @@
 class Import < ApplicationRecord
+  include Encryptable
+
+  # User-entered free text: encrypted at rest (owner/DB-leak protection). Not queried in SQL.
+  if encryption_ready?
+    encrypts :raw_file_str
+  end
+
   MaxRowCountExceededError = Class.new(StandardError)
   MappingError = Class.new(StandardError)
 

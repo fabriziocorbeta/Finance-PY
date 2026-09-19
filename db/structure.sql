@@ -1631,6 +1631,21 @@ CREATE TABLE public.plaid_items (
 
 
 --
+-- Name: platform_daily_metrics; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.platform_daily_metrics (
+    date date NOT NULL,
+    currency character varying NOT NULL,
+    total_volume numeric(24,4) DEFAULT 0.0 NOT NULL,
+    entries_count integer DEFAULT 0 NOT NULL,
+    active_families integer DEFAULT 0 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
 -- Name: product_stock_movements; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4714,6 +4729,13 @@ CREATE UNIQUE INDEX index_plaid_items_on_plaid_id ON public.plaid_items USING bt
 
 
 --
+-- Name: index_platform_daily_metrics_on_date_and_currency; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_platform_daily_metrics_on_date_and_currency ON public.platform_daily_metrics USING btree (date, currency);
+
+
+--
 -- Name: index_product_stock_movements_on_product_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6744,6 +6766,7 @@ CREATE POLICY versions_family_isolation_policy ON public.versions USING ((family
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260919060000'),
 ('20260918030300'),
 ('20260918030223'),
 ('20260918030222'),
