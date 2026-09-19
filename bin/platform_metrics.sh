@@ -9,10 +9,13 @@
 set -euo pipefail
 
 : "${LOCAL_ADMIN_DATABASE_URL:?LOCAL_ADMIN_DATABASE_URL is required (admin role, bypasses RLS)}"
+PSQL="${PSQL:-psql}"   # e.g. PSQL="docker exec -i financespy-web-1 psql" when psql is not on the host
+DB_URL="${LOCAL_ADMIN_DATABASE_URL%%\?*}"
 DAY="${1:-$(date +%F)}"
 [[ "$DAY" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || { echo "bad date: $DAY" >&2; exit 1; }
 
-psql "$LOCAL_ADMIN_DATABASE_URL" -v ON_ERROR_STOP=1 -v day="$DAY" <<'SQL'
+$PSQL "$DB_URL" -v ON_ERROR_STOP=1 -v day="$DAY" <<'SQL'
+SET search_path TO financespy, public;
 INSERT INTO platform_daily_metrics (date, currency, total_volume, entries_count, active_families, created_at, updated_at)
 SELECT :'day'::date, e.currency, SUM(ABS(e.amount)), COUNT(*), COUNT(DISTINCT a.family_id), NOW(), NOW()
 FROM entries e
