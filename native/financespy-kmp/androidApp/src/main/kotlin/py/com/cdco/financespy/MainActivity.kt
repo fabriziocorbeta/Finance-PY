@@ -28,6 +28,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import py.com.cdco.financespy.auth.AndroidTokenStorage
 import py.com.cdco.financespy.auth.AuthRepository
 import py.com.cdco.financespy.api.FinancePyApi
@@ -80,6 +81,10 @@ class MainActivity : FragmentActivity() {
     private val isLoggedIn = mutableStateOf<Boolean?>(null)
     private val needsOnboarding = mutableStateOf(false)
     private val isBiometricAuthenticated = mutableStateOf(false)
+
+    // Set by the inactivity timeout. Forces the local device-credential gate
+    // even if the biometric toggle is off; cleared on successful unlock.
+    private val inactivityLocked = mutableStateOf(false)
     private val biometricUnavailable = mutableStateOf(false)
     private val securityPreferences by lazy { AndroidSecurityPreferences(applicationContext) }
     private val biometricLockEnabled = mutableStateOf(false)
@@ -210,7 +215,10 @@ class MainActivity : FragmentActivity() {
     }
 
     private val appLifecycleObserver by lazy {
-        AppLifecycleObserver(applicationContext, authRepository) { isLoggedIn.value = false }
+        AppLifecycleObserver(applicationContext) {
+            inactivityLocked.value = true
+            isBiometricAuthenticated.value = false
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -236,8 +244,10 @@ class MainActivity : FragmentActivity() {
             var onboardingNeeded = false
             if (loggedIn) {
                 try {
-                    val settings = api.fetchFamilySettings()
-                    onboardingNeeded = settings.current_user?.needs_onboarding == true
+                    // Cap it: with the server down the client's 30s connect
+                    // timeout would otherwise pin the splash for 30s.
+                    val settings = withTimeoutOrNull(4_000L) { api.fetchFamilySettings() }
+                    onboardingNeeded = settings?.current_user?.needs_onboarding == true
                 } catch (e: Exception) {
                     onboardingNeeded = false
                 }
@@ -260,7 +270,7 @@ class MainActivity : FragmentActivity() {
         Log.d("ColdStartProfile", "[Optimized] Calling setContent at +${tSetContent - onCreateStartTime} ms from onCreate")
 
         setContent {
-            if (isLoggedIn.value == true && biometricLockEnabled.value && !isBiometricAuthenticated.value) {
+            if (isLoggedIn.value == true && (biometricLockEnabled.value || inactivityLocked.value) && !isBiometricAuthenticated.value) {
                 if (biometricUnavailable.value) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -436,6 +446,8 @@ class MainActivity : FragmentActivity() {
                     override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                         super.onAuthenticationSucceeded(result)
                         isBiometricAuthenticated.value = true
+                        inactivityLocked.value = false
+                        appLifecycleObserver.onUnlocked()
                     }
                     override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                         super.onAuthenticationError(errorCode, errString)
@@ -453,14 +465,23 @@ class MainActivity : FragmentActivity() {
             // No biometric enrolled AND no device credential (PIN/pattern/password)
             // set -- fail CLOSED, not open. A financial app must never let an
             // unsecured device through the gate silently.
-            biometricUnavailable.value = true
+            if (biometricLockEnabled.value) {
+                biometricUnavailable.value = true
+            } else {
+                // Lock came only from the inactivity timeout and the device has
+                // no screen lock at all: nothing to verify against, and the
+                // user never opted into the strict gate. Don't trap them.
+                isBiometricAuthenticated.value = true
+                inactivityLocked.value = false
+                appLifecycleObserver.onUnlocked()
+            }
         }
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
         if (isLoggedIn.value == true) {
-            val loggedOut = appLifecycleObserver.updateInteractionTime()
-            if (loggedOut) {
+            val locked = appLifecycleObserver.updateInteractionTime()
+            if (locked) {
                 return true
             }
         }
