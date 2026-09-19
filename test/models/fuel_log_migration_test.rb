@@ -25,7 +25,9 @@ class FuelLogMigrationTest < ActiveSupport::TestCase
       liters: 15.0,
       cost: 105000
     )
-    log1.save!(validate: false)
+    # Legacy rows predate encryption: the migration uses its own bare model that
+    # cannot decrypt, so write these fixtures as plaintext like the real data was.
+    ActiveRecord::Encryption.without_encryption { log1.save!(validate: false) }
 
     log2 = FuelLog.new(
       fleet_vehicle: @vehicle,
@@ -36,7 +38,7 @@ class FuelLogMigrationTest < ActiveSupport::TestCase
       liters: 35.0,
       cost: 210000
     )
-    log2.save!(validate: false)
+    ActiveRecord::Encryption.without_encryption { log2.save!(validate: false) }
 
     # Create a single log for another date
     log3 = FuelLog.new(
