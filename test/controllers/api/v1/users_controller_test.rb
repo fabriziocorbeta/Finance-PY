@@ -319,4 +319,45 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
     def api_headers(api_key)
       { "X-Api-Key" => api_key.plain_key }
     end
+
+  # -- Email change (account takeover guard) ----------------------------------
+
+  test "changing the email without the current password is forbidden" do
+    original = @user.email
+
+    patch "/api/v1/users/me", params: { email: "attacker@example.com" }, headers: api_headers(@api_key)
+
+    assert_response :forbidden
+    assert_equal "password_required", JSON.parse(response.body)["error"]
+    assert_equal original, @user.reload.email
+    assert_nil @user.unconfirmed_email
+  end
+
+  test "changing the email with a wrong password is forbidden" do
+    original = @user.email
+
+    patch "/api/v1/users/me",
+          params: { email: "attacker@example.com", current_password: "wrong" },
+          headers: api_headers(@api_key)
+
+    assert_response :forbidden
+    assert_equal original, @user.reload.email
+  end
+
+  test "changing the email with the correct password starts the confirmation flow" do
+    patch "/api/v1/users/me",
+          params: { email: "new-address@example.com", current_password: user_password_test },
+          headers: api_headers(@api_key)
+
+    assert_response :success
+    @user.reload
+    assert(@user.email == "new-address@example.com" || @user.unconfirmed_email == "new-address@example.com")
+  end
+
+  test "other profile fields still update without a password" do
+    patch "/api/v1/users/me", params: { first_name: "Renamed" }, headers: api_headers(@api_key)
+
+    assert_response :success
+    assert_equal "Renamed", @user.reload.first_name
+  end
 end
