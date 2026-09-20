@@ -26,6 +26,7 @@ class Api::V1::BaseController < ApplicationController
 
   # Override Doorkeeper's default behavior to return JSON instead of redirecting
   def doorkeeper_unauthorized_render_options(error: nil)
+    response.headers["WWW-Authenticate"] = 'Bearer realm="FinancePY"'
     { json: { error: "unauthorized", message: "Access token is invalid, expired, or missing" } }
   end
 
@@ -210,6 +211,10 @@ class Api::V1::BaseController < ApplicationController
 
     # Consistent JSON response method
     def render_json(data, status: :ok)
+      # RFC 6750: a 401 must carry a Bearer challenge. Ktor's Auth plugin (Android app)
+      # only refreshes an expired access token when it sees this header, so without it a
+      # 2-hour token expiry would end the mobile session instead of refreshing.
+      response.headers["WWW-Authenticate"] = 'Bearer realm="FinancePY"' if status.to_s == "unauthorized" || status == 401
       render json: data, status: status
     end
 
