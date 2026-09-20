@@ -5,6 +5,7 @@ class SaleItem < ApplicationRecord
   validates :quantity, presence: true, numericality: { greater_than: 0 }
   validates :unit_price, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validate :sale_must_be_draft
+  validate :product_belongs_to_family
 
   before_destroy :prevent_destroy_if_sale_not_draft
 
@@ -13,6 +14,14 @@ class SaleItem < ApplicationRecord
   end
 
   private
+
+    # Defense in depth next to row level security: an item can never point at a
+    # product owned by another family.
+    def product_belongs_to_family
+      return if product.nil? || sale.nil?
+
+      errors.add(:product, "must belong to the same family") unless product.family_id == sale.family_id
+    end
 
     def sale_must_be_draft
       if sale.present? && !sale.draft?

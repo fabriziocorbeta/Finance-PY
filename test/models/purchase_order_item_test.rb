@@ -43,4 +43,15 @@ class PurchaseOrderItemTest < ActiveSupport::TestCase
     assert_not item.destroy
     assert_includes item.errors[:base], "Cannot remove items if the purchase order is not in draft status"
   end
+
+  test "rejects a product from another family" do
+    other = Family.create!(name: "Otra", default_account_sharing: "shared")
+    foreign = other.products.create!(name: "Ajeno", buy_price: 1, sell_price: 2, stock: 1)
+    po = PurchaseOrder.create!(family: families(:dylan_family), account: accounts(:depository))
+
+    item = po.purchase_order_items.build(product: foreign, quantity: 1, unit_cost: 1)
+
+    assert_not item.valid?
+    assert_includes item.errors[:product], "must belong to the same family"
+  end
 end
