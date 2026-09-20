@@ -43,8 +43,21 @@ class Api::V1::UsersController < Api::V1::BaseController
 
   def update
     user = current_resource_owner
+    attrs = user_params
+    new_email = attrs.delete(:email).to_s.strip.downcase
 
-    if user.update(user_params)
+    # Changing the email is an account-takeover primitive (change it, then reset the
+    # password), so a bearer token alone is not enough: re-prove knowledge of the
+    # current password, and go through the same confirmation flow as the web.
+    email_change = new_email.present? && new_email != user.email.to_s.downcase
+    if email_change && !user.authenticate(params[:current_password].to_s)
+      return render json: {
+        error: "password_required",
+        message: "current_password is required and must be correct to change the email"
+      }, status: :forbidden
+    end
+
+    if user.update(attrs) && (!email_change || user.initiate_email_change(new_email))
       @family = user.family.reload
       @current_user = user.reload
       render "api/v1/family_settings/show"
