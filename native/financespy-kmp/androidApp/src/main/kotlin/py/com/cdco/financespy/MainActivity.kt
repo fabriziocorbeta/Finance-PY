@@ -218,7 +218,8 @@ class MainActivity : FragmentActivity() {
         ReportsViewModel(
             scope = lifecycleScope,
             syncEngine = syncEngine,
-            api = api
+            api = api,
+            store = offlineStore
         )
     }
     private val onboardingViewModel by lazy {

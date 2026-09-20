@@ -138,12 +138,16 @@ fun ReportsScreen(
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = state.error ?: "Error al cargar reportes",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = FinancePyColors.destructive(),
-                    textAlign = TextAlign.Center
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = state.error ?: "Error al cargar reportes",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = FinancePyColors.destructive(),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    AppButton(text = "Reintentar", onClick = { viewModel.refresh() })
+                }
             }
         } else {
             val summaryDto = state.reportsSummary
@@ -154,6 +158,16 @@ fun ReportsScreen(
                         .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    if (state.error != null || state.isShowingSavedData) {
+                        item {
+                            Text(
+                                text = state.error?.let { "Mostrando datos guardados. $it" }
+                                    ?: "Mostrando datos guardados, actualizando…",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = FinancePyColors.textSecondary()
+                            )
+                        }
+                    }
                     item {
                         SummaryMetricsCard(summary = summaryDto.summary, currency = summaryDto.currency)
                     }
