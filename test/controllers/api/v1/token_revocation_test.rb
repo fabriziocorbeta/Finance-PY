@@ -66,4 +66,20 @@ class Api::V1::TokenRevocationTest < ActionDispatch::IntegrationTest
 
     assert @token.reload.revoked?
   end
+
+  test "401 responses carry a Bearer challenge so clients can refresh" do
+    @token.revoke
+
+    get api_v1_tags_url, headers: bearer(@token)
+
+    assert_response :unauthorized
+    assert_match(/\ABearer/, response.headers["WWW-Authenticate"])
+  end
+
+  test "unauthenticated requests also get the Bearer challenge" do
+    get api_v1_tags_url
+
+    assert_response :unauthorized
+    assert_match(/\ABearer/, response.headers["WWW-Authenticate"])
+  end
 end
