@@ -54,4 +54,15 @@ class SaleItemTest < ActiveSupport::TestCase
     assert_includes item.errors[:base], "Cannot remove items if the sale is not in draft status"
     assert SaleItem.exists?(item.id)
   end
+
+  test "rejects a product from another family" do
+    other = Family.create!(name: "Otra", default_account_sharing: "shared")
+    foreign = other.products.create!(name: "Ajeno", buy_price: 1, sell_price: 2, stock: 1)
+    sale = Sale.create!(family: families(:dylan_family), account: accounts(:depository))
+
+    item = sale.sale_items.build(product: foreign, quantity: 1, unit_price: 2)
+
+    assert_not item.valid?
+    assert_includes item.errors[:product], "must belong to the same family"
+  end
 end
