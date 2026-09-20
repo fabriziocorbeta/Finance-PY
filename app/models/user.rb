@@ -261,6 +261,28 @@ class User < ApplicationRecord
     consume_backup_code!(normalized_code)
   end
 
+  OTP_MAX_FAILURES = 5
+  OTP_FAILURE_WINDOW = 15.minutes
+
+  # TOTP is only 6 digits: without a per-account cap, an attacker who has the
+  # password can brute-force it across IPs. After OTP_MAX_FAILURES wrong codes
+  # the account refuses further codes until the window expires.
+  def otp_locked?
+    Rails.cache.read(otp_failure_cache_key).to_i >= OTP_MAX_FAILURES
+  end
+
+  def verify_otp_with_lockout?(code)
+    return false if otp_locked?
+
+    if verify_otp?(code)
+      Rails.cache.delete(otp_failure_cache_key)
+      true
+    else
+      Rails.cache.increment(otp_failure_cache_key, 1, expires_in: OTP_FAILURE_WINDOW)
+      false
+    end
+  end
+
   def provisioning_uri
     return nil unless otp_secret.present?
     totp.provisioning_uri(email)
@@ -477,6 +499,10 @@ class User < ApplicationRecord
       Account.where(id: account_ids).update_all(owner_id: new_owner.id)
       # Remove shares the new owner had for these accounts (they now own them)
       AccountShare.where(account_id: account_ids, user_id: new_owner.id).delete_all
+    end
+
+    def otp_failure_cache_key
+      "otp_failures:#{id}"
     end
 
     def deactivated_email

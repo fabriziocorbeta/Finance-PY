@@ -30,7 +30,7 @@ class MfaController < ApplicationController
   def verify_code
     @user = User.find_by(id: session[:mfa_user_id])
 
-    if @user&.verify_otp?(params[:code])
+    if @user&.verify_otp_with_lockout?(params[:code])
       complete_mfa_sign_in(@user)
       redirect_to root_path
     else

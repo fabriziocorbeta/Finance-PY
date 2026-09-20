@@ -28,6 +28,55 @@ class Rack::Attack
     end
   end
 
+  # Email named by the request, from a form field or a (small) JSON body, normalized.
+  def self.email_from(request)
+    email = request.params["email"]
+    if email.blank? && request.media_type == "application/json"
+      raw = request.body.read(10_000).to_s
+      request.body.rewind
+      email = (JSON.parse(raw)["email"] rescue nil)
+    end
+    email.to_s.strip.downcase.presence
+  end
+
+  # TOTP codes (web MFA step, 6 digits): same treatment as the sign-in endpoints.
+  # (The webauthn ceremonies above are separate paths.) Per-account lockout lives
+  # in User#verify_otp_with_lockout?.
+  throttle("mfa/verify_code", limit: 10, period: 1.minute) do |request|
+    request.ip if request.post? && request.path == "/mfa/verify"
+  end
+
+  # Per-account throttle on password sign-in: credential stuffing rotates IPs, but
+  # every attempt against one account names the same email.
+  throttle("login/email", limit: 10, period: 15.minutes) do |request|
+    if request.post? && request.path.in?(%w[/sessions /api/v1/auth/login])
+      email = email_from(request)
+      "login_email:#{Digest::SHA256.hexdigest(email)}" if email
+    end
+  end
+
+  # Password reset: request (email flood / enumeration probing) and completion (token guessing).
+  throttle("password_reset/ip", limit: 5, period: 1.minute) do |request|
+    request.ip if request.path == "/password_reset" && !request.get?
+  end
+
+  throttle("password_reset/email", limit: 3, period: 15.minutes) do |request|
+    if request.post? && request.path == "/password_reset"
+      email = email_from(request)
+      "reset_email:#{Digest::SHA256.hexdigest(email)}" if email
+    end
+  end
+
+  # Account creation (web and API): slow down mass signup and email enumeration.
+  throttle("signup/ip", limit: 10, period: 1.hour) do |request|
+    request.ip if request.post? && request.path.in?(%w[/registration /api/v1/auth/signup])
+  end
+
+  # Token refresh and SSO linking are unauthenticated entry points.
+  throttle("api_auth/ip", limit: 30, period: 1.minute) do |request|
+    request.ip if request.post? && request.path.in?(%w[/api/v1/auth/refresh /api/v1/auth/sso_link])
+  end
+
   # Throttle admin endpoints to prevent brute-force attacks
   # More restrictive than general API limits since admin access is sensitive
   throttle("admin/ip", limit: 10, period: 1.minute) do |request|
