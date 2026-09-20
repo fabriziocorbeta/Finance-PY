@@ -188,7 +188,13 @@ class User < ApplicationRecord
   after_update_commit :purge_later, if: -> { saved_change_to_active?(from: true, to: false) }
 
   def deactivate
+    revoke_all_oauth_tokens!
     update active: false, email: deactivated_email
+  end
+
+  # Ends every API/mobile session (access and refresh tokens share the row).
+  def revoke_all_oauth_tokens!
+    Doorkeeper::AccessToken.where(resource_owner_id: id, revoked_at: nil).update_all(revoked_at: Time.current)
   end
 
   def can_deactivate
