@@ -38,6 +38,7 @@ class PasswordResetsController < ApplicationController
     end
 
     if @user.update(password_params)
+      @user.revoke_all_oauth_tokens!
       redirect_to new_session_path, notice: t(".success")
     else
       render :edit, status: :unprocessable_entity

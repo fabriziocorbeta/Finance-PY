@@ -4,6 +4,7 @@ class PasswordsController < ApplicationController
 
   def update
     if Current.user.update(password_params)
+      Current.user.revoke_all_oauth_tokens!
       redirect_to root_path, notice: t(".success")
     else
       render :edit, status: :unprocessable_entity
