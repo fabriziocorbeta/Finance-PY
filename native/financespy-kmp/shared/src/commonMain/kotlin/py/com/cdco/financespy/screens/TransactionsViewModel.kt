@@ -23,6 +23,7 @@ import py.com.cdco.financespy.db.EntryDao
 import py.com.cdco.financespy.db.TransactionDao
 import py.com.cdco.financespy.sync.OfflineOutbox
 import py.com.cdco.financespy.sync.amountTextToCents
+import py.com.cdco.financespy.utils.describeForUser
 import kotlin.math.abs
 
 private const val PENDING_PREFIX = "pending:"
@@ -73,6 +74,13 @@ class TransactionsViewModel(
                 accounts = accounts
             )
         }
+        // Show the saved 90-day copy right away (no spinner) while the fresh page loads.
+        scope.launch {
+            val saved = loadOffline()
+            if (saved != null && _uiState.value.transactions.isEmpty()) {
+                _uiState.value = _uiState.value.copy(transactions = saved)
+            }
+        }
         loadTransactions()
     }
 
@@ -116,7 +124,7 @@ class TransactionsViewModel(
                 } else {
                     _uiState.value.copy(
                         isLoading = false,
-                        error = e.message ?: "Error al cargar las transacciones"
+                        error = e.describeForUser()
                     )
                 }
             }

@@ -13,6 +13,8 @@ import py.com.cdco.financespy.cache.DashboardCache
 import py.com.cdco.financespy.db.AccountDao
 import py.com.cdco.financespy.db.EntryDao
 import py.com.cdco.financespy.sync.SyncEngine
+import py.com.cdco.financespy.utils.describeForUser
+import kotlinx.coroutines.withTimeout
 
 data class DashboardState(
     val dashboard: DashboardDto? = null,
@@ -44,7 +46,7 @@ class DashboardViewModel(
         val period = _state.value.selectedPeriod
         val cachedDashboard = dashboardCache?.load(period)?.let { cachedJson ->
             runCatching { dashboardCacheJson.decodeFromString(DashboardDto.serializer(), cachedJson) }.getOrNull()
-        }
+        }?.takeIf { it.period != null } // a copy without a period is a poisoned cache (empty error body)
         // Sin cache para este período: no dejar visible el dashboard del período
         // anterior con la etiqueta cambiada -- mejor volver a null/loading.
         _state.update {
@@ -78,7 +80,9 @@ class DashboardViewModel(
     private suspend fun loadDashboardInternal() {
         val period = _state.value.selectedPeriod
         runCatching {
-            api.fetchDashboard(period)
+            withTimeout(35_000L) { api.fetchDashboard(period) }.also {
+                check(it.period != null) { "Respuesta inválida del servidor" }
+            }
         }.onSuccess { dto ->
             val resolvedPeriod = dto.period?.key ?: period
             runCatching {
@@ -96,7 +100,7 @@ class DashboardViewModel(
             _state.update {
                 it.copy(
                     isSyncing = false,
-                    syncError = e.message ?: "Error al cargar el dashboard"
+                    syncError = e.describeForUser()
                 )
             }
         }

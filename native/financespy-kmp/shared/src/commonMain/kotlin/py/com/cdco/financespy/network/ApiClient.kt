@@ -15,13 +15,16 @@ object ApiClient {
     const val BASE_URL = "https://finance.cd-co.com.py"
 
     fun create(tokenStorage: TokenStorage): HttpClient = createPlatformClient(tokenStorage) {
+        // A 4xx/5xx must fail the call. Without this, a JSON error body (401, 429...) was decoded
+        // into a DTO made only of defaults and shown as real, empty data ("no accounts").
+        expectSuccess = true
         install(ContentNegotiation) {
             json(Json { ignoreUnknownKeys = true; isLenient = true })
         }
         install(Logging) { level = if (isDebugBuild) LogLevel.INFO else LogLevel.NONE }
         install(HttpTimeout) {
             requestTimeoutMillis = 30_000
-            connectTimeoutMillis = 8_000
+            connectTimeoutMillis = 15_000
             socketTimeoutMillis = 30_000
         }
         defaultRequest {
