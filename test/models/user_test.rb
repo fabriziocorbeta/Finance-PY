@@ -700,4 +700,32 @@ class UserTest < ActiveSupport::TestCase
     assert_not Family.exists?(family.id)
     assert_not ActiveStorage::Attachment.exists?(export_attachment_id)
   end
+
+  test "TOTP verification locks the account after repeated wrong codes" do
+    user = users(:family_admin)
+    user.setup_mfa!
+    user.enable_mfa!
+    valid_code = ROTP::TOTP.new(user.otp_secret).now
+
+    Rails.stub :cache, ActiveSupport::Cache::MemoryStore.new do
+      User::OTP_MAX_FAILURES.times { assert_not user.verify_otp_with_lockout?("000000") }
+
+      assert user.otp_locked?
+      # Even the right code is refused while locked
+      assert_not user.verify_otp_with_lockout?(valid_code)
+    end
+  end
+
+  test "a valid TOTP code resets the failure counter" do
+    user = users(:family_admin)
+    user.setup_mfa!
+    user.enable_mfa!
+
+    Rails.stub :cache, ActiveSupport::Cache::MemoryStore.new do
+      (User::OTP_MAX_FAILURES - 1).times { user.verify_otp_with_lockout?("000000") }
+      assert user.verify_otp_with_lockout?(ROTP::TOTP.new(user.otp_secret).now)
+
+      assert_not user.otp_locked?
+    end
+  end
 end
