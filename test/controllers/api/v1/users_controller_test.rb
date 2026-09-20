@@ -314,12 +314,6 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
   end
 
-  private
-
-    def api_headers(api_key)
-      { "X-Api-Key" => api_key.plain_key }
-    end
-
   # -- Email change (account takeover guard) ----------------------------------
 
   test "changing the email without the current password is forbidden" do
@@ -360,4 +354,10 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal "Renamed", @user.reload.first_name
   end
+
+  private
+
+    def api_headers(api_key)
+      { "X-Api-Key" => api_key.plain_key }
+    end
 end
