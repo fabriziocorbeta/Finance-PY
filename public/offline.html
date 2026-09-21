@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)">
-  <title>Offline - FinancePY</title>
+  <title>Sin conexión - FinancePY</title>
   <style>
     * {
       margin: 0;
@@ -96,16 +96,18 @@
 </head>
 <body>
   <div class="container">
-    <img src="/logo-pwa.png" alt="FinancePY" class="logo">
+    <!-- /logo-offline.svg is precached by the service worker (install step) and is self-contained,
+         so it renders with no network; /logo-pwa.png was NOT precached and showed as a broken image. -->
+    <img src="/logo-offline.svg" alt="FinancePY" class="logo" width="96" height="96">
 
-    <h1>We're experiencing <br/> technical difficulties</h1>
-    <p>It looks like you're offline or we can't reach our servers right now. Please check your connection and try again.</p>
+    <h1>Tenemos problemas <br/> técnicos</h1>
+    <p>Parece que no tenés conexión o no podemos comunicarnos con nuestros servidores en este momento. Revisá tu conexión y volvé a intentar. Tus datos no se pierden.</p>
 
     <button class="reload-button" onclick="window.location.reload()">
       <svg class="reload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
       </svg>
-      Reload
+      Reintentar
     </button>
   </div>
 
