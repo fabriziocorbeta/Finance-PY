@@ -24,22 +24,40 @@ class AuthRepository(
     private val pkce: PkceGenerator = PkceGenerator()
 ) {
     private var pendingVerifier: String? = null
+    private var pendingState: String? = null
 
     fun buildAuthorizationUrl(): String {
         val verifier = pkce.generateVerifier()
         pendingVerifier = verifier
         val challenge = pkce.challengeFor(verifier)
+        val state = pkce.generateState()
+        pendingState = state
         return "${ApiClient.BASE_URL}/oauth/authorize" +
             "?client_id=$CLIENT_ID" +
             "&redirect_uri=$REDIRECT_URI" +
             "&response_type=code" +
             "&scope=read_write" +
             "&code_challenge=$challenge" +
-            "&code_challenge_method=S256"
+            "&code_challenge_method=S256" +
+            "&state=$state"
     }
 
-    suspend fun exchangeCode(code: String): Result<Unit> = runCatching {
-        val verifier = pendingVerifier ?: error("No hay un flujo de login en curso (falta buildAuthorizationUrl antes)")
+    suspend fun exchangeCode(code: String, state: String?): Result<Unit> = runCatching {
+        // Consume both immediately, before any validation: a stolen/replayed
+        // callback must never be checkable twice, whether this attempt
+        // succeeds or fails below.
+        val verifier = pendingVerifier
+        val expectedState = pendingState
+        pendingVerifier = null
+        pendingState = null
+
+        if (verifier == null || expectedState == null) {
+            error("No hay un flujo de login en curso (falta buildAuthorizationUrl antes)")
+        }
+        if (state == null || state != expectedState) {
+            error("El parámetro state no coincide con el flujo de login iniciado: callback OAuth ignorado (posible CSRF)")
+        }
+
         val response: TokenResponse = http.submitForm(
             url = "${ApiClient.BASE_URL}/oauth/token",
             formParameters = Parameters.build {
@@ -51,7 +69,6 @@ class AuthRepository(
             }
         ).body()
         tokens.save(response.access_token, response.refresh_token)
-        pendingVerifier = null
     }
 
     suspend fun isLoggedIn(): Boolean = tokens.accessToken() != null
