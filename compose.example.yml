@@ -44,12 +44,12 @@
 
 x-db-env: &db_env
   POSTGRES_USER: ${POSTGRES_USER:-sure_user}
-  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sure_password}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set a real password in .env, do not use the old default}
   POSTGRES_DB: ${POSTGRES_DB:-sure_production}
 
 x-rails-env: &rails_env
   <<: *db_env
-  SECRET_KEY_BASE: ${SECRET_KEY_BASE:-a7523c3d0ae56415046ad8abae168d71074a79534a7062258f8d1d51ac2f76d3c3bc86d86b6b0b307df30d9a6a90a2066a3fa9e67c5e6f374dbd7dd4e0778e13}
+  SECRET_KEY_BASE: ${SECRET_KEY_BASE:?generate one with `bin/rails secret` and put it in .env}
   SELF_HOSTED: "true"
   RAILS_FORCE_SSL: "false"
   RAILS_ASSUME_SSL: "false"
@@ -130,7 +130,7 @@ services:
       - POSTGRES_HOST=db
       - POSTGRES_DB=${POSTGRES_DB:-sure_production}
       - POSTGRES_USER=${POSTGRES_USER:-sure_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-sure_password} # pipelock:ignore
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set a real password in .env} # pipelock:ignore
       - SCHEDULE=@daily # Runs once a day at midnight
       - BACKUP_KEEP_DAYS=7 # Keeps the last 7 days of backups
       - BACKUP_KEEP_WEEKS=4 # Keeps 4 weekly backups
