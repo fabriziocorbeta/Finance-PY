@@ -1,9 +1,10 @@
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const RUNTIME_CACHE = 'runtime-v1';
 const SWR_CACHE = 'swr-v1';
 const OFFLINE_ASSETS = [
   '/offline.html',
-  '/logo-offline.svg'
+  '/logo-offline.svg',
+  '/logo-pwa.png'
 ];
 
 // Fingerprinted app-shell assets (CSS/JS/fonts, served under /assets by Propshaft, plus the
