@@ -32,8 +32,8 @@ class Assistant::Function::GetIncomeStatement < Assistant::Function
     end_date = params["end_date"].present? ? Date.parse(params["end_date"]) : Date.current
 
     period = Period.custom(start_date: start_date, end_date: end_date)
-    income_data = family.income_statement.income_totals(period: period)
-    expense_data = family.income_statement.expense_totals(period: period)
+    income_data = family.income_statement(user: user).income_totals(period: period)
+    expense_data = family.income_statement(user: user).expense_totals(period: period)
 
     {
       currency: family.currency,
@@ -113,9 +113,9 @@ class Assistant::Function::GetIncomeStatement < Assistant::Function
     def get_insights(income_data, expense_data)
       net_income = income_data.total - expense_data.total
       savings_rate = calculate_savings_rate(income_data.total, expense_data.total)
-      median_monthly_income = family.income_statement.median_income
-      median_monthly_expenses = family.income_statement.median_expense
-      avg_monthly_expenses = family.income_statement.avg_expense
+      median_monthly_income = family.income_statement(user: user).median_income
+      median_monthly_expenses = family.income_statement(user: user).median_expense
+      avg_monthly_expenses = family.income_statement(user: user).avg_expense
 
       {
         net_income: format_money(net_income),
