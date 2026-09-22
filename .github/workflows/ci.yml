@@ -129,6 +129,17 @@ jobs:
           sudo apt-get install --no-install-recommends -y google-chrome-stable curl libvips postgresql-client-17 libpq-dev
           echo "/usr/lib/postgresql/17/bin" >> $GITHUB_PATH
 
+          # ubuntu-latest images ship a pre-installed chromedriver pinned to
+          # whatever Chrome version the image was built with. Upgrading
+          # Chrome to latest stable above leaves that old chromedriver
+          # binary in PATH, so Selenium picks it up before Selenium Manager
+          # gets a chance to resolve a matching one -- SessionNotCreatedError
+          # ("This version of ChromeDriver only supports Chrome version X").
+          # Remove it so selenium-webdriver's built-in Selenium Manager
+          # always downloads a driver that matches the Chrome we just
+          # installed.
+          sudo rm -f "$(command -v chromedriver 2>/dev/null)"
+
       - name: Checkout code
         uses: actions/checkout@v7
 
