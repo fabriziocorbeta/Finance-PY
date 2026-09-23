@@ -122,6 +122,74 @@ class InvitationTest < ActiveSupport::TestCase
     assert_includes invitation.errors[:email], "has already been invited to this family"
   end
 
+  test "inviter_is_admin blocks invitation and records a visible error when inviter is not admin" do
+    non_admin_inviter = users(:family_member)
+    assert_not non_admin_inviter.admin?
+
+    invitation = @family.invitations.build(email: "blocked-by-non-admin@example.com", role: "member", inviter: non_admin_inviter)
+
+    assert_not invitation.valid?
+    assert_includes invitation.errors[:base], "Inviter must be an admin to send invitations"
+    assert_not invitation.save
+  end
+
+  test "cannot invite a user who already has financial data in another family" do
+    other_family = families(:empty)
+    other_user = users(:empty)
+    other_user.update_columns(family_id: other_family.id)
+
+    Account.create!(
+      family: other_family,
+      owner: other_user,
+      name: "Other family checking",
+      balance: 100,
+      currency: "USD",
+      accountable: Depository.new
+    )
+
+    invitation = @family.invitations.build(email: other_user.email, role: "member", inviter: @inviter)
+
+    assert_not invitation.valid?
+    assert_includes invitation.errors[:email].join, "already has financial data"
+  end
+
+  test "accept_for refuses to move a user with data even if a pending invitation predates the data" do
+    other_family = families(:empty)
+    other_user = users(:empty)
+    other_user.update_columns(family_id: other_family.id)
+
+    # Invitation is created while the invitee still has no data, so it passes validation...
+    invitation = @family.invitations.create!(email: other_user.email, role: "member", inviter: @inviter)
+    assert invitation.pending?
+
+    # ...but the invitee acquires real financial data in their own family before accepting.
+    Account.create!(
+      family: other_family,
+      owner: other_user,
+      name: "Other family checking",
+      balance: 100,
+      currency: "USD",
+      accountable: Depository.new
+    )
+
+    result = invitation.accept_for(other_user)
+    assert_not result, "accept_for must refuse to move a user with data even if an older pending invitation exists"
+    other_user.reload
+    assert_equal other_family.id, other_user.family_id
+    invitation.reload
+    assert_nil invitation.accepted_at
+  end
+
+  test "can invite a user who belongs to another family but owns no data there" do
+    other_family = families(:empty)
+    other_user = users(:empty)
+    other_user.update_columns(family_id: other_family.id)
+
+    invitation = @family.invitations.build(email: other_user.email, role: "member", inviter: @inviter)
+
+    assert invitation.valid?
+  end
+
   test "accept_for applies guest role defaults" do
     user = users(:family_member)
     user.update!(

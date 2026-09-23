@@ -16,6 +16,7 @@ class Invitation < ApplicationRecord
   validate :no_duplicate_pending_invitation_in_family
   validate :inviter_is_admin
   validate :no_other_pending_invitation, on: :create
+  validate :invitee_has_no_data_in_other_family, on: :create
 
   before_validation :normalize_email
   before_validation :generate_token, on: :create
@@ -33,6 +34,11 @@ class Invitation < ApplicationRecord
     return false if user.blank?
     return false unless pending?
     return false unless emails_match?(user)
+    # Defense in depth: even if an invitation to a user with data elsewhere
+    # somehow made it past creation-time validation (e.g. the user acquired
+    # data after the invitation was sent), never silently move them away
+    # from real financial data at acceptance time either.
+    return false if user.family_id != family_id && user.owned_accounts.exists?
 
     transaction do
       user.update!(family_id: family_id, role: role.to_s)
@@ -113,7 +119,25 @@ class Invitation < ApplicationRecord
     end
 
     def inviter_is_admin
-      inviter.admin?
+      return if inviter.blank? # presence validated separately by belongs_to
+
+      errors.add(:base, "Inviter must be an admin to send invitations") unless inviter.admin?
+    end
+
+    # Prevents an admin from "inviting" (and thus silently relocating) a user
+    # who already has real financial data of their own in another family.
+    # Membership alone (every family has at least one admin) doesn't count --
+    # only actual owned accounts do.
+    def invitee_has_no_data_in_other_family
+      return if email.blank?
+
+      invitee = User.find_by(email: email)
+      return if invitee.blank?
+      return if invitee.family_id == family_id
+
+      if invitee.owned_accounts.exists?
+        errors.add(:email, "already has financial data in another #{family&.moniker_label&.downcase || 'family'} and can't be invited")
+      end
     end
 
     def auto_share_existing_accounts(user)

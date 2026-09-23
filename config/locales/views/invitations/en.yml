@@ -2,11 +2,15 @@
 en:
   invitations:
     accept_choice:
+      accept_and_join: Accept and join
       create_account: Create new account
       joined_household: You have joined the household.
       message: "%{inviter} has invited you to join as %{role}."
+      move_warning: "Accepting will move your account to %{family}. You'll lose access to your current household's shared data unless you're invited back."
       sign_in_existing: I already have an account
       title: Join %{family}
+    confirm_accept:
+      failure: Could not accept invitation
     create:
       existing_user_added: User has been added to your household.
       failure: Could not send invitation

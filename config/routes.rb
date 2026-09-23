@@ -456,6 +456,7 @@ Rails.application.routes.draw do
   resources :invitations, only: [ :new, :create, :destroy ] do
     get :accept, on: :member
   end
+  post "invitations/:id/accept", to: "invitations#confirm_accept", as: :confirm_accept_invitation
 
   # API routes
   namespace :api do
