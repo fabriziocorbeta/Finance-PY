@@ -114,6 +114,47 @@ class SaleTest < ActiveSupport::TestCase
     assert_equal(-20, sale.entry.amount)
   end
 
+  test "complete! is idempotent when already completed (no double stock movement or entry)" do
+    sale = Sale.create!(family: @family, account: @account)
+    sale.sale_items.create!(product: @product, quantity: 2, unit_price: 10)
+    sale.complete!
+    entry_id = sale.reload.entry_id
+
+    assert_no_difference -> { ProductStockMovement.count } do
+      assert_no_difference -> { Entry.count } do
+        sale.complete!
+      end
+    end
+
+    assert_equal "completed", sale.reload.status
+    assert_equal entry_id, sale.entry_id
+  end
+
+  test "complete! raises if stock is insufficient and does not create a stock movement" do
+    sale = Sale.create!(family: @family, account: @account)
+    sale.sale_items.create!(product: @product, quantity: @product.stock + 1, unit_price: 10)
+
+    assert_no_difference -> { ProductStockMovement.count } do
+      assert_raises(ActiveRecord::RecordInvalid) { sale.complete! }
+    end
+
+    assert_equal "draft", sale.reload.status
+  end
+
+  test "a stock movement that would push stock negative raises a clear validation error, not a raw db error" do
+    original_stock = @product.stock
+
+    error = assert_raises(ActiveRecord::RecordInvalid) do
+      ProductStockMovement.create!(product: @product, reason: "salida", quantity_delta: -(original_stock + 1))
+    end
+
+    assert_includes error.record.errors[:stock], "no puede quedar en negativo"
+    # increment! mutates the in-memory attribute before the failing UPDATE, so
+    # @product itself is left with a stale (negative) value in memory -- what
+    # matters is that the DB row (and thus every other reader) never saw it.
+    assert_equal original_stock, @product.reload.stock
+  end
+
   test "account must belong to the same family" do
     foreign_account = Account.create!(family: Family.create!(name: "Other Family", default_account_sharing: "shared"), name: "Ajena", currency: "USD", balance: 0, accountable: Depository.new)
     sale = Sale.new(family: @family, account: foreign_account)

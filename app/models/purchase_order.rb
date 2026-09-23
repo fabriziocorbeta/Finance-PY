@@ -29,16 +29,24 @@ class PurchaseOrder < ApplicationRecord
     purchase_order_items.sum(&:subtotal)
   end
 
+  # See Sale#complete! for why with_lock + reload + idempotency check (instead
+  # of plain `transaction do`) is what makes double-clicking receive!/cancel!
+  # (or two concurrent requests) safe: the second caller blocks on the row
+  # lock until the first commits, then observes the final status and no-ops.
   def receive!
-    transaction do
+    with_lock do
+      next if received?
+
       unless draft?
         errors.add(:status, "must be draft to receive")
         raise ActiveRecord::RecordInvalid.new(self)
       end
 
+      locked_products = lock_products_for(purchase_order_items)
+
       purchase_order_items.each do |item|
         ProductStockMovement.create!(
-          product: item.product,
+          product: locked_products.fetch(item.product_id),
           reason: "entrada",
           quantity_delta: item.quantity
         )
@@ -56,16 +64,28 @@ class PurchaseOrder < ApplicationRecord
   end
 
   def cancel!
-    transaction do
+    with_lock do
+      next if cancelled?
+
       unless draft? || received?
         errors.add(:status, "must be draft or received to cancel")
         raise ActiveRecord::RecordInvalid.new(self)
       end
 
       if received?
+        locked_products = lock_products_for(purchase_order_items)
+
+        purchase_order_items.each do |item|
+          product = locked_products.fetch(item.product_id)
+          if product.stock < item.quantity
+            errors.add(:base, "Insufficient stock for #{product.name}")
+            raise ActiveRecord::RecordInvalid.new(self)
+          end
+        end
+
         purchase_order_items.each do |item|
           ProductStockMovement.create!(
-            product: item.product,
+            product: locked_products.fetch(item.product_id),
             reason: "salida",
             quantity_delta: -item.quantity
           )
@@ -84,6 +104,15 @@ class PurchaseOrder < ApplicationRecord
   end
 
   private
+
+    # See Sale#lock_products_for: fixed id order avoids cross-model deadlocks
+    # (a Sale and a PurchaseOrder locking the same two products in opposite
+    # order), and the lock makes the stock check in cancel! (below) safe from
+    # a concurrent update on the same product.
+    def lock_products_for(items)
+      product_ids = items.map(&:product_id).uniq.sort
+      Product.where(id: product_ids).order(:id).lock.index_by(&:id)
+    end
 
     def create_associated_entry
       purchase_category = family.categories.find_or_create_by!(name: "Compras") do |category|
