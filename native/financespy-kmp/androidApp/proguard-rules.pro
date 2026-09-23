@@ -27,3 +27,12 @@
 
 # Suppress missing java.lang.management classes from Ktor/Kotlinx
 -dontwarn java.lang.management.**
+
+# Strip debug/verbose/info Log calls from release builds -- these can carry
+# sensitive data (tokens, request bodies) and must not ship in the APK.
+# Keeps warn/error, which is what production crash triage relies on.
+-assumenosideeffects class android.util.Log {
+    public static int d(...);
+    public static int v(...);
+    public static int i(...);
+}

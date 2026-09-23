@@ -31,13 +31,20 @@ class AppLifecycleObserver(
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
+    // Stored/compared as SystemClock.elapsedRealtime() (ms since boot,
+    // including deep sleep), NOT wall-clock time -- a user changing the
+    // phone's date/time must not be able to rewind this and evade the
+    // inactivity lock. Not persisted across reboots (elapsedRealtime resets
+    // to 0), but a reboot already requires the device's own screen-lock
+    // credential before this process can run at all, so that's an accepted
+    // trade-off, not a bypass.
     private var lastInteractionTime: Long
-        get() = prefs.getLong(KEY_LAST_INTERACTION, System.currentTimeMillis())
+        get() = prefs.getLong(KEY_LAST_INTERACTION, SystemClock.elapsedRealtime())
         set(value) {
             prefs.edit().putLong(KEY_LAST_INTERACTION, value).apply()
         }
 
-    private var memoryLastInteractionTime = System.currentTimeMillis()
+    private var memoryLastInteractionTime = SystemClock.elapsedRealtime()
     private var isAppInForeground = false
     private var inactivityJob: Job? = null
 
@@ -61,7 +68,7 @@ class AppLifecycleObserver(
         // Initialize memory clock with persistent clock if available, else persist now
         val persisted = prefs.getLong(KEY_LAST_INTERACTION, 0L)
         if (persisted == 0L) {
-            val now = System.currentTimeMillis()
+            val now = SystemClock.elapsedRealtime()
             lastInteractionTime = now
             memoryLastInteractionTime = now
         } else {
@@ -75,7 +82,7 @@ class AppLifecycleObserver(
             while (isActive) {
                 delay(1000)
                 if (isAppInForeground && isLoggedIn) {
-                    val now = System.currentTimeMillis()
+                    val now = SystemClock.elapsedRealtime()
                     val timeSinceLastInteraction = now - memoryLastInteractionTime
                     if (timeSinceLastInteraction > INACTIVITY_TIMEOUT_MS) {
                         performLock()
@@ -108,7 +115,7 @@ class AppLifecycleObserver(
     // immediately re-trigger a timeout the instant isLoggedIn flips true.
     fun resetClock() {
         isLocked = false
-        val now = System.currentTimeMillis()
+        val now = SystemClock.elapsedRealtime()
         memoryLastInteractionTime = now
         lastInteractionTime = now
     }
@@ -118,7 +125,7 @@ class AppLifecycleObserver(
      */
     fun updateInteractionTime(): Boolean {
         if (!isLoggedIn || isLocked) return false
-        val now = System.currentTimeMillis()
+        val now = SystemClock.elapsedRealtime()
         val timeSinceLastInteraction = now - memoryLastInteractionTime
         if (timeSinceLastInteraction > INACTIVITY_TIMEOUT_MS) {
             performLock()
@@ -139,7 +146,7 @@ class AppLifecycleObserver(
         if (!isLoggedIn || isLocked) return
 
         // Check if timeout was reached while in background using persistent time
-        val now = System.currentTimeMillis()
+        val now = SystemClock.elapsedRealtime()
         val timeSinceLastInteraction = now - lastInteractionTime
         if (timeSinceLastInteraction > INACTIVITY_TIMEOUT_MS) {
             Log.d(TAG, "onStart: timeout reached while in background")

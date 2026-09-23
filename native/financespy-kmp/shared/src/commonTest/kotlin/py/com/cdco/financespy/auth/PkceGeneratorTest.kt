@@ -28,4 +28,21 @@ class PkceGeneratorTest {
         val challengeB = generator.challengeFor(generator.generateVerifier())
         assertTrue(challengeA != challengeB)
     }
+
+    @Test
+    fun stateIsUrlSafeAndAtLeast128Bits() {
+        val state = PkceGenerator().generateState()
+        assertTrue(state.all { it.isLetterOrDigit() || it == '-' || it == '_' })
+        // base64url with no padding: 4 chars per 3 bytes, so ceil(16 bytes * 4/3)
+        // is the minimum length that can encode >=128 bits (16 bytes).
+        assertTrue(state.length >= 22)
+    }
+
+    @Test
+    fun differentCallsProduceDifferentStates() {
+        val generator = PkceGenerator()
+        val stateA = generator.generateState()
+        val stateB = generator.generateState()
+        assertTrue(stateA != stateB)
+    }
 }

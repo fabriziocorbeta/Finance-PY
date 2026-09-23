@@ -13,6 +13,14 @@ class PkceGenerator {
         return base64UrlEncode(digest)
     }
 
+    // OAuth `state` param (CSRF protection). 32 random bytes = 256 bits,
+    // well over the 128-bit minimum; unlike code_verifier it has no
+    // RFC-imposed max length, so no truncation.
+    fun generateState(): String {
+        val bytes = Random.Default.nextBytes(32)
+        return base64UrlEncode(bytes)
+    }
+
     private fun base64UrlEncode(bytes: ByteArray): String {
         val table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
         val sb = StringBuilder()

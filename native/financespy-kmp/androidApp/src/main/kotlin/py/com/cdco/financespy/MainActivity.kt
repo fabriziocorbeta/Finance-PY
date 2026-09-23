@@ -600,8 +600,9 @@ class MainActivity : FragmentActivity() {
         val uri = intent.data ?: return
         if (uri.scheme != "financespy" || uri.host != "oauth") return
         val code = uri.getQueryParameter("code") ?: return
+        val state = uri.getQueryParameter("state")
         lifecycleScope.launch {
-            authRepository.exchangeCode(code)
+            authRepository.exchangeCode(code, state)
                 .onSuccess {
                     val settings = try { api.fetchFamilySettings() } catch (e: Exception) { null }
                     needsOnboarding.value = settings?.current_user?.needs_onboarding == true
