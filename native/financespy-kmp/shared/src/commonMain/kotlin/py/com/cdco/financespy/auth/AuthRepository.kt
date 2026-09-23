@@ -21,7 +21,13 @@ data class TokenResponse(
 class AuthRepository(
     private val http: HttpClient,
     private val tokens: TokenStorage,
-    private val pkce: PkceGenerator = PkceGenerator()
+    private val pkce: PkceGenerator = PkceGenerator(),
+    // Wipes platform-local data (Room tables, offline queue/caches, Wallet
+    // pending captures, owner-scope marker) on logout. Injected instead of
+    // implemented here because AuthRepository is commonMain and has no
+    // access to Room/Context -- see MainActivity for the Android wiring.
+    // Never allowed to block/abort logout: any failure here is swallowed.
+    private val wipeLocalData: suspend () -> Unit = {}
 ) {
     private var pendingVerifier: String? = null
     private var pendingState: String? = null
@@ -73,5 +79,35 @@ class AuthRepository(
 
     suspend fun isLoggedIn(): Boolean = tokens.accessToken() != null
 
-    suspend fun logout() = tokens.clear()
+    /**
+     * Full sign-out, in order:
+     * 1. Best-effort revoke of both tokens server-side. Network/server
+     *    failure (offline, etc.) is swallowed -- logout must never get
+     *    stuck waiting on a call that will never succeed.
+     * 2. Always clear the local token store, even if revoke failed.
+     * 3. Wipe platform-local data (see [wipeLocalData]). Also never allowed
+     *    to throw out of here.
+     */
+    suspend fun logout() {
+        val access = tokens.accessToken()
+        val refresh = tokens.refreshToken()
+        revokeToken(access, "access_token")
+        revokeToken(refresh, "refresh_token")
+        tokens.clear()
+        runCatching { wipeLocalData() }
+    }
+
+    private suspend fun revokeToken(token: String?, tokenTypeHint: String) {
+        if (token == null) return
+        runCatching {
+            http.submitForm(
+                url = "${ApiClient.BASE_URL}/oauth/revoke",
+                formParameters = Parameters.build {
+                    append("token", token)
+                    append("token_type_hint", tokenTypeHint)
+                    append("client_id", CLIENT_ID)
+                }
+            )
+        }
+    }
 }

@@ -65,7 +65,9 @@ fun SettingsScreen(
     onNavigateToUpayImport: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsState()
+    val pendingOutboxCount by viewModel.pendingOutboxCount.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showPendingOutboxWarning by remember { mutableStateOf(false) }
 
     if (showLogoutDialog) {
         AlertDialog(
@@ -86,7 +88,14 @@ fun SettingsScreen(
                 TextButton(
                     onClick = {
                         showLogoutDialog = false
-                        viewModel.logout(onLoggedOut)
+                        // If there's unsynced offline work, warn again before
+                        // it's wiped along with everything else on logout --
+                        // otherwise go straight through as before.
+                        if (pendingOutboxCount > 0) {
+                            showPendingOutboxWarning = true
+                        } else {
+                            viewModel.logout(onLoggedOut)
+                        }
                     }
                 ) {
                     Text(
@@ -98,6 +107,51 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(
                     onClick = { showLogoutDialog = false }
+                ) {
+                    Text(
+                        text = "Cancelar",
+                        color = FinancePyColors.textPrimary()
+                    )
+                }
+            },
+            containerColor = FinancePyColors.container(),
+            titleContentColor = FinancePyColors.textPrimary(),
+            textContentColor = FinancePyColors.textSecondary()
+        )
+    }
+
+    if (showPendingOutboxWarning) {
+        AlertDialog(
+            onDismissRequest = { showPendingOutboxWarning = false },
+            title = {
+                Text(
+                    text = "Cambios sin sincronizar",
+                    color = FinancePyColors.textPrimary()
+                )
+            },
+            text = {
+                val plural = if (pendingOutboxCount == 1) "cambio" else "cambios"
+                Text(
+                    text = "Tenés $pendingOutboxCount $plural sin sincronizar que se van a perder si cerrás sesión ahora. ¿Continuar de todas formas?",
+                    color = FinancePyColors.textSecondary()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showPendingOutboxWarning = false
+                        viewModel.logout(onLoggedOut)
+                    }
+                ) {
+                    Text(
+                        text = "Cerrar sesión igual",
+                        color = FinancePyColors.destructive()
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showPendingOutboxWarning = false }
                 ) {
                     Text(
                         text = "Cancelar",

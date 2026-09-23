@@ -12,7 +12,11 @@ sealed class WebhookResult {
 class WebhookClient(private val token: String) {
     private val url = "https://finance.cd-co.com.py/api/v1/android_purchases"
 
-    fun post(capture: PendingCapture): WebhookResult {
+    // rawText is passed in separately (never part of PendingCapture) because
+    // it's only available for the very first attempt, straight from the
+    // notification -- retries read a PendingCapture back from disk, where
+    // it was never stored. See PendingCaptureStore for why.
+    fun post(capture: PendingCapture, rawText: String? = null): WebhookResult {
         var conn: HttpURLConnection? = null
         return try {
             val connection = URL(url).openConnection() as HttpURLConnection
@@ -36,7 +40,7 @@ class WebhookClient(private val token: String) {
                 put("amount", capture.amount.replace(",", ""))
                 put("merchant", capture.merchant)
                 put("item", capture.item)
-                put("raw_text", capture.rawText)
+                if (rawText != null) put("raw_text", rawText)
                 put("timestamp", capture.capturedAt)
             }
             connection.outputStream.use { it.write(body.toString().toByteArray()) }

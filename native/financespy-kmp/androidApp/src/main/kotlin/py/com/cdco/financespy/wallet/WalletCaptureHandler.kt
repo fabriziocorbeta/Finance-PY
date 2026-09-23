@@ -36,7 +36,6 @@ object WalletCaptureHandler {
         val capture = PendingCapture(
             id = UUID.randomUUID().toString(),
             capturedAt = capturedAt,
-            rawText = text,
             accountId = accountId,
             amount = purchase.amount,
             merchant = title,
@@ -50,7 +49,7 @@ object WalletCaptureHandler {
             onResult?.invoke("token_missing", purchase.cardText)
             return
         }
-        val result = WebhookClient(token).post(capture)
+        val result = WebhookClient(token).post(capture, rawText = text)
 
         when (result) {
             is WebhookResult.Success -> {
