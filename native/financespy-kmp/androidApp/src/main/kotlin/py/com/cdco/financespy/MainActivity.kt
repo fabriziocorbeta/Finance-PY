@@ -39,6 +39,7 @@ import py.com.cdco.financespy.db.initDatabaseBuilder
 import py.com.cdco.financespy.navigation.AndroidNavPreferences
 import py.com.cdco.financespy.network.ApiClient
 import py.com.cdco.financespy.security.AndroidSecurityPreferences
+import py.com.cdco.financespy.security.BiometricRefreshTokenGuard
 import py.com.cdco.financespy.security.OwnerScope
 import py.com.cdco.financespy.screens.AccountDetailViewModel
 import py.com.cdco.financespy.screens.AccountFormViewModel
@@ -130,6 +131,16 @@ class MainActivity : FragmentActivity() {
                     dashboardCache.wipeAll()
                     pendingCaptureStore.wipeAll()
                     OwnerScope.clear(applicationContext)
+                    // The wrapped refresh-token copy (if the biometric toggle
+                    // was on) is tied to the session token being wiped above --
+                    // stale ciphertext with no valid token behind it. The
+                    // biometric-lock TOGGLE preference itself is left alone,
+                    // same reasoning as securityPreferences below: it gets
+                    // re-armed (re-wrapped against the new session's token)
+                    // next time the user turns it on from Settings, or when
+                    // they log back in while it's still on (see
+                    // armBiometricRefreshTokenLock's caller).
+                    BiometricRefreshTokenGuard.clear(applicationContext)
                     // Deliberately NOT wiped: securityPreferences (biometric
                     // lock + screen-capture-block toggles). Those are
                     // device-level security posture, not this user's data --
@@ -457,8 +468,7 @@ class MainActivity : FragmentActivity() {
                 settingsViewModelFactory = { settingsViewModel },
                 isBiometricLockEnabled = biometricLockEnabled.value,
                 onToggleBiometricLock = { enabled ->
-                    securityPreferences.setBiometricLockEnabled(enabled)
-                    biometricLockEnabled.value = enabled
+                    if (enabled) armBiometricRefreshTokenLock() else disarmBiometricRefreshTokenLock()
                 },
                 isScreenCaptureBlockEnabled = screenCaptureBlockEnabled.value,
                 onToggleScreenCaptureBlock = { enabled ->
@@ -497,16 +507,53 @@ class MainActivity : FragmentActivity() {
 
     private fun showBiometricPrompt() {
         val biometricManager = BiometricManager.from(this)
-        val canAuthenticate = biometricManager.canAuthenticate(
+
+        // Only reach for the CryptoObject-backed (BIOMETRIC_STRONG-only --
+        // Android doesn't allow crypto operations with BIOMETRIC_WEAK) gate
+        // when the user opted into the toggle AND there's actually a wrapped
+        // token behind it. Otherwise this is either the plain inactivity-lock
+        // re-prompt (toggle off) or a first run right after the toggle was
+        // turned on but before armBiometricRefreshTokenLock() finished --
+        // both fall back to the original UI-only gate, same as before this
+        // change.
+        val useCryptoGate = biometricLockEnabled.value && BiometricRefreshTokenGuard.hasWrappedToken(applicationContext)
+        val allowedAuthenticators = if (useCryptoGate) {
+            BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        } else {
             BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL
-        )
+        }
+        val canAuthenticate = biometricManager.canAuthenticate(allowedAuthenticators)
 
         if (canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS) {
+            val cryptoObject = if (useCryptoGate) {
+                val cipher = try {
+                    BiometricRefreshTokenGuard.decryptCipher(applicationContext)
+                } catch (e: BiometricRefreshTokenGuard.GuardInvalidatedException) {
+                    Log.w("FinancePYBiometric", "Biometric key invalidated, falling back to re-login", e)
+                    handleBiometricKeyInvalidated()
+                    return
+                }
+                cipher?.let { BiometricPrompt.CryptoObject(it) }
+            } else null
+
             val executor = ContextCompat.getMainExecutor(this)
             val biometricPrompt = BiometricPrompt(this, executor,
                 object : BiometricPrompt.AuthenticationCallback() {
                     override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                         super.onAuthenticationSucceeded(result)
+                        val resultCipher = result.cryptoObject?.cipher
+                        if (useCryptoGate && resultCipher != null) {
+                            try {
+                                BiometricRefreshTokenGuard.unwrap(applicationContext, resultCipher)
+                            } catch (e: Exception) {
+                                // Ciphertext doesn't decrypt against this key/IV
+                                // anymore. Never crash, never trap the user --
+                                // same recovery as a permanently-invalidated key.
+                                Log.e("FinancePYBiometric", "Wrapped refresh token failed to decrypt", e)
+                                handleBiometricKeyInvalidated()
+                                return
+                            }
+                        }
                         isBiometricAuthenticated.value = true
                         inactivityLocked.value = false
                         appLifecycleObserver.onUnlocked()
@@ -519,10 +566,14 @@ class MainActivity : FragmentActivity() {
             val promptInfo = BiometricPrompt.PromptInfo.Builder()
                 .setTitle("Autenticación Requerida")
                 .setSubtitle("Desbloquee para acceder a FinanceSpy")
-                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                .setAllowedAuthenticators(allowedAuthenticators)
                 .build()
 
-            biometricPrompt.authenticate(promptInfo)
+            if (cryptoObject != null) {
+                biometricPrompt.authenticate(promptInfo, cryptoObject)
+            } else {
+                biometricPrompt.authenticate(promptInfo)
+            }
         } else {
             // No biometric enrolled AND no device credential (PIN/pattern/password)
             // set -- fail CLOSED, not open. A financial app must never let an
@@ -538,6 +589,89 @@ class MainActivity : FragmentActivity() {
                 appLifecycleObserver.onUnlocked()
             }
         }
+    }
+
+    /** Enables the biometric-lock toggle only after successfully wrapping the
+     * current refresh token behind a fresh biometric/device-credential check
+     * -- never flips the toggle on with nothing actually wrapped behind it.
+     * On any failure (no key hardware, user cancels, permanently invalidated
+     * key) the toggle is simply left as it was; nothing about the existing
+     * token storage or session is touched. */
+    private fun armBiometricRefreshTokenLock() {
+        val cipher = try {
+            BiometricRefreshTokenGuard.encryptCipher()
+        } catch (e: BiometricRefreshTokenGuard.GuardInvalidatedException) {
+            BiometricRefreshTokenGuard.reset(applicationContext)
+            try {
+                BiometricRefreshTokenGuard.encryptCipher()
+            } catch (e2: Exception) {
+                Log.e("FinancePYBiometric", "Could not prepare biometric key after reset", e2)
+                return
+            }
+        } catch (e: Exception) {
+            Log.e("FinancePYBiometric", "Could not prepare biometric key", e)
+            return
+        }
+
+        val executor = ContextCompat.getMainExecutor(this)
+        val prompt = BiometricPrompt(this, executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    super.onAuthenticationSucceeded(result)
+                    val authenticatedCipher = result.cryptoObject?.cipher ?: return
+                    lifecycleScope.launch {
+                        val refreshToken = withContext(Dispatchers.IO) { tokenStorage.refreshToken() }
+                        if (refreshToken == null) {
+                            // Nothing to protect (shouldn't happen while
+                            // logged in) -- don't enable a lock with an empty
+                            // guard behind it.
+                            return@launch
+                        }
+                        withContext(Dispatchers.IO) {
+                            BiometricRefreshTokenGuard.storeWrapped(applicationContext, authenticatedCipher, refreshToken)
+                        }
+                        securityPreferences.setBiometricLockEnabled(true)
+                        biometricLockEnabled.value = true
+                    }
+                }
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    super.onAuthenticationError(errorCode, errString)
+                    // Cancelled or failed: leave the toggle exactly as it was.
+                }
+            })
+
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Proteger FinancePY")
+            .setSubtitle("Confirme su identidad para activar el bloqueo biométrico")
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+            .build()
+
+        prompt.authenticate(promptInfo, BiometricPrompt.CryptoObject(cipher))
+    }
+
+    private fun disarmBiometricRefreshTokenLock() {
+        securityPreferences.setBiometricLockEnabled(false)
+        biometricLockEnabled.value = false
+        BiometricRefreshTokenGuard.clear(applicationContext)
+    }
+
+    /** Recovery path for a Keystore key that can no longer be used (biometric
+     * enrollment changed since the toggle was turned on, or the wrapped
+     * ciphertext no longer decrypts). Drops back to the un-gated state:
+     * the toggle turns itself off and the guard resets, but the session
+     * (AndroidTokenStorage's own token copy, Room DB, offline outbox) is
+     * left completely untouched -- this failure is scoped to the extra
+     * biometric-confirmation layer, not to the underlying auth/session,
+     * so there is no reason to force a logout or lose queued offline work
+     * over it. The user can re-enable the toggle from Settings, which
+     * re-wraps against a fresh key. */
+    private fun handleBiometricKeyInvalidated() {
+        BiometricRefreshTokenGuard.reset(applicationContext)
+        securityPreferences.setBiometricLockEnabled(false)
+        biometricLockEnabled.value = false
+        inactivityLocked.value = false
+        isBiometricAuthenticated.value = true
+        appLifecycleObserver.onUnlocked()
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
@@ -640,6 +774,27 @@ class MainActivity : FragmentActivity() {
                     isLoggedIn.value = true
                     appLifecycleObserver.isLoggedIn = true
                     appLifecycleObserver.resetClock()
+                    // logout()'s wipe clears the previous session's wrapped
+                    // refresh token (see wipeLocalData above) but leaves the
+                    // toggle itself on -- re-arm it against the fresh token
+                    // so "biometric lock: on" keeps meaning what it says
+                    // instead of silently falling back to the no-CryptoObject
+                    // gate until the user happens to revisit Settings.
+                    if (biometricLockEnabled.value) {
+                        // Mark as already unlocked for this fresh session
+                        // BEFORE triggering the re-arm prompt: otherwise the
+                        // Compose lock screen's own LaunchedEffect would race
+                        // it with a second, competing showBiometricPrompt()
+                        // call (isLoggedIn=true + biometricLockEnabled=true +
+                        // isBiometricAuthenticated=false is exactly its
+                        // trigger condition). The user just came back from a
+                        // live OAuth round-trip -- re-gating them immediately
+                        // behind another prompt is redundant; the one prompt
+                        // that follows is for re-arming the stronger guard,
+                        // not for re-proving identity.
+                        isBiometricAuthenticated.value = true
+                        armBiometricRefreshTokenLock()
+                    }
                 }
                 .onFailure { e -> Log.e("FinancePYAuth", "exchangeCode failed", e) }
         }
