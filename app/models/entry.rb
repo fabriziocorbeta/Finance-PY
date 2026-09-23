@@ -4,8 +4,11 @@ class Entry < ApplicationRecord
   # Immutable audit trail: who changed an amount/date/name, when, and the
   # exact before/after diff. Entry has no family_id of its own (see
   # FamilyIdPropagatable above), so versions.family_id is populated from
-  # the parent account.
-  has_paper_trail meta: { family_id: proc { |entry| entry.account&.family_id } }
+  # the parent account. :notes is skipped -- it's free-text user content
+  # (searched with ILIKE in EntrySearch, so it isn't a candidate for
+  # column encryption) that doesn't need to live in the audit history, and
+  # skipping it keeps it out of versions.object/object_changes in plaintext.
+  has_paper_trail meta: { family_id: proc { |entry| entry.account&.family_id } }, skip: [ :notes ]
 
   attr_accessor :unsplitting
 
