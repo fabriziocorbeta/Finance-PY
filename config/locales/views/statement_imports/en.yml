@@ -1,0 +1,13 @@
+---
+en:
+  statement_imports:
+    create:
+      no_file: You must select a file.
+      file_too_large: File is too large. Maximum size is %{max_size}MB.
+      invalid_file_type: The file is not a valid PDF.
+      success: Statement sent for processing.
+    confirm:
+      account_not_found: Account not found.
+      success:
+        one: 1 transaction imported.
+        other: "%{count} transactions imported."

@@ -28,5 +28,34 @@ module StatementParser
       assert_equal "2026-05-01", h[:date]
       assert_equal "credit", h[:transaction_type]
     end
+
+    test "ParsedTransaction defaults to PYG when currency is blank" do
+      t = ParsedTransaction.new(date: "2026-05-01", description: "X", amount_cents: 100, currency: nil)
+      assert_equal "PYG", t.currency
+      assert t.valid?
+    end
+
+    test "ParsedTransaction currency is nil (and invalid) for an unrecognized code" do
+      t = ParsedTransaction.new(date: "2026-05-01", description: "X", amount_cents: 100, currency: "NOTACODE")
+      assert_nil t.currency
+      assert_not t.valid?
+    end
+
+    test "ParsedTransaction currency is nil (and invalid) for a well-formed but non-ISO code" do
+      t = ParsedTransaction.new(date: "2026-05-01", description: "X", amount_cents: 100, currency: "XXX")
+      assert_nil t.currency
+      assert_not t.valid?
+    end
+
+    test "ParsedTransaction is invalid without a date" do
+      t = ParsedTransaction.new(date: nil, description: "X", amount_cents: 100, currency: "PYG")
+      assert_not t.valid?
+    end
+
+    test "ParsedTransaction is valid with a real date and currency" do
+      t = ParsedTransaction.new(date: "2026-05-01", description: "X", amount_cents: 100, currency: "usd")
+      assert t.valid?
+      assert_equal "USD", t.currency
+    end
   end
 end
