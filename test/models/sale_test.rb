@@ -87,6 +87,33 @@ class SaleTest < ActiveSupport::TestCase
     assert_equal "cancelled", sale.reload.status
   end
 
+  test "complete! converts entry amount when sale currency differs from account currency" do
+    ExchangeRate.create!(from_currency: "PYG", to_currency: "USD", rate: 0.00013, date: Date.current)
+
+    sale = Sale.create!(family: @family, account: @account, currency: "pyg")
+    sale.sale_items.create!(product: @product, quantity: 1, unit_price: 100_000)
+
+    sale.complete!
+    sale.reload
+
+    expected_amount = -(100_000 * BigDecimal("0.00013"))
+    assert_equal expected_amount.round(6), sale.entry.amount.round(6)
+    assert_equal @account.currency, sale.entry.currency
+  end
+
+  test "complete! falls back to raw total when no exchange rate is available for a currency mismatch" do
+    sale = Sale.create!(family: @family, account: @account, currency: "pyg")
+    sale.sale_items.create!(product: @product, quantity: 2, unit_price: 10)
+
+    sale.complete!
+    sale.reload
+
+    # No PYG->USD rate exists in this test environment, so it falls back to
+    # the raw (unconverted) total -- same behavior as before this fix for
+    # the case where no rate is available.
+    assert_equal(-20, sale.entry.amount)
+  end
+
   test "account must belong to the same family" do
     foreign_account = Account.create!(family: Family.create!(name: "Other Family", default_account_sharing: "shared"), name: "Ajena", currency: "USD", balance: 0, accountable: Depository.new)
     sale = Sale.new(family: @family, account: foreign_account)

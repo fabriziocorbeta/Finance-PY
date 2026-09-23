@@ -34,10 +34,16 @@ class Import::MappingsController < ApplicationController
     end
 
     def mappable_class
-      mapping_params[:mappable_type]&.constantize
+      type = mapping_params[:mappable_type]
+      return nil unless type.present? && Import::Mapping::MAPPABLE_TYPES.include?(type)
+
+      type.constantize
     end
 
     def mapping_class
-      mapping_params[:type]&.constantize
+      type = mapping_params[:type]
+      return nil unless type.present? && Import::Mapping::TYPES.include?(type)
+
+      type.constantize
     end
 end

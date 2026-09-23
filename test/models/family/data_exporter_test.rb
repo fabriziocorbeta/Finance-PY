@@ -425,6 +425,28 @@ class Family::DataExporterTest < ActiveSupport::TestCase
     end
   end
 
+  test "prefixes CSV formula-injection payloads in free-text fields with an apostrophe" do
+    malicious_category = @family.categories.create!(name: "=1+1", color: "#123456")
+
+    malicious_account = @family.accounts.create!(
+      name: "+cmd|' /C calc'!A0",
+      accountable: Depository.new,
+      balance: 100,
+      currency: "USD"
+    )
+
+    zip_data = @exporter.generate_export
+
+    Zip::File.open_buffer(zip_data) do |zip|
+      categories_csv = zip.read("categories.csv")
+      assert_includes categories_csv, "'=1+1"
+      refute_match(/(?<!')=1\+1/, categories_csv)
+
+      accounts_csv = zip.read("accounts.csv")
+      assert_includes accounts_csv, "'+cmd"
+    end
+  end
+
   test "only exports rules from the specified family" do
     # Create a rule for another family that should NOT be exported
     other_rule = @other_family.rules.build(

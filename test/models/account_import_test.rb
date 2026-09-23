@@ -177,4 +177,32 @@ class AccountImportTest < ActiveSupport::TestCase
   test "max_row_count is limited to 50" do
     assert_equal 50, @import.max_row_count
   end
+
+  test "import! rejects account type mapping values outside Accountable::TYPES" do
+    import_csv = <<~CSV
+      type,name,amount,currency
+      depository,Main Checking,1000.00,USD
+    CSV
+
+    @import.update!(
+      raw_file_str: import_csv,
+      entity_type_col_label: "type",
+      name_col_label: "name",
+      amount_col_label: "amount",
+      currency_col_label: "currency"
+    )
+
+    @import.generate_rows_from_csv
+
+    # Simulate a tampered/invalid mapping value that isn't one of Accountable::TYPES
+    @import.mappings.create! key: "depository", value: "User", type: "Import::AccountTypeMapping"
+
+    @import.reload
+
+    assert_raises(Import::MappingError) do
+      @import.import!
+    end
+
+    refute Accountable::TYPES.include?("User")
+  end
 end

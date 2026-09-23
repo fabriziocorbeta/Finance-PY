@@ -5,6 +5,11 @@ class AccountImport < Import
     transaction do
       rows.each do |row|
         mapping = mappings.account_types.find_by(key: row.entity_type)
+
+        unless Accountable::TYPES.include?(mapping&.value)
+          raise MappingError, "Invalid account type mapping: #{mapping&.value.inspect}"
+        end
+
         accountable_class = mapping.value.constantize
 
         account = family.accounts.build(

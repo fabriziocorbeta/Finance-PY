@@ -95,7 +95,7 @@ module Reports
           csv << [ "INCOME" ] + Array.new(month_headers.length + 1, "")
 
           export_data[:income].each do |category_data|
-            row = [ category_data[:category] ]
+            row = [ csv_safe(category_data[:category]) ]
 
             export_data[:months].each do |month|
               amount = category_data[:months][month] || 0
@@ -122,7 +122,7 @@ module Reports
           csv << [ "EXPENSES" ] + Array.new(month_headers.length + 1, "")
 
           export_data[:expenses].each do |category_data|
-            row = [ category_data[:category] ]
+            row = [ csv_safe(category_data[:category]) ]
 
             export_data[:months].each do |month|
               amount = category_data[:months][month] || 0
@@ -146,6 +146,18 @@ module Reports
     end
 
     private
+
+      # Guards against CSV/formula injection: a cell whose text starts with
+      # =, +, - or @ can be interpreted as a formula by Excel/Sheets when the
+      # file is opened. Prefixing with a leading apostrophe forces it to be
+      # read as plain text without changing the visible value. Only applied
+      # to free-text fields the user controls (e.g. category names).
+      def csv_safe(value)
+        return value if value.blank?
+
+        string_value = value.to_s
+        string_value.match?(/\A[=+\-@]/) ? "'#{string_value}" : string_value
+      end
 
       def parse_dates(start_date_param, end_date_param)
         s_date = parse_date(start_date_param) || default_start_date

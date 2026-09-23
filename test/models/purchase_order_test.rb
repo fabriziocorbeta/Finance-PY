@@ -64,6 +64,33 @@ class PurchaseOrderTest < ActiveSupport::TestCase
     assert_nil po.reload.entry_id
   end
 
+  test "receive! converts entry amount when purchase order currency differs from account currency" do
+    ExchangeRate.create!(from_currency: "PYG", to_currency: "USD", rate: 0.00013, date: Date.current)
+
+    po = PurchaseOrder.create!(family: @family, account: @account, currency: "pyg")
+    po.purchase_order_items.create!(product: @product1, quantity: 1, unit_cost: 100_000)
+
+    po.receive!
+    po.reload
+
+    expected_amount = 100_000 * BigDecimal("0.00013")
+    assert_equal expected_amount.round(6), po.entry.amount.round(6)
+    assert_equal @account.currency, po.entry.currency
+  end
+
+  test "receive! falls back to raw total when no exchange rate is available for a currency mismatch" do
+    po = PurchaseOrder.create!(family: @family, account: @account, currency: "pyg")
+    po.purchase_order_items.create!(product: @product1, quantity: 2, unit_cost: 10)
+
+    po.receive!
+    po.reload
+
+    # No PYG->USD rate exists in this test environment, so it falls back to
+    # the raw (unconverted) total -- same behavior as before this fix for
+    # the case where no rate is available.
+    assert_equal 20, po.entry.amount
+  end
+
   test "account must belong to the same family" do
     foreign_account = Account.create!(family: Family.create!(name: "Other Family", default_account_sharing: "shared"), name: "Ajena", currency: "USD", balance: 0, accountable: Depository.new)
     po = PurchaseOrder.new(family: @family, account: foreign_account)

@@ -102,11 +102,25 @@ class Sale < ApplicationRecord
         entryable: transaction_entryable,
         name: "Venta ##{sale_number}#{client_name.present? ? " - #{client_name}" : ""}",
         date: Date.current,
-        amount: -total,
+        amount: -total_in_account_currency,
         currency: account.currency
       )
       update_column(:entry_id, entry_record.id)
       entry_record.sync_account_later
+    end
+
+    # `total` is denominated in the sale's own currency (user-selected on the
+    # form, independent from the account's currency). Convert it to the
+    # account's currency before recording the entry so a USD sale on a PYG
+    # account (or vice versa) doesn't silently post the raw number under the
+    # wrong currency. Mirrors the Money#exchange_to + rescue fallback pattern
+    # used for cross-currency amounts elsewhere (e.g. ReportsController).
+    def total_in_account_currency
+      return total if currency.to_s.casecmp?(account.currency.to_s)
+
+      Money.new(total, currency).exchange_to(account.currency).amount
+    rescue Money::ConversionError
+      total
     end
 
     def destroy_associated_entry
