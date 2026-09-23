@@ -10,14 +10,26 @@
   </p>
 </div>
 
-<div class="space-y-4">
-  <%= link_to new_registration_path(invitation: @invitation.token),
-      class: "block w-full rounded-md border border-secondary bg-container px-4 py-3 text-center text-sm font-medium text-primary hover:bg-secondary transition" do %>
-    <%= t(".create_account") %>
-  <% end %>
+<% if @invitee_signed_in %>
+  <div class="space-y-4">
+    <p class="text-sm text-secondary text-center">
+      <%= t(".move_warning", family: @invitation.family.name) %>
+    </p>
 
-  <%= link_to new_session_path(invitation: @invitation.token),
-      class: "block w-full rounded-md border border-secondary bg-container px-4 py-3 text-center text-sm font-medium text-primary hover:bg-secondary transition" do %>
-    <%= t(".sign_in_existing") %>
-  <% end %>
-</div>
+    <%= button_to t(".accept_and_join"), confirm_accept_invitation_path(@invitation.token),
+        method: :post,
+        class: "block w-full rounded-md border border-secondary bg-container px-4 py-3 text-center text-sm font-medium text-primary hover:bg-secondary transition" %>
+  </div>
+<% else %>
+  <div class="space-y-4">
+    <%= link_to new_registration_path(invitation: @invitation.token),
+        class: "block w-full rounded-md border border-secondary bg-container px-4 py-3 text-center text-sm font-medium text-primary hover:bg-secondary transition" do %>
+      <%= t(".create_account") %>
+    <% end %>
+
+    <%= link_to new_session_path(invitation: @invitation.token),
+        class: "block w-full rounded-md border border-secondary bg-container px-4 py-3 text-center text-sm font-medium text-primary hover:bg-secondary transition" do %>
+      <%= t(".sign_in_existing") %>
+    <% end %>
+  </div>
+<% end %>
