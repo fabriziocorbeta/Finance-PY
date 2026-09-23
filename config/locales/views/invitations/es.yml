@@ -2,11 +2,15 @@
 es:
   invitations:
     accept_choice:
+      accept_and_join: Aceptar y unirme
       create_account: Crear cuenta nueva
       joined_household: Te has unido a la unidad familiar.
       message: "%{inviter} te ha invitado a unirte como %{role}."
+      move_warning: "Al aceptar, tu cuenta se moverá a %{family}. Vas a perder el acceso a los datos compartidos de tu unidad familiar actual, salvo que te vuelvan a invitar."
       sign_in_existing: Ya tengo una cuenta
       title: Unirse a %{family}
+    confirm_accept:
+      failure: No se pudo aceptar la invitación
     create:
       existing_user_added: El usuario ha sido añadido a tu unidad familiar.
       failure: No se pudo enviar la invitación
