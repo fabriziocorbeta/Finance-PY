@@ -110,10 +110,18 @@ comentario de cabecera de ese archivo para el tradeoff BYPASSRLS), apuntar
 `LOCAL_ADMIN_DATABASE_URL` de `bin/backup_encrypted.sh` al nuevo rol en vez
 del admin/superusuario actual:
 
+Armar `LOCAL_ADMIN_DATABASE_URL` a partir de estas partes (no pegar la URL
+completa en ningún archivo versionado, solo en el `.env.local` del host):
+
+- esquema: `postgresql`
+- usuario: `financespy_backup`
+- password: la que se le asignó al rol en `docs/ops/backup-role.sql`
+- host/puerto: `localhost` / `5432`
+- base: `financespy`
+- query param: `schema_search_path=financespy`
+
 ```bash
-LOCAL_ADMIN_DATABASE_URL="postgresql://financespy_backup:<password>@localhost:5432/financespy?schema_search_path=financespy" \
-  BACKUP_GPG_RECIPIENT=<fingerprint> \
-  bin/backup_encrypted.sh
+BACKUP_GPG_RECIPIENT=<fingerprint> bin/backup_encrypted.sh
 ```
 
 No se modificó `bin/backup_encrypted.sh` en este cambio (fuera del scope de
