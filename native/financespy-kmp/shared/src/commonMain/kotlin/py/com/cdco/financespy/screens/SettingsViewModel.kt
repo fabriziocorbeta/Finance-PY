@@ -12,6 +12,7 @@ import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.FamilyExportDto
 import py.com.cdco.financespy.api.dto.UserDto
 import py.com.cdco.financespy.auth.AuthRepository
+import py.com.cdco.financespy.sync.OfflineOutbox
 
 data class SettingsUiState(
     val isLoading: Boolean = false,
@@ -28,11 +29,18 @@ data class SettingsUiState(
 class SettingsViewModel(
     private val scope: CoroutineScope,
     private val api: FinancePyApi,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    // Nullable/optional so existing test call sites that don't care about
+    // the pending-outbox warning keep compiling; MainActivity always passes
+    // the real outbox.
+    private val outbox: OfflineOutbox? = null
 ) {
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
     private var pollingJob: Job? = null
+
+    /** How many offline-queued changes would be lost by logging out right now. */
+    val pendingOutboxCount: StateFlow<Int> get() = outbox?.pendingCount ?: MutableStateFlow(0)
 
     init {
         loadSettings()

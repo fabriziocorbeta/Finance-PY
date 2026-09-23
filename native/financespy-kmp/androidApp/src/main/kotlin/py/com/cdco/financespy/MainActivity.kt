@@ -39,6 +39,7 @@ import py.com.cdco.financespy.db.initDatabaseBuilder
 import py.com.cdco.financespy.navigation.AndroidNavPreferences
 import py.com.cdco.financespy.network.ApiClient
 import py.com.cdco.financespy.security.AndroidSecurityPreferences
+import py.com.cdco.financespy.security.OwnerScope
 import py.com.cdco.financespy.screens.AccountDetailViewModel
 import py.com.cdco.financespy.screens.AccountFormViewModel
 import py.com.cdco.financespy.screens.BudgetAllocationEditorViewModel
@@ -114,8 +115,31 @@ class MainActivity : FragmentActivity() {
     private val navPreferences by lazy { AndroidNavPreferences(applicationContext) }
     private val dashboardCache by lazy { AndroidDashboardCache(applicationContext) }
     private val offlineStore by lazy { py.com.cdco.financespy.cache.AndroidOfflineStore(applicationContext) }
+    private val pendingCaptureStore by lazy { py.com.cdco.financespy.wallet.PendingCaptureStore(applicationContext) }
     private val httpClient by lazy { ApiClient.create(tokenStorage) }
-    private val authRepository by lazy { AuthRepository(httpClient, tokenStorage) }
+    private val authRepository by lazy {
+        AuthRepository(
+            httpClient,
+            tokenStorage,
+            wipeLocalData = {
+                // Room forbids main-thread queries; logout() runs on
+                // lifecycleScope (Main), so hop to IO for the wipe.
+                withContext(Dispatchers.IO) {
+                    database.clearAllTables()
+                    offlineStore.wipeAll()
+                    dashboardCache.wipeAll()
+                    pendingCaptureStore.wipeAll()
+                    OwnerScope.clear(applicationContext)
+                    // Deliberately NOT wiped: securityPreferences (biometric
+                    // lock + screen-capture-block toggles). Those are
+                    // device-level security posture, not this user's data --
+                    // clearing them would silently weaken the lock for
+                    // whoever uses the device next, which is the opposite of
+                    // what a "wipe on logout" is supposed to achieve.
+                }
+            }
+        )
+    }
     private val api by lazy { FinancePyApi(httpClient) }
     private val database by lazy { buildDatabase() }
     private val syncEngine by lazy {
@@ -211,7 +235,8 @@ class MainActivity : FragmentActivity() {
         SettingsViewModel(
             scope = lifecycleScope,
             api = api,
-            authRepository = authRepository
+            authRepository = authRepository,
+            outbox = outbox
         )
     }
     private val reportsViewModel by lazy {
@@ -274,6 +299,11 @@ class MainActivity : FragmentActivity() {
                     // timeout would otherwise pin the splash for 30s.
                     val settings = withTimeoutOrNull(4_000L) { api.fetchFamilySettings() }
                     onboardingNeeded = settings?.current_user?.needs_onboarding == true
+                    // Data already fetched above, just reusing it: record who
+                    // this device's local caches/outbox belong to now, so a
+                    // different family logging in on the same device later
+                    // doesn't see this one's offline data (see OwnerScope).
+                    settings?.id?.let { OwnerScope.setCurrentOwnerId(applicationContext, it) }
                 } catch (e: Exception) {
                     onboardingNeeded = false
                 }
@@ -605,6 +635,7 @@ class MainActivity : FragmentActivity() {
                 .onSuccess {
                     val settings = try { api.fetchFamilySettings() } catch (e: Exception) { null }
                     needsOnboarding.value = settings?.current_user?.needs_onboarding == true
+                    settings?.id?.let { OwnerScope.setCurrentOwnerId(applicationContext, it) }
                     isLoggedIn.value = true
                     appLifecycleObserver.isLoggedIn = true
                     appLifecycleObserver.resetClock()

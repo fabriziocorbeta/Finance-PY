@@ -79,4 +79,9 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.lifecycle.process)
+    // EncryptedSharedPreferences for AndroidOfflineStore / AndroidDashboardCache /
+    // PendingCaptureStore / OwnerScope. `shared` also depends on this but only as
+    // `implementation`, which isn't exposed transitively -- declared again here for
+    // the same reason. Keep in sync with shared/build.gradle.kts.
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }
