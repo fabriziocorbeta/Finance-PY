@@ -20,6 +20,12 @@ class ChatsController < ApplicationController
     @chat = Current.user.chats.start!(chat_params[:content], model: chat_params[:ai_model])
     set_last_viewed_chat(@chat)
     redirect_to chat_path(@chat, thinking: true)
+  rescue ActiveRecord::RecordInvalid => e
+    # Model allowlist / quota / length violations on the first message land
+    # here as a nested-association validation failure (Chat.start! creates
+    # the chat and its first UserMessage together) -- always a friendly
+    # redirect, never a 500.
+    redirect_to new_chat_path, alert: e.record.errors.full_messages.to_sentence
   end
 
   def edit

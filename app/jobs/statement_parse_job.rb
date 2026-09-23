@@ -17,8 +17,17 @@ class StatementParseJob < ApplicationJob
     end
 
     file_bytes = import.source_file.download
+    extractor = StatementParser::PdfExtractor.new(file_bytes)
 
-    text = StatementParser::PdfExtractor.new(file_bytes).extract
+    # E5: daily PDF-page quota (see UsageQuota), checked with a cheap local
+    # page count before the real extraction + LLM parse below.
+    page_count = extractor.page_count
+    if UsageQuota.pdf_quota_exceeded?(import.family, additional_pages: page_count)
+      raise StatementParser::ExtractionError, I18n.t("imports.pdf_import.pdf_quota_exceeded")
+    end
+
+    text = extractor.extract
+    UsageQuota.record_pdf_pages!(import.family, page_count)
     transactions = StatementParser::ClaudeParser.new(text, bank_name: import.bank_name).parse
 
     import.update!(

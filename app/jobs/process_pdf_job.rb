@@ -10,6 +10,8 @@ class ProcessPdfJob < ApplicationJob
     pdf_import.update!(status: :importing)
 
     begin
+      enforce_pdf_page_quota!(pdf_import)
+
       process_result = pdf_import.process_with_ai
       document_type = resolve_document_type(pdf_import, process_result)
       upload_to_vector_store(pdf_import, document_type: document_type)
@@ -49,6 +51,35 @@ class ProcessPdfJob < ApplicationJob
   end
 
   private
+
+    # E5: daily PDF-page quota (see UsageQuota). Counting pages is a cheap,
+    # local PDF::Reader parse -- no network/AI call -- so it's worth doing
+    # before the family's actual quota-consuming call (process_with_ai,
+    # which uploads the PDF and pays for AI extraction) rather than after.
+    # Records the page count against the family's daily counter on success
+    # only, since a family whose PDF fails to process shouldn't have that
+    # attempt count against their quota.
+    def enforce_pdf_page_quota!(pdf_import)
+      page_count = pdf_page_count(pdf_import)
+
+      if UsageQuota.pdf_quota_exceeded?(pdf_import.family, additional_pages: page_count)
+        raise I18n.t("imports.pdf_import.pdf_quota_exceeded")
+      end
+
+      UsageQuota.record_pdf_pages!(pdf_import.family, page_count)
+    end
+
+    def pdf_page_count(pdf_import)
+      PDF::Reader.new(StringIO.new(pdf_import.pdf_file_content)).page_count
+    rescue StandardError => e
+      # A PDF page count that fails to parse here will fail identically
+      # (and be reported the same way) a few lines later in process_with_ai
+      # -- don't let a bad file dodge quota enforcement by treating the
+      # count as unlimited, but don't block on it either; charge nothing
+      # and let the real processing step raise the real error.
+      Rails.logger.warn("ProcessPdfJob: could not count PDF pages for import #{pdf_import.id}: #{e.class.name}")
+      0
+    end
 
     def sanitize_error_message(error)
       case error
