@@ -23,6 +23,26 @@ class ReceivableTest < ActiveSupport::TestCase
     assert_includes receivable.errors[:due_day], "is not included in the list"
   end
 
+  test "accepts nil installment_count" do
+    receivable = Receivable.new(family: families(:dylan_family), installment_count: nil)
+    assert receivable.valid?
+  end
+
+  test "accepts installment_count within 1..360" do
+    receivable = Receivable.new(family: families(:dylan_family), installment_count: 360)
+    assert receivable.valid?
+  end
+
+  test "rejects installment_count outside 1..360" do
+    receivable = Receivable.new(family: families(:dylan_family), installment_count: 361)
+    assert_not receivable.valid?
+    assert_includes receivable.errors[:installment_count], "must be in 1..360"
+
+    receivable = Receivable.new(family: families(:dylan_family), installment_count: 0)
+    assert_not receivable.valid?
+    assert_includes receivable.errors[:installment_count], "must be in 1..360"
+  end
+
   test "calculates installment_schedule correctly with partial and full payments" do
     family = families(:dylan_family)
     account = Account.create!(

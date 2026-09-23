@@ -4,6 +4,10 @@ class Receivable < ApplicationRecord
   belongs_to :family
 
   validates :due_day, inclusion: { in: 1..31 }, allow_nil: true
+  # 360 = 30 years of monthly installments (standard mortgage-length upper
+  # bound). Prevents nonsensical or abusive values (0, negative, or absurdly
+  # large) from reaching installment_schedule's per-installment loop.
+  validates :installment_count, numericality: { only_integer: true, in: 1..360 }, allow_nil: true
 
   def original_balance
     Money.new(account.first_valuation_amount, account.currency)

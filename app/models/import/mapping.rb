@@ -1,6 +1,12 @@
 class Import::Mapping < ApplicationRecord
   CREATE_NEW_KEY = "internal_new_resource"
 
+  # Allowlist of STI subtypes and polymorphic mappable classes this hierarchy
+  # is allowed to constantize into (params-driven values must never be
+  # constantized without checking against these first).
+  TYPES = %w[Import::CategoryMapping Import::TagMapping Import::AccountMapping Import::AccountTypeMapping].freeze
+  MAPPABLE_TYPES = %w[Account Category Tag].freeze
+
   belongs_to :import
   belongs_to :mappable, polymorphic: true, optional: true
 
