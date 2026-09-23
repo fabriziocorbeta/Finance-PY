@@ -11,3 +11,6 @@ es:
       success:
         one: 1 transacción importada.
         other: "%{count} transacciones importadas."
+      success_with_skipped:
+        one: "1 transacción importada. Se omitió %{skipped} fila con datos inválidos."
+        other: "%{count} transacciones importadas. Se omitieron %{skipped} filas con datos inválidos."

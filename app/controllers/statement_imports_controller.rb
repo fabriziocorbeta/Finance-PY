@@ -14,6 +14,13 @@ class StatementImportsController < ApplicationController
 
     return render_new_with_error(t(".no_file")) if file.blank?
 
+    # A direct POST (bypassing the HTML file-input form) can send
+    # statement_import[source_file] as a plain String or nested Parameters
+    # hash instead of multipart file data. Both pass `file.blank?`, but
+    # neither responds to #tempfile, which pdf_file? and the attach below
+    # require -- reject them here instead of crashing with a 500.
+    return render_new_with_error(t(".invalid_file_type")) unless file.respond_to?(:tempfile)
+
     if file.size > MAX_FILE_SIZE
       return render_new_with_error(t(".file_too_large", max_size: MAX_FILE_SIZE / 1.megabyte))
     end
@@ -48,6 +55,7 @@ class StatementImportsController < ApplicationController
     return redirect_to @import, alert: t(".account_not_found") unless account
 
     imported_count = 0
+    skipped_count = 0
 
     StatementImport.transaction do
       # Row-level lock so two concurrent confirm requests (double click,
@@ -64,7 +72,10 @@ class StatementImportsController < ApplicationController
       rows = @import.transactions_for_review
 
       rows.each_with_index do |parsed, index|
-        next unless parsed.valid?
+        unless parsed.valid?
+          skipped_count += 1
+          next
+        end
 
         begin
           builder.build_and_save!(parsed, row_index: index)
@@ -73,8 +84,12 @@ class StatementImportsController < ApplicationController
           # A duplicate external_id means this exact row was already
           # imported (e.g. a previous confirm that partially succeeded);
           # skip it instead of failing the whole batch. Any other
-          # validation error is a real problem and should surface.
-          raise unless e.record.errors.of_kind?(:external_id, :taken)
+          # validation error (e.g. an Entry presence validation the AI
+          # extraction managed to trip despite ParsedTransaction#valid?)
+          # is also skipped rather than aborting the whole transaction --
+          # one bad row in an N-row statement should not discard the N-1
+          # good ones. It's still surfaced to the user via skipped_count.
+          skipped_count += 1
         end
       end
 
@@ -82,7 +97,11 @@ class StatementImportsController < ApplicationController
     end
 
     if @import.completed?
-      redirect_to accounts_path, notice: t(".success", count: imported_count)
+      if skipped_count.positive?
+        redirect_to accounts_path, notice: t(".success_with_skipped", count: imported_count, skipped: skipped_count)
+      else
+        redirect_to accounts_path, notice: t(".success", count: imported_count)
+      end
     else
       redirect_to @import
     end

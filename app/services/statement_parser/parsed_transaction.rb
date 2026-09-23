@@ -6,6 +6,7 @@ module StatementParser
       data = attrs.is_a?(Hash) ? attrs.transform_keys(&:to_sym) : attrs.to_h
       @date             = parse_date(data[:date])
       @description      = data[:description].to_s.strip
+      @amount_present   = numeric?(data[:amount_cents])
       @amount_cents     = data[:amount_cents].to_i
       @currency         = parse_currency(data[:currency])
       @transaction_type = data[:transaction_type]&.to_sym || :unknown
@@ -15,13 +16,16 @@ module StatementParser
     def debit?  = transaction_type == :debit
     def credit? = transaction_type == :credit
 
-    # A row is safe to import only when it has a real date and a currency
-    # code the app actually understands. Rows failing this (malformed AI
-    # output, a currency the Money gem doesn't recognize) are skipped rather
-    # than silently stored with garbage/nil values -- see
-    # StatementImportsController#confirm.
+    # A row is safe to import only when it has a real date, a currency code
+    # the app actually understands, a description (Entry#name is a required
+    # presence validation), and an amount that was actually present and
+    # numeric in the AI output -- not silently coerced from nil/garbage via
+    # #to_i, which would otherwise produce a fabricated $0.00 entry. Rows
+    # failing this (malformed AI output, a currency the Money gem doesn't
+    # recognize) are skipped rather than silently stored with garbage/nil
+    # values -- see StatementImportsController#confirm.
     def valid?
-      date.present? && currency.present?
+      date.present? && currency.present? && description.present? && @amount_present
     end
 
     def to_h
@@ -36,6 +40,17 @@ module StatementParser
     end
 
     private
+
+      # True only when `value` was actually present and numeric in the raw
+      # AI output -- distinct from `.to_i`, which silently turns nil or a
+      # garbage string into 0.
+      def numeric?(value)
+        return false if value.nil?
+        Float(value)
+        true
+      rescue ArgumentError, TypeError
+        false
+      end
 
       def parse_date(value)
         return nil if value.nil?

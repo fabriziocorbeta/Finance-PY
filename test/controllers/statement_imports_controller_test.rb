@@ -119,4 +119,71 @@ class StatementImportsControllerTest < ActionDispatch::IntegrationTest
     end
     assert_response :redirect
   end
+
+  test "create rejects a non-file source_file param instead of crashing with a 500" do
+    assert_no_difference -> { StatementImport.count } do
+      post statement_imports_url, params: { statement_import: { bank_name: "Otro", source_file: "not-a-file" } }
+    end
+    assert_response :unprocessable_entity
+  end
+
+  test "create rejects a nested-hash source_file param instead of crashing with a 500" do
+    assert_no_difference -> { StatementImport.count } do
+      post statement_imports_url, params: { statement_import: { bank_name: "Otro", source_file: { foo: "bar" } } }
+    end
+    assert_response :unprocessable_entity
+  end
+
+  test "confirm skips a row with a missing amount instead of importing a fabricated $0.00 entry" do
+    @import.update!(raw_transactions: @raw_transactions + [
+      { date: "2025-06-16", description: "No amount row", amount_cents: nil, currency: "KES", transaction_type: "debit" }
+    ], parsed_count: 3)
+
+    assert_difference -> { Entry.count }, 2 do
+      post confirm_statement_import_url(@import), params: { account_id: @account.id }
+    end
+    assert_not Entry.exists?(name: "No amount row")
+  end
+
+  test "confirm skips a row with a garbage (non-numeric) amount" do
+    @import.update!(raw_transactions: @raw_transactions + [
+      { date: "2025-06-16", description: "Garbage amount row", amount_cents: "not-a-number", currency: "KES", transaction_type: "debit" }
+    ], parsed_count: 3)
+
+    assert_difference -> { Entry.count }, 2 do
+      post confirm_statement_import_url(@import), params: { account_id: @account.id }
+    end
+    assert_not Entry.exists?(name: "Garbage amount row")
+  end
+
+  test "confirm skips a row with a blank description and still imports the other valid rows" do
+    @import.update!(raw_transactions: @raw_transactions + [
+      { date: "2025-06-16", description: nil, amount_cents: -100, currency: "KES", transaction_type: "debit" }
+    ], parsed_count: 3)
+
+    assert_difference -> { Entry.count }, 2 do
+      post confirm_statement_import_url(@import), params: { account_id: @account.id }
+    end
+    @import.reload
+    assert @import.completed?
+    assert_equal 2, @import.imported_count
+  end
+
+  test "confirm does not abort the whole batch when one row hits an Entry validation error outside external_id" do
+    # Simulate a row that passes ParsedTransaction#valid? but still trips an
+    # Entry validation not covered by that check (e.g. a date older than
+    # Entry.min_supported_date), to make sure a single bad row no longer
+    # rolls back the entire transaction.
+    @import.update!(raw_transactions: @raw_transactions + [
+      { date: "1900-01-01", description: "Too old row", amount_cents: -100, currency: "KES", transaction_type: "debit" }
+    ], parsed_count: 3)
+
+    assert_difference -> { Entry.count }, 2 do
+      post confirm_statement_import_url(@import), params: { account_id: @account.id }
+    end
+    @import.reload
+    assert @import.completed?
+    assert_equal 2, @import.imported_count
+    assert_not Entry.exists?(name: "Too old row")
+  end
 end

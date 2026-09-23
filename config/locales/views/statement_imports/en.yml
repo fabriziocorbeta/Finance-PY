@@ -11,3 +11,6 @@ en:
       success:
         one: 1 transaction imported.
         other: "%{count} transactions imported."
+      success_with_skipped:
+        one: "1 transaction imported. Skipped %{skipped} row with invalid data."
+        other: "%{count} transactions imported. Skipped %{skipped} rows with invalid data."
