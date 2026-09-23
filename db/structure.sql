@@ -1,7 +1,6 @@
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
-SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -2477,6 +2476,8 @@ CREATE TABLE public.versions (
     family_id uuid NOT NULL,
     object_changes text
 );
+
+ALTER TABLE ONLY public.versions FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -6768,6 +6769,7 @@ CREATE POLICY versions_family_isolation_policy ON public.versions USING ((family
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260922214444'),
 ('20260919170000'),
 ('20260919060000'),
 ('20260918030300'),

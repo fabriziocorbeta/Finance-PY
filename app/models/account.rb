@@ -9,8 +9,12 @@ class Account < ApplicationRecord
   include AASM, Syncable, Monetizable, Chartable, Linkable, Enrichable, Anchorable, Reconcileable, TaxTreatable, FamilyIdPropagatable
 
   # Immutable audit trail: who changed the balance/name/currency, when,
-  # and the exact before/after diff.
-  has_paper_trail meta: { family_id: :family_id }
+  # and the exact before/after diff. :notes is skipped -- it's free-text
+  # user content (encrypted at rest via ActiveRecord::Encryption above),
+  # and PaperTrail reads through the decrypting attribute accessor, so
+  # without this skip its plaintext would otherwise land in
+  # versions.object/object_changes, undermining the column encryption.
+  has_paper_trail meta: { family_id: :family_id }, skip: [ :notes ]
 
   before_validation :assign_default_owner, if: -> { owner_id.blank? }
 
