@@ -1,0 +1,59 @@
+name: Trivy image scan (monthly)
+
+# Corre mensual (no en cada PR: un scan de imagen completo con build es
+# caro, y CVEs nuevos aparecen a un ritmo mucho más lento que los commits)
+# más un disparador manual para correrlo bajo demanda después de un CVE
+# público relevante. NO reemplaza bundler-audit.yml (deps de Ruby) ni el
+# job scan_js de ci.yml (deps de JS) -- esto escanea la imagen final
+# (SO + paquetes del Dockerfile), que esos dos no cubren.
+on:
+  schedule:
+    - cron: "17 6 1 * *" # día 1 de cada mes, 06:17 UTC (fuera de horario pico de GH Actions)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trivy:
+    name: Build image and scan with Trivy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write # requerido por github/codeql-action/upload-sarif
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Build image (mismo Dockerfile que build/producción)
+        run: |
+          docker build \
+            --build-arg BUILD_COMMIT_SHA="${{ github.sha }}" \
+            -t financespy:trivy-scan \
+            .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: financespy:trivy-scan
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "0" # no falla el job -- este workflow es de visibilidad/alerta, no un gate de PR
+
+      - name: Upload results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@3ea06614dafe36dec890db3446326e0d40ce53d4 # v3
+        with:
+          sarif_file: trivy-results.sarif
+
+      - name: Human-readable summary in job log
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: financespy:trivy-scan
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "0"
