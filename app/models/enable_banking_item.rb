@@ -5,8 +5,8 @@ class EnableBankingItem < ApplicationRecord
 
   # Encrypt sensitive credentials and raw payloads if ActiveRecord encryption is configured
   if encryption_ready?
-    encrypts :client_certificate, deterministic: true
-    encrypts :session_id, deterministic: true
+    encrypts :client_certificate
+    encrypts :session_id
     encrypts :raw_payload
     encrypts :raw_institution_payload
   end

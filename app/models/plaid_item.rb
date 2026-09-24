@@ -6,7 +6,7 @@ class PlaidItem < ApplicationRecord
 
   # Encrypt sensitive credentials and raw payloads if ActiveRecord encryption is configured
   if encryption_ready?
-    encrypts :access_token, deterministic: true
+    encrypts :access_token
     encrypts :raw_payload
     encrypts :raw_institution_payload
   end
