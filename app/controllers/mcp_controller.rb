@@ -111,14 +111,26 @@ class McpController < ApplicationController
       if api_key&.user
         @mcp_user = api_key.user
         api_key.update_last_used!
-      elsif (expected = ENV["MCP_API_TOKEN"]).present? && ActiveSupport::SecurityUtils.secure_compare(token, expected)
+      else
+        expected = ENV["MCP_API_TOKEN"]
+
+        unless expected.present?
+          render json: { error: "MCP endpoint not configured" }, status: :service_unavailable
+          return
+        end
+
+        unless ActiveSupport::SecurityUtils.secure_compare(token, expected)
+          render json: { error: "unauthorized" }, status: :unauthorized
+          return
+        end
+
         email = ENV["MCP_USER_EMAIL"]
         @mcp_user = User.find_by(email: email) if email.present?
-      end
 
-      unless @mcp_user
-        render json: { error: "unauthorized" }, status: :unauthorized
-        return
+        unless @mcp_user
+          render json: { error: "MCP user not configured" }, status: :service_unavailable
+          return
+        end
       end
 
       RlsContext.set_family(@mcp_user.family_id)
