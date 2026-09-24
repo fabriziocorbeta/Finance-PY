@@ -100,6 +100,10 @@ class McpController < ApplicationController
       { content: [ { type: "text", text: { error: e.message }.to_json } ], isError: true }
     end
 
+    def lookup_api_key(presented)
+      ApiKey.find_by_value(presented)
+    end
+
     def authenticate_mcp_token!
       token = request.headers["Authorization"]&.delete_prefix("Bearer ")&.strip
       unless token.present?
@@ -107,7 +111,7 @@ class McpController < ApplicationController
         return
       end
 
-      api_key = ApiKey.find_by_value(token)
+      api_key = lookup_api_key(token)
       if api_key&.user
         @mcp_user = api_key.user
         api_key.update_last_used!
