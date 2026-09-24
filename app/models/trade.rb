@@ -4,6 +4,9 @@ class Trade < ApplicationRecord
   monetize :price
   monetize :fee
 
+  # See db/migrate/20260923143220_add_family_id_to_accountable_and_trade_tables.rb
+  # -- same shape as Transaction/Valuation's belongs_to :family.
+  belongs_to :family, optional: true
   belongs_to :security
   belongs_to :category, optional: true
 

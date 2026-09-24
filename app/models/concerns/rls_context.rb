@@ -60,5 +60,39 @@ module RlsContext
     ensure
       reset
     end
+
+    # Narrow escape hatch for the "casos especiales" in
+    # docs/security/rls-design.md: code that genuinely needs to see rows
+    # across more than one family (platform-wide metrics jobs, super_admin
+    # tooling) once tables are FORCE-protected. Not yet consumed by any RLS
+    # policy (see AddRlsSystemContextHelper) -- calling this today only sets
+    # a GUC that no policy's USING/WITH CHECK checks. It exists now so the
+    # call sites and their audit trail can be reviewed and landed
+    # independently of wiring it into any specific policy.
+    #
+    # Every call is logged with its `reason` and caller so cross-family
+    # access is always attributable in the logs -- this is meant to be rare
+    # and explicit, not a general-purpose bypass. `reason` is required (no
+    # default) so a call site can't opt into system access silently.
+    def with_system_access(reason:)
+      raise ArgumentError, "with_system_access requires a non-blank reason" if reason.blank?
+
+      caller_location = caller_locations(1, 1)&.first
+      Rails.logger.warn(
+        "[RlsContext] system access granted: reason=#{reason.inspect} " \
+        "caller=#{caller_location&.path}:#{caller_location&.lineno}"
+      )
+      ActiveRecord::Base.connection.execute("SET app.rls_system_access = 'true'")
+      yield
+    ensure
+      begin
+        ActiveRecord::Base.connection.execute("RESET app.rls_system_access")
+      rescue => e
+        Rails.logger.error(
+          "[RlsContext] RESET app.rls_system_access failed (#{e.class}: #{e.message}); reconnecting"
+        )
+        ActiveRecord::Base.connection.reconnect! rescue nil
+      end
+    end
   end
 end

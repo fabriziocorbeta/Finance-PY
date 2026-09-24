@@ -15,6 +15,7 @@ class LoanTest < ActiveSupport::TestCase
       balance: 500000,
       currency: "USD",
       accountable: Loan.create!(
+        family: families(:dylan_family),
         subtype: "mortgage",
         interest_rate: 3.5,
         term_months: 360,

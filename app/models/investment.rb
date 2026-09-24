@@ -1,6 +1,9 @@
 class Investment < ApplicationRecord
   include Accountable
 
+  # See CreditCard's belongs_to :family comment.
+  belongs_to :family, optional: true
+
   # Tax treatment categories:
   # - taxable: Gains taxed when realized
   # - tax_deferred: Taxes deferred until withdrawal

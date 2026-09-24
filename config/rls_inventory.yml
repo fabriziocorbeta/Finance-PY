@@ -7,14 +7,14 @@ account_providers:
   family_path: account_providers.account_id -> accounts.family_id
   force: false
   notes: join table Account<->Provider (Plaid/SimpleFin/etc, polymorphic provider_type/provider_id).
-  policy_present: false
+  policy_present: true
 account_shares:
   class: AccountShare
   classification: indirect
   family_path: account_shares.account_id -> accounts.family_id
   force: false
   notes: Tambien user_id (comparticion de cuenta entre usuarios de la misma family, presumiblemente).
-  policy_present: false
+  policy_present: true
 accounts:
   class: Account
   classification: direct
@@ -52,7 +52,7 @@ addresses:
   family_path: addresses.addressable_id/type -> hoy solo Property -> accounts.accountable reverse -> accounts.family_id
   force: false
   notes: 'addressable polymorphic, unico consumidor detectado: Property.'
-  policy_present: false
+  policy_present: true
 api_keys:
   class: ApiKey
   classification: auth
@@ -81,21 +81,21 @@ balances:
   family_path: balances.account_id -> accounts.family_id
   force: false
   notes: Snapshot diario de saldo.
-  policy_present: false
+  policy_present: true
 binance_accounts:
   class: BinanceAccount
   classification: indirect
   family_path: binance_accounts.binance_item_id -> binance_items.family_id
   force: false
   notes: null
-  policy_present: false
+  policy_present: true
 binance_items:
   class: BinanceItem
   classification: direct
   family_path: binance_items.family_id
   force: false
   notes: Credencial/conexion de integracion bancaria/exchange.
-  policy_present: false
+  policy_present: true
 budget_categories:
   class: BudgetCategory
   classification: indirect
@@ -123,55 +123,55 @@ chats:
   family_path: chats.user_id -> users.family_id
   force: false
   notes: Asistente IA.
-  policy_present: false
+  policy_present: true
 coinbase_accounts:
   class: CoinbaseAccount
   classification: indirect
   family_path: coinbase_accounts.coinbase_item_id -> coinbase_items.family_id
   force: false
   notes: null
-  policy_present: false
+  policy_present: true
 coinbase_items:
   class: CoinbaseItem
   classification: direct
   family_path: coinbase_items.family_id
   force: false
   notes: Credencial/conexion de integracion bancaria/exchange.
-  policy_present: false
+  policy_present: true
 coinstats_accounts:
   class: CoinstatsAccount
   classification: indirect
   family_path: coinstats_accounts.coinstats_item_id -> coinstats_items.family_id
   force: false
   notes: null
-  policy_present: false
+  policy_present: true
 coinstats_items:
   class: CoinstatsItem
   classification: direct
   family_path: coinstats_items.family_id
   force: false
   notes: Credencial/conexion de integracion bancaria/exchange.
-  policy_present: false
+  policy_present: true
 credit_cards:
   class: CreditCard
-  classification: indirect
-  family_path: accounts.accountable_id/type = credit_cards.id (reverse FK, NO columna family_id/account_id
-    en credit_cards) -> accounts.family_id
+  classification: direct-nullable
+  family_path: credit_cards.family_id (denormalized in RLS Ola 2 Etapa B; nullable, populated by the
+    propagate_family_id_to_accountable/entryable callback when created via Account/Entry)
   force: false
   notes: delegated_type :accountable; FamilyIdPropagatable sincroniza family_id hacia el accountable SOLO
     si el accountable responde a family_id= (estas 9 clases no tienen esa columna, asi que el propagate
     es un no-op para ellas).
-  policy_present: false
+  policy_present: true
 cryptos:
   class: Crypto
-  classification: indirect
-  family_path: accounts.accountable_id/type = cryptos.id (reverse FK, NO columna family_id/account_id
-    en cryptos) -> accounts.family_id
+  classification: direct-nullable
+  family_path: cryptos.family_id (denormalized in RLS Ola 2 Etapa B; nullable, populated by the
+    propagate_family_id_to_accountable/entryable callback when created via Account/Entry)
   force: false
   notes: delegated_type :accountable; FamilyIdPropagatable sincroniza family_id hacia el accountable SOLO
     si el accountable responde a family_id= (estas 9 clases no tienen esa columna, asi que el propagate
     es un no-op para ellas).
-  policy_present: false
+  policy_present: true
 data_enrichments:
   class: DataEnrichment
   classification: indirect
@@ -179,31 +179,31 @@ data_enrichments:
     -> ... -> family_id
   force: false
   notes: include Enrichable en Entryable; guarda el valor "pre-AI-enrichment" de un campo para poder revertir.
-  policy_present: false
+  policy_present: true
 depositories:
   class: Depository
-  classification: indirect
-  family_path: accounts.accountable_id/type = depositories.id (reverse FK, NO columna family_id/account_id
-    en depositories) -> accounts.family_id
+  classification: direct-nullable
+  family_path: depositories.family_id (denormalized in RLS Ola 2 Etapa B; nullable, populated by the
+    propagate_family_id_to_accountable/entryable callback when created via Account/Entry)
   force: false
   notes: delegated_type :accountable; FamilyIdPropagatable sincroniza family_id hacia el accountable SOLO
     si el accountable responde a family_id= (estas 9 clases no tienen esa columna, asi que el propagate
     es un no-op para ellas).
-  policy_present: false
+  policy_present: true
 enable_banking_accounts:
   class: EnableBankingAccount
   classification: indirect
   family_path: enable_banking_accounts.enable_banking_item_id -> enable_banking_items.family_id
   force: false
   notes: null
-  policy_present: false
+  policy_present: true
 enable_banking_items:
   class: EnableBankingItem
   classification: direct
   family_path: enable_banking_items.family_id
   force: false
   notes: Credencial/conexion de integracion bancaria/exchange.
-  policy_present: false
+  policy_present: true
 entries:
   class: Entry
   classification: indirect
@@ -261,28 +261,28 @@ families:
   notes: Tabla ancla; no tiene RLS (no aplicaria, es ella misma la unidad de aislamiento) pero SI se consulta
     en super_admin/impersonation/rake/demo-refresh sin restriccion -- correcto por diseno, ya que esas
     rutas son platform-level, no request-scoped.
-  policy_present: false
+  policy_present: true
 family_documents:
   class: FamilyDocument
   classification: direct
   family_path: family_documents.family_id
   force: false
   notes: Active Storage attachment adjunto (provider_file_id + Active Storage).
-  policy_present: false
+  policy_present: true
 family_exports:
   class: FamilyExport
   classification: direct
   family_path: family_exports.family_id
   force: false
   notes: null
-  policy_present: false
+  policy_present: true
 family_merchant_associations:
   class: FamilyMerchantAssociation
   classification: direct
   family_path: family_merchant_associations.family_id
   force: false
   notes: link entre family y ProviderMerchant global.
-  policy_present: false
+  policy_present: true
 fleet_vehicles:
   class: FleetVehicle
   classification: direct
@@ -311,14 +311,14 @@ goal_accounts:
   family_path: goal_accounts.goal_id -> goals.family_id
   force: false
   notes: join table goal<->account; SIN policy/RLS propia pese a que goals SI tiene FORCE.
-  policy_present: false
+  policy_present: true
 goal_pledges:
   class: GoalPledge
   classification: indirect
   family_path: goal_pledges.goal_id -> goals.family_id
   force: false
   notes: Tambien tiene account_id y matched_transaction_id (ambos ya family-scoped, paths redundantes).
-  policy_present: false
+  policy_present: true
 goals:
   class: Goal
   classification: direct
@@ -332,7 +332,7 @@ holdings:
   family_path: holdings.account_id -> accounts.family_id
   force: false
   notes: Tambien security_id/account_provider_id/provider_security_id.
-  policy_present: false
+  policy_present: true
 impersonation_session_logs:
   class: ImpersonationSessionLog
   classification: auth
@@ -354,52 +354,52 @@ import_mappings:
   family_path: import_mappings.import_id -> imports.family_id
   force: false
   notes: mappable polymorphic.
-  policy_present: false
+  policy_present: true
 import_rows:
   class: ImportRow
   classification: indirect
   family_path: import_rows.import_id -> imports.family_id
   force: false
   notes: null
-  policy_present: false
+  policy_present: true
 imports:
   class: Import
   classification: direct
   family_path: imports.family_id
   force: false
   notes: Tambien account_id.
-  policy_present: false
+  policy_present: true
 indexa_capital_accounts:
   class: IndexaCapitalAccount
   classification: indirect
   family_path: indexa_capital_accounts.indexa_capital_item_id -> indexa_capital_items.family_id
   force: false
   notes: null
-  policy_present: false
+  policy_present: true
 indexa_capital_items:
   class: IndexaCapitalItem
   classification: direct
   family_path: indexa_capital_items.family_id
   force: false
   notes: Credencial/conexion de integracion bancaria/exchange.
-  policy_present: false
+  policy_present: true
 investments:
   class: Investment
-  classification: indirect
-  family_path: accounts.accountable_id/type = investments.id (reverse FK, NO columna family_id/account_id
-    en investments) -> accounts.family_id
+  classification: direct-nullable
+  family_path: investments.family_id (denormalized in RLS Ola 2 Etapa B; nullable, populated by the
+    propagate_family_id_to_accountable/entryable callback when created via Account/Entry)
   force: false
   notes: delegated_type :accountable; FamilyIdPropagatable sincroniza family_id hacia el accountable SOLO
     si el accountable responde a family_id= (estas 9 clases no tienen esa columna, asi que el propagate
     es un no-op para ellas).
-  policy_present: false
+  policy_present: true
 invitations:
   class: Invitation
   classification: direct
   family_path: invitations.family_id
   force: false
   notes: null
-  policy_present: false
+  policy_present: true
 invite_codes:
   class: InviteCode
   classification: auth
@@ -413,31 +413,31 @@ llm_usages:
   family_path: llm_usages.family_id
   force: false
   notes: Metrica de billing por family.
-  policy_present: false
+  policy_present: true
 loans:
   class: Loan
-  classification: indirect
-  family_path: accounts.accountable_id/type = loans.id (reverse FK, NO columna family_id/account_id en
-    loans) -> accounts.family_id
+  classification: direct-nullable
+  family_path: loans.family_id (denormalized in RLS Ola 2 Etapa B; nullable, populated by the
+    propagate_family_id_to_accountable/entryable callback when created via Account/Entry)
   force: false
   notes: delegated_type :accountable; FamilyIdPropagatable sincroniza family_id hacia el accountable SOLO
     si el accountable responde a family_id= (estas 9 clases no tienen esa columna, asi que el propagate
     es un no-op para ellas).
-  policy_present: false
+  policy_present: true
 lunchflow_accounts:
   class: LunchflowAccount
   classification: indirect
   family_path: lunchflow_accounts.lunchflow_item_id -> lunchflow_items.family_id
   force: false
   notes: null
-  policy_present: false
+  policy_present: true
 lunchflow_items:
   class: LunchflowItem
   classification: direct
   family_path: lunchflow_items.family_id
   force: false
   notes: Credencial/conexion de integracion bancaria/exchange.
-  policy_present: false
+  policy_present: true
 merchants:
   class: Merchant
   classification: direct-nullable
@@ -452,28 +452,28 @@ mercury_accounts:
   family_path: mercury_accounts.mercury_item_id -> mercury_items.family_id
   force: false
   notes: null
-  policy_present: false
+  policy_present: true
 mercury_items:
   class: MercuryItem
   classification: direct
   family_path: mercury_items.family_id
   force: false
   notes: Credencial/conexion de integracion bancaria/exchange.
-  policy_present: false
+  policy_present: true
 messages:
   class: Message
   classification: indirect
   family_path: messages.chat_id -> chats.user_id -> users.family_id
   force: false
   notes: Cadena de 2 saltos.
-  policy_present: false
+  policy_present: true
 mobile_devices:
   class: MobileDevice
   classification: indirect
   family_path: mobile_devices.user_id -> users.family_id
   force: false
   notes: Push notification device registration; tambien referenciado desde oauth_access_tokens.mobile_device_id.
-  policy_present: false
+  policy_present: true
 oauth_access_grants:
   class: OauthAccessGrant
   classification: auth
@@ -504,38 +504,38 @@ oidc_identities:
   policy_present: false
 other_assets:
   class: OtherAsset
-  classification: indirect
-  family_path: accounts.accountable_id/type = other_assets.id (reverse FK, NO columna family_id/account_id
-    en other_assets) -> accounts.family_id
+  classification: direct-nullable
+  family_path: other_assets.family_id (denormalized in RLS Ola 2 Etapa B; nullable, populated by the
+    propagate_family_id_to_accountable/entryable callback when created via Account/Entry)
   force: false
   notes: delegated_type :accountable; FamilyIdPropagatable sincroniza family_id hacia el accountable SOLO
     si el accountable responde a family_id= (estas 9 clases no tienen esa columna, asi que el propagate
     es un no-op para ellas).
-  policy_present: false
+  policy_present: true
 other_liabilities:
   class: OtherLiability
-  classification: indirect
-  family_path: accounts.accountable_id/type = other_liabilities.id (reverse FK, NO columna family_id/account_id
-    en other_liabilities) -> accounts.family_id
+  classification: direct-nullable
+  family_path: other_liabilities.family_id (denormalized in RLS Ola 2 Etapa B; nullable, populated by the
+    propagate_family_id_to_accountable/entryable callback when created via Account/Entry)
   force: false
   notes: delegated_type :accountable; FamilyIdPropagatable sincroniza family_id hacia el accountable SOLO
     si el accountable responde a family_id= (estas 9 clases no tienen esa columna, asi que el propagate
     es un no-op para ellas).
-  policy_present: false
+  policy_present: true
 plaid_accounts:
   class: PlaidAccount
   classification: indirect
   family_path: plaid_accounts.plaid_item_id -> plaid_items.family_id
   force: false
   notes: null
-  policy_present: false
+  policy_present: true
 plaid_items:
   class: PlaidItem
   classification: direct
   family_path: plaid_items.family_id
   force: false
   notes: Credencial/conexion de integracion bancaria/exchange.
-  policy_present: false
+  policy_present: true
 platform_daily_metrics:
   class: PlatformDailyMetric
   classification: global
@@ -559,14 +559,14 @@ products:
   policy_present: true
 properties:
   class: Property
-  classification: indirect
-  family_path: accounts.accountable_id/type = properties.id (reverse FK, NO columna family_id/account_id
-    en properties) -> accounts.family_id
+  classification: direct-nullable
+  family_path: properties.family_id (denormalized in RLS Ola 2 Etapa B; nullable, populated by the
+    propagate_family_id_to_accountable/entryable callback when created via Account/Entry)
   force: false
   notes: delegated_type :accountable; FamilyIdPropagatable sincroniza family_id hacia el accountable SOLO
     si el accountable responde a family_id= (estas 9 clases no tienen esa columna, asi que el propagate
     es un no-op para ellas).
-  policy_present: false
+  policy_present: true
 purchase_order_items:
   class: PurchaseOrderItem
   classification: indirect
@@ -601,14 +601,14 @@ rejected_transfers:
   family_path: rejected_transfers.inflow_transaction_id/outflow_transaction_id -> transactions.family_id
   force: false
   notes: Transferencias candidatas descartadas por el matcher automatico.
-  policy_present: false
+  policy_present: true
 rule_actions:
   class: RuleAction
   classification: indirect
   family_path: rule_actions.rule_id -> rules.family_id
   force: false
   notes: SIN RLS propia; rules SI tiene FORCE.
-  policy_present: false
+  policy_present: true
 rule_conditions:
   class: RuleCondition
   classification: indirect
@@ -616,14 +616,14 @@ rule_conditions:
     anidadas)
   force: false
   notes: null
-  policy_present: false
+  policy_present: true
 rule_runs:
   class: RuleRun
   classification: indirect
   family_path: rule_runs.rule_id -> rules.family_id
   force: false
   notes: null
-  policy_present: false
+  policy_present: true
 rules:
   class: Rule
   classification: direct
@@ -687,42 +687,42 @@ simplefin_accounts:
   family_path: simplefin_accounts.simplefin_item_id -> simplefin_items.family_id
   force: false
   notes: null
-  policy_present: false
+  policy_present: true
 simplefin_items:
   class: SimplefinItem
   classification: direct
   family_path: simplefin_items.family_id
   force: false
   notes: Credencial/conexion de integracion bancaria/exchange.
-  policy_present: false
+  policy_present: true
 snaptrade_accounts:
   class: SnaptradeAccount
   classification: indirect
   family_path: snaptrade_accounts.snaptrade_item_id -> snaptrade_items.family_id
   force: false
   notes: null
-  policy_present: false
+  policy_present: true
 snaptrade_items:
   class: SnaptradeItem
   classification: direct
   family_path: snaptrade_items.family_id
   force: false
   notes: Credencial/conexion de integracion bancaria/exchange.
-  policy_present: false
+  policy_present: true
 sophtron_accounts:
   class: SophtronAccount
   classification: indirect
   family_path: sophtron_accounts.sophtron_item_id -> sophtron_items.family_id
   force: false
   notes: null
-  policy_present: false
+  policy_present: true
 sophtron_items:
   class: SophtronItem
   classification: direct
   family_path: sophtron_items.family_id
   force: false
   notes: Credencial/conexion de integracion bancaria/exchange.
-  policy_present: false
+  policy_present: true
 sso_audit_logs:
   class: SsoAuditLog
   classification: auth
@@ -743,28 +743,28 @@ statement_imports:
   family_path: statement_imports.family_id
   force: false
   notes: Tambien user_id.
-  policy_present: false
+  policy_present: true
 subscriptions:
   class: Subscription
   classification: direct
   family_path: subscriptions.family_id
   force: false
   notes: Stripe billing.
-  policy_present: false
+  policy_present: true
 syncs:
   class: Sync
   classification: direct
   family_path: syncs.family_id
   force: false
   notes: syncable polymorphic (PlaidItem, SimplefinItem, etc, y self via parent_id).
-  policy_present: false
+  policy_present: true
 taggings:
   class: Tagging
   classification: indirect
   family_path: 'taggings.tag_id -> tags.family_id (taggable polymorphic: hoy solo Transaction)'
   force: false
   notes: SIN RLS propia; tags SI tiene FORCE.
-  policy_present: false
+  policy_present: true
 tags:
   class: Tag
   classification: direct
@@ -778,16 +778,16 @@ tool_calls:
   family_path: tool_calls.message_id -> messages.chat_id -> chats.user_id -> users.family_id
   force: false
   notes: Cadena de 3 saltos.
-  policy_present: false
+  policy_present: true
 trades:
   class: Trade
-  classification: indirect
-  family_path: entries.entryable_id/type = trades.id (reverse FK, sin columna family_id/account_id) ->
-    entries.account_id -> accounts.family_id
+  classification: direct-nullable
+  family_path: trades.family_id (denormalized in RLS Ola 2 Etapa B; nullable, populated by the
+    propagate_family_id_to_accountable/entryable callback when created via Account/Entry)
   force: false
   notes: delegated_type :entryable junto con Transaction y Valuation, pero a diferencia de esas dos, Trade
     NO tiene family_id propio.
-  policy_present: false
+  policy_present: true
 transactions:
   class: Transaction
   classification: direct
@@ -802,7 +802,7 @@ transfers:
     patas deberian ser de la MISMA family)
   force: false
   notes: Representa una transferencia entre 2 cuentas (posiblemente cross-account dentro de la misma family).
-  policy_present: false
+  policy_present: true
 users:
   class: User
   classification: auth
@@ -819,14 +819,14 @@ valuations:
   policy_present: true
 vehicles:
   class: Vehicle
-  classification: indirect
-  family_path: accounts.accountable_id/type = vehicles.id (reverse FK, NO columna family_id/account_id
-    en vehicles) -> accounts.family_id
+  classification: direct-nullable
+  family_path: vehicles.family_id (denormalized in RLS Ola 2 Etapa B; nullable, populated by the
+    propagate_family_id_to_accountable/entryable callback when created via Account/Entry)
   force: false
   notes: delegated_type :accountable; FamilyIdPropagatable sincroniza family_id hacia el accountable SOLO
     si el accountable responde a family_id= (estas 9 clases no tienen esa columna, asi que el propagate
     es un no-op para ellas).
-  policy_present: false
+  policy_present: true
 versions:
   class: Version
   classification: direct
