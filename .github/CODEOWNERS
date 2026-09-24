@@ -1,0 +1,10 @@
+# Code Ownership for Finance-PY
+# Critical infrastructure, native mobile and sensitive dependencies require review from core maintainer.
+
+.github/                @fabriziocorbeta
+native/                 @fabriziocorbeta
+config/                 @fabriziocorbeta
+Gemfile                 @fabriziocorbeta
+Gemfile.lock            @fabriziocorbeta
+*.gradle*               @fabriziocorbeta
+libs.versions.toml      @fabriziocorbeta

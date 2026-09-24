@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Configures Git to use version-controlled hooks located in bin/git-hooks
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+git config core.hooksPath bin/git-hooks
+echo "✅ Git hooks configured to 'bin/git-hooks' successfully."
