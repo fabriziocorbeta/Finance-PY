@@ -78,6 +78,30 @@ class Api::V1::MessagesControllerTest < ActionDispatch::IntegrationTest
     assert response_body["message_id"].present?
   end
 
+  test "should refuse to retry once the family's daily LLM token quota is used up" do
+    @chat.messages.create!(type: "AssistantMessage", content: "Previous response", ai_model: "gpt-4")
+    LlmUsage.create!(
+      family: @chat.user.family,
+      provider: "openai",
+      model: "gpt-4.1",
+      operation: "chat_response",
+      prompt_tokens: UsageQuota::DAILY_LLM_TOKEN_LIMIT,
+      completion_tokens: 0,
+      total_tokens: UsageQuota::DAILY_LLM_TOKEN_LIMIT
+    )
+
+    assert_no_enqueued_jobs only: AssistantResponseJob do
+      assert_no_difference "AssistantMessage.count" do
+        post "/api/v1/chats/#{@chat.id}/messages/retry",
+          headers: bearer_auth_header(@write_token)
+      end
+    end
+
+    assert_response :unprocessable_entity
+    response_body = JSON.parse(response.body)
+    assert_equal I18n.t("chats.errors.llm_quota_exceeded"), response_body["error"]
+  end
+
   test "should not retry if no assistant message exists" do
     # Remove all assistant messages
     @chat.messages.where(type: "AssistantMessage").destroy_all

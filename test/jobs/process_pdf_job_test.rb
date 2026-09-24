@@ -6,6 +6,12 @@ class ProcessPdfJobTest < ActiveJob::TestCase
   setup do
     @import = imports(:pdf)
     @family = @import.family
+    @previous_cache = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+  end
+
+  teardown do
+    Rails.cache = @previous_cache
   end
 
   test "skips non-PdfImport imports" do
@@ -83,6 +89,37 @@ class ProcessPdfJobTest < ActiveJob::TestCase
 
     ProcessPdfJob.perform_now(@import)
 
+    assert_equal "complete", @import.reload.status
+  end
+
+  # E5 corrector round 1 fix: record_pdf_pages! used to run inside the
+  # pre-check, before process_with_ai even started, so a failed PDF still
+  # cost the family its daily page quota. Verify pages are now only charged
+  # once process_with_ai actually succeeds.
+  test "does not charge the family's PDF-page quota when processing fails" do
+    attach_pdf!(@import)
+    @import.expects(:process_with_ai).raises(StandardError, "boom")
+
+    assert_equal 0, UsageQuota.pdf_pages_used_today(@family)
+
+    assert_raises(StandardError) { ProcessPdfJob.perform_now(@import) }
+
+    assert_equal 0, UsageQuota.pdf_pages_used_today(@family)
+    assert_equal "failed", @import.reload.status
+  end
+
+  test "charges the family's PDF-page quota only after processing succeeds" do
+    attach_pdf!(@import)
+    process_result = Struct.new(:document_type).new("financial_document")
+    @import.expects(:process_with_ai).once.returns(process_result)
+    @import.stubs(:send_next_steps_email)
+    @family.stubs(:upload_document).returns(family_documents(:tax_return))
+
+    assert_equal 0, UsageQuota.pdf_pages_used_today(@family)
+
+    ProcessPdfJob.perform_now(@import)
+
+    assert_operator UsageQuota.pdf_pages_used_today(@family), :>, 0
     assert_equal "complete", @import.reload.status
   end
 

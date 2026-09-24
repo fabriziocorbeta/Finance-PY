@@ -109,7 +109,14 @@ class Rack::Attack
   # they're throttled tighter than the general API limits above and keyed by
   # actor (see actor_key) rather than raw IP so one user can't just rotate IPs.
 
-  MESSAGE_CREATE_PATHS = %r{\A/(?:api/v1/)?chats/\d+/messages\z}
+  # Covers both message creation (POST .../messages) and the API retry
+  # endpoint (POST .../messages/retry) -- retry triggers a real LLM call
+  # (AssistantResponseJob) just like create does, so it must share the same
+  # throttle. Confirmed against config/routes.rb: the web `retry` route is
+  # POST /chats/:id/retry (ChatsController, not cost-sensitive on its own --
+  # see UsageQuota on that path instead); only the API route nests retry
+  # under .../messages, which this regex now matches.
+  MESSAGE_CREATE_PATHS = %r{\A/(?:api/v1/)?chats/\d+/messages(?:/retry)?\z}
 
   # New chat creation (starts a chat + first LLM call)
   throttle("chats/create", limit: 20, period: 1.hour) do |request|
@@ -118,7 +125,7 @@ class Rack::Attack
     end
   end
 
-  # Follow-up messages in an existing chat (one LLM call each)
+  # Follow-up messages in an existing chat, and message retries (one LLM call each)
   throttle("messages/create", limit: 60, period: 1.hour) do |request|
     if request.post? && request.path.match?(MESSAGE_CREATE_PATHS)
       actor_key(request)
