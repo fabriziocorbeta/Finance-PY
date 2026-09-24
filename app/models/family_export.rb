@@ -11,6 +11,7 @@ class FamilyExport < ApplicationRecord
   }, default: :pending, validate: true
 
   scope :ordered, -> { order(created_at: :desc) }
+  scope :expired, -> { where("created_at < ?", 48.hours.ago) }
 
   def filename
     "sure_export_#{created_at.strftime('%Y%m%d_%H%M%S')}.zip"

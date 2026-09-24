@@ -4,6 +4,7 @@ class DataCleanerJob < ApplicationJob
   def perform
     clean_old_merchant_associations
     clean_expired_archived_exports
+    clean_expired_family_exports
   end
 
   private
@@ -14,6 +15,11 @@ class DataCleanerJob < ApplicationJob
         .delete_all
 
       Rails.logger.info("DataCleanerJob: Deleted #{deleted_count} old merchant associations") if deleted_count > 0
+    end
+
+    def clean_expired_family_exports
+      deleted = FamilyExport.expired.destroy_all.count
+      Rails.logger.info("DataCleanerJob: Deleted #{deleted} expired family exports") if deleted > 0
     end
 
     def clean_expired_archived_exports
