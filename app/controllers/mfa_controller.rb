@@ -94,7 +94,18 @@ class MfaController < ApplicationController
   end
 
   def disable
-    Current.user.disable_mfa!
+    user = Current.user
+
+    if user.otp_required?
+      password_ok = user.authenticate(params[:password].to_s)
+      totp_ok = user.verify_otp?(params[:code].to_s)
+
+      unless password_ok && totp_ok
+        return redirect_to settings_security_path, alert: "Se requiere la contraseña actual y el código 2FA para desactivar MFA."
+      end
+    end
+
+    user.disable_mfa!
     redirect_to settings_security_path, notice: t(".success")
   end
 

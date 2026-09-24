@@ -101,35 +101,30 @@ class McpController < ApplicationController
     end
 
     def authenticate_mcp_token!
-      expected = ENV["MCP_API_TOKEN"]
-
-      unless expected.present?
-        render json: { error: "MCP endpoint not configured" }, status: :service_unavailable
-        return
-      end
-
       token = request.headers["Authorization"]&.delete_prefix("Bearer ")&.strip
-
-      unless ActiveSupport::SecurityUtils.secure_compare(token.to_s, expected)
+      unless token.present?
         render json: { error: "unauthorized" }, status: :unauthorized
         return
       end
 
-      setup_mcp_user
-    end
-
-    def setup_mcp_user
-      email = ENV["MCP_USER_EMAIL"]
-      @mcp_user = User.find_by(email: email) if email.present?
+      api_key = ApiKey.find_by_value(token)
+      if api_key&.user
+        @mcp_user = api_key.user
+        api_key.update_last_used!
+      elsif (expected = ENV["MCP_API_TOKEN"]).present? && ActiveSupport::SecurityUtils.secure_compare(token, expected)
+        email = ENV["MCP_USER_EMAIL"]
+        @mcp_user = User.find_by(email: email) if email.present?
+      end
 
       unless @mcp_user
-        render json: { error: "MCP user not configured" }, status: :service_unavailable
+        render json: { error: "unauthorized" }, status: :unauthorized
         return
       end
 
+      RlsContext.set_family(@mcp_user.family_id)
+
       # Build a fresh session to avoid inheriting impersonation state from
-      # existing sessions (Current.user resolves via active_impersonator_session
-      # first, which could leak another user's data into MCP tool calls).
+      # existing sessions
       Current.session = @mcp_user.sessions.build(
         user_agent: request.user_agent,
         ip_address: request.ip

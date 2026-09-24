@@ -1,6 +1,9 @@
 module Authentication
   extend ActiveSupport::Concern
 
+  INACTIVITY_TIMEOUT = (ENV["SESSION_INACTIVITY_TIMEOUT_SECONDS"]&.to_i || 30.minutes.to_i).seconds
+  ABSOLUTE_TIMEOUT = (ENV["SESSION_ABSOLUTE_TIMEOUT_SECONDS"]&.to_i || 14.days.to_i).seconds
+
   included do
     before_action :set_request_details
     before_action :authenticate_user!
@@ -17,6 +20,14 @@ module Authentication
   private
     def authenticate_user!
       if session_record = find_session_by_cookie
+        if session_expired?(session_record)
+          session_record.destroy
+          cookies.delete(:session_token)
+          redirect_to new_session_url, alert: "Tu sesión ha expirado por inactividad."
+          return
+        end
+
+        session_record.touch
         Current.session = session_record
         RlsContext.set_family(Current.family&.id)
       else
@@ -26,6 +37,12 @@ module Authentication
           redirect_to new_session_url
         end
       end
+    end
+
+    def session_expired?(session_record)
+      inactivity_expired = session_record.updated_at < INACTIVITY_TIMEOUT.ago
+      absolute_expired = session_record.created_at < ABSOLUTE_TIMEOUT.ago
+      inactivity_expired || absolute_expired
     end
 
     def find_session_by_cookie
