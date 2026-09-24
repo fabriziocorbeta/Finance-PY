@@ -13,6 +13,7 @@ class FamilyPurger
     family_id = @family.id
     family_hash = Digest::SHA256.hexdigest(family_id.to_s)
     counts = {}
+    conn = ActiveRecord::Base.connection
 
     RlsContext.with_family(family_id) do
       ActiveRecord::Base.transaction do
@@ -28,7 +29,9 @@ class FamilyPurger
         ActiveRecord::Base.connection.tables.each do |table|
           cols = ActiveRecord::Base.connection.columns(table).map(&:name)
           if cols.include?("family_id")
-            cnt = ActiveRecord::Base.connection.select_value("SELECT COUNT(*) FROM #{table} WHERE family_id = '#{family_id}'").to_i
+            cnt = conn.select_value(
+              "SELECT COUNT(*) FROM #{conn.quote_table_name(table)} WHERE family_id = #{conn.quote(family_id)}"
+            ).to_i
             counts[table] = cnt if cnt > 0
           end
         end
@@ -40,7 +43,7 @@ class FamilyPurger
 
         # 4. Destroy family record with cascading associations
         @family.destroy!
-        ActiveRecord::Base.connection.execute("DELETE FROM versions WHERE family_id = '#{family_id}'")
+        conn.execute("DELETE FROM versions WHERE family_id = #{conn.quote(family_id)}")
 
         # 5. Write anonymous deletion audit record
         DeletionRecord.create!(
