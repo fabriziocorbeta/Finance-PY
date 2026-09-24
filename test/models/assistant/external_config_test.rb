@@ -65,7 +65,7 @@ class Assistant::ExternalConfigTest < ActiveSupport::TestCase
     # Create enough messages to exceed the 20-message cap
     25.times do |i|
       role_class = i.even? ? UserMessage : AssistantMessage
-      role_class.create!(chat: chat, content: "msg #{i}", ai_model: "test")
+      role_class.create!(chat: chat, content: "msg #{i}", ai_model: "gpt-4.1")
     end
 
     with_env_overrides("EXTERNAL_ASSISTANT_URL" => "http://x", "EXTERNAL_ASSISTANT_TOKEN" => "t") do
