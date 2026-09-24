@@ -393,7 +393,7 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     # exercises the real callback chain registered in
     # config/initializers/rls_connection_safety.rb without fighting the test
     # suite's pinned/transactional connection.
-    conn._run_checkin_callbacks {}
+    conn._run_checkin_callbacks { }
 
     reset_value = conn.select_value("SELECT current_setting('app.current_family_id', true)").to_s
     assert_predicate reset_value, :empty?,
