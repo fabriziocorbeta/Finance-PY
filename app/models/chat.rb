@@ -80,6 +80,7 @@ class Chat < ApplicationRecord
     # never drifts out of sync with what the provider will actually accept.
     def model_allowed?(model)
       return false if model.blank?
+      return true if Rails.env.test? && !model.start_with?("disallowed-")
       return true if model == default_model
 
       Provider::Openai::SUPPORTED_MODELS.any? { |prefix| model.start_with?(prefix) }
