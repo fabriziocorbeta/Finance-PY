@@ -8,8 +8,8 @@ class Api::V1::TransfersController < Api::V1::BaseController
   # (e.g. paying down a receivable, a credit card, a loan).
   def create
     family = current_resource_owner.family
-    source_account = family.accounts.find(transfer_params[:from_account_id])
-    destination_account = family.accounts.find(transfer_params[:to_account_id])
+    source_account = family.accounts.writable_by(current_resource_owner).find(transfer_params[:from_account_id])
+    destination_account = family.accounts.writable_by(current_resource_owner).find(transfer_params[:to_account_id])
 
     @transfer = Transfer::Creator.new(
       family: family,

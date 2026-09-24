@@ -39,7 +39,7 @@ class Api::V1::TradesController < Api::V1::BaseController
       return render_validation_error("Account ID is required", [ "Account ID is required" ])
     end
 
-    account = current_resource_owner.family.accounts.visible.find(trade_params[:account_id])
+    account = current_resource_owner.family.accounts.visible.writable_by(current_resource_owner).find(trade_params[:account_id])
 
     unless account.supports_trades?
       return render_validation_error(
@@ -109,7 +109,7 @@ class Api::V1::TradesController < Api::V1::BaseController
 
     def set_trade
       family = current_resource_owner.family
-      @trade = family.trades.visible.find(params[:id])
+      @trade = current_resource_owner.accessible_accounts.joins(:trades).merge(family.trades.visible).find_by!(trades: { id: params[:id] }).trades.visible.find(params[:id])
       @entry = @trade.entry
     rescue ActiveRecord::RecordNotFound
       render json: { error: "not_found", message: "Trade not found" }, status: :not_found
