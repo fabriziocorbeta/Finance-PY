@@ -1,5 +1,6 @@
 class Provider::Openai < Provider
   include LlmConcept
+  include Provider::Openai::Concerns::LangfuseSanitizer
 
   # Subclass so errors caught in this provider are raised as Provider::Openai::Error
   Error = Class.new(Provider::Error)
@@ -646,44 +647,10 @@ class Provider::Openai < Provider
       @langfuse_client = Langfuse.new
     end
 
-    # Langfuse traces/generations carry the actual LLM input (transactions,
-    # notes, merchant names, amounts) and output (categorization results,
-    # extracted statement data) to a third party. In production we redact
-    # that content by default -- callers still get trace/generation records
-    # (useful for latency/error/usage debugging) but with content replaced
-    # by shape-only placeholders, not the real financial data.
-    #
-    # Set LANGFUSE_ALLOW_FULL_CONTENT=true to opt back into full content
-    # capture in production (e.g. for a temporary eval/debugging run against
-    # already-consented data). Non-production environments keep full content
-    # by default since eval/dataset tooling (app/models/eval/langfuse/*)
-    # relies on real payloads there.
-    def langfuse_redact_content?
-      return false unless Rails.env.production?
-
-      !ActiveModel::Type::Boolean.new.cast(ENV["LANGFUSE_ALLOW_FULL_CONTENT"])
-    end
-
-    def sanitize_for_langfuse(value)
-      return value unless langfuse_redact_content?
-
-      redact_for_langfuse(value)
-    end
-
-    def redact_for_langfuse(value)
-      case value
-      when Hash
-        value.transform_values { |v| redact_for_langfuse(v) }
-      when Array
-        { redacted: true, count: value.size }
-      when String
-        { redacted: true, length: value.length }
-      when Numeric, TrueClass, FalseClass, NilClass
-        value
-      else
-        { redacted: true, type: value.class.name }
-      end
-    end
+    # langfuse_redact_content?, sanitize_for_langfuse and redact_for_langfuse
+    # live in Provider::Openai::Concerns::LangfuseSanitizer (shared with the
+    # AutoCategorizer/AutoMerchantDetector/ProviderMerchantEnhancer/PdfProcessor
+    # processors, which build their own Langfuse spans directly).
 
     def create_langfuse_trace(name:, input:, session_id: nil, user_identifier: nil)
       return unless langfuse_client

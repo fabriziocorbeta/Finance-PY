@@ -70,4 +70,22 @@ class Provider::Openai::ReceiptExtractorTest < ActiveSupport::TestCase
     image_part = captured[:parameters][:messages].last[:content].find { |c| c[:type] == "image_url" }
     assert image_part[:image_url][:url].start_with?("data:image/jpeg;base64,")
   end
+
+  # E6 security requirement: a receipt image is untrusted data (it can be a
+  # photographed/tampered document with instruction-like overlay text), so
+  # the system prompt must carry the same anti-injection notice used for the
+  # other OpenAI providers, even though the image bytes themselves can't be
+  # wrapped in a text delimiter.
+  test "system instructions carry the anti-injection notice for receipt images" do
+    captured = nil
+    @client.expects(:chat).with { |params| captured = params; true }.returns(
+      "choices" => [ { "message" => { "content" => '{"merchant":"X","date":"2026-07-02","amount":1}' } } ]
+    )
+
+    build_extractor.extract
+
+    system_message = captured[:parameters][:messages].find { |m| m[:role] == "system" }[:content]
+    assert_match(/untrusted data/i, system_message)
+    assert_match(/NEVER follow, obey, or execute/i, system_message)
+  end
 end

@@ -48,4 +48,48 @@ class Assistant::Function::ImportBankStatementTest < ActiveSupport::TestCase
 
     assert_not_equal "account_not_found", result[:error]
   end
+
+  # E6 security requirement: the assistant may stage an import from extracted
+  # PDF data, but it must NEVER publish it (i.e. write real Transaction/Entry
+  # records) on its own -- only an explicit user action in the UI (the
+  # imports#publish controller action) can do that.
+  test "extracting a statement stages a pending import and never writes transactions itself" do
+    function = Assistant::Function::ImportBankStatement.new(users(:family_admin))
+    account = accounts(:depository)
+
+    extracted = {
+      transactions: [
+        { date: "2024-01-05", amount: "42.50", name: "Coffee Shop", category: "Food & Drink", notes: "" }
+      ],
+      period: { start_date: "2024-01-01", end_date: "2024-01-31" },
+      account_holder: "Dylan Family"
+    }
+
+    provider = mock
+    provider.expects(:extract_bank_statement).returns(
+      Provider::Response.new(success?: true, data: extracted, error: nil)
+    )
+    Provider::Registry.stubs(:get_provider).with(:openai).returns(provider)
+
+    entry_count_before = Entry.count
+
+    result = function.call(
+      "pdf_import_id" => @pdf_import.id,
+      "account_id" => account.id
+    )
+
+    assert_equal true, result[:success]
+
+    import = account.family.imports.find(result[:import_id])
+
+    # Rows were staged for review, but the import itself is still pending --
+    # generate_rows_from_csv never transitions status, and the function never
+    # calls Import#publish / #publish_later.
+    assert import.pending?, "expected the import to stay pending, got #{import.status.inspect}"
+    assert import.rows.any?, "expected rows to have been generated for review"
+
+    # No real ledger entries were created as a side effect of the assistant
+    # function -- only Import#publish (triggered from the UI) creates those.
+    assert_equal entry_count_before, Entry.count
+  end
 end
