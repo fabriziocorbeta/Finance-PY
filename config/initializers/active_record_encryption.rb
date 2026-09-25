@@ -21,7 +21,8 @@ key_derivation_salt = parse_keys.call(ENV["ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATI
 # Exemption: assets:precompile in Docker build does not require real encryption secrets
 is_assets_precompile = (
   caller.any? { |c| c.include?("assets:precompile") } ||
-  (File.basename($PROGRAM_NAME) == "rake" && ARGV.any? { |a| a.include?("assets:precompile") })
+  ARGV.any? { |a| a.include?("assets:precompile") } ||
+  (defined?(Rake) && Rake.respond_to?(:application) && Rake.application&.top_level_tasks&.any? { |t| t.to_s.include?("assets:precompile") })
 )
 
 if Rails.env.production? && !is_assets_precompile
@@ -41,7 +42,7 @@ if primary_key.present? && deterministic_key.present? && key_derivation_salt.pre
   Rails.application.config.active_record.encryption.primary_key = primary_key
   Rails.application.config.active_record.encryption.deterministic_key = deterministic_key
   Rails.application.config.active_record.encryption.key_derivation_salt = key_derivation_salt
-elsif Rails.application.config.app_mode.self_hosted? && !Rails.application.credentials.active_record_encryption.present?
+elsif (Rails.application.config.app_mode.self_hosted? || is_assets_precompile) && !Rails.application.credentials.active_record_encryption.present?
   secret_base = Rails.application.secret_key_base
 
   primary_key = Digest::SHA256.hexdigest("#{secret_base}:primary_key")[0..63]
