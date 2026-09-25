@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Base network security policy, shared by every build variant (release
+  included). Cleartext HTTP is explicitly OFF app-wide: FinancePY talks to a
+  single hardcoded HTTPS endpoint (ApiClient.BASE_URL = https://finance.cd-co.com.py,
+  see shared/src/commonMain/kotlin/py/com/cdco/financespy/network/ApiClient.kt)
+  and never needs it. android:usesCleartextTraffic in the manifest is the old,
+  coarser way to say the same thing - this file is the actual source of
+  truth once referenced from the manifest.
+
+  Deliberately NOT doing certificate/public-key pinning here. finance.cd-co.com.py
+  sits behind Cloudflare, which rotates the issuing CA across Let's Encrypt,
+  Google Trust Services, SSL.com and Sectigo depending on region/load/renewal
+  timing - confirmed on 2026-09-23 with:
+    openssl s_client -connect finance.cd-co.com.py:443 -showcerts
+  which returned a chain issued by Google Trust Services (GTS Root R4, leaf via
+  intermediate WE1, leaf validity ~90 days: 2026-08-10 to 2026-11-08). A pin
+  built from that snapshot would be wrong the moment Cloudflare rotates to a
+  different CA or simply reissues, and <pin-set> has no visibility into which
+  CA Cloudflare will pick next - a wrong or stale pin-set fails CLOSED and
+  locks every user out of a financial app with no client-side recovery path
+  other than a store update. Standard TLS chain validation (Android's default
+  trust store) already rejects a MITM using an untrusted CA; the incremental
+  protection pinning would add here (against a CA-level compromise) doesn't
+  outweigh the outage risk for this deployment. Revisit if FinancePY moves to
+  a fixed origin cert (e.g. pinned through a control we own, not Cloudflare's
+  edge) instead of Cloudflare-terminated TLS.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

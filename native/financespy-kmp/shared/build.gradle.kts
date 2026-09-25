@@ -74,5 +74,5 @@ room {
 }
 
 dependencies {
-    add("kspAndroid", "androidx.room:room-compiler:2.7.0-alpha11")
+    add("kspAndroid", "androidx.room:room-compiler:${libs.versions.room.get()}")
 }

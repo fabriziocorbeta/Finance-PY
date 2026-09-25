@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-build-type-only override (androidApp/src/debug/res/xml, merged only
+  into debug builds by AGP's source-set resolution - release keeps the base
+  config in src/main/res/xml, which has NO cleartext exception). Nothing in
+  the current app code points at a local/emulator HTTP endpoint (ApiClient.BASE_URL
+  is a single hardcoded HTTPS URL, no debug flavor override exists), so this
+  is unused today. It's included anyway so a developer who points a local
+  build at an emulator/device-local Rails server (10.0.2.2 for the emulator
+  host loopback, plain "localhost" for a physical device via adb reverse)
+  doesn't have to touch network security config by hand or weaken the release
+  policy to do it - and so nobody is tempted to flip cleartextTrafficPermitted
+  in the base config "just for testing" and ship that by accident.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>
