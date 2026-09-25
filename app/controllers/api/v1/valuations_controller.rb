@@ -83,7 +83,7 @@ class Api::V1::ValuationsController < Api::V1::BaseController
       return
     end
 
-    account = current_resource_owner.family.accounts.find(valuation_account_id)
+    account = current_resource_owner.family.accounts.writable_by(current_resource_owner).find(valuation_account_id)
     requested_upsert = upsert_requested?
     existing_write = false
 
@@ -232,10 +232,7 @@ class Api::V1::ValuationsController < Api::V1::BaseController
   private
 
     def set_valuation
-      @entry = current_resource_owner.family
-                 .entries
-                 .where(entryable_type: "Valuation")
-                 .find(params[:id])
+      @entry = current_resource_owner.family.entries.where(account_id: current_resource_owner.accessible_accounts.select(:id)).where(entryable_type: "Valuation").find(params[:id])
       @valuation = @entry.entryable
     rescue ActiveRecord::RecordNotFound
       render json: {
