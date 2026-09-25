@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Git pre-push hook: ensures push destination is github.com/fabriziocorbeta/Finance-PY
+set -euo pipefail
+
+remote_name="$1"
+remote_url="$2"
+
+allowed_patterns=(
+  "github.com/fabriziocorbeta/Finance-PY"
+  "github.com:fabriziocorbeta/Finance-PY"
+)
+
+matched=0
+for pattern in "${allowed_patterns[@]}"; do
+  if [[ "$remote_url" == *"$pattern"* ]]; then
+    matched=1
+    break
+  fi
+done
+
+if [[ $matched -ne 1 ]]; then
+  echo "❌ [pre-push hook error] Remote push rejected!"
+  echo "Target remote URL '$remote_url' is not authorized."
+  echo "Allowed repository destination is: github.com/fabriziocorbeta/Finance-PY"
+  exit 1
+fi
+
+exit 0
