@@ -100,21 +100,17 @@ class McpController < ApplicationController
       { content: [ { type: "text", text: { error: e.message }.to_json } ], isError: true }
     end
 
-    def lookup_api_key(presented)
-      ApiKey.find_by_value(presented)
-    end
-
     def authenticate_mcp_token!
-      token = request.headers["Authorization"]&.delete_prefix("Bearer ")&.strip
-      unless token.present?
+      bearer_token = request.headers["Authorization"]&.delete_prefix("Bearer ")&.strip
+      unless bearer_token.present?
         render json: { error: "unauthorized" }, status: :unauthorized
         return
       end
 
-      api_key = lookup_api_key(token)
-      if api_key&.user
-        @mcp_user = api_key.user
-        api_key.update_last_used!
+      key_record = ApiKey.find_by_value(bearer_token)
+      if key_record&.user
+        @mcp_user = key_record.user
+        key_record.update_last_used!
       else
         expected = ENV["MCP_API_TOKEN"]
 
@@ -123,7 +119,7 @@ class McpController < ApplicationController
           return
         end
 
-        unless ActiveSupport::SecurityUtils.secure_compare(token, expected)
+        unless ActiveSupport::SecurityUtils.secure_compare(bearer_token, expected)
           render json: { error: "unauthorized" }, status: :unauthorized
           return
         end
