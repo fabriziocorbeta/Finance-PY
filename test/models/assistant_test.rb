@@ -68,7 +68,7 @@ class AssistantTest < ActiveSupport::TestCase
     @assistant.stubs(:registry).returns(mock_registry)
 
     # Update message to use unsupported model
-    @message.update!(ai_model: "claude-3")
+    @message.update_columns(ai_model: "claude-3")
 
     @chat.expects(:add_error).with do |error|
       assert_includes error.message, "No LLM provider configured that supports model 'claude-3'"

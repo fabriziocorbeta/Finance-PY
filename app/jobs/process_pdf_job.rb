@@ -10,7 +10,18 @@ class ProcessPdfJob < ApplicationJob
     pdf_import.update!(status: :importing)
 
     begin
+      page_count = check_pdf_page_quota!(pdf_import)
+
       process_result = pdf_import.process_with_ai
+
+      # Recorded only after process_with_ai succeeds (E5 corrector round 1
+      # fix): this used to be recorded inside enforce_pdf_page_quota!, before
+      # process_with_ai ran at all, so a family whose PDF failed to process
+      # still had those pages charged against their daily cap -- contradicting
+      # this file's own original comment and StatementParseJob's behavior
+      # (which already recorded post-extraction). If process_with_ai raises,
+      # control never reaches this line and nothing is charged.
+      UsageQuota.record_pdf_pages!(pdf_import.family, page_count)
       document_type = resolve_document_type(pdf_import, process_result)
       upload_to_vector_store(pdf_import, document_type: document_type)
 
@@ -49,6 +60,35 @@ class ProcessPdfJob < ApplicationJob
   end
 
   private
+
+    # E5: daily PDF-page quota (see UsageQuota). Counting pages is a cheap,
+    # local PDF::Reader parse -- no network/AI call -- so it's worth doing
+    # before the family's actual quota-consuming call (process_with_ai,
+    # which uploads the PDF and pays for AI extraction) rather than after.
+    # Only checks and returns the count here; the caller records it against
+    # the family's daily counter after process_with_ai succeeds, so a family
+    # whose PDF fails to process isn't charged for that attempt.
+    def check_pdf_page_quota!(pdf_import)
+      page_count = pdf_page_count(pdf_import)
+
+      if UsageQuota.pdf_quota_exceeded?(pdf_import.family, additional_pages: page_count)
+        raise I18n.t("imports.pdf_import.pdf_quota_exceeded")
+      end
+
+      page_count
+    end
+
+    def pdf_page_count(pdf_import)
+      PDF::Reader.new(StringIO.new(pdf_import.pdf_file_content)).page_count
+    rescue StandardError => e
+      # A PDF page count that fails to parse here will fail identically
+      # (and be reported the same way) a few lines later in process_with_ai
+      # -- don't let a bad file dodge quota enforcement by treating the
+      # count as unlimited, but don't block on it either; charge nothing
+      # and let the real processing step raise the real error.
+      Rails.logger.warn("ProcessPdfJob: could not count PDF pages for import #{pdf_import.id}: #{e.class.name}")
+      0
+    end
 
     def sanitize_error_message(error)
       case error

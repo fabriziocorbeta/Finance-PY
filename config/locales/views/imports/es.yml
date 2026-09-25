@@ -244,6 +244,7 @@ es:
         tardar un momento. Recibirás un correo electrónico cuando el análisis finalice.
       processing_failed_generic: 'Error en el procesamiento: %{error}'
       processing_failed_with_message: "%{message}"
+      pdf_quota_exceeded: Alcanzaste el límite diario de páginas PDF procesadas de tu familia. Volvé a intentarlo mañana.
       processing_title: Procesando tu PDF
       summary_label: Resumen
       try_again: Reintentar

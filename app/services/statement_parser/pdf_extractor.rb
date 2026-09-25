@@ -11,6 +11,17 @@ module StatementParser
       @bytes = bytes
     end
 
+    # Cheap, local page count (no text extraction) -- used by
+    # StatementParseJob to check the daily PDF-page quota (UsageQuota)
+    # before paying for the rest of #extract.
+    def page_count
+      PDF::Reader.new(StringIO.new(@bytes)).page_count
+    rescue PDF::Reader::MalformedPDFError, PDF::Reader::EncryptedPDFError => e
+      raise ExtractionError, "PDF extraction failed: #{e.message}"
+    rescue ArgumentError => e
+      raise ExtractionError, "Invalid PDF data: #{e.message}"
+    end
+
     def extract
       reader = PDF::Reader.new(StringIO.new(@bytes))
 

@@ -63,6 +63,27 @@ class Chat < ApplicationRecord
     def default_model
       Provider::Openai.effective_model.presence || Setting.openai_model
     end
+
+    # Allowlist for the `ai_model` a client is permitted to request (E5:
+    # ai_model arrives as a plain param on chat/message creation -- web
+    # hidden field or raw JSON body on the API -- so it's client-controlled
+    # and must be validated, not trusted; see UserMessage#ai_model_allowed).
+    #
+    # A literal hardcoded list of model names doesn't work here: self-hosted
+    # deployments point OPENAI_MODEL/Setting.openai_model at an arbitrary
+    # OpenAI-compatible model (see Provider::Openai::BANK_STATEMENT_MODEL,
+    # e.g. "openai/gpt-oss-20b" for a custom gateway), so the *configured*
+    # model must always be allowed. On top of that we allow our first-party
+    # OpenAI model families via the prefixes the provider itself already
+    # uses to decide whether it supports a model
+    # (Provider::Openai::SUPPORTED_MODELS / #supports_model?), so this list
+    # never drifts out of sync with what the provider will actually accept.
+    def model_allowed?(model)
+      return false if model.blank?
+      return true if model == default_model
+
+      Provider::Openai::SUPPORTED_MODELS.any? { |prefix| model.start_with?(prefix) }
+    end
   end
 
   def needs_assistant_response?

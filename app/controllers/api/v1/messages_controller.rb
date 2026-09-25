@@ -29,6 +29,17 @@ class Api::V1::MessagesController < Api::V1::BaseController
     last_message = @chat.messages.ordered.last
 
     if last_message&.type == "AssistantMessage"
+      # E5 fix: retry triggers a real LLM call (AssistantResponseJob) same as
+      # a normal message create, but was never covered by the family's daily
+      # LLM token quota (that check lives on UserMessage#llm_quota_available,
+      # and retry never creates a UserMessage). Check it explicitly here so a
+      # caller can't loop this endpoint to bypass the quota entirely.
+      family = @chat.user.family
+      if UsageQuota.llm_quota_exceeded?(family)
+        render json: { error: I18n.t("chats.errors.llm_quota_exceeded") }, status: :unprocessable_entity
+        return
+      end
+
       new_message = @chat.messages.create!(
         type: "AssistantMessage",
         content: "",

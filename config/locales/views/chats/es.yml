@@ -7,3 +7,7 @@ es:
       se enviarán a ningún otro lugar para ser entrenados! 🤖"
     demo_banner_title: Modo de demostración activo
     thinking: Procesando ...
+    errors:
+      llm_quota_exceeded: Alcanzaste el límite diario de uso de IA de tu familia. Volvé a intentarlo mañana.
+      invalid_model: El modelo de IA solicitado no está permitido.
+      content_too_long: El mensaje es demasiado largo (máximo %{max} caracteres).

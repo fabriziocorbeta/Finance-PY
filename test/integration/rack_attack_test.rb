@@ -28,6 +28,89 @@ class RackAttackTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "cost-sensitive endpoints are throttled" do
+    names = Rack::Attack.throttles.keys
+    %w[chats/create messages/create imports/create statement_imports/create family_exports/create mcp/requests].each do |name|
+      assert_includes names, name
+    end
+  end
+
+  test "repeated chat creation from the same actor is rejected with 429" do
+    with_rack_attack do
+      20.times { post "/chats", params: { chat: { content: "hi" } } }
+      post "/chats", params: { chat: { content: "hi" } }
+
+      assert_response :too_many_requests
+    end
+  end
+
+  test "repeated message creation on the same chat is rejected with 429" do
+    with_rack_attack do
+      60.times { post "/chats/1/messages", params: { message: { content: "hi" } } }
+      post "/chats/1/messages", params: { message: { content: "hi" } }
+
+      assert_response :too_many_requests
+    end
+  end
+
+  # E5 corrector round 1: the API retry endpoint (POST
+  # /api/v1/chats/:id/messages/retry) was not matched by MESSAGE_CREATE_PATHS,
+  # so it shared no throttle with regular message creation even though it
+  # triggers the same real LLM call. Verify the regex now covers it directly
+  # (cheap, deterministic) and that repeated hits actually 429 end-to-end.
+  test "the message throttle regex matches the API retry path, not the unrelated web retry path" do
+    assert_match Rack::Attack::MESSAGE_CREATE_PATHS, "/api/v1/chats/1/messages/retry"
+    assert_match Rack::Attack::MESSAGE_CREATE_PATHS, "/chats/1/messages"
+    assert_match Rack::Attack::MESSAGE_CREATE_PATHS, "/api/v1/chats/1/messages"
+    # /chats/:id/retry (ChatsController#retry) is a different, unrelated route
+    # and must not accidentally start matching this regex.
+    assert_no_match Rack::Attack::MESSAGE_CREATE_PATHS, "/chats/1/retry"
+  end
+
+  test "repeated API retry requests on the same chat are rejected with 429" do
+    with_rack_attack do
+      60.times { post "/api/v1/chats/1/messages/retry" }
+      post "/api/v1/chats/1/messages/retry"
+
+      assert_response :too_many_requests
+    end
+  end
+
+  test "repeated family export requests are rejected with 429" do
+    with_rack_attack do
+      5.times { post "/family_exports" }
+      post "/family_exports"
+
+      assert_response :too_many_requests
+    end
+  end
+
+  test "repeated MCP requests from the same token are rejected with 429" do
+    with_rack_attack do
+      headers = { "HTTP_AUTHORIZATION" => "Bearer some-token", "CONTENT_TYPE" => "application/json" }
+      120.times { post "/mcp", params: '{"jsonrpc":"2.0","id":1,"method":"ping"}', headers: headers }
+      post "/mcp", params: '{"jsonrpc":"2.0","id":1,"method":"ping"}', headers: headers
+
+      assert_response :too_many_requests
+    end
+  end
+
+  test "chat throttle keys by session cookie, not shared IP" do
+    with_rack_attack do
+      # Two different sessions from the same IP must not share one bucket.
+      20.times do
+        post "/chats", params: { chat: { content: "hi" } },
+                        headers: { "REMOTE_ADDR" => "10.2.0.1", "Cookie" => "session_token=actor-one" }
+      end
+      post "/chats", params: { chat: { content: "hi" } },
+                      headers: { "REMOTE_ADDR" => "10.2.0.1", "Cookie" => "session_token=actor-two" }
+
+      # Different session cookie -> different actor bucket -> not throttled,
+      # regardless of whatever unauthenticated status the app itself returns.
+      assert_not_equal 429, response.status
+    end
+  end
+
   test "repeated TOTP submissions from one IP are rejected with 429" do
     with_rack_attack do
       10.times { post "/mfa/verify", params: { code: "000000" } }

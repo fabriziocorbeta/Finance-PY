@@ -92,6 +92,28 @@ class Assistant::Function::ImportBankStatement < Assistant::Function
       }
     end
 
+    # E5 corrector round 1: this tool-call path is reachable directly by the
+    # chat assistant loop (and, via it, MCP-driven callers), bypassing both
+    # UserMessage's per-message LLM quota check and ProcessPdfJob's PDF-page
+    # quota check -- neither of those guards this call. Both are enforced
+    # here explicitly, before the real (costly) provider call.
+    if UsageQuota.llm_quota_exceeded?(family)
+      return {
+        success: false,
+        error: "llm_quota_exceeded",
+        message: I18n.t("chats.errors.llm_quota_exceeded")
+      }
+    end
+
+    page_count = pdf_page_count(pdf_import)
+    if UsageQuota.pdf_quota_exceeded?(family, additional_pages: page_count)
+      return {
+        success: false,
+        error: "pdf_quota_exceeded",
+        message: I18n.t("imports.pdf_import.pdf_quota_exceeded")
+      }
+    end
+
     # Extract transactions from the PDF using provider
     provider = Provider::Registry.get_provider(:openai)
     unless provider
@@ -116,6 +138,11 @@ class Assistant::Function::ImportBankStatement < Assistant::Function
         message: "Failed to extract transactions: #{error_message}"
       }
     end
+
+    # Only counted against the family's daily cap once extraction actually
+    # succeeded (mirrors ProcessPdfJob's fixed behavior below -- a failed
+    # call shouldn't cost the family PDF-page quota).
+    UsageQuota.record_pdf_pages!(family, page_count)
 
     result = response.data
 
@@ -196,5 +223,19 @@ class Assistant::Function::ImportBankStatement < Assistant::Function
 
     def openai_model
       ENV["OPENAI_MODEL"].presence || Provider::Openai::DEFAULT_MODEL
+    end
+
+    # Cheap local page count (no network/AI call), same approach as
+    # ProcessPdfJob#pdf_page_count. A PDF that fails to parse here will fail
+    # identically a few lines later in the real provider call, so treat the
+    # count as 0 rather than blocking on a parse error unrelated to quota.
+    def pdf_page_count(pdf_import)
+      content = pdf_import.pdf_file_content
+      return 0 if content.blank?
+
+      PDF::Reader.new(StringIO.new(content)).page_count
+    rescue StandardError, Errno::EINVAL => e
+      Rails.logger.warn("ImportBankStatement: could not count PDF pages for import #{pdf_import.id}: #{e.class.name}")
+      0
     end
 end

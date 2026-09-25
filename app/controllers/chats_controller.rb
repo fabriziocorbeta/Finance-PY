@@ -20,6 +20,23 @@ class ChatsController < ApplicationController
     @chat = Current.user.chats.start!(chat_params[:content], model: chat_params[:ai_model])
     set_last_viewed_chat(@chat)
     redirect_to chat_path(@chat, thinking: true)
+  rescue ActiveRecord::RecordInvalid => e
+    # Model allowlist / quota / length violations on the first message land
+    # here as a nested-association validation failure (Chat.start! creates
+    # the chat and its first UserMessage together) -- always a friendly
+    # redirect, never a 500.
+    #
+    # E5 corrector round 1 fix: e.record is the Chat, not the nested
+    # UserMessage. When the UserMessage fails validation, autosave attaches
+    # a generic "Messages is invalid" error to the Chat's own errors instead
+    # of surfacing the child's specific message (e.g. "The requested AI
+    # model is not allowed."), so reading e.record.errors alone always showed
+    # that generic text. The failed UserMessage is still held in
+    # e.record.messages (built, never persisted) with its own errors
+    # populated -- read those first and fall back to the chat's own errors.
+    chat = e.record
+    message_errors = chat.messages.flat_map { |m| m.errors.full_messages }
+    redirect_to new_chat_path, alert: message_errors.presence&.to_sentence || chat.errors.full_messages.to_sentence
   end
 
   def edit
@@ -42,6 +59,18 @@ class ChatsController < ApplicationController
   end
 
   def retry
+    # Same gap as Api::V1::MessagesController#retry (E5 corrector round 1):
+    # retry_last_message! re-asks the assistant off the existing last
+    # UserMessage instead of creating a new one, so UserMessage#llm_quota_available
+    # never runs for it either. Not in the confirmed findings list (which only
+    # named the API endpoint), but it's the same bypass on the web path, so
+    # fixed alongside it rather than left open.
+    family = @chat.user.family
+    if UsageQuota.llm_quota_exceeded?(family)
+      redirect_to chat_path(@chat), alert: I18n.t("chats.errors.llm_quota_exceeded")
+      return
+    end
+
     @chat.retry_last_message!
     redirect_to chat_path(@chat)
   end
