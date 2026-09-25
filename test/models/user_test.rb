@@ -262,6 +262,30 @@ class UserTest < ActiveSupport::TestCase
     assert_match %r{issuer=Sure}, user.provisioning_uri
   end
 
+  test "ai_enabled? requires an active family AI processing consent (E6)" do
+    user = users(:family_admin)
+    assert user.ai_enabled, "fixture should have the preference on"
+    assert user.ai_enabled?, "fixture family should have consent from test/fixtures/consents.yml"
+
+    Consent.where(family: user.family, kind: "ai_processing").active.update_all(revoked_at: Time.current)
+    assert_not user.ai_enabled?, "revoking consent should turn off AI access even though the preference is still on"
+  end
+
+  test "enabling ai_enabled grants consent automatically, disabling revokes it" do
+    user = users(:family_admin)
+    user.update!(ai_enabled: false)
+    assert_not user.ai_enabled?
+    assert_not Consent.ai_processing_granted?(user.family)
+
+    user.update!(ai_enabled: true)
+    assert user.ai_enabled?
+    assert Consent.ai_processing_granted?(user.family)
+
+    user.update!(ai_enabled: false)
+    assert_not user.ai_enabled?
+    assert_not Consent.ai_processing_granted?(user.family)
+  end
+
   test "ai_available? returns true when openai access token set in settings" do
     Rails.application.config.app_mode.stubs(:self_hosted?).returns(true)
     previous = Setting.openai_access_token
@@ -327,7 +351,10 @@ class UserTest < ActiveSupport::TestCase
     assert user.ui_layout_intro?
     assert_not user.show_sidebar?
     assert_not user.show_ai_sidebar?
-    assert user.ai_enabled?
+    assert user.ai_enabled, "intro layout should default the ai_enabled preference on for guests"
+    # The preference alone does not grant AI access (E6): the family must
+    # have explicitly consented, which this auto-defaulted guest has not.
+    assert_not user.ai_enabled?
   end
 
   test "non-guest role cannot persist intro layout" do

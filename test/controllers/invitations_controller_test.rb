@@ -152,7 +152,9 @@ class InvitationsControllerTest < ActionDispatch::IntegrationTest
     assert existing_user.ui_layout_intro?
     assert_not existing_user.show_sidebar?
     assert_not existing_user.show_ai_sidebar?
-    assert existing_user.ai_enabled?
+    # The preference alone does not grant AI access (E6): consent is separate.
+    assert existing_user.ai_enabled
+    assert_not existing_user.ai_enabled?
   end
 
   test "should handle invalid invitation creation" do

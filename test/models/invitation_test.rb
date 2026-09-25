@@ -210,6 +210,9 @@ class InvitationTest < ActiveSupport::TestCase
     assert user.ui_layout_intro?
     assert_not user.show_sidebar?
     assert_not user.show_ai_sidebar?
-    assert user.ai_enabled?
+    # The preference alone does not grant AI access (E6): the family must
+    # have explicitly consented, which this auto-defaulted guest has not.
+    assert user.ai_enabled
+    assert_not user.ai_enabled?
   end
 end

@@ -161,7 +161,7 @@ class User < ApplicationRecord
   end
 
   def ai_enabled?
-    ai_enabled && ai_available?
+    ai_enabled && ai_available? && Consent.ai_processing_granted?(family)
   end
 
   def self.default_ui_layout
@@ -187,6 +187,13 @@ class User < ApplicationRecord
   validate :can_deactivate, if: -> { active_changed? && !active }
   after_update_commit :purge_later, if: -> { saved_change_to_active?(from: true, to: false) }
 
+  # Submitting the "Enable AI Chats" form (which shows the data-handling
+  # notice, see app/views/chats/_ai_consent.html.erb) is the explicit
+  # consent act for E6 (see docs/security/rls-design.md's consent
+  # requirements). Revoking is implicit on disable -- no extra UI needed.
+  after_update_commit :grant_ai_consent, if: -> { saved_change_to_ai_enabled?(from: false, to: true) }
+  after_update_commit :revoke_ai_consent, if: -> { saved_change_to_ai_enabled?(from: true, to: false) }
+
   def deactivate
     revoke_all_oauth_tokens!
     sessions.destroy_all
@@ -206,6 +213,19 @@ class User < ApplicationRecord
 
   def purge_later
     UserPurgeJob.perform_later(self)
+  end
+
+  def grant_ai_consent
+    return unless family
+
+    consent = Consent.find_or_initialize_by(family: family, user: self, kind: "ai_processing")
+    consent.update!(granted_at: Time.current, revoked_at: nil)
+  end
+
+  def revoke_ai_consent
+    return unless family
+
+    Consent.where(family: family, kind: "ai_processing").active.update_all(revoked_at: Time.current)
   end
 
   def purge

@@ -4,8 +4,18 @@ require "test_helper"
 
 class ConsentTest < ActiveSupport::TestCase
   setup do
-    @family = families(:dylan_family)
-    @user = users(:family_admin)
+    # A fresh family/user pair, not one of the fixture families that
+    # test/fixtures/consents.yml already grants ai_processing consent to.
+    @family = Family.create!(name: "Consent Test Family")
+    @user = User.create!(
+      family: @family,
+      first_name: "Consent",
+      last_name: "Tester",
+      email: "consent-tester@example.com",
+      password: "Password1!",
+      password_confirmation: "Password1!",
+      role: :admin
+    )
   end
 
   test "ai_processing_granted? requires active consent" do
