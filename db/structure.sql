@@ -498,6 +498,23 @@ CREATE TABLE public.coinstats_items (
 
 
 --
+-- Name: consents; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.consents (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    family_id uuid NOT NULL,
+    kind character varying NOT NULL,
+    version character varying DEFAULT '1.0'::character varying NOT NULL,
+    granted_at timestamp(6) without time zone,
+    revoked_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
 -- Name: credit_cards; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -541,6 +558,20 @@ CREATE TABLE public.data_enrichments (
     attribute_name character varying,
     value jsonb,
     metadata jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: deletion_records; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.deletion_records (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    family_id_hash character varying NOT NULL,
+    deleted_at timestamp(6) without time zone NOT NULL,
+    table_counts jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
@@ -2723,6 +2754,14 @@ ALTER TABLE ONLY public.coinstats_items
 
 
 --
+-- Name: consents consents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consents
+    ADD CONSTRAINT consents_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: credit_cards credit_cards_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2744,6 +2783,14 @@ ALTER TABLE ONLY public.cryptos
 
 ALTER TABLE ONLY public.data_enrichments
     ADD CONSTRAINT data_enrichments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: deletion_records deletion_records_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deletion_records
+    ADD CONSTRAINT deletion_records_pkey PRIMARY KEY (id);
 
 
 --
@@ -3928,10 +3975,52 @@ CREATE INDEX index_coinstats_items_on_status ON public.coinstats_items USING btr
 
 
 --
+-- Name: index_consents_on_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consents_on_family_id ON public.consents USING btree (family_id);
+
+
+--
+-- Name: index_consents_on_family_id_and_kind; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consents_on_family_id_and_kind ON public.consents USING btree (family_id, kind);
+
+
+--
+-- Name: index_consents_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consents_on_user_id ON public.consents USING btree (user_id);
+
+
+--
+-- Name: index_consents_on_user_id_and_kind; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_consents_on_user_id_and_kind ON public.consents USING btree (user_id, kind);
+
+
+--
 -- Name: index_data_enrichments_on_enrichable; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_data_enrichments_on_enrichable ON public.data_enrichments USING btree (enrichable_type, enrichable_id);
+
+
+--
+-- Name: index_deletion_records_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deletion_records_on_deleted_at ON public.deletion_records USING btree (deleted_at);
+
+
+--
+-- Name: index_deletion_records_on_family_id_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deletion_records_on_family_id_hash ON public.deletion_records USING btree (family_id_hash);
 
 
 --
@@ -5785,6 +5874,14 @@ ALTER TABLE ONLY public.account_providers
 
 
 --
+-- Name: consents fk_rails_5e24151d5b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consents
+    ADD CONSTRAINT fk_rails_5e24151d5b FOREIGN KEY (family_id) REFERENCES public.families(id) ON DELETE CASCADE;
+
+
+--
 -- Name: rule_conditions fk_rails_5f51cc0bd1; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6134,6 +6231,14 @@ ALTER TABLE ONLY public.indexa_capital_accounts
 
 ALTER TABLE ONLY public.indexa_capital_items
     ADD CONSTRAINT fk_rails_bc63a78aa4 FOREIGN KEY (family_id) REFERENCES public.families(id);
+
+
+--
+-- Name: consents fk_rails_be0741b9c1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.consents
+    ADD CONSTRAINT fk_rails_be0741b9c1 FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -6770,6 +6875,7 @@ CREATE POLICY versions_family_isolation_policy ON public.versions USING ((family
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260924145501'),
 ('20260922214444'),
 ('20260919170000'),
 ('20260919060000'),
