@@ -1,0 +1,16 @@
+---
+es:
+  statement_imports:
+    create:
+      no_file: Debes seleccionar un archivo.
+      file_too_large: El archivo es demasiado grande. El tamaño máximo es %{max_size}MB.
+      invalid_file_type: El archivo no es un PDF válido.
+      success: Extracto enviado para procesamiento.
+    confirm:
+      account_not_found: Cuenta no encontrada.
+      success:
+        one: 1 transacción importada.
+        other: "%{count} transacciones importadas."
+      success_with_skipped:
+        one: "1 transacción importada. Se omitió %{skipped} fila con datos inválidos."
+        other: "%{count} transacciones importadas. Se omitieron %{skipped} filas con datos inválidos."

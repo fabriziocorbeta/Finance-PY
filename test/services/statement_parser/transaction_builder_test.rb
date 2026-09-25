@@ -34,11 +34,13 @@ module StatementParser
       assert_equal "SUPERMERCADO STOCK", entry.name
     end
 
-    test "built entry has correct amount in cents" do
+    test "built entry amount is converted from cents to major currency units" do
       account = Account.new
       builder = TransactionBuilder.new(account)
       entry = builder.build(@parsed)
-      assert_equal(-15_000_000, entry.amount)
+      # Entry#amount is numeric(19,4) (major units), while ParsedTransaction
+      # carries amount_cents (minor units) -- 15_000_000 cents == 150_000 Gs.
+      assert_equal(-150_000, entry.amount)
     end
 
     test "built entry has correct currency" do
@@ -67,6 +69,54 @@ module StatementParser
       builder = TransactionBuilder.new(account)
       entry = builder.build(@parsed)
       assert_equal account, entry.account
+    end
+
+    test "without a statement_import, no external_id or source is set" do
+      account = Account.new
+      builder = TransactionBuilder.new(account)
+      entry = builder.build(@parsed)
+      assert_nil entry.external_id
+      assert_nil entry.source
+    end
+
+    test "same statement_import + row_index + content produces the same external_id" do
+      account = Account.new
+      import = StatementImport.new(id: SecureRandom.uuid)
+      builder = TransactionBuilder.new(account, statement_import: import)
+
+      first = builder.build(@parsed, row_index: 0)
+      second = builder.build(@parsed, row_index: 0)
+
+      assert_equal "statement_import", first.source
+      assert_not_nil first.external_id
+      assert_equal first.external_id, second.external_id
+    end
+
+    test "different row_index for identical content produces different external_id" do
+      account = Account.new
+      import = StatementImport.new(id: SecureRandom.uuid)
+      builder = TransactionBuilder.new(account, statement_import: import)
+
+      first = builder.build(@parsed, row_index: 0)
+      second = builder.build(@parsed, row_index: 1)
+
+      assert_not_equal first.external_id, second.external_id
+    end
+
+    test "double build_and_save! of the same row raises on the second attempt (dedupe)" do
+      account = accounts(:depository)
+      import = StatementImport.create!(
+        family: account.family,
+        user: account.family.users.first,
+        status: :review
+      )
+      builder = TransactionBuilder.new(account, statement_import: import)
+
+      builder.build_and_save!(@parsed, row_index: 0)
+
+      assert_raises(ActiveRecord::RecordInvalid) do
+        builder.build_and_save!(@parsed, row_index: 0)
+      end
     end
   end
 end
