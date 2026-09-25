@@ -18,7 +18,7 @@ class SnaptradeItem < ApplicationRecord
   # Note: snaptrade_user_id is not encrypted as it's just an identifier, not a secret
   if encryption_ready?
     encrypts :client_id, deterministic: true
-    encrypts :consumer_key, deterministic: true
+    encrypts :consumer_key
     encrypts :snaptrade_user_secret
   end
 

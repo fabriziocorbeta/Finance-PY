@@ -5,7 +5,7 @@ class LunchflowItem < ApplicationRecord
 
   # Encrypt sensitive credentials and raw payloads if ActiveRecord encryption is configured
   if encryption_ready?
-    encrypts :api_key, deterministic: true
+    encrypts :api_key
     encrypts :raw_payload
     encrypts :raw_institution_payload
   end

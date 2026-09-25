@@ -32,7 +32,7 @@ class SophtronItem < ApplicationRecord
   # Encrypt sensitive credentials if ActiveRecord encryption is configured (credentials OR env vars)
   if encryption_ready?
     encrypts :user_id, deterministic: true
-    encrypts :access_key, deterministic: true
+    encrypts :access_key
   end
 
   validates :name, presence: true

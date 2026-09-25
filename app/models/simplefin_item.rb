@@ -9,7 +9,7 @@ class SimplefinItem < ApplicationRecord
 
   # Encrypt sensitive credentials and raw payloads if ActiveRecord encryption is configured
   if encryption_ready?
-    encrypts :access_url, deterministic: true
+    encrypts :access_url
     encrypts :raw_payload
     encrypts :raw_institution_payload
   end

@@ -16,7 +16,7 @@ class CoinstatsItem < ApplicationRecord
   end
 
   # Encrypt sensitive credentials if ActiveRecord encryption is configured
-  encrypts :api_key, deterministic: true if encryption_ready?
+  encrypts :api_key if encryption_ready?
 
   validates :name, presence: true
   validates :api_key, presence: true

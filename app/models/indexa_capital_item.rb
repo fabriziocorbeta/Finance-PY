@@ -16,8 +16,8 @@ class IndexaCapitalItem < ApplicationRecord
 
   # Encrypt sensitive credentials if ActiveRecord encryption is configured
   if encryption_ready?
-    encrypts :password, deterministic: true
-    encrypts :api_token, deterministic: true
+    encrypts :password
+    encrypts :api_token
   end
 
   validates :name, presence: true

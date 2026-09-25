@@ -51,4 +51,45 @@ class EncryptedDiskServiceTest < ActiveSupport::TestCase
 
     assert_raises(OpenSSL::Cipher::CipherError) { @service.download("t1") }
   end
+
+  test "reads legacy FPYENC01 format transparently" do
+    # Fabricate a legacy FPYENC01 file encrypted with the active key
+    key = "v1_test"
+    key_material = @service.send(:active_encryption_key)
+    cipher = OpenSSL::Cipher.new("aes-256-gcm").encrypt
+    cipher.key = key_material
+    iv = cipher.random_iv
+    encrypted_data = cipher.update(@data) + cipher.final
+    tag = cipher.auth_tag
+
+    path = @service.send(:make_path_for, key)
+    File.binwrite(path, "FPYENC01".b + iv + tag + encrypted_data)
+
+    assert @service.encrypted?(key)
+    assert_equal @data, @service.download(key)
+    assert @service.encrypt_in_place(key) # Upgrades to FPYENC02
+    assert_equal @data, @service.download(key)
+  end
+
+  test "supports key rotation: reads file encrypted with previous key" do
+      old_key = "1" * 64
+      new_key = "2" * 64
+
+      # Simulate rotated configuration: [new_key, old_key]
+      Rails.application.config.active_record.encryption.stubs(:primary_key).returns([ new_key, old_key ])
+      rotated_service = ActiveStorage::Service::EncryptedDiskService.new(root: @root)
+
+      # 1. Encrypt with old key using manual service instance
+      Rails.application.config.active_record.encryption.stubs(:primary_key).returns([ old_key ])
+      old_service = ActiveStorage::Service::EncryptedDiskService.new(root: @root)
+      old_service.upload("rotated_item", StringIO.new(@data))
+
+      # 2. Verify that rotated_service with [new_key, old_key] can read it
+      Rails.application.config.active_record.encryption.stubs(:primary_key).returns([ new_key, old_key ])
+      assert_equal @data, rotated_service.download("rotated_item")
+
+      # 3. New uploads use new_key
+      rotated_service.upload("new_item", StringIO.new("nuevo contenido".b))
+      assert_equal "nuevo contenido".b, rotated_service.download("new_item")
+    end
 end
