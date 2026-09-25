@@ -38,7 +38,7 @@ x-rails-env: &rails_env
   APP_DOMAIN: ${APP_DOMAIN:-finance.cd-co.com.py}
   PRODUCT_NAME: ${PRODUCT_NAME:-FinancePY}
   BRAND_NAME: ${BRAND_NAME:-CD & Co.}
-  REDIS_URL: redis://redis:6379/1
+  REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD requerido en .env.local (ver docs/ops/deploy-runbook.md para el orden de deploy)}@redis:6379/1
   ONBOARDING_STATE: ${ONBOARDING_STATE:-closed}
   EXCHANGE_RATE_PROVIDER: ${EXCHANGE_RATE_PROVIDER:-yahoo_finance}
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://finance.cd-co.com.py}
@@ -61,14 +61,26 @@ x-rails-env: &rails_env
 
 services:
   caddy:
-    image: caddy:2
+    # caddy:2-alpine (no caddy:2/debian) porque el healthcheck usa wget de
+    # BusyBox -- la imagen debian del tag "2" no trae curl ni wget instalados
+    # (Dockerfile oficial: caddyserver/caddy-docker, stage final FROM
+    # debian:*-slim solo con ca-certificates/libcap2-bin/mailcap). Digest
+    # resuelto 2026-09-23 vs Docker Hub, mismo major (2), no cambia versión.
+    image: caddy:2-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
     restart: unless-stopped
     ports:
       - "127.0.0.1:8080:8080"
     volumes:
       - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
     depends_on:
-      - web
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - financespy_net
     mem_limit: 128m
@@ -91,6 +103,16 @@ services:
     dns:
       - 8.8.8.8
       - 1.1.1.1
+    healthcheck:
+      # /up es el endpoint estándar de Rails (Rails::HealthController,
+      # config/routes.rb) -- 200 sin tocar DB/Redis por diseño de Rails,
+      # así que esto confirma que Puma responde, no que el stack completo
+      # esté sano (eso ya lo cubren los depends_on de redis/postgres).
+      test: ["CMD", "curl", "-f", "http://localhost:3000/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - financespy_net
     mem_limit: 1536m
@@ -113,6 +135,18 @@ services:
     dns:
       - 8.8.8.8
       - 1.1.1.1
+    healthcheck:
+      # Chequeo de proceso vivo, no de conectividad a Redis -- procps ya está
+      # instalado en el Dockerfile (pgrep). Sidekiq no expone un endpoint
+      # HTTP propio en este setup, y sidekiqmon (disponible en sidekiq 8.0.5,
+      # ver Gemfile.lock) requiere acceso a Redis para reportar, lo que
+      # duplicaría el chequeo de depends_on en vez de aislar "el proceso
+      # sigue vivo" de "Redis está sano".
+      test: ["CMD-SHELL", "pgrep -f 'sidekiq' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - financespy_net
     mem_limit: 768m
@@ -120,29 +154,45 @@ services:
     cpu_shares: 512
 
   redis:
-    image: redis:8.8
+    # Digest resuelto 2026-09-23 vs Docker Hub, mismo tag/major (8.8).
+    image: redis:8.8@sha256:0808d25ce768580377c7db21c2a2c63e47f51d9bccf43713bd1e3744061dd7f2
     restart: unless-stopped
-    command: redis-server --maxmemory 200mb --maxmemory-policy allkeys-lru
+    # --requirepass: sin esto, cualquier proceso en financespy_net (o un
+    # contenedor comprometido en la misma red bridge) lee/escribe Redis sin
+    # autenticar -- incluye sesiones cacheadas y la cola de Sidekiq con jobs
+    # que llevan payloads de negocio. --appendonly yes: antes solo tenía
+    # snapshotting RDB implícito de la imagen; AOF evita perder jobs en cola
+    # y cache reciente ante un `docker restart`/crash entre snapshots.
+    command: redis-server --maxmemory 200mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD requerido en .env.local (ver docs/ops/deploy-runbook.md)} --appendonly yes
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 5s
       timeout: 5s
       retries: 5
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD requerido en .env.local (ver docs/ops/deploy-runbook.md)}
     networks:
       - financespy_net
-    mem_limit: 256m
+    mem_limit: 288m
     cpus: 0.25
     cpu_shares: 256
 
   postgres:
-    image: postgres:17
+    # Digest resuelto 2026-09-23 vs Docker Hub, mismo tag/major (17).
+    image: postgres:17@sha256:f4c66b820c6f974249089d3d16d86a3698eae11e8746eb6644b2271031e91232
     restart: unless-stopped
     environment:
       POSTGRES_DB: financespy
       POSTGRES_USER: ${POSTGRES_LOCAL_USER:?POSTGRES_LOCAL_USER requerido en .env.local}
       POSTGRES_PASSWORD: ${POSTGRES_LOCAL_PASSWORD:?POSTGRES_LOCAL_PASSWORD requerido en .env.local}
+      # Explícito en vez de confiar en el default de la imagen oficial (que
+      # ya es scram-sha-256 para host connections desde ~2022, ver
+      # docs/ops/host-hardening.md#pg_hba) -- así queda auditable acá mismo
+      # y no depende de qué versión de la imagen se use.
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:

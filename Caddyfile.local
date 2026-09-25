@@ -22,9 +22,17 @@
 	@sw path /service-worker.js
 	header @sw >Cache-Control "no-cache"
 
-	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
-		X-Content-Type-Options "nosniff"
-		X-Frame-Options "SAMEORIGIN"
-	}
+	# X-Content-Type-Options y X-Frame-Options NO van acá: Rails ya los manda
+	# por default (config.action_dispatch.default_headers, sin override en
+	# config/application.rb ni en los initializers -- ver
+	# config/environments/production.rb). Ponerlos en Caddy también no rompe
+	# nada (el navegador toma el primer valor si se repiten idénticos) pero
+	# es una fuente de verdad duplicada que puede divergir en silencio.
+	#
+	# Strict-Transport-Security SÍ va acá: en este compose RAILS_FORCE_SSL=false
+	# (Caddy/Cloudflare Tunnel terminan TLS, no Rails -- ver compose.local.yml
+	# x-rails-env), y ActionDispatch::SSL (que es quien manda este header) solo
+	# corre cuando config.force_ssl es true. Sin Caddy, este header no lo manda
+	# nadie.
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
 }

@@ -2,7 +2,10 @@
 
 # Make sure RUBY_VERSION matches the Ruby version in .ruby-version and Gemfile
 ARG RUBY_VERSION=3.4.7
-FROM registry.docker.com/library/ruby:$RUBY_VERSION-slim AS base
+# Digest resuelto 2026-09-23 vs Docker Hub para ruby:3.4.7-slim (mismo tag,
+# no cambia versión). Si se sube RUBY_VERSION, hay que re-resolver el
+# digest -- el ARG por sí solo ya no alcanza para fijar la imagen.
+FROM registry.docker.com/library/ruby:$RUBY_VERSION-slim@sha256:93dd13e28987e373857fbda4a7f4ae99e9f7acb6fcc266035e551229974d1c89 AS base
 
 # Rails app lives here
 WORKDIR /rails
