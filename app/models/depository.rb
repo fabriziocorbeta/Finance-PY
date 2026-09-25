@@ -1,6 +1,9 @@
 class Depository < ApplicationRecord
   include Accountable
 
+  # See CreditCard's belongs_to :family comment.
+  belongs_to :family, optional: true
+
   SUBTYPES = {
     "checking" => { short: "Checking", long: "Checking" },
     "savings" => { short: "Savings", long: "Savings" },

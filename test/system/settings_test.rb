@@ -104,8 +104,11 @@ class SettingsTest < ApplicationSystemTestCase
   private
 
     def open_settings_from_sidebar
-      within "div[data-testid=user-menu]" do
-        find("button").click
+      3.times do
+        within "div[data-testid=user-menu]" do
+          find("button").click
+        end
+        break if has_link?("Settings", wait: 1)
       end
       click_link "Settings"
     end

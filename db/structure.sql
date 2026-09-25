@@ -73,6 +73,49 @@ END;
 $$;
 
 
+--
+-- Name: is_system_context(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.is_system_context() RETURNS boolean
+    LANGUAGE plpgsql STABLE
+    AS $$
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('app.rls_system_access', true), ''), 'false')::boolean;
+EXCEPTION
+  WHEN invalid_text_representation THEN
+    RETURN false;
+END;
+$$;
+
+
+--
+-- Name: rule_condition_root_rule_id(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.rule_condition_root_rule_id(condition_id uuid) RETURNS uuid
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    SET row_security TO 'off'
+    AS $$
+DECLARE
+  result uuid;
+BEGIN
+  WITH RECURSIVE condition_chain AS (
+    SELECT rc.id, rc.parent_id, rc.rule_id
+    FROM rule_conditions rc
+    WHERE rc.id = condition_id
+    UNION ALL
+    SELECT parent.id, parent.parent_id, parent.rule_id
+    FROM rule_conditions parent
+    JOIN condition_chain ON parent.id = condition_chain.parent_id
+    WHERE condition_chain.rule_id IS NULL
+  )
+  SELECT rule_id INTO result FROM condition_chain WHERE rule_id IS NOT NULL LIMIT 1;
+  RETURN result;
+END;
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -528,7 +571,8 @@ CREATE TABLE public.credit_cards (
     expiration_date date,
     annual_fee numeric(10,2),
     locked_attributes jsonb DEFAULT '{}'::jsonb,
-    subtype character varying
+    subtype character varying,
+    family_id uuid
 );
 
 
@@ -542,7 +586,8 @@ CREATE TABLE public.cryptos (
     updated_at timestamp(6) without time zone NOT NULL,
     locked_attributes jsonb DEFAULT '{}'::jsonb,
     subtype character varying,
-    tax_treatment character varying DEFAULT 'taxable'::character varying NOT NULL
+    tax_treatment character varying DEFAULT 'taxable'::character varying NOT NULL,
+    family_id uuid
 );
 
 
@@ -586,7 +631,8 @@ CREATE TABLE public.depositories (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     locked_attributes jsonb DEFAULT '{}'::jsonb,
-    subtype character varying
+    subtype character varying,
+    family_id uuid
 );
 
 
@@ -1229,7 +1275,8 @@ CREATE TABLE public.investments (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     locked_attributes jsonb DEFAULT '{}'::jsonb,
-    subtype character varying
+    subtype character varying,
+    family_id uuid
 );
 
 
@@ -1298,7 +1345,8 @@ CREATE TABLE public.loans (
     term_months integer,
     initial_balance numeric(19,4),
     locked_attributes jsonb DEFAULT '{}'::jsonb,
-    subtype character varying
+    subtype character varying,
+    family_id uuid
 );
 
 
@@ -1596,7 +1644,8 @@ CREATE TABLE public.other_assets (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     locked_attributes jsonb DEFAULT '{}'::jsonb,
-    subtype character varying
+    subtype character varying,
+    family_id uuid
 );
 
 
@@ -1609,7 +1658,8 @@ CREATE TABLE public.other_liabilities (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     locked_attributes jsonb DEFAULT '{}'::jsonb,
-    subtype character varying
+    subtype character varying,
+    family_id uuid
 );
 
 
@@ -1732,7 +1782,8 @@ CREATE TABLE public.properties (
     area_value integer,
     area_unit character varying,
     locked_attributes jsonb DEFAULT '{}'::jsonb,
-    subtype character varying
+    subtype character varying,
+    family_id uuid
 );
 
 
@@ -2380,7 +2431,8 @@ CREATE TABLE public.trades (
     currency character varying,
     locked_attributes jsonb DEFAULT '{}'::jsonb,
     investment_activity_label character varying,
-    fee numeric(19,4) DEFAULT 0.0 NOT NULL
+    fee numeric(19,4) DEFAULT 0.0 NOT NULL,
+    family_id uuid
 );
 
 
@@ -2490,7 +2542,8 @@ CREATE TABLE public.vehicles (
     make character varying,
     model character varying,
     locked_attributes jsonb DEFAULT '{}'::jsonb,
-    subtype character varying
+    subtype character varying,
+    family_id uuid
 );
 
 
@@ -3598,6 +3651,13 @@ CREATE UNIQUE INDEX index_account_providers_on_account_and_provider_type ON publ
 
 
 --
+-- Name: index_account_providers_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_account_providers_on_account_id ON public.account_providers USING btree (account_id);
+
+
+--
 -- Name: index_account_providers_on_provider_type_and_provider_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4004,6 +4064,20 @@ CREATE INDEX index_consents_on_user_id_and_kind ON public.consents USING btree (
 
 
 --
+-- Name: index_credit_cards_on_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_cards_on_family_id ON public.credit_cards USING btree (family_id);
+
+
+--
+-- Name: index_cryptos_on_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_cryptos_on_family_id ON public.cryptos USING btree (family_id);
+
+
+--
 -- Name: index_data_enrichments_on_enrichable; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4022,6 +4096,13 @@ CREATE INDEX index_deletion_records_on_deleted_at ON public.deletion_records USI
 --
 
 CREATE INDEX index_deletion_records_on_family_id_hash ON public.deletion_records USING btree (family_id_hash);
+
+
+--
+-- Name: index_depositories_on_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_depositories_on_family_id ON public.depositories USING btree (family_id);
 
 
 --
@@ -4508,6 +4589,13 @@ CREATE INDEX index_indexa_capital_items_on_status ON public.indexa_capital_items
 
 
 --
+-- Name: index_investments_on_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_investments_on_family_id ON public.investments USING btree (family_id);
+
+
+--
 -- Name: index_invitations_on_email; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4582,6 +4670,13 @@ CREATE INDEX index_llm_usages_on_family_id_and_created_at ON public.llm_usages U
 --
 
 CREATE INDEX index_llm_usages_on_family_id_and_operation ON public.llm_usages USING btree (family_id, operation);
+
+
+--
+-- Name: index_loans_on_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_loans_on_family_id ON public.loans USING btree (family_id);
 
 
 --
@@ -4795,6 +4890,20 @@ CREATE INDEX index_oidc_identities_on_user_id ON public.oidc_identities USING bt
 
 
 --
+-- Name: index_other_assets_on_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_other_assets_on_family_id ON public.other_assets USING btree (family_id);
+
+
+--
+-- Name: index_other_liabilities_on_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_other_liabilities_on_family_id ON public.other_liabilities USING btree (family_id);
+
+
+--
 -- Name: index_plaid_accounts_on_item_and_plaid_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4848,6 +4957,13 @@ CREATE INDEX index_products_on_family_id ON public.products USING btree (family_
 --
 
 CREATE UNIQUE INDEX index_products_on_family_id_and_sku ON public.products USING btree (family_id, sku) WHERE (sku IS NOT NULL);
+
+
+--
+-- Name: index_properties_on_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_properties_on_family_id ON public.properties USING btree (family_id);
 
 
 --
@@ -5348,6 +5464,13 @@ CREATE INDEX index_tool_calls_on_message_id ON public.tool_calls USING btree (me
 
 
 --
+-- Name: index_trades_on_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_trades_on_family_id ON public.trades USING btree (family_id);
+
+
+--
 -- Name: index_trades_on_investment_activity_label; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5495,6 +5618,13 @@ CREATE INDEX index_valuations_on_family_id ON public.valuations USING btree (fam
 
 
 --
+-- Name: index_vehicles_on_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_vehicles_on_family_id ON public.vehicles USING btree (family_id);
+
+
+--
 -- Name: index_versions_on_family_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5552,6 +5682,14 @@ ALTER TABLE ONLY public.coinbase_items
 
 ALTER TABLE ONLY public.simplefin_accounts
     ADD CONSTRAINT fk_rails_037b8cd84e FOREIGN KEY (simplefin_item_id) REFERENCES public.simplefin_items(id);
+
+
+--
+-- Name: trades fk_rails_0397925d9d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trades
+    ADD CONSTRAINT fk_rails_0397925d9d FOREIGN KEY (family_id) REFERENCES public.families(id);
 
 
 --
@@ -5683,6 +5821,14 @@ ALTER TABLE ONLY public.family_exports
 
 
 --
+-- Name: credit_cards fk_rails_280ab7710b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.credit_cards
+    ADD CONSTRAINT fk_rails_280ab7710b FOREIGN KEY (family_id) REFERENCES public.families(id);
+
+
+--
 -- Name: impersonation_sessions fk_rails_2b92af2e4a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5752,6 +5898,14 @@ ALTER TABLE ONLY public.transactions
 
 ALTER TABLE ONLY public.accounts
     ADD CONSTRAINT fk_rails_363bf5a48d FOREIGN KEY (family_id) REFERENCES public.families(id);
+
+
+--
+-- Name: properties fk_rails_369421940c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.properties
+    ADD CONSTRAINT fk_rails_369421940c FOREIGN KEY (family_id) REFERENCES public.families(id);
 
 
 --
@@ -5939,6 +6093,14 @@ ALTER TABLE ONLY public.sales
 
 
 --
+-- Name: vehicles fk_rails_6eab65eca9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vehicles
+    ADD CONSTRAINT fk_rails_6eab65eca9 FOREIGN KEY (family_id) REFERENCES public.families(id);
+
+
+--
 -- Name: llm_usages fk_rails_70d4e2ae94; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5992,6 +6154,14 @@ ALTER TABLE ONLY public.categories
 
 ALTER TABLE ONLY public.sessions
     ADD CONSTRAINT fk_rails_758836b4f0 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: loans fk_rails_7e24f8a216; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.loans
+    ADD CONSTRAINT fk_rails_7e24f8a216 FOREIGN KEY (family_id) REFERENCES public.families(id);
 
 
 --
@@ -6080,6 +6250,22 @@ ALTER TABLE ONLY public.rule_actions
 
 ALTER TABLE ONLY public.mercury_accounts
     ADD CONSTRAINT fk_rails_934709c5df FOREIGN KEY (mercury_item_id) REFERENCES public.mercury_items(id);
+
+
+--
+-- Name: investments fk_rails_94e9fcdb1b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.investments
+    ADD CONSTRAINT fk_rails_94e9fcdb1b FOREIGN KEY (family_id) REFERENCES public.families(id);
+
+
+--
+-- Name: depositories fk_rails_9792e125ec; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.depositories
+    ADD CONSTRAINT fk_rails_9792e125ec FOREIGN KEY (family_id) REFERENCES public.families(id);
 
 
 --
@@ -6192,6 +6378,22 @@ ALTER TABLE ONLY public.budget_categories
 
 ALTER TABLE ONLY public.syncs
     ADD CONSTRAINT fk_rails_ac338208d1 FOREIGN KEY (parent_id) REFERENCES public.syncs(id);
+
+
+--
+-- Name: other_liabilities fk_rails_ac77ae713d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.other_liabilities
+    ADD CONSTRAINT fk_rails_ac77ae713d FOREIGN KEY (family_id) REFERENCES public.families(id);
+
+
+--
+-- Name: cryptos fk_rails_af3714090e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cryptos
+    ADD CONSTRAINT fk_rails_af3714090e FOREIGN KEY (family_id) REFERENCES public.families(id);
 
 
 --
@@ -6483,6 +6685,14 @@ ALTER TABLE ONLY public.mobile_devices
 
 
 --
+-- Name: other_assets fk_rails_f6b40e93fc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.other_assets
+    ADD CONSTRAINT fk_rails_f6b40e93fc FOREIGN KEY (family_id) REFERENCES public.families(id);
+
+
+--
 -- Name: family_merchant_associations fk_rails_f6ec19d267; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6539,6 +6749,40 @@ ALTER TABLE ONLY public.imports
 
 
 --
+-- Name: account_providers; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.account_providers ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: account_providers account_providers_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY account_providers_family_isolation_policy ON public.account_providers USING ((account_id IN ( SELECT accounts.id
+   FROM public.accounts
+  WHERE (accounts.family_id = public.current_family_id())))) WITH CHECK ((account_id IN ( SELECT accounts.id
+   FROM public.accounts
+  WHERE (accounts.family_id = public.current_family_id()))));
+
+
+--
+-- Name: account_shares; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.account_shares ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: account_shares account_shares_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY account_shares_family_isolation_policy ON public.account_shares USING ((account_id IN ( SELECT accounts.id
+   FROM public.accounts
+  WHERE (accounts.family_id = public.current_family_id())))) WITH CHECK ((account_id IN ( SELECT accounts.id
+   FROM public.accounts
+  WHERE (accounts.family_id = public.current_family_id()))));
+
+
+--
 -- Name: accounts; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -6549,6 +6793,70 @@ ALTER TABLE public.accounts ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY accounts_family_isolation_policy ON public.accounts USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: addresses; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.addresses ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: addresses addresses_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY addresses_family_isolation_policy ON public.addresses USING ((((addressable_type)::text = 'Property'::text) AND (addressable_id IN ( SELECT properties.id
+   FROM public.properties
+  WHERE (properties.family_id = public.current_family_id()))))) WITH CHECK ((((addressable_type)::text = 'Property'::text) AND (addressable_id IN ( SELECT properties.id
+   FROM public.properties
+  WHERE (properties.family_id = public.current_family_id())))));
+
+
+--
+-- Name: balances; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.balances ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: balances balances_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY balances_family_isolation_policy ON public.balances USING ((account_id IN ( SELECT accounts.id
+   FROM public.accounts
+  WHERE (accounts.family_id = public.current_family_id())))) WITH CHECK ((account_id IN ( SELECT accounts.id
+   FROM public.accounts
+  WHERE (accounts.family_id = public.current_family_id()))));
+
+
+--
+-- Name: binance_accounts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.binance_accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: binance_accounts binance_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY binance_accounts_family_isolation_policy ON public.binance_accounts USING ((binance_item_id IN ( SELECT binance_items.id
+   FROM public.binance_items
+  WHERE (binance_items.family_id = public.current_family_id())))) WITH CHECK ((binance_item_id IN ( SELECT binance_items.id
+   FROM public.binance_items
+  WHERE (binance_items.family_id = public.current_family_id()))));
+
+
+--
+-- Name: binance_items; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.binance_items ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: binance_items binance_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY binance_items_family_isolation_policy ON public.binance_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
 
 
 --
@@ -6595,6 +6903,177 @@ CREATE POLICY categories_family_isolation_policy ON public.categories USING ((fa
 
 
 --
+-- Name: chats; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.chats ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: chats chats_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY chats_family_isolation_policy ON public.chats USING ((user_id IN ( SELECT users.id
+   FROM public.users
+  WHERE (users.family_id = public.current_family_id())))) WITH CHECK ((user_id IN ( SELECT users.id
+   FROM public.users
+  WHERE (users.family_id = public.current_family_id()))));
+
+
+--
+-- Name: coinbase_accounts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.coinbase_accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: coinbase_accounts coinbase_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY coinbase_accounts_family_isolation_policy ON public.coinbase_accounts USING ((coinbase_item_id IN ( SELECT coinbase_items.id
+   FROM public.coinbase_items
+  WHERE (coinbase_items.family_id = public.current_family_id())))) WITH CHECK ((coinbase_item_id IN ( SELECT coinbase_items.id
+   FROM public.coinbase_items
+  WHERE (coinbase_items.family_id = public.current_family_id()))));
+
+
+--
+-- Name: coinbase_items; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.coinbase_items ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: coinbase_items coinbase_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY coinbase_items_family_isolation_policy ON public.coinbase_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: coinstats_accounts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.coinstats_accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: coinstats_accounts coinstats_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY coinstats_accounts_family_isolation_policy ON public.coinstats_accounts USING ((coinstats_item_id IN ( SELECT coinstats_items.id
+   FROM public.coinstats_items
+  WHERE (coinstats_items.family_id = public.current_family_id())))) WITH CHECK ((coinstats_item_id IN ( SELECT coinstats_items.id
+   FROM public.coinstats_items
+  WHERE (coinstats_items.family_id = public.current_family_id()))));
+
+
+--
+-- Name: coinstats_items; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.coinstats_items ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: coinstats_items coinstats_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY coinstats_items_family_isolation_policy ON public.coinstats_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: credit_cards; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.credit_cards ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: credit_cards credit_cards_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY credit_cards_family_isolation_policy ON public.credit_cards USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: cryptos; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.cryptos ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: cryptos cryptos_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY cryptos_family_isolation_policy ON public.cryptos USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: data_enrichments; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.data_enrichments ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: data_enrichments data_enrichments_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY data_enrichments_family_isolation_policy ON public.data_enrichments USING (((((enrichable_type)::text = 'Transaction'::text) AND (enrichable_id IN ( SELECT transactions.id
+   FROM public.transactions
+  WHERE (transactions.family_id = public.current_family_id())))) OR (((enrichable_type)::text = 'Valuation'::text) AND (enrichable_id IN ( SELECT valuations.id
+   FROM public.valuations
+  WHERE (valuations.family_id = public.current_family_id())))) OR (((enrichable_type)::text = 'Trade'::text) AND (enrichable_id IN ( SELECT trades.id
+   FROM public.trades
+  WHERE (trades.family_id = public.current_family_id())))))) WITH CHECK (((((enrichable_type)::text = 'Transaction'::text) AND (enrichable_id IN ( SELECT transactions.id
+   FROM public.transactions
+  WHERE (transactions.family_id = public.current_family_id())))) OR (((enrichable_type)::text = 'Valuation'::text) AND (enrichable_id IN ( SELECT valuations.id
+   FROM public.valuations
+  WHERE (valuations.family_id = public.current_family_id())))) OR (((enrichable_type)::text = 'Trade'::text) AND (enrichable_id IN ( SELECT trades.id
+   FROM public.trades
+  WHERE (trades.family_id = public.current_family_id()))))));
+
+
+--
+-- Name: depositories; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.depositories ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: depositories depositories_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY depositories_family_isolation_policy ON public.depositories USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: enable_banking_accounts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.enable_banking_accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: enable_banking_accounts enable_banking_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY enable_banking_accounts_family_isolation_policy ON public.enable_banking_accounts USING ((enable_banking_item_id IN ( SELECT enable_banking_items.id
+   FROM public.enable_banking_items
+  WHERE (enable_banking_items.family_id = public.current_family_id())))) WITH CHECK ((enable_banking_item_id IN ( SELECT enable_banking_items.id
+   FROM public.enable_banking_items
+  WHERE (enable_banking_items.family_id = public.current_family_id()))));
+
+
+--
+-- Name: enable_banking_items; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.enable_banking_items ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: enable_banking_items enable_banking_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY enable_banking_items_family_isolation_policy ON public.enable_banking_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
 -- Name: entries; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -6609,6 +7088,58 @@ CREATE POLICY entries_family_isolation_policy ON public.entries USING ((account_
   WHERE (accounts.family_id = public.current_family_id())))) WITH CHECK ((account_id IN ( SELECT accounts.id
    FROM public.accounts
   WHERE (accounts.family_id = public.current_family_id()))));
+
+
+--
+-- Name: families; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.families ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: families families_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY families_family_isolation_policy ON public.families USING ((id = public.current_family_id())) WITH CHECK ((id = public.current_family_id()));
+
+
+--
+-- Name: family_documents; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.family_documents ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: family_documents family_documents_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY family_documents_family_isolation_policy ON public.family_documents USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: family_exports; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.family_exports ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: family_exports family_exports_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY family_exports_family_isolation_policy ON public.family_exports USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: family_merchant_associations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.family_merchant_associations ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: family_merchant_associations family_merchant_associations_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY family_merchant_associations_family_isolation_policy ON public.family_merchant_associations USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
 
 
 --
@@ -6663,6 +7194,40 @@ CREATE POLICY fuel_logs_family_isolation_policy ON public.fuel_logs USING ((flee
 
 
 --
+-- Name: goal_accounts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.goal_accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: goal_accounts goal_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY goal_accounts_family_isolation_policy ON public.goal_accounts USING ((goal_id IN ( SELECT goals.id
+   FROM public.goals
+  WHERE (goals.family_id = public.current_family_id())))) WITH CHECK ((goal_id IN ( SELECT goals.id
+   FROM public.goals
+  WHERE (goals.family_id = public.current_family_id()))));
+
+
+--
+-- Name: goal_pledges; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.goal_pledges ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: goal_pledges goal_pledges_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY goal_pledges_family_isolation_policy ON public.goal_pledges USING ((goal_id IN ( SELECT goals.id
+   FROM public.goals
+  WHERE (goals.family_id = public.current_family_id())))) WITH CHECK ((goal_id IN ( SELECT goals.id
+   FROM public.goals
+  WHERE (goals.family_id = public.current_family_id()))));
+
+
+--
 -- Name: goals; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -6676,6 +7241,182 @@ CREATE POLICY goals_family_isolation_policy ON public.goals USING ((family_id = 
 
 
 --
+-- Name: holdings; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.holdings ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: holdings holdings_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY holdings_family_isolation_policy ON public.holdings USING ((account_id IN ( SELECT accounts.id
+   FROM public.accounts
+  WHERE (accounts.family_id = public.current_family_id())))) WITH CHECK ((account_id IN ( SELECT accounts.id
+   FROM public.accounts
+  WHERE (accounts.family_id = public.current_family_id()))));
+
+
+--
+-- Name: import_mappings; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.import_mappings ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: import_mappings import_mappings_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY import_mappings_family_isolation_policy ON public.import_mappings USING ((import_id IN ( SELECT imports.id
+   FROM public.imports
+  WHERE (imports.family_id = public.current_family_id())))) WITH CHECK ((import_id IN ( SELECT imports.id
+   FROM public.imports
+  WHERE (imports.family_id = public.current_family_id()))));
+
+
+--
+-- Name: import_rows; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.import_rows ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: import_rows import_rows_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY import_rows_family_isolation_policy ON public.import_rows USING ((import_id IN ( SELECT imports.id
+   FROM public.imports
+  WHERE (imports.family_id = public.current_family_id())))) WITH CHECK ((import_id IN ( SELECT imports.id
+   FROM public.imports
+  WHERE (imports.family_id = public.current_family_id()))));
+
+
+--
+-- Name: imports; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.imports ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: imports imports_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY imports_family_isolation_policy ON public.imports USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: indexa_capital_accounts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.indexa_capital_accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: indexa_capital_accounts indexa_capital_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY indexa_capital_accounts_family_isolation_policy ON public.indexa_capital_accounts USING ((indexa_capital_item_id IN ( SELECT indexa_capital_items.id
+   FROM public.indexa_capital_items
+  WHERE (indexa_capital_items.family_id = public.current_family_id())))) WITH CHECK ((indexa_capital_item_id IN ( SELECT indexa_capital_items.id
+   FROM public.indexa_capital_items
+  WHERE (indexa_capital_items.family_id = public.current_family_id()))));
+
+
+--
+-- Name: indexa_capital_items; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.indexa_capital_items ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: indexa_capital_items indexa_capital_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY indexa_capital_items_family_isolation_policy ON public.indexa_capital_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: investments; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.investments ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: investments investments_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY investments_family_isolation_policy ON public.investments USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: invitations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.invitations ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: invitations invitations_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY invitations_family_isolation_policy ON public.invitations USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: llm_usages; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.llm_usages ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: llm_usages llm_usages_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY llm_usages_family_isolation_policy ON public.llm_usages USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: loans; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.loans ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: loans loans_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY loans_family_isolation_policy ON public.loans USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: lunchflow_accounts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.lunchflow_accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: lunchflow_accounts lunchflow_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY lunchflow_accounts_family_isolation_policy ON public.lunchflow_accounts USING ((lunchflow_item_id IN ( SELECT lunchflow_items.id
+   FROM public.lunchflow_items
+  WHERE (lunchflow_items.family_id = public.current_family_id())))) WITH CHECK ((lunchflow_item_id IN ( SELECT lunchflow_items.id
+   FROM public.lunchflow_items
+  WHERE (lunchflow_items.family_id = public.current_family_id()))));
+
+
+--
+-- Name: lunchflow_items; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.lunchflow_items ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: lunchflow_items lunchflow_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY lunchflow_items_family_isolation_policy ON public.lunchflow_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
 -- Name: merchants; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -6686,6 +7427,130 @@ ALTER TABLE public.merchants ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY merchants_family_isolation_policy ON public.merchants USING (((family_id = public.current_family_id()) OR (family_id IS NULL))) WITH CHECK (((family_id = public.current_family_id()) OR (family_id IS NULL)));
+
+
+--
+-- Name: mercury_accounts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.mercury_accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: mercury_accounts mercury_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY mercury_accounts_family_isolation_policy ON public.mercury_accounts USING ((mercury_item_id IN ( SELECT mercury_items.id
+   FROM public.mercury_items
+  WHERE (mercury_items.family_id = public.current_family_id())))) WITH CHECK ((mercury_item_id IN ( SELECT mercury_items.id
+   FROM public.mercury_items
+  WHERE (mercury_items.family_id = public.current_family_id()))));
+
+
+--
+-- Name: mercury_items; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.mercury_items ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: mercury_items mercury_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY mercury_items_family_isolation_policy ON public.mercury_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: messages; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: messages messages_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY messages_family_isolation_policy ON public.messages USING ((chat_id IN ( SELECT chats.id
+   FROM public.chats
+  WHERE (chats.user_id IN ( SELECT users.id
+           FROM public.users
+          WHERE (users.family_id = public.current_family_id())))))) WITH CHECK ((chat_id IN ( SELECT chats.id
+   FROM public.chats
+  WHERE (chats.user_id IN ( SELECT users.id
+           FROM public.users
+          WHERE (users.family_id = public.current_family_id()))))));
+
+
+--
+-- Name: mobile_devices; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.mobile_devices ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: mobile_devices mobile_devices_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY mobile_devices_family_isolation_policy ON public.mobile_devices USING ((user_id IN ( SELECT users.id
+   FROM public.users
+  WHERE (users.family_id = public.current_family_id())))) WITH CHECK ((user_id IN ( SELECT users.id
+   FROM public.users
+  WHERE (users.family_id = public.current_family_id()))));
+
+
+--
+-- Name: other_assets; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.other_assets ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: other_assets other_assets_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY other_assets_family_isolation_policy ON public.other_assets USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: other_liabilities; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.other_liabilities ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: other_liabilities other_liabilities_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY other_liabilities_family_isolation_policy ON public.other_liabilities USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: plaid_accounts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.plaid_accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: plaid_accounts plaid_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY plaid_accounts_family_isolation_policy ON public.plaid_accounts USING ((plaid_item_id IN ( SELECT plaid_items.id
+   FROM public.plaid_items
+  WHERE (plaid_items.family_id = public.current_family_id())))) WITH CHECK ((plaid_item_id IN ( SELECT plaid_items.id
+   FROM public.plaid_items
+  WHERE (plaid_items.family_id = public.current_family_id()))));
+
+
+--
+-- Name: plaid_items; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.plaid_items ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: plaid_items plaid_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY plaid_items_family_isolation_policy ON public.plaid_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
 
 
 --
@@ -6716,6 +7581,19 @@ ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY products_family_isolation_policy ON public.products USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: properties; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: properties properties_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY properties_family_isolation_policy ON public.properties USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
 
 
 --
@@ -6775,6 +7653,74 @@ CREATE POLICY recurring_transactions_family_isolation_policy ON public.recurring
 
 
 --
+-- Name: rejected_transfers; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.rejected_transfers ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: rejected_transfers rejected_transfers_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY rejected_transfers_family_isolation_policy ON public.rejected_transfers USING ((public.current_family_id() IN ( SELECT transactions.family_id
+   FROM public.transactions
+  WHERE (transactions.id = ANY (ARRAY[rejected_transfers.inflow_transaction_id, rejected_transfers.outflow_transaction_id]))))) WITH CHECK ((public.current_family_id() IN ( SELECT transactions.family_id
+   FROM public.transactions
+  WHERE (transactions.id = ANY (ARRAY[rejected_transfers.inflow_transaction_id, rejected_transfers.outflow_transaction_id])))));
+
+
+--
+-- Name: rule_actions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.rule_actions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: rule_actions rule_actions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY rule_actions_family_isolation_policy ON public.rule_actions USING ((rule_id IN ( SELECT rules.id
+   FROM public.rules
+  WHERE (rules.family_id = public.current_family_id())))) WITH CHECK ((rule_id IN ( SELECT rules.id
+   FROM public.rules
+  WHERE (rules.family_id = public.current_family_id()))));
+
+
+--
+-- Name: rule_conditions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.rule_conditions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: rule_conditions rule_conditions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY rule_conditions_family_isolation_policy ON public.rule_conditions USING ((public.rule_condition_root_rule_id(id) IN ( SELECT rules.id
+   FROM public.rules
+  WHERE (rules.family_id = public.current_family_id())))) WITH CHECK ((public.rule_condition_root_rule_id(id) IN ( SELECT rules.id
+   FROM public.rules
+  WHERE (rules.family_id = public.current_family_id()))));
+
+
+--
+-- Name: rule_runs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.rule_runs ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: rule_runs rule_runs_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY rule_runs_family_isolation_policy ON public.rule_runs USING ((rule_id IN ( SELECT rules.id
+   FROM public.rules
+  WHERE (rules.family_id = public.current_family_id())))) WITH CHECK ((rule_id IN ( SELECT rules.id
+   FROM public.rules
+  WHERE (rules.family_id = public.current_family_id()))));
+
+
+--
 -- Name: rules; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -6818,6 +7764,152 @@ CREATE POLICY sales_family_isolation_policy ON public.sales USING ((family_id = 
 
 
 --
+-- Name: simplefin_accounts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.simplefin_accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: simplefin_accounts simplefin_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY simplefin_accounts_family_isolation_policy ON public.simplefin_accounts USING ((simplefin_item_id IN ( SELECT simplefin_items.id
+   FROM public.simplefin_items
+  WHERE (simplefin_items.family_id = public.current_family_id())))) WITH CHECK ((simplefin_item_id IN ( SELECT simplefin_items.id
+   FROM public.simplefin_items
+  WHERE (simplefin_items.family_id = public.current_family_id()))));
+
+
+--
+-- Name: simplefin_items; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.simplefin_items ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: simplefin_items simplefin_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY simplefin_items_family_isolation_policy ON public.simplefin_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: snaptrade_accounts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.snaptrade_accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: snaptrade_accounts snaptrade_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY snaptrade_accounts_family_isolation_policy ON public.snaptrade_accounts USING ((snaptrade_item_id IN ( SELECT snaptrade_items.id
+   FROM public.snaptrade_items
+  WHERE (snaptrade_items.family_id = public.current_family_id())))) WITH CHECK ((snaptrade_item_id IN ( SELECT snaptrade_items.id
+   FROM public.snaptrade_items
+  WHERE (snaptrade_items.family_id = public.current_family_id()))));
+
+
+--
+-- Name: snaptrade_items; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.snaptrade_items ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: snaptrade_items snaptrade_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY snaptrade_items_family_isolation_policy ON public.snaptrade_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: sophtron_accounts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sophtron_accounts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sophtron_accounts sophtron_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY sophtron_accounts_family_isolation_policy ON public.sophtron_accounts USING ((sophtron_item_id IN ( SELECT sophtron_items.id
+   FROM public.sophtron_items
+  WHERE (sophtron_items.family_id = public.current_family_id())))) WITH CHECK ((sophtron_item_id IN ( SELECT sophtron_items.id
+   FROM public.sophtron_items
+  WHERE (sophtron_items.family_id = public.current_family_id()))));
+
+
+--
+-- Name: sophtron_items; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sophtron_items ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sophtron_items sophtron_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY sophtron_items_family_isolation_policy ON public.sophtron_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: statement_imports; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.statement_imports ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: statement_imports statement_imports_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY statement_imports_family_isolation_policy ON public.statement_imports USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: subscriptions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: subscriptions subscriptions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY subscriptions_family_isolation_policy ON public.subscriptions USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: syncs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.syncs ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: syncs syncs_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY syncs_family_isolation_policy ON public.syncs USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: taggings; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.taggings ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: taggings taggings_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY taggings_family_isolation_policy ON public.taggings USING ((tag_id IN ( SELECT tags.id
+   FROM public.tags
+  WHERE (tags.family_id = public.current_family_id())))) WITH CHECK ((tag_id IN ( SELECT tags.id
+   FROM public.tags
+  WHERE (tags.family_id = public.current_family_id()))));
+
+
+--
 -- Name: tags; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -6828,6 +7920,44 @@ ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY tags_family_isolation_policy ON public.tags USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: tool_calls; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.tool_calls ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: tool_calls tool_calls_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tool_calls_family_isolation_policy ON public.tool_calls USING ((message_id IN ( SELECT messages.id
+   FROM public.messages
+  WHERE (messages.chat_id IN ( SELECT chats.id
+           FROM public.chats
+          WHERE (chats.user_id IN ( SELECT users.id
+                   FROM public.users
+                  WHERE (users.family_id = public.current_family_id())))))))) WITH CHECK ((message_id IN ( SELECT messages.id
+   FROM public.messages
+  WHERE (messages.chat_id IN ( SELECT chats.id
+           FROM public.chats
+          WHERE (chats.user_id IN ( SELECT users.id
+                   FROM public.users
+                  WHERE (users.family_id = public.current_family_id()))))))));
+
+
+--
+-- Name: trades; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.trades ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: trades trades_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY trades_family_isolation_policy ON public.trades USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
 
 
 --
@@ -6844,6 +7974,23 @@ CREATE POLICY transactions_family_isolation_policy ON public.transactions USING 
 
 
 --
+-- Name: transfers; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.transfers ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: transfers transfers_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY transfers_family_isolation_policy ON public.transfers USING ((public.current_family_id() IN ( SELECT transactions.family_id
+   FROM public.transactions
+  WHERE (transactions.id = ANY (ARRAY[transfers.inflow_transaction_id, transfers.outflow_transaction_id]))))) WITH CHECK ((public.current_family_id() IN ( SELECT transactions.family_id
+   FROM public.transactions
+  WHERE (transactions.id = ANY (ARRAY[transfers.inflow_transaction_id, transfers.outflow_transaction_id])))));
+
+
+--
 -- Name: valuations; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -6854,6 +8001,19 @@ ALTER TABLE public.valuations ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY valuations_family_isolation_policy ON public.valuations USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
+-- Name: vehicles; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.vehicles ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: vehicles vehicles_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY vehicles_family_isolation_policy ON public.vehicles USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
 
 
 --
@@ -6877,6 +8037,12 @@ SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
 ('20260924145501'),
+('20260923143250'),
+('20260923143240'),
+('20260923143235'),
+('20260923143230'),
+('20260923143220'),
+('20260923143210'),
 ('20260923142112'),
 ('20260923142111'),
 ('20260922214444'),

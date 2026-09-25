@@ -1,5 +1,19 @@
 require "test_helper"
 
+# Used only by the "job with no resolvable family" test below: a job whose
+# arguments can never resolve to a Family via
+# ActiveJobRowLevelSecurity#resolve_job_family, to prove such a job does not
+# silently inherit whatever app.current_family_id happens to be set on the
+# connection it's given.
+class RlsContextNoFamilyTestJob < ApplicationJob
+  cattr_accessor :captured_family_id_setting
+
+  def perform
+    self.class.captured_family_id_setting =
+      ActiveRecord::Base.connection.select_value("SELECT current_setting('app.current_family_id', true)")
+  end
+end
+
 class RowLevelSecurityTest < ActionDispatch::IntegrationTest
   def self.ensure_non_superuser_role
     return if @non_superuser_role_ensured
@@ -354,5 +368,51 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     ActiveRecord::Base.connection.execute("RESET app.current_family_id")
     assert_nil Balance.find_by(id: balance_a.id)
     assert_not_nil Balance.find_by(id: balance_b.id)
+  end
+
+  test "connection-pool checkin callback resets app.current_family_id even after the connection was left mid-aborted-transaction, so the next checkout sees NULL" do
+    conn = ActiveRecord::Base.connection
+
+    conn.execute(
+      ActiveRecord::Base.sanitize_sql([ "SET app.current_family_id = ?", @family_a.id ])
+    )
+
+    # Simulate a request that raised mid-transaction: put the connection into
+    # Postgres' aborted-transaction state at the wire protocol level (not via
+    # AR's `transaction do` helper, which would itself ROLLBACK and hide the
+    # failure mode we're exercising).
+    conn.raw_connection.exec("BEGIN")
+    begin
+      conn.raw_connection.exec("SELECT 1/0")
+    rescue PG::Error
+      # expected
+    end
+
+    # This is what ActiveRecord::ConnectionPool#checkin does internally right
+    # before adding the connection back to @available; invoking it directly
+    # exercises the real callback chain registered in
+    # config/initializers/rls_connection_safety.rb without fighting the test
+    # suite's pinned/transactional connection.
+    conn._run_checkin_callbacks { }
+
+    reset_value = conn.select_value("SELECT current_setting('app.current_family_id', true)").to_s
+    assert_predicate reset_value, :empty?,
+      "the next checkout of this connection must never see a leaked family_id from the failed request"
+  ensure
+    conn.raw_connection.exec("ROLLBACK") rescue nil
+  end
+
+  test "a job whose arguments resolve to no family does not inherit a stale app.current_family_id left on the connection" do
+    ActiveRecord::Base.connection.execute(
+      ActiveRecord::Base.sanitize_sql([ "SET app.current_family_id = ?", @family_a.id ])
+    )
+
+    RlsContextNoFamilyTestJob.captured_family_id_setting = :not_captured
+    RlsContextNoFamilyTestJob.perform_now
+
+    assert_predicate RlsContextNoFamilyTestJob.captured_family_id_setting.to_s, :empty?,
+      "a job with no resolvable family must run with app.current_family_id cleared, not whatever was left on the connection"
+  ensure
+    ActiveRecord::Base.connection.execute("RESET app.current_family_id") rescue nil
   end
 end

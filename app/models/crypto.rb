@@ -1,6 +1,9 @@
 class Crypto < ApplicationRecord
   include Accountable
 
+  # See CreditCard's belongs_to :family comment.
+  belongs_to :family, optional: true
+
   # Subtypes differentiate how crypto is held:
   # - wallet: Self-custody or provider-synced wallets (CoinStats, etc.)
   # - exchange: Centralized exchanges with trade history (Coinbase, Kraken, etc.)

@@ -27,6 +27,7 @@ class TradeTest < ActiveSupport::TestCase
     # up to 10 decimal places — should persist exactly
     precise_price = BigDecimal("12.3456789012")
     trade = Trade.create!(
+      family: families(:dylan_family),
       security: security,
       price: precise_price,
       qty: 10000,
@@ -42,6 +43,7 @@ class TradeTest < ActiveSupport::TestCase
   test "fee defaults to 0" do
     security = Security.create!(ticker: "FEETEST", exchange_operating_mic: "XNAS")
     trade = Trade.create!(
+      family: families(:dylan_family),
       security: security,
       price: 100,
       qty: 10,
@@ -58,6 +60,7 @@ class TradeTest < ActiveSupport::TestCase
     # over 10 decimal places — will be rounded
     price_with_too_many_decimals = BigDecimal("1.123456789012345")
     trade = Trade.create!(
+      family: families(:dylan_family),
       security: security,
       price: price_with_too_many_decimals,
       qty: 1,

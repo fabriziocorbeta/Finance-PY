@@ -1,6 +1,12 @@
 class CreditCard < ApplicationRecord
   include Accountable
 
+  # See app/models/concerns/family_id_propagatable.rb: family_id is
+  # populated by Account's propagate_family_id_to_accountable callback, not
+  # set directly by callers (added in RLS Ola 2 / E1 Etapa B, see
+  # db/migrate/20260923143220_add_family_id_to_accountable_and_trade_tables.rb).
+  belongs_to :family, optional: true
+
   SUBTYPES = {
     "credit_card" => { short: "Credit Card", long: "Credit Card" }
   }.freeze

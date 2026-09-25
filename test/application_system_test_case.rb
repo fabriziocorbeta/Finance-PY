@@ -91,7 +91,13 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     # it's not an <a> tag at all). None of that surfaced until this was
     # actually exercised.
     def sign_out
-      find("[data-testid='user-menu'] button").click
+      # Retry loop to handle race condition where Capybara clicks the button
+      # before the DS--menu Stimulus controller attaches its click listener.
+      3.times do
+        find("[data-testid='user-menu'] button").click
+        break if has_button?("Log out", wait: 1)
+      end
+
       click_button "Log out"
 
       # Trigger Capybara's wait mechanism to avoid timing issues with logout

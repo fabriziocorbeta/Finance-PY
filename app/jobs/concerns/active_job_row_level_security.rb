@@ -17,6 +17,14 @@ module ActiveJobRowLevelSecurity
           yield
         end
       else
+        # No family could be resolved from this job's arguments. Do NOT just
+        # yield: the connection this job's thread checks out could in theory
+        # still carry a stale app.current_family_id from a prior job/request
+        # if the connection-pool safety net (config/initializers/
+        # rls_connection_safety.rb) didn't run yet for this connection, or a
+        # future code path bypasses it. Explicitly reset before running, so a
+        # family-less job never silently inherits someone else's RLS scope.
+        RlsContext.reset
         yield
       end
     end

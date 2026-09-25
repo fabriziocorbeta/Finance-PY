@@ -1,6 +1,9 @@
 class Property < ApplicationRecord
   include Accountable
 
+  # See CreditCard's belongs_to :family comment.
+  belongs_to :family, optional: true
+
   SUBTYPES = {
     "single_family_home" => { short: "Single Family Home", long: "Single Family Home" },
     "multi_family_home" => { short: "Multi-Family Home", long: "Multi-Family Home" },

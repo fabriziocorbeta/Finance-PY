@@ -1,6 +1,9 @@
 class Vehicle < ApplicationRecord
   include Accountable
 
+  # See CreditCard's belongs_to :family comment.
+  belongs_to :family, optional: true
+
   attribute :mileage_unit, :string, default: "mi"
 
   def mileage
