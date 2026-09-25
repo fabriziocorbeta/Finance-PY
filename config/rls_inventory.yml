@@ -152,6 +152,13 @@ coinstats_items:
   force: false
   notes: Credencial/conexion de integracion bancaria/exchange.
   policy_present: true
+consents:
+  class: Consent
+  classification: auth
+  family_path: consents.user_id -> users.family_id, consents.family_id
+  force: false
+  notes: Opt-in de procesamiento IA y analitica (E8); consultado a nivel usuario y familia antes o fuera del contexto RLS.
+  policy_present: false
 credit_cards:
   class: CreditCard
   classification: direct-nullable
@@ -180,6 +187,13 @@ data_enrichments:
   force: false
   notes: include Enrichable en Entryable; guarda el valor "pre-AI-enrichment" de un campo para poder revertir.
   policy_present: true
+deletion_records:
+  class: DeletionRecord
+  classification: global
+  family_path: N/A (genuinamente global, sin relacion a family)
+  force: false
+  notes: Registro estadistico anonimo de borrado de cuentas sin PII (E8).
+  policy_present: false
 depositories:
   class: Depository
   classification: direct-nullable

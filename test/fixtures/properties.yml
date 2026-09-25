@@ -6,7 +6,6 @@ one:
 
 primary_residence:
   id: c506b873-dd1b-4136-8564-02367303946a
-  family: dylan_family
   subtype: Single Family Home
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
