@@ -70,7 +70,7 @@ class Api::V1::BaseController < ApplicationController
       @_doorkeeper_token = access_token
 
       if doorkeeper_token&.resource_owner_id
-        @current_user = User.find_by(id: doorkeeper_token.resource_owner_id)
+        @current_user = User.auth_find_by_id( doorkeeper_token.resource_owner_id)
 
         # If user doesn't exist, the token is invalid (user was deleted)
         unless @current_user

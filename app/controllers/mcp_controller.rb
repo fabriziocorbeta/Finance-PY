@@ -125,7 +125,7 @@ class McpController < ApplicationController
         end
 
         email = ENV["MCP_USER_EMAIL"]
-        @mcp_user = User.find_by(email: email) if email.present?
+        @mcp_user = User.auth_find_by_email( email) if email.present?
 
         unless @mcp_user
           render json: { error: "MCP user not configured" }, status: :service_unavailable

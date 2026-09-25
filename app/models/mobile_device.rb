@@ -31,7 +31,9 @@ class MobileDevice < ApplicationRecord
   end
 
   def self.upsert_device!(user, attrs)
-    device = user.mobile_devices.find_or_initialize_by(device_id: attrs[:device_id])
+    device = RlsContext.with_auth_bypass do
+      user.mobile_devices.find_or_initialize_by(device_id: attrs[:device_id])
+    end
     device.assign_attributes(
       device_name: attrs[:device_name],
       device_type: attrs[:device_type],
