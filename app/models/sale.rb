@@ -29,23 +29,35 @@ class Sale < ApplicationRecord
     sale_items.sum(&:subtotal)
   end
 
+  # with_lock takes a row lock (SELECT ... FOR UPDATE) on this sale and reloads
+  # it before yielding, all inside its own transaction (requires_new: true, so
+  # it works whether or not we're already inside one). That serializes two
+  # concurrent complete!/cancel! calls for the SAME sale (double-click, retried
+  # request): the second caller blocks until the first commits, then reloads
+  # and sees the final status, so the idempotency check below turns it into a
+  # no-op instead of double-booking stock movements / entries.
   def complete!
-    transaction do
+    with_lock do
+      next if completed?
+
       unless draft?
         errors.add(:status, "must be draft to complete")
         raise ActiveRecord::RecordInvalid.new(self)
       end
 
+      locked_products = lock_products_for(sale_items)
+
       sale_items.each do |item|
-        if item.product.stock < item.quantity
-          errors.add(:base, "Insufficient stock for #{item.product.name}")
+        product = locked_products.fetch(item.product_id)
+        if product.stock < item.quantity
+          errors.add(:base, "Insufficient stock for #{product.name}")
           raise ActiveRecord::RecordInvalid.new(self)
         end
       end
 
       sale_items.each do |item|
         ProductStockMovement.create!(
-          product: item.product,
+          product: locked_products.fetch(item.product_id),
           reason: "salida",
           quantity_delta: -item.quantity
         )
@@ -63,16 +75,20 @@ class Sale < ApplicationRecord
   end
 
   def cancel!
-    transaction do
+    with_lock do
+      next if cancelled?
+
       unless draft? || completed?
         errors.add(:status, "must be draft or completed to cancel")
         raise ActiveRecord::RecordInvalid.new(self)
       end
 
       if completed?
+        locked_products = lock_products_for(sale_items)
+
         sale_items.each do |item|
           ProductStockMovement.create!(
-            product: item.product,
+            product: locked_products.fetch(item.product_id),
             reason: "entrada",
             quantity_delta: item.quantity
           )
@@ -91,6 +107,17 @@ class Sale < ApplicationRecord
   end
 
   private
+
+    # Locks the products involved in this sale in a fixed order (by id) so two
+    # concurrent transactions touching an overlapping set of products can
+    # never deadlock waiting on each other in opposite orders, and so the
+    # stock read below is safe from a concurrent update on the same product
+    # (e.g. two sales of the last unit, or a purchase-order cancellation
+    # reverting stock at the same time).
+    def lock_products_for(items)
+      product_ids = items.map(&:product_id).uniq.sort
+      Product.where(id: product_ids).order(:id).lock.index_by(&:id)
+    end
 
     def create_associated_entry
       sale_category = family.categories.find_or_create_by!(name: "Ventas") do |category|

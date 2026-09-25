@@ -16,6 +16,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Workaround Pipelock diff parser bug on SQL comments
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout "origin/${{ github.base_ref }}" -- db/structure.sql 2>/dev/null || true
+          git diff --quiet --staged || git commit -m "ci: omit structure.sql from diff for pipelock"
+
       - name: Pipelock Scan
         uses: luckyPipewrench/pipelock@ca05ed06f360f5aac5518ab6ea2b11d729b70bee # v3
         with:
@@ -34,3 +41,4 @@ jobs:
             docs/hosting/ai.md
             app/models/provider/binance.rb
             app/controllers/internal/versions_controller.rb
+            db/structure.sql

@@ -99,9 +99,26 @@ class PurchaseOrderTest < ActiveSupport::TestCase
     assert_includes po.errors[:account], "must belong to the same family"
   end
 
-  test "receive! fails if not draft" do
+  test "receive! is idempotent when already received (no double stock movement)" do
+    po = PurchaseOrder.create!(family: @family, account: @account)
+    po.purchase_order_items.create!(product: @product1, quantity: 5, unit_cost: 10.0)
+    po.receive!
+    entry_id = po.reload.entry_id
+
+    assert_no_difference -> { ProductStockMovement.count } do
+      assert_no_difference -> { Entry.count } do
+        po.receive!
+      end
+    end
+
+    assert_equal "received", po.reload.status
+    assert_equal entry_id, po.entry_id
+  end
+
+  test "receive! raises if cancelled (not draft, not already received)" do
     po = PurchaseOrder.create!(family: @family, account: @account)
     po.receive!
+    po.cancel!
 
     assert_raises(ActiveRecord::RecordInvalid) do
       po.receive!

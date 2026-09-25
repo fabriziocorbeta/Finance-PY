@@ -1713,7 +1713,8 @@ CREATE TABLE public.products (
     min_stock integer DEFAULT 0 NOT NULL,
     description text,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT chk_products_stock_non_negative CHECK ((stock >= 0))
 );
 
 ALTER TABLE ONLY public.products FORCE ROW LEVEL SECURITY;
@@ -4871,10 +4872,10 @@ CREATE INDEX index_purchase_orders_on_account_id ON public.purchase_orders USING
 
 
 --
--- Name: index_purchase_orders_on_entry_id; Type: INDEX; Schema: public; Owner: -
+-- Name: index_purchase_orders_on_entry_id_unique; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_purchase_orders_on_entry_id ON public.purchase_orders USING btree (entry_id);
+CREATE UNIQUE INDEX index_purchase_orders_on_entry_id_unique ON public.purchase_orders USING btree (entry_id) WHERE (entry_id IS NOT NULL);
 
 
 --
@@ -5018,10 +5019,10 @@ CREATE INDEX index_sales_on_account_id ON public.sales USING btree (account_id);
 
 
 --
--- Name: index_sales_on_entry_id; Type: INDEX; Schema: public; Owner: -
+-- Name: index_sales_on_entry_id_unique; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_sales_on_entry_id ON public.sales USING btree (entry_id);
+CREATE UNIQUE INDEX index_sales_on_entry_id_unique ON public.sales USING btree (entry_id) WHERE (entry_id IS NOT NULL);
 
 
 --
@@ -6876,6 +6877,8 @@ SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
 ('20260924145501'),
+('20260923142112'),
+('20260923142111'),
 ('20260922214444'),
 ('20260919170000'),
 ('20260919060000'),
