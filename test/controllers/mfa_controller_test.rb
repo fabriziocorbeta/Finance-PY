@@ -237,7 +237,7 @@ class MfaControllerTest < ActionDispatch::IntegrationTest
       public_key: "public-key"
     )
 
-    delete disable_mfa_path
+    totp = ROTP::TOTP.new(@user.otp_secret, issuer: "Sure Finances"); delete disable_mfa_path, params: { password: user_password_test, code: totp.now }
 
     assert_redirected_to settings_security_path
     assert_not @user.reload.otp_required?

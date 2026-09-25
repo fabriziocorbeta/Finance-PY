@@ -189,6 +189,7 @@ class User < ApplicationRecord
 
   def deactivate
     revoke_all_oauth_tokens!
+    sessions.destroy_all
     update active: false, email: deactivated_email
   end
 

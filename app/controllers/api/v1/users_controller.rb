@@ -97,8 +97,10 @@ class Api::V1::UsersController < Api::V1::BaseController
     def user_params
       p = params.key?(:user) ? params.require(:user) : params
 
-      family_attrs = %i[name currency country date_format timezone locale month_start_day]
-      family_attrs.push(:moniker, :default_account_sharing) if user_admin?
+      family_attrs = []
+      if user_admin?
+        family_attrs = %i[name currency country date_format timezone locale month_start_day moniker default_account_sharing]
+      end
 
       p.permit(
         :first_name, :last_name, :email, :theme, :locale,

@@ -101,35 +101,42 @@ class McpController < ApplicationController
     end
 
     def authenticate_mcp_token!
-      expected = ENV["MCP_API_TOKEN"]
-
-      unless expected.present?
-        render json: { error: "MCP endpoint not configured" }, status: :service_unavailable
-        return
-      end
-
-      token = request.headers["Authorization"]&.delete_prefix("Bearer ")&.strip
-
-      unless ActiveSupport::SecurityUtils.secure_compare(token.to_s, expected)
+      bearer_token = request.headers["Authorization"]&.delete_prefix("Bearer ")&.strip
+      unless bearer_token.present?
         render json: { error: "unauthorized" }, status: :unauthorized
         return
       end
 
-      setup_mcp_user
-    end
+      key_record = ApiKey.find_by_value(bearer_token)
+      if key_record&.user
+        @mcp_user = key_record.user
+        key_record.update_last_used!
+      else
+        expected = ENV["MCP_API_TOKEN"]
 
-    def setup_mcp_user
-      email = ENV["MCP_USER_EMAIL"]
-      @mcp_user = User.find_by(email: email) if email.present?
+        unless expected.present?
+          render json: { error: "MCP endpoint not configured" }, status: :service_unavailable
+          return
+        end
 
-      unless @mcp_user
-        render json: { error: "MCP user not configured" }, status: :service_unavailable
-        return
+        unless ActiveSupport::SecurityUtils.secure_compare(bearer_token, expected)
+          render json: { error: "unauthorized" }, status: :unauthorized
+          return
+        end
+
+        email = ENV["MCP_USER_EMAIL"]
+        @mcp_user = User.find_by(email: email) if email.present?
+
+        unless @mcp_user
+          render json: { error: "MCP user not configured" }, status: :service_unavailable
+          return
+        end
       end
 
+      RlsContext.set_family(@mcp_user.family_id)
+
       # Build a fresh session to avoid inheriting impersonation state from
-      # existing sessions (Current.user resolves via active_impersonator_session
-      # first, which could leak another user's data into MCP tool calls).
+      # existing sessions
       Current.session = @mcp_user.sessions.build(
         user_agent: request.user_agent,
         ip_address: request.ip
