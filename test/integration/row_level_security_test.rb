@@ -170,12 +170,12 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
 
     # Phase C Auth tables (Family B)
     @session_b = Session.create!(user: @user_b, ip_address: "1.1.1.1", user_agent: "Test")
-    @api_key_b = ApiKey.create!(user: @user_b, name: "Test Key B", source: "monitoring", key: "supersecret123b", scopes: ["read"])
+    @api_key_b = ApiKey.create!(user: @user_b, name: "Test Key B", source: "monitoring", key: "supersecret123b", scopes: [ "read" ])
     @mobile_device_b = MobileDevice.upsert_device!(@user_b, { device_id: "dev123", device_name: "Phone", device_type: "android" })
 
     # Phase C Auth tables (Family A)
     @session_a = Session.create!(user: @user_a, ip_address: "1.1.1.1", user_agent: "Test")
-    @api_key_a = ApiKey.create!(user: @user_a, name: "Test Key A", source: "monitoring", key: "supersecret123a", scopes: ["read"])
+    @api_key_a = ApiKey.create!(user: @user_a, name: "Test Key A", source: "monitoring", key: "supersecret123a", scopes: [ "read" ])
     @mobile_device_a = MobileDevice.upsert_device!(@user_a, { device_id: "dev456", device_name: "Phone", device_type: "android" })
   end
 

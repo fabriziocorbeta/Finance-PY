@@ -69,7 +69,7 @@ class EnableRlsForPhaseCAuthTables < ActiveRecord::Migration[7.1]
 
       ALTER TABLE mobile_devices NO FORCE ROW LEVEL SECURITY;
       DROP POLICY IF EXISTS mobile_devices_family_isolation_policy ON mobile_devices;
-      
+
       -- Recreate the Etapa B baseline policies without auth_bypass
       CREATE POLICY users_family_isolation_policy ON users USING (family_id = current_family_id());
       CREATE POLICY sessions_family_isolation_policy ON sessions USING (user_id IN (SELECT id FROM users WHERE family_id = current_family_id()));

@@ -34,8 +34,8 @@ class ApiKey < ApplicationRecord
 
     # Find by encrypted display_key (deterministic encryption allows querying)
     # Bypass RLS because this happens during API authentication before a family context is set.
-    api_key = RlsContext.with_auth_bypass { find_by(display_key: plain_key) }
-    return api_key if api_key&.active?
+    record = RlsContext.with_auth_bypass { find_by(display_key: plain_key) }
+    return record if record&.active?
     nil
   end
 

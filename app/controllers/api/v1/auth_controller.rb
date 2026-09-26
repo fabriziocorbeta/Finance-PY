@@ -70,7 +70,7 @@ module Api
       end
 
       def login
-        user = User.auth_find_by_email( params[:email])
+        user = User.auth_find_by_email(params[:email])
 
         if user&.authenticate(params[:password])
           # Check MFA if enabled

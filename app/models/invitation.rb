@@ -131,7 +131,7 @@ class Invitation < ApplicationRecord
     def invitee_has_no_data_in_other_family
       return if email.blank?
 
-      invitee = User.auth_find_by_email( email)
+      invitee = User.auth_find_by_email(email)
       return if invitee.blank?
       return if invitee.family_id == family_id
 
