@@ -265,6 +265,8 @@ CREATE TABLE public.api_keys (
     source character varying DEFAULT 'web'::character varying
 );
 
+ALTER TABLE ONLY public.api_keys FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: ar_internal_metadata; Type: TABLE; Schema: public; Owner: -
@@ -1505,6 +1507,8 @@ CREATE TABLE public.mobile_devices (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.mobile_devices FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: oauth_access_grants; Type: TABLE; Schema: public; Owner: -
@@ -2070,6 +2074,8 @@ CREATE TABLE public.sessions (
     ip_address_digest character varying
 );
 
+ALTER TABLE ONLY public.sessions FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: settings; Type: TABLE; Schema: public; Owner: -
@@ -2511,6 +2517,8 @@ CREATE TABLE public.users (
     webauthn_id character varying
 );
 
+ALTER TABLE ONLY public.users FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: valuations; Type: TABLE; Schema: public; Owner: -
@@ -2701,13 +2709,6 @@ ALTER TABLE ONLY public.addresses
 
 ALTER TABLE ONLY public.api_keys
     ADD CONSTRAINT api_keys_pkey PRIMARY KEY (id);
-
-
---
--- Name: api_keys FORCE ROW LEVEL SECURITY; Type: ALTER TABLE; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.api_keys FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -3175,13 +3176,6 @@ ALTER TABLE ONLY public.mobile_devices
 
 
 --
--- Name: mobile_devices FORCE ROW LEVEL SECURITY; Type: ALTER TABLE; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.mobile_devices FORCE ROW LEVEL SECURITY;
-
-
---
 -- Name: oauth_access_grants oauth_access_grants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3390,13 +3384,6 @@ ALTER TABLE ONLY public.sessions
 
 
 --
--- Name: sessions FORCE ROW LEVEL SECURITY; Type: ALTER TABLE; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.sessions FORCE ROW LEVEL SECURITY;
-
-
---
 -- Name: settings settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3546,13 +3533,6 @@ ALTER TABLE ONLY public.transfers
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
-
-
---
--- Name: users FORCE ROW LEVEL SECURITY; Type: ALTER TABLE; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.users FORCE ROW LEVEL SECURITY;
 
 
 --
