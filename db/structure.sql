@@ -265,6 +265,8 @@ CREATE TABLE public.api_keys (
     source character varying DEFAULT 'web'::character varying
 );
 
+ALTER TABLE ONLY public.api_keys FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: ar_internal_metadata; Type: TABLE; Schema: public; Owner: -
@@ -1505,6 +1507,8 @@ CREATE TABLE public.mobile_devices (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.mobile_devices FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: oauth_access_grants; Type: TABLE; Schema: public; Owner: -
@@ -2070,6 +2074,8 @@ CREATE TABLE public.sessions (
     ip_address_digest character varying
 );
 
+ALTER TABLE ONLY public.sessions FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: settings; Type: TABLE; Schema: public; Owner: -
@@ -2510,6 +2516,8 @@ CREATE TABLE public.users (
     default_account_id uuid,
     webauthn_id character varying
 );
+
+ALTER TABLE ONLY public.users FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -6813,6 +6821,21 @@ CREATE POLICY addresses_family_isolation_policy ON public.addresses USING ((((ad
 
 
 --
+-- Name: api_keys; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.api_keys ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: api_keys api_keys_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY api_keys_family_isolation_policy ON public.api_keys USING (((user_id IN ( SELECT users.id
+   FROM public.users
+  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
+
+
+--
 -- Name: balances; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -7490,11 +7513,9 @@ ALTER TABLE public.mobile_devices ENABLE ROW LEVEL SECURITY;
 -- Name: mobile_devices mobile_devices_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY mobile_devices_family_isolation_policy ON public.mobile_devices USING ((user_id IN ( SELECT users.id
+CREATE POLICY mobile_devices_family_isolation_policy ON public.mobile_devices USING (((user_id IN ( SELECT users.id
    FROM public.users
-  WHERE (users.family_id = public.current_family_id())))) WITH CHECK ((user_id IN ( SELECT users.id
-   FROM public.users
-  WHERE (users.family_id = public.current_family_id()))));
+  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7764,6 +7785,21 @@ CREATE POLICY sales_family_isolation_policy ON public.sales USING ((family_id = 
 
 
 --
+-- Name: sessions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sessions sessions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY sessions_family_isolation_policy ON public.sessions USING (((user_id IN ( SELECT users.id
+   FROM public.users
+  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
+
+
+--
 -- Name: simplefin_accounts; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -7991,6 +8027,19 @@ CREATE POLICY transfers_family_isolation_policy ON public.transfers USING ((publ
 
 
 --
+-- Name: users; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: users users_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY users_family_isolation_policy ON public.users USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
+
+
+--
 -- Name: valuations; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -8037,6 +8086,7 @@ SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
 ('20260925224530'),
+('20260925210741'),
 ('20260924145501'),
 ('20260923143250'),
 ('20260923143240'),

@@ -63,6 +63,20 @@ class User < ApplicationRecord
   # Returns the appropriate role for a new user creating a family.
   # The very first user of an instance becomes super_admin; subsequent users
   # get the specified fallback role (typically :admin for family creators).
+  def self.auth_find_by_email(email)
+    RlsContext.with_auth_bypass { find_by(email: email) }
+  end
+
+  def self.auth_find_by_id(id)
+    RlsContext.with_auth_bypass { find_by(id: id) }
+  end
+
+  # Lookups by token happen during password reset and email confirmation,
+  # before a family context is established. Bypass RLS so the user can be found.
+  def self.find_by_token_for(purpose, token)
+    RlsContext.with_auth_bypass { super }
+  end
+
   def self.role_for_new_family_creator(fallback_role: :admin)
     User.exists? ? fallback_role : :super_admin
   end

@@ -20,7 +20,7 @@ class MfaController < ApplicationController
   end
 
   def verify
-    @user = User.find_by(id: session[:mfa_user_id])
+    @user = User.auth_find_by_id(session[:mfa_user_id])
 
     if @user.nil?
       redirect_to new_session_path
@@ -28,7 +28,7 @@ class MfaController < ApplicationController
   end
 
   def verify_code
-    @user = User.find_by(id: session[:mfa_user_id])
+    @user = User.auth_find_by_id(session[:mfa_user_id])
 
     if @user&.verify_otp_with_lockout?(params[:code])
       complete_mfa_sign_in(@user)
@@ -40,7 +40,7 @@ class MfaController < ApplicationController
   end
 
   def webauthn_options
-    @user = User.find_by(id: session[:mfa_user_id])
+    @user = User.auth_find_by_id(session[:mfa_user_id])
 
     unless @user&.webauthn_enabled?
       return render json: { error: t(".unavailable") }, status: :unprocessable_entity
@@ -56,7 +56,7 @@ class MfaController < ApplicationController
   end
 
   def verify_webauthn
-    @user = User.find_by(id: session[:mfa_user_id])
+    @user = User.auth_find_by_id(session[:mfa_user_id])
     challenge = session.delete(:webauthn_authentication_challenge)
 
     unless @user&.webauthn_enabled? && challenge.present?
