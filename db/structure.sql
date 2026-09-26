@@ -8084,6 +8084,7 @@ CREATE POLICY versions_family_isolation_policy ON public.versions USING ((family
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260925224530'),
 ('20260925210741'),
 ('20260924145501'),
 ('20260923143250'),

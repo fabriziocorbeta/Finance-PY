@@ -262,6 +262,39 @@ class UserTest < ActiveSupport::TestCase
     assert_match %r{issuer=Sure}, user.provisioning_uri
   end
 
+  test "ai_enabled? requires an active family AI processing consent (E6)" do
+    user = users(:family_admin)
+    assert user.ai_enabled, "fixture should have the preference on"
+    assert user.ai_enabled?, "fixture family should have consent from test/fixtures/consents.yml"
+
+    Consent.where(family: user.family, kind: "ai_processing").active.update_all(revoked_at: Time.current)
+    assert_not user.ai_enabled?, "revoking consent should turn off AI access even though the preference is still on"
+  end
+
+  test "grant_ai_consent and revoke_ai_consent toggle the E6 gate" do
+    # Deliberately NOT testing that user.update!(ai_enabled: true) grants
+    # consent by itself: it must not, since apply_role_based_ui_defaults can
+    # also flip ai_enabled to true as a side effect of a role/layout change,
+    # with nobody having consented to anything. Only UsersController calls
+    # grant_ai_consent/revoke_ai_consent explicitly, when the submitted form
+    # params actually include ai_enabled (see users_controller.rb#update).
+    user = users(:family_admin)
+    user.update!(ai_enabled: false)
+    user.revoke_ai_consent
+    assert_not user.ai_enabled?
+    assert_not Consent.ai_processing_granted?(user.family)
+
+    user.update!(ai_enabled: true)
+    user.grant_ai_consent
+    assert user.ai_enabled?
+    assert Consent.ai_processing_granted?(user.family)
+
+    user.update!(ai_enabled: false)
+    user.revoke_ai_consent
+    assert_not user.ai_enabled?
+    assert_not Consent.ai_processing_granted?(user.family)
+  end
+
   test "ai_available? returns true when openai access token set in settings" do
     Rails.application.config.app_mode.stubs(:self_hosted?).returns(true)
     previous = Setting.openai_access_token
@@ -314,8 +347,12 @@ class UserTest < ActiveSupport::TestCase
   end
 
   test "intro layout collapses sidebars and enables ai" do
+    # A fresh family, not families(:empty): that fixture already has an
+    # active ai_processing consent (test/fixtures/consents.yml), which would
+    # mask the exact thing this test is pinning -- that the layout-driven
+    # ai_enabled default does NOT itself grant AI access without consent.
     user = User.new(
-      family: families(:empty),
+      family: Family.create!(name: "Intro Layout Test Family"),
       email: "intro-new@example.com",
       password: "Password1!",
       password_confirmation: "Password1!",
@@ -327,7 +364,10 @@ class UserTest < ActiveSupport::TestCase
     assert user.ui_layout_intro?
     assert_not user.show_sidebar?
     assert_not user.show_ai_sidebar?
-    assert user.ai_enabled?
+    assert user.ai_enabled, "intro layout should default the ai_enabled preference on for guests"
+    # The preference alone does not grant AI access (E6): the family must
+    # have explicitly consented, which this auto-defaulted guest has not.
+    assert_not user.ai_enabled?
   end
 
   test "non-guest role cannot persist intro layout" do
@@ -727,5 +767,42 @@ class UserTest < ActiveSupport::TestCase
 
       assert_not user.otp_locked?
     end
+  end
+
+  test "purge on the last user in a family delegates to FamilyPurger (E8)" do
+    family = Family.create!(name: "Solo Purge Test Family")
+    user = User.create!(
+      family: family,
+      first_name: "Solo",
+      last_name: "User",
+      email: "solo-purge@example.com",
+      password: "Password1!",
+      password_confirmation: "Password1!",
+      role: :admin
+    )
+    Consent.create!(family: family, user: user, kind: "ai_processing", granted_at: Time.current)
+    assert user.send(:last_user_in_family?)
+
+    family_id = family.id
+    user.purge
+
+    assert_not Family.exists?(family_id)
+    assert_not User.exists?(user.id)
+    # This is the E8 behavior a plain family.destroy does not provide:
+    # no has_many :consents on Family means it would not cascade, and an
+    # anonymous DeletionRecord audit entry gets written.
+    assert_not Consent.exists?(family_id: family_id)
+    assert DeletionRecord.exists?(family_id_hash: Digest::SHA256.hexdigest(family_id.to_s))
+  end
+
+  test "purge on a non-last user in a family destroys just that user, not the family" do
+    user = users(:family_member)
+    family = user.family
+    assert_not user.send(:last_user_in_family?)
+
+    user.purge
+
+    assert_not User.exists?(user.id)
+    assert Family.exists?(family.id)
   end
 end

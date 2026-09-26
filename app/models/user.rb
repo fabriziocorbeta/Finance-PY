@@ -175,7 +175,7 @@ class User < ApplicationRecord
   end
 
   def ai_enabled?
-    ai_enabled && ai_available?
+    ai_enabled && ai_available? && Consent.ai_processing_granted?(family)
   end
 
   def self.default_ui_layout
@@ -222,9 +222,34 @@ class User < ApplicationRecord
     UserPurgeJob.perform_later(self)
   end
 
+  # Called explicitly by Settings::ProfilesController / UsersController when
+  # the user actually submits the "Enable AI Chats" form (which shows the
+  # data-handling notice, see app/views/chats/_ai_consent.html.erb) -- that
+  # submission is the explicit consent act for E6. Deliberately NOT wired as
+  # an after_update_commit callback on ai_enabled's value: that would also
+  # fire when apply_role_based_ui_defaults auto-sets ai_enabled=true for a
+  # guest in the intro layout, silently granting consent nobody gave.
+  def grant_ai_consent
+    return unless family
+
+    consent = Consent.find_or_initialize_by(family: family, user: self, kind: "ai_processing")
+    consent.update!(granted_at: Time.current, revoked_at: nil)
+  end
+
+  def revoke_ai_consent
+    return unless family
+
+    Consent.where(family: family, kind: "ai_processing").active.update_all(revoked_at: Time.current)
+  end
+
   def purge
     if last_user_in_family?
-      family.destroy
+      # FamilyPurger (E8) does what a plain family.destroy does not:
+      # purges ActiveStorage blobs, removes orphaned PaperTrail versions
+      # (Family has no has_many :versions to cascade them) and orphaned
+      # Consent rows (no has_many :consents either), and writes an
+      # anonymous DeletionRecord audit entry with no PII.
+      FamilyPurger.purge!(family)
     else
       reassign_owned_accounts!
       destroy

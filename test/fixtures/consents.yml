@@ -1,0 +1,21 @@
+# Backfilled consent for the fixture families whose users have
+# ai_enabled: true (see test/fixtures/users.yml). Without this, User#ai_enabled?
+# (which now requires Consent.ai_processing_granted?, see E6) would return
+# false across most of the suite despite the ai_enabled preference being on.
+empty_family_ai_processing:
+  family: empty
+  user: empty
+  kind: ai_processing
+  granted_at: <%= 3.days.ago %>
+
+dylan_family_ai_processing:
+  family: dylan_family
+  user: family_admin
+  kind: ai_processing
+  granted_at: <%= 3.days.ago %>
+
+inactive_trial_ai_processing:
+  family: inactive_trial
+  user: inactive_trial_user
+  kind: ai_processing
+  granted_at: <%= 90.days.ago %>
