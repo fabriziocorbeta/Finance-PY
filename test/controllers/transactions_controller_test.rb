@@ -525,7 +525,7 @@ end
   end
 
   test "creates transaction with custom exchange rate" do
-    account = @user.family.accounts.create!(owner: @user, 
+    account = @user.family.accounts.create!(owner: @user,
       name: "USD Account",
       currency: "USD",
       balance: 1000,
@@ -557,7 +557,7 @@ end
   end
 
   test "creates transaction without custom exchange rate" do
-    account = @user.family.accounts.create!(owner: @user, 
+    account = @user.family.accounts.create!(owner: @user,
       name: "USD Account",
       currency: "USD",
       balance: 1000,

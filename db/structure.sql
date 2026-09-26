@@ -1,6 +1,7 @@
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -263,8 +264,6 @@ CREATE TABLE public.api_keys (
     display_key character varying NOT NULL,
     source character varying DEFAULT 'web'::character varying
 );
-
-ALTER TABLE ONLY public.api_keys FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1506,8 +1505,6 @@ CREATE TABLE public.mobile_devices (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
-ALTER TABLE ONLY public.mobile_devices FORCE ROW LEVEL SECURITY;
-
 
 --
 -- Name: oauth_access_grants; Type: TABLE; Schema: public; Owner: -
@@ -2073,8 +2070,6 @@ CREATE TABLE public.sessions (
     ip_address_digest character varying
 );
 
-ALTER TABLE ONLY public.sessions FORCE ROW LEVEL SECURITY;
-
 
 --
 -- Name: settings; Type: TABLE; Schema: public; Owner: -
@@ -2516,8 +2511,6 @@ CREATE TABLE public.users (
     webauthn_id character varying
 );
 
-ALTER TABLE ONLY public.users FORCE ROW LEVEL SECURITY;
-
 
 --
 -- Name: valuations; Type: TABLE; Schema: public; Owner: -
@@ -2708,6 +2701,13 @@ ALTER TABLE ONLY public.addresses
 
 ALTER TABLE ONLY public.api_keys
     ADD CONSTRAINT api_keys_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: api_keys FORCE ROW LEVEL SECURITY; Type: ALTER TABLE; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_keys FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -3175,6 +3175,13 @@ ALTER TABLE ONLY public.mobile_devices
 
 
 --
+-- Name: mobile_devices FORCE ROW LEVEL SECURITY; Type: ALTER TABLE; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.mobile_devices FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: oauth_access_grants oauth_access_grants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3383,6 +3390,13 @@ ALTER TABLE ONLY public.sessions
 
 
 --
+-- Name: sessions FORCE ROW LEVEL SECURITY; Type: ALTER TABLE; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sessions FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: settings settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3532,6 +3546,13 @@ ALTER TABLE ONLY public.transfers
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: users FORCE ROW LEVEL SECURITY; Type: ALTER TABLE; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -6820,21 +6841,6 @@ CREATE POLICY addresses_family_isolation_policy ON public.addresses USING ((((ad
 
 
 --
--- Name: api_keys; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.api_keys ENABLE ROW LEVEL SECURITY;
-
---
--- Name: api_keys api_keys_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY api_keys_family_isolation_policy ON public.api_keys USING (((user_id IN ( SELECT users.id
-   FROM public.users
-  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
-
-
---
 -- Name: balances; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -7509,6 +7515,46 @@ CREATE POLICY messages_family_isolation_policy ON public.messages USING ((chat_i
 ALTER TABLE public.mobile_devices ENABLE ROW LEVEL SECURITY;
 
 --
+--
+-- Name: api_keys; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.api_keys ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: api_keys api_keys_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY api_keys_family_isolation_policy ON public.api_keys USING (((user_id IN ( SELECT users.id
+   FROM public.users
+  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
+
+--
+-- Name: sessions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sessions sessions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY sessions_family_isolation_policy ON public.sessions USING (((user_id IN ( SELECT users.id
+   FROM public.users
+  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
+
+--
+-- Name: users; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: users users_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY users_family_isolation_policy ON public.users USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
+
 -- Name: mobile_devices mobile_devices_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -7784,21 +7830,6 @@ CREATE POLICY sales_family_isolation_policy ON public.sales USING ((family_id = 
 
 
 --
--- Name: sessions; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
-
---
--- Name: sessions sessions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY sessions_family_isolation_policy ON public.sessions USING (((user_id IN ( SELECT users.id
-   FROM public.users
-  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
-
-
---
 -- Name: simplefin_accounts; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -8023,19 +8054,6 @@ CREATE POLICY transfers_family_isolation_policy ON public.transfers USING ((publ
   WHERE (transactions.id = ANY (ARRAY[transfers.inflow_transaction_id, transfers.outflow_transaction_id]))))) WITH CHECK ((public.current_family_id() IN ( SELECT transactions.family_id
    FROM public.transactions
   WHERE (transactions.id = ANY (ARRAY[transfers.inflow_transaction_id, transfers.outflow_transaction_id])))));
-
-
---
--- Name: users; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-
---
--- Name: users users_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY users_family_isolation_policy ON public.users USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
