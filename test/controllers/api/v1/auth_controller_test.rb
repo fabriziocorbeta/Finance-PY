@@ -476,6 +476,10 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
   test "should enable ai for authenticated user" do
     user = users(:family_admin)
     user.update!(ai_enabled: false)
+    # dylan_family already has an active ai_processing consent
+    # (test/fixtures/consents.yml) -- revoke it so this test actually
+    # exercises enable_ai granting consent (E6), not just the preference.
+    Consent.where(family: user.family, kind: "ai_processing").active.update_all(revoked_at: Time.current)
     device = user.mobile_devices.create!(@device_info)
     token = Doorkeeper::AccessToken.create!(application: @shared_app, resource_owner_id: user.id, mobile_device_id: device.id, scopes: "read_write")
 
@@ -489,6 +493,7 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
     assert_equal true, response_data.dig("user", "ai_enabled")
     assert_equal user.ui_layout, response_data.dig("user", "ui_layout")
     assert_equal true, user.reload.ai_enabled
+    assert user.ai_enabled?, "enable_ai should grant consent (E6), not just flip the preference"
   end
 
   test "should require read_write scope to enable ai" do

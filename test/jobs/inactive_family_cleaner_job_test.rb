@@ -146,4 +146,14 @@ class InactiveFamilyCleanerJobTest < ActiveJob::TestCase
 
     assert Family.exists?(@inactive_family.id)
   end
+
+  test "destroys via FamilyPurger, writing an anonymous DeletionRecord (E8)" do
+    family_id = @inactive_family.id
+    family_hash = Digest::SHA256.hexdigest(family_id.to_s)
+
+    InactiveFamilyCleanerJob.perform_now
+
+    assert DeletionRecord.exists?(family_id_hash: family_hash),
+      "cleanup should go through FamilyPurger, not a bare family.destroy"
+  end
 end

@@ -246,6 +246,10 @@ module Api
         end
 
         if user.update(ai_enabled: true)
+          # Same explicit consent act as the web toggle (E6) -- see
+          # UsersController#update. There is no matching disable_ai endpoint
+          # on the API, so this only needs to grant, never revoke.
+          user.grant_ai_consent
           render json: { user: mobile_user_payload(user) }
         else
           render json: { errors: user.errors.full_messages }, status: :unprocessable_entity

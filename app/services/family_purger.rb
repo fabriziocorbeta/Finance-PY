@@ -46,6 +46,13 @@ class FamilyPurger
         # same reasoning as the versions cleanup above.
         Consent.where(family_id: family_id).delete_all if defined?(Consent)
 
+        # 3c. FamilyMerchantAssociation has no has_many on Family either, and
+        # unlike consents/versions its family_id FK has no ON DELETE CASCADE
+        # -- so without this cleanup, family.destroy! below would not just
+        # orphan rows, it would raise a foreign key violation and abort the
+        # whole purge for any family that ever had a merchant association.
+        FamilyMerchantAssociation.where(family_id: family_id).delete_all if defined?(FamilyMerchantAssociation)
+
         # 4. Destroy family record with cascading associations
         @family.destroy!
         conn.execute("DELETE FROM versions WHERE family_id = #{conn.quote(family_id)}")
