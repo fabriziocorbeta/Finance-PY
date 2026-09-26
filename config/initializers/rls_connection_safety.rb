@@ -52,10 +52,11 @@ Rails.application.config.to_prepare do
   # log loudly since this should never happen given (a).
   adapter_class.set_callback :checkout, :after do
     begin
-      leaked = select_value("SELECT current_setting('app.current_family_id', true)")
-      if leaked.present?
+      leaked_family = select_value("SELECT current_setting('app.current_family_id', true)")
+      leaked_auth = select_value("SELECT current_setting('app.rls_auth_bypass', true)")
+      if leaked_family.present? || leaked_auth.present?
         Rails.logger.error(
-          "[RlsContext] connection checked out of the pool with a leaked app.current_family_id=#{leaked}; " \
+          "[RlsContext] connection checked out of the pool with a leaked app.current_family_id=#{leaked_family.inspect} or app.rls_auth_bypass=#{leaked_auth.inspect}; " \
           "forcing reset. This indicates the :checkin safety net missed a path -- investigate."
         )
         RlsContext.reset(self)

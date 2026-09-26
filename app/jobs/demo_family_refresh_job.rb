@@ -38,12 +38,14 @@ class DemoFamilyRefreshJob < ApplicationJob
     def sessions_count_for(family, period_start:, period_end:)
       return 0 unless family
 
-      Session
-        .joins(:user)
+      RlsContext.with_auth_bypass(reason: 'metrics') do
+        Session
+          .joins(:user)
         .where(users: { family_id: family.id })
         .where(created_at: period_start...period_end)
         .distinct
         .count(:id)
+      end
     end
 
 
@@ -69,7 +71,8 @@ class DemoFamilyRefreshJob < ApplicationJob
     end
 
     def notify_super_admins!(old_family:, old_family_session_count:, newly_created_families_count:, period_start:, period_end:)
-      User.super_admin.find_each do |super_admin|
+      RlsContext.with_auth_bypass(reason: 'admin_notification') do
+        User.super_admin.find_each do |super_admin|
         DemoFamilyRefreshMailer.with(
           super_admin:,
           old_family_id: old_family&.id,
@@ -79,6 +82,7 @@ class DemoFamilyRefreshJob < ApplicationJob
           period_start:,
           period_end:
         ).completed.deliver_later
+        end
       end
     end
 end

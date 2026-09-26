@@ -41,7 +41,7 @@ class SessionsController < ApplicationController
     user = nil
 
     if AuthConfig.local_login_enabled?
-      user = User.authenticate_by(email: params[:email], password: params[:password])
+      user = User.auth_authenticate_by(email: params[:email], password: params[:password])
     else
       # Local login is disabled. Only allow attempts when an emergency super-admin
       # override is enabled and the email belongs to a super-admin.
@@ -52,7 +52,7 @@ class SessionsController < ApplicationController
           return
         end
 
-        user = User.authenticate_by(email: params[:email], password: params[:password])
+        user = User.auth_authenticate_by(email: params[:email], password: params[:password])
       else
         redirect_to new_session_path, alert: t("sessions.create.local_login_disabled")
         return
@@ -152,7 +152,7 @@ class SessionsController < ApplicationController
     end
 
     # Security fix: Look up by provider + uid, not just email
-    oidc_identity = OidcIdentity.find_by(provider: auth.provider, uid: auth.uid)
+    oidc_identity = RlsContext.with_auth_bypass { OidcIdentity.find_by(provider: auth.provider, uid: auth.uid) }
 
     if oidc_identity
       # Existing OIDC identity found - authenticate the user
