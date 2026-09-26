@@ -187,13 +187,6 @@ class User < ApplicationRecord
   validate :can_deactivate, if: -> { active_changed? && !active }
   after_update_commit :purge_later, if: -> { saved_change_to_active?(from: true, to: false) }
 
-  # Submitting the "Enable AI Chats" form (which shows the data-handling
-  # notice, see app/views/chats/_ai_consent.html.erb) is the explicit
-  # consent act for E6 (see docs/security/rls-design.md's consent
-  # requirements). Revoking is implicit on disable -- no extra UI needed.
-  after_update_commit :grant_ai_consent, if: -> { saved_change_to_ai_enabled?(from: false, to: true) }
-  after_update_commit :revoke_ai_consent, if: -> { saved_change_to_ai_enabled?(from: true, to: false) }
-
   def deactivate
     revoke_all_oauth_tokens!
     sessions.destroy_all
@@ -215,6 +208,13 @@ class User < ApplicationRecord
     UserPurgeJob.perform_later(self)
   end
 
+  # Called explicitly by Settings::ProfilesController / UsersController when
+  # the user actually submits the "Enable AI Chats" form (which shows the
+  # data-handling notice, see app/views/chats/_ai_consent.html.erb) -- that
+  # submission is the explicit consent act for E6. Deliberately NOT wired as
+  # an after_update_commit callback on ai_enabled's value: that would also
+  # fire when apply_role_based_ui_defaults auto-sets ai_enabled=true for a
+  # guest in the intro layout, silently granting consent nobody gave.
   def grant_ai_consent
     return unless family
 

@@ -271,17 +271,25 @@ class UserTest < ActiveSupport::TestCase
     assert_not user.ai_enabled?, "revoking consent should turn off AI access even though the preference is still on"
   end
 
-  test "enabling ai_enabled grants consent automatically, disabling revokes it" do
+  test "grant_ai_consent and revoke_ai_consent toggle the E6 gate" do
+    # Deliberately NOT testing that user.update!(ai_enabled: true) grants
+    # consent by itself: it must not, since apply_role_based_ui_defaults can
+    # also flip ai_enabled to true as a side effect of a role/layout change,
+    # with nobody having consented to anything. Only UsersController calls
+    # grant_ai_consent/revoke_ai_consent explicitly, when the submitted form
+    # params actually include ai_enabled (see users_controller.rb#update).
     user = users(:family_admin)
     user.update!(ai_enabled: false)
     assert_not user.ai_enabled?
     assert_not Consent.ai_processing_granted?(user.family)
 
     user.update!(ai_enabled: true)
+    user.grant_ai_consent
     assert user.ai_enabled?
     assert Consent.ai_processing_granted?(user.family)
 
     user.update!(ai_enabled: false)
+    user.revoke_ai_consent
     assert_not user.ai_enabled?
     assert_not Consent.ai_processing_granted?(user.family)
   end

@@ -27,13 +27,21 @@ class UsersController < ApplicationController
       end
     else
       was_ai_enabled = @user.ai_enabled
+      ai_enabled_submitted = user_params.key?(:ai_enabled)
       @user.update!(user_params.except(:redirect_to, :delete_profile_image))
       @user.profile_image.purge if should_purge_profile_image?
 
-      # Add a special notice if AI was just enabled or disabled
+      # Add a special notice if AI was just enabled or disabled. Only treat
+      # this as the E6 consent act when ai_enabled was actually part of the
+      # submitted form (the "Enable/Disable AI Chats" toggle) -- other saves
+      # that happen to also flip ai_enabled as a side effect (e.g. a guest
+      # role change auto-defaulting it via apply_role_based_ui_defaults)
+      # must not silently grant or revoke consent nobody acted on.
       notice = if !was_ai_enabled && @user.ai_enabled
+        @user.grant_ai_consent if ai_enabled_submitted
         "AI Assistant has been enabled successfully."
       elsif was_ai_enabled && !@user.ai_enabled
+        @user.revoke_ai_consent if ai_enabled_submitted
         "AI Assistant has been disabled."
       else
         t(".success")
