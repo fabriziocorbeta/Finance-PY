@@ -402,7 +402,7 @@ end
 
   test "new with duplicate_entry_id from another family does not prefill form" do
     other_family = families(:empty)
-    other_account = other_family.accounts.create!(name: "Other", balance: 0, currency: "USD", accountable: Depository.new, owner: users(:other))
+    other_account = other_family.accounts.create!(name: "Other", balance: 0, currency: "USD", accountable: Depository.new, owner: users(:empty))
     other_entry = create_transaction(account: other_account, name: "Should not leak", amount: 50)
 
     get new_transaction_url(duplicate_entry_id: other_entry.id)
