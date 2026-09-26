@@ -324,6 +324,8 @@ CREATE TABLE public.balances (
     end_balance numeric(19,4) GENERATED ALWAYS AS ((((start_cash_balance + ((cash_inflows - cash_outflows) * (flows_factor)::numeric)) + cash_adjustments) + (((start_non_cash_balance + ((non_cash_inflows - non_cash_outflows) * (flows_factor)::numeric)) + net_market_flows) + non_cash_adjustments))) STORED
 );
 
+ALTER TABLE ONLY public.balances FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: binance_accounts; Type: TABLE; Schema: public; Owner: -
@@ -1071,6 +1073,8 @@ CREATE TABLE public.holdings (
     provider_security_id uuid,
     security_locked boolean DEFAULT false NOT NULL
 );
+
+ALTER TABLE ONLY public.holdings FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -8085,6 +8089,7 @@ CREATE POLICY versions_family_isolation_policy ON public.versions USING ((family
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260926175734'),
 ('20260925224530'),
 ('20260925210741'),
 ('20260924145501'),

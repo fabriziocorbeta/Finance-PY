@@ -44,6 +44,15 @@ class RowLevelSecurityOla2EtapaBTest < ActionDispatch::IntegrationTest
       entryable: Trade.new(qty: 1, price: 100, currency: "USD", security: securities(:aapl)))
     @trade_b = @trade_entry_b.entryable
 
+    # single join via account_id (holdings -> accounts)
+@holding_b = @investment_account_b.holdings.create!(
+  security: securities(:aapl), 
+  qty: 10, 
+  price: 150, amount: 1500, 
+  currency: "USD",
+  date: Date.current
+)
+
     # single join (balances -> accounts)
     @balance_b = @account_b.balances.create!(date: Date.current, balance: 1000, currency: "USD")
 
@@ -80,6 +89,7 @@ class RowLevelSecurityOla2EtapaBTest < ActionDispatch::IntegrationTest
     assert_nil BinanceItem.find_by(id: @binance_item_b.id)
     assert_nil CreditCard.find_by(id: @credit_card_b.id)
     assert_nil Trade.find_by(id: @trade_b.id)
+    assert_nil Holding.find_by(id: @holding_b.id)
     assert_nil Balance.find_by(id: @balance_b.id)
     assert_nil PlaidAccount.find_by(id: @plaid_account_b.id)
     assert_nil Message.find_by(id: @message_b.id)
