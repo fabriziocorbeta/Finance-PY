@@ -29,4 +29,22 @@ class FamilyPurgerTest < ActiveSupport::TestCase
       end
     end
   end
+
+  test "purges a family with FamilyMerchantAssociation rows without raising a foreign key violation" do
+    # Regression guard: family_merchant_associations.family_id has no
+    # ON DELETE CASCADE and Family has no has_many for it, so before this
+    # cleanup was added, family.destroy! below would raise
+    # ActiveRecord::InvalidForeignKey and abort the whole purge for any
+    # family that ever had a merchant association -- not just leave an
+    # orphaned row, but fail the deletion outright.
+    family = families(:dylan_family)
+    FamilyMerchantAssociation.create!(family: family, merchant: merchants(:one))
+
+    assert_nothing_raised do
+      FamilyPurger.purge!(family)
+    end
+
+    assert_not Family.exists?(family.id)
+    assert_not FamilyMerchantAssociation.exists?(family_id: family.id)
+  end
 end

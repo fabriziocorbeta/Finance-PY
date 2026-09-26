@@ -31,7 +31,14 @@ class InactiveFamilyCleanerJob < ApplicationJob
           Rails.logger.info("InactiveFamilyCleanerJob: Would destroy family #{family.id} (created: #{family.created_at})")
         else
           Rails.logger.info("InactiveFamilyCleanerJob: Destroying family #{family.id} (created: #{family.created_at})")
-          family.destroy
+          # FamilyPurger (E8) does what a plain family.destroy does not:
+          # purges ActiveStorage blobs, cleans up rows with no cascading
+          # has_many on Family (Consent, FamilyMerchantAssociation) and no
+          # dependent: :destroy (PaperTrail::Version), and writes an
+          # anonymous DeletionRecord audit entry. It sets its own
+          # RlsContext.with_family internally, so the outer one here is
+          # redundant but harmless.
+          FamilyPurger.purge!(family)
         end
       end
     end
