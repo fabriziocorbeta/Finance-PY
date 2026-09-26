@@ -167,6 +167,16 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     @sale_item_a = SaleItem.create!(sale: @sale_a, product: @product_a, quantity: 2, unit_price: 15000)
     @recurring_transaction_a = RecurringTransaction.create!(family: @family_a, name: "Family A Recurring", amount: 100000, currency: "pyg", expected_day_of_month: 15, last_occurrence_date: Date.current, next_expected_date: 1.month.from_now.to_date)
     @product_stock_movement_a = ProductStockMovement.create!(product: @product_a, quantity_delta: 5, reason: "entrada")
+
+    # Phase C Auth tables (Family B)
+    @session_b = Session.create!(user: @user_b, ip_address: "1.1.1.1", user_agent: "Test")
+    @api_key_b = ApiKey.create!(user: @user_b, name: "Test Key B", source: "monitoring", key: "supersecret123b", scopes: ["read"])
+    @mobile_device_b = MobileDevice.upsert_device!(@user_b, { device_id: "dev123", device_name: "Phone", device_type: "android" })
+
+    # Phase C Auth tables (Family A)
+    @session_a = Session.create!(user: @user_a, ip_address: "1.1.1.1", user_agent: "Test")
+    @api_key_a = ApiKey.create!(user: @user_a, name: "Test Key A", source: "monitoring", key: "supersecret123a", scopes: ["read"])
+    @mobile_device_a = MobileDevice.upsert_device!(@user_a, { device_id: "dev456", device_name: "Phone", device_type: "android" })
   end
 
   test "when app.current_family_id session variable is set, raw SQL and ActiveRecord queries cannot access family_b records" do
@@ -207,10 +217,20 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     assert_nil SaleItem.find_by(id: @sale_item_b.id)
     assert_nil ProductStockMovement.find_by(id: @product_stock_movement_b.id)
 
-    # Positive assertions for Family A indirect tables
+    # Auth tables (Family B should be hidden)
+    assert_nil User.find_by(id: @user_b.id)
+    assert_nil Session.find_by(id: @session_b.id)
+    assert_nil ApiKey.find_by(id: @api_key_b.id)
+    assert_nil MobileDevice.find_by(id: @mobile_device_b.id)
+
+    # Positive assertions for Family A indirect & auth tables
     assert_equal @purchase_order_item_a, PurchaseOrderItem.find_by(id: @purchase_order_item_a.id)
     assert_equal @sale_item_a, SaleItem.find_by(id: @sale_item_a.id)
     assert_equal @product_stock_movement_a, ProductStockMovement.find_by(id: @product_stock_movement_a.id)
+    assert_equal @user_a, User.find_by(id: @user_a.id)
+    assert_equal @session_a, Session.find_by(id: @session_a.id)
+    assert_equal @api_key_a, ApiKey.find_by(id: @api_key_a.id)
+    assert_equal @mobile_device_a, MobileDevice.find_by(id: @mobile_device_a.id)
 
     # Raw SQL queries bypassing Rails model scoping
     raw_accounts = ActiveRecord::Base.connection.execute("SELECT * FROM accounts WHERE id = '#{@account_b.id}'")
@@ -254,6 +274,27 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
 
     raw_stock_movements = ActiveRecord::Base.connection.execute("SELECT * FROM product_stock_movements WHERE id = '#{@product_stock_movement_b.id}'")
     assert_equal 0, raw_stock_movements.count
+  ensure
+    ActiveRecord::Base.connection.execute("RESET app.current_family_id") rescue nil
+    ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
+  end
+
+  test "with_auth_bypass allows lookups for auth tables without a family context" do
+    ActiveRecord::Base.connection.execute("SET ROLE app_user")
+
+    # Normally hidden because no family context is set
+    assert_nil User.find_by(id: @user_b.id)
+    assert_nil Session.find_by(id: @session_b.id)
+    assert_nil ApiKey.find_by(id: @api_key_b.id)
+    assert_nil MobileDevice.find_by(id: @mobile_device_b.id)
+
+    # But with auth bypass, they are visible
+    RlsContext.with_auth_bypass do
+      assert_equal @user_b, User.find_by(id: @user_b.id)
+      assert_equal @session_b, Session.find_by(id: @session_b.id)
+      assert_equal @api_key_b, ApiKey.find_by(id: @api_key_b.id)
+      assert_equal @mobile_device_b, MobileDevice.find_by(id: @mobile_device_b.id)
+    end
   ensure
     ActiveRecord::Base.connection.execute("RESET app.current_family_id") rescue nil
     ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil

@@ -191,6 +191,12 @@ class InvitationTest < ActiveSupport::TestCase
   end
 
   test "accept_for applies guest role defaults" do
+    # dylan_family already has an active ai_processing consent
+    # (test/fixtures/consents.yml) from a different member -- revoke it so
+    # this test can pin that the layout-driven ai_enabled default does NOT
+    # itself grant AI access to the newly-demoted guest.
+    Consent.where(family: @family, kind: "ai_processing").active.update_all(revoked_at: Time.current)
+
     user = users(:family_member)
     user.update!(
       family_id: @family.id,

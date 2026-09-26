@@ -102,6 +102,11 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
   test "creating account from guest invitation assigns guest role and intro layout" do
     invitation = invitations(:one)
     invitation.update!(role: "guest", email: "guest-signup@example.com")
+    # dylan_family already has an active ai_processing consent
+    # (test/fixtures/consents.yml) from a different member -- revoke it so
+    # this test can pin that the layout-driven ai_enabled default does NOT
+    # itself grant AI access to the newly-registered guest.
+    Consent.where(family: invitation.family, kind: "ai_processing").active.update_all(revoked_at: Time.current)
 
     assert_difference "User.count", +1 do
       post registration_url, params: { user: {

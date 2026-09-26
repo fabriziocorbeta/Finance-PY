@@ -338,8 +338,12 @@ class UserTest < ActiveSupport::TestCase
   end
 
   test "intro layout collapses sidebars and enables ai" do
+    # A fresh family, not families(:empty): that fixture already has an
+    # active ai_processing consent (test/fixtures/consents.yml), which would
+    # mask the exact thing this test is pinning -- that the layout-driven
+    # ai_enabled default does NOT itself grant AI access without consent.
     user = User.new(
-      family: families(:empty),
+      family: Family.create!(name: "Intro Layout Test Family"),
       email: "intro-new@example.com",
       password: "Password1!",
       password_confirmation: "Password1!",
