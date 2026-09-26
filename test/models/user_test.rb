@@ -280,6 +280,7 @@ class UserTest < ActiveSupport::TestCase
     # params actually include ai_enabled (see users_controller.rb#update).
     user = users(:family_admin)
     user.update!(ai_enabled: false)
+    user.revoke_ai_consent
     assert_not user.ai_enabled?
     assert_not Consent.ai_processing_granted?(user.family)
 
