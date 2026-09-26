@@ -36,7 +36,7 @@ module RlsContext
     # callback in config/initializers/rls_connection_safety.rb for why we
     # avoid pool.remove/throw_away! here).
     def reset(connection = ActiveRecord::Base.connection)
-      connection.execute("RESET app.current_family_id")
+      connection.execute("RESET app.current_family_id; RESET app.rls_auth_bypass;")
       true
     rescue => e
       Rails.logger.error(
@@ -98,7 +98,11 @@ module RlsContext
     # Bypasses RLS strictly for authentication workflows before a user/family context
     # is established. This is required because tables like `users` and `sessions`
     # must be queried by email or token during login, when `current_family_id` is NULL.
-    def with_auth_bypass
+    def with_auth_bypass(reason: nil)
+      caller_location = caller_locations(1, 1)&.first
+      if reason
+        Rails.logger.warn("[RlsContext] auth bypass granted: reason=#{reason.inspect} caller=#{caller_location&.path}:#{caller_location&.lineno}")
+      end
       ActiveRecord::Base.connection.execute("SET app.rls_auth_bypass = 'true'")
       yield
     ensure

@@ -12,7 +12,7 @@ class OidcAccountsController < ApplicationController
     end
 
     @email = @pending_auth["email"]
-    @user_exists = User.exists?(email: @email) if @email.present?
+    @user_exists = RlsContext.with_auth_bypass { User.exists?(email: @email) } if @email.present?
 
     # Check for a pending invitation for this email
     @pending_invitation = Invitation.pending.find_by(email: @email) if @email.present?
@@ -31,7 +31,7 @@ class OidcAccountsController < ApplicationController
     end
 
     # Verify user's password to confirm identity
-    user = User.authenticate_by(email: params[:email], password: params[:password])
+    user = User.auth_authenticate_by(email: params[:email], password: params[:password])
 
     if user
       # Create the OIDC identity link
@@ -64,7 +64,7 @@ class OidcAccountsController < ApplicationController
       end
     else
       @email = params[:email]
-      @user_exists = User.exists?(email: @email) if @email.present?
+      @user_exists = RlsContext.with_auth_bypass { User.exists?(email: @email) } if @email.present?
       flash.now[:alert] = "Invalid email or password"
       render :link, status: :unprocessable_entity
     end
@@ -136,7 +136,7 @@ class OidcAccountsController < ApplicationController
       @user.role = User.role_for_new_family_creator(fallback_role: provider_default_role || :admin)
     end
 
-    if @user.save
+    if RlsContext.with_auth_bypass(reason: "signup") { @user.save }
       # Create the OIDC (or other SSO) identity
       identity = OidcIdentity.create_from_omniauth(
         build_auth_hash(@pending_auth),

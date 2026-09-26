@@ -71,6 +71,10 @@ class User < ApplicationRecord
     RlsContext.with_auth_bypass { find_by(id: id) }
   end
 
+  def self.auth_authenticate_by(attributes)
+    RlsContext.with_auth_bypass { authenticate_by(attributes) }
+  end
+
   # Lookups by token happen during password reset and email confirmation,
   # before a family context is established. Bypass RLS so the user can be found.
   def self.find_by_token_for(purpose, token)
@@ -78,7 +82,7 @@ class User < ApplicationRecord
   end
 
   def self.role_for_new_family_creator(fallback_role: :admin)
-    User.exists? ? fallback_role : :super_admin
+    (RlsContext.with_auth_bypass { User.exists? }) ? fallback_role : :super_admin
   end
 
   has_one_attached :profile_image, dependent: :purge_later do |attachable|
