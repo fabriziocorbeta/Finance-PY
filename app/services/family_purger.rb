@@ -41,6 +41,11 @@ class FamilyPurger
           PaperTrail::Version.where(family_id: family_id).delete_all if ActiveRecord::Base.connection.columns("versions").map(&:name).include?("family_id")
         end
 
+        # 3b. Consent (E6) has no has_many :consents on Family, so it would
+        # not cascade on family.destroy! below and would be left orphaned --
+        # same reasoning as the versions cleanup above.
+        Consent.where(family_id: family_id).delete_all if defined?(Consent)
+
         # 4. Destroy family record with cascading associations
         @family.destroy!
         conn.execute("DELETE FROM versions WHERE family_id = #{conn.quote(family_id)}")

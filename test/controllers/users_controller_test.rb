@@ -175,4 +175,42 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_not User.find(@admin.id).active?
     assert_enqueued_with(job: UserPurgeJob, args: [ @admin ])
   end
+
+  test "submitting the Enable AI Chats form grants consent (E6)" do
+    @user.update!(ai_enabled: false)
+    Consent.where(family: @user.family, kind: "ai_processing").active.update_all(revoked_at: Time.current)
+    assert_not @user.ai_enabled?
+
+    patch user_url(@user), params: { user: { ai_enabled: true } }
+
+    assert @user.reload.ai_enabled?
+    assert Consent.ai_processing_granted?(@user.family)
+  end
+
+  test "submitting the Disable AI Chats form revokes consent (E6)" do
+    @user.update!(ai_enabled: true)
+    @user.grant_ai_consent
+    assert @user.ai_enabled?
+
+    patch user_url(@user), params: { user: { ai_enabled: false } }
+
+    assert_not @user.reload.ai_enabled?
+    assert_not Consent.ai_processing_granted?(@user.family)
+  end
+
+  test "a save that flips ai_enabled without it being in the submitted params does not touch consent" do
+    # Regression guard: role/ui_layout aren't in UsersController's permitted
+    # params (a user can't self-promote here), so this exercises the same
+    # scenario at the model layer that invitation_test.rb covers end-to-end
+    # via Invitation#accept_for -- apply_role_based_ui_defaults can set
+    # ai_enabled=true as a side effect of a role/layout change, and that
+    # must never be read as the user having consented to anything.
+    @user.update!(ai_enabled: false)
+    Consent.where(family: @user.family, kind: "ai_processing").active.update_all(revoked_at: Time.current)
+
+    @user.update!(role: "guest", ui_layout: "intro")
+
+    assert @user.reload.ai_enabled, "role change should still auto-default the preference on"
+    assert_not Consent.ai_processing_granted?(@user.family), "but must not have granted consent nobody gave"
+  end
 end

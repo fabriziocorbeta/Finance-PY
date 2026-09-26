@@ -120,6 +120,12 @@ class InvitationsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "inviting an existing user as guest does not touch them until accepted, then applies intro defaults" do
+    # @admin's family (dylan_family) already has an active ai_processing
+    # consent (test/fixtures/consents.yml) from a different member -- revoke
+    # it so this test can pin that the layout-driven ai_enabled default does
+    # NOT itself grant AI access to the newly-invited guest once they join.
+    Consent.where(family: @admin.family, kind: "ai_processing").active.update_all(revoked_at: Time.current)
+
     existing_user = users(:empty)
     existing_user.update!(
       role: :member,
@@ -152,7 +158,9 @@ class InvitationsControllerTest < ActionDispatch::IntegrationTest
     assert existing_user.ui_layout_intro?
     assert_not existing_user.show_sidebar?
     assert_not existing_user.show_ai_sidebar?
-    assert existing_user.ai_enabled?
+    # The preference alone does not grant AI access (E6): consent is separate.
+    assert existing_user.ai_enabled
+    assert_not existing_user.ai_enabled?
   end
 
   test "should handle invalid invitation creation" do
