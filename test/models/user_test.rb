@@ -759,4 +759,41 @@ class UserTest < ActiveSupport::TestCase
       assert_not user.otp_locked?
     end
   end
+
+  test "purge on the last user in a family delegates to FamilyPurger (E8)" do
+    family = Family.create!(name: "Solo Purge Test Family")
+    user = User.create!(
+      family: family,
+      first_name: "Solo",
+      last_name: "User",
+      email: "solo-purge@example.com",
+      password: "Password1!",
+      password_confirmation: "Password1!",
+      role: :admin
+    )
+    Consent.create!(family: family, user: user, kind: "ai_processing", granted_at: Time.current)
+    assert user.send(:last_user_in_family?)
+
+    family_id = family.id
+    user.purge
+
+    assert_not Family.exists?(family_id)
+    assert_not User.exists?(user.id)
+    # This is the E8 behavior a plain family.destroy does not provide:
+    # no has_many :consents on Family means it would not cascade, and an
+    # anonymous DeletionRecord audit entry gets written.
+    assert_not Consent.exists?(family_id: family_id)
+    assert DeletionRecord.exists?(family_id_hash: Digest::SHA256.hexdigest(family_id.to_s))
+  end
+
+  test "purge on a non-last user in a family destroys just that user, not the family" do
+    user = users(:family_member)
+    family = user.family
+    assert_not user.send(:last_user_in_family?)
+
+    user.purge
+
+    assert_not User.exists?(user.id)
+    assert Family.exists?(family.id)
+  end
 end
