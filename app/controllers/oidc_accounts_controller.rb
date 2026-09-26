@@ -136,7 +136,7 @@ class OidcAccountsController < ApplicationController
       @user.role = User.role_for_new_family_creator(fallback_role: provider_default_role || :admin)
     end
 
-    if RlsContext.with_auth_bypass(reason: 'signup') { @user.save }
+    if RlsContext.with_auth_bypass(reason: "signup") { @user.save }
       # Create the OIDC (or other SSO) identity
       identity = OidcIdentity.create_from_omniauth(
         build_auth_hash(@pending_auth),
