@@ -1,6 +1,7 @@
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -145,7 +146,7 @@ CREATE TABLE public.account_shares (
     include_in_finances boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT chk_account_shares_permission CHECK (((permission)::text = ANY ((ARRAY['full_control'::character varying, 'read_write'::character varying, 'read_only'::character varying])::text[])))
+    CONSTRAINT chk_account_shares_permission CHECK (((permission)::text = ANY (ARRAY[('full_control'::character varying)::text, ('read_write'::character varying)::text, ('read_only'::character varying)::text])))
 );
 
 
@@ -166,7 +167,7 @@ CREATE TABLE public.accounts (
     currency character varying,
     classification character varying GENERATED ALWAYS AS (
 CASE
-    WHEN ((accountable_type)::text = ANY ((ARRAY['Loan'::character varying, 'CreditCard'::character varying, 'OtherLiability'::character varying])::text[])) THEN 'liability'::text
+    WHEN ((accountable_type)::text = ANY (ARRAY[('Loan'::character varying)::text, ('CreditCard'::character varying)::text, ('OtherLiability'::character varying)::text])) THEN 'liability'::text
     ELSE 'asset'::text
 END) STORED,
     import_id uuid,
@@ -263,8 +264,6 @@ CREATE TABLE public.api_keys (
     display_key character varying NOT NULL,
     source character varying DEFAULT 'web'::character varying
 );
-
-ALTER TABLE ONLY public.api_keys FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -876,7 +875,7 @@ CREATE TABLE public.families (
     default_account_sharing character varying DEFAULT 'shared'::character varying NOT NULL,
     enabled_currencies character varying[],
     business_mode_enabled boolean DEFAULT false NOT NULL,
-    CONSTRAINT chk_families_default_account_sharing CHECK (((default_account_sharing)::text = ANY ((ARRAY['shared'::character varying, 'private'::character varying])::text[]))),
+    CONSTRAINT chk_families_default_account_sharing CHECK (((default_account_sharing)::text = ANY (ARRAY[('shared'::character varying)::text, ('private'::character varying)::text]))),
     CONSTRAINT month_start_day_range CHECK (((month_start_day >= 1) AND (month_start_day <= 28)))
 );
 
@@ -1039,8 +1038,8 @@ CREATE TABLE public.goals (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_goals_name_length CHECK ((char_length((name)::text) <= 255)),
-    CONSTRAINT chk_goals_progress_basis_enum CHECK (((progress_basis)::text = ANY ((ARRAY['balance'::character varying, 'contributions'::character varying])::text[]))),
-    CONSTRAINT chk_goals_state_enum CHECK (((state)::text = ANY ((ARRAY['active'::character varying, 'paused'::character varying, 'completed'::character varying, 'archived'::character varying])::text[]))),
+    CONSTRAINT chk_goals_progress_basis_enum CHECK (((progress_basis)::text = ANY (ARRAY[('balance'::character varying)::text, ('contributions'::character varying)::text]))),
+    CONSTRAINT chk_goals_state_enum CHECK (((state)::text = ANY (ARRAY[('active'::character varying)::text, ('paused'::character varying)::text, ('completed'::character varying)::text, ('archived'::character varying)::text]))),
     CONSTRAINT chk_goals_target_amount_positive CHECK ((target_amount > (0)::numeric))
 );
 
@@ -1505,8 +1504,6 @@ CREATE TABLE public.mobile_devices (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
-
-ALTER TABLE ONLY public.mobile_devices FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -2035,7 +2032,7 @@ CREATE TABLE public.securities (
     price_provider character varying,
     offline_reason character varying,
     first_provider_price_on date,
-    CONSTRAINT chk_securities_kind CHECK (((kind)::text = ANY ((ARRAY['standard'::character varying, 'cash'::character varying])::text[])))
+    CONSTRAINT chk_securities_kind CHECK (((kind)::text = ANY (ARRAY[('standard'::character varying)::text, ('cash'::character varying)::text])))
 );
 
 
@@ -2072,8 +2069,6 @@ CREATE TABLE public.sessions (
     data jsonb DEFAULT '{}'::jsonb,
     ip_address_digest character varying
 );
-
-ALTER TABLE ONLY public.sessions FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -2516,8 +2511,6 @@ CREATE TABLE public.users (
     webauthn_id character varying
 );
 
-ALTER TABLE ONLY public.users FORCE ROW LEVEL SECURITY;
-
 
 --
 -- Name: valuations; Type: TABLE; Schema: public; Owner: -
@@ -2708,6 +2701,13 @@ ALTER TABLE ONLY public.addresses
 
 ALTER TABLE ONLY public.api_keys
     ADD CONSTRAINT api_keys_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: api_keys FORCE ROW LEVEL SECURITY; Type: ALTER TABLE; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_keys FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -3175,6 +3175,13 @@ ALTER TABLE ONLY public.mobile_devices
 
 
 --
+-- Name: mobile_devices FORCE ROW LEVEL SECURITY; Type: ALTER TABLE; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.mobile_devices FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: oauth_access_grants oauth_access_grants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3383,6 +3390,13 @@ ALTER TABLE ONLY public.sessions
 
 
 --
+-- Name: sessions FORCE ROW LEVEL SECURITY; Type: ALTER TABLE; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sessions FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: settings settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3532,6 +3546,13 @@ ALTER TABLE ONLY public.transfers
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: users FORCE ROW LEVEL SECURITY; Type: ALTER TABLE; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -6820,21 +6841,6 @@ CREATE POLICY addresses_family_isolation_policy ON public.addresses USING ((((ad
 
 
 --
--- Name: api_keys; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.api_keys ENABLE ROW LEVEL SECURITY;
-
---
--- Name: api_keys api_keys_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY api_keys_family_isolation_policy ON public.api_keys USING (((user_id IN ( SELECT users.id
-   FROM public.users
-  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
-
-
---
 -- Name: balances; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -7509,6 +7515,46 @@ CREATE POLICY messages_family_isolation_policy ON public.messages USING ((chat_i
 ALTER TABLE public.mobile_devices ENABLE ROW LEVEL SECURITY;
 
 --
+--
+-- Name: api_keys; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.api_keys ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: api_keys api_keys_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY api_keys_family_isolation_policy ON public.api_keys USING (((user_id IN ( SELECT users.id
+   FROM public.users
+  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
+
+--
+-- Name: sessions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sessions sessions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY sessions_family_isolation_policy ON public.sessions USING (((user_id IN ( SELECT users.id
+   FROM public.users
+  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
+
+--
+-- Name: users; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: users users_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY users_family_isolation_policy ON public.users USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
+
 -- Name: mobile_devices mobile_devices_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -7784,21 +7830,6 @@ CREATE POLICY sales_family_isolation_policy ON public.sales USING ((family_id = 
 
 
 --
--- Name: sessions; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
-
---
--- Name: sessions sessions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY sessions_family_isolation_policy ON public.sessions USING (((user_id IN ( SELECT users.id
-   FROM public.users
-  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
-
-
---
 -- Name: simplefin_accounts; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -8023,19 +8054,6 @@ CREATE POLICY transfers_family_isolation_policy ON public.transfers USING ((publ
   WHERE (transactions.id = ANY (ARRAY[transfers.inflow_transaction_id, transfers.outflow_transaction_id]))))) WITH CHECK ((public.current_family_id() IN ( SELECT transactions.family_id
    FROM public.transactions
   WHERE (transactions.id = ANY (ARRAY[transfers.inflow_transaction_id, transfers.outflow_transaction_id])))));
-
-
---
--- Name: users; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-
---
--- Name: users users_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY users_family_isolation_policy ON public.users USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
