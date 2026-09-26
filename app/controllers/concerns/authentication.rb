@@ -49,9 +49,7 @@ module Authentication
       cookie_value = cookies.signed[:session_token]
 
       if cookie_value.present?
-        RlsContext.with_auth_bypass do
-          Session.find_by(id: cookie_value)
-        end
+        Session.find_by(id: cookie_value)
       else
         nil
       end

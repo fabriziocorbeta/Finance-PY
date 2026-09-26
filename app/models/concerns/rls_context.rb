@@ -94,22 +94,5 @@ module RlsContext
         ActiveRecord::Base.connection.reconnect! rescue nil
       end
     end
-
-    # Bypasses RLS strictly for authentication workflows before a user/family context
-    # is established. This is required because tables like `users` and `sessions`
-    # must be queried by email or token during login, when `current_family_id` is NULL.
-    def with_auth_bypass
-      ActiveRecord::Base.connection.execute("SET app.rls_auth_bypass = 'true'")
-      yield
-    ensure
-      begin
-        ActiveRecord::Base.connection.execute("RESET app.rls_auth_bypass")
-      rescue => e
-        Rails.logger.error(
-          "[RlsContext] RESET app.rls_auth_bypass failed (#{e.class}: #{e.message}); reconnecting"
-        )
-        ActiveRecord::Base.connection.reconnect! rescue nil
-      end
-    end
   end
 end
