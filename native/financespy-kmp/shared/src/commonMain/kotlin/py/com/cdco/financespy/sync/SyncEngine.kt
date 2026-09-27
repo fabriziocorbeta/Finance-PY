@@ -1,5 +1,7 @@
 package py.com.cdco.financespy.sync
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.GoalDto
@@ -34,12 +36,26 @@ class SyncEngine(
     private val receivableDao: ReceivableDao? = null,
     private val currentDateProvider: () -> String
 ) {
+    // The 5 syncs hit independent endpoints and write to independent tables
+    // (no FK enforced between EntryEntity.accountId and AccountEntity at the
+    // Room level, confirmed no @ForeignKey on EntryEntity/TransactionEntity),
+    // so there is no correctness reason to run them one after another. Doing
+    // so only added up their latencies -- a dashboard refresh waited for the
+    // slowest possible sum of 5 sequential requests (plus one more per rule
+    // inside syncRules) before the screen could show anything current.
     suspend fun syncAll(): Result<Unit> = runCatching {
-        syncAccounts()
-        syncTransactions()
-        syncRules()
-        syncGoals()
-        syncReceivables()
+        coroutineScope {
+            val accounts = async { syncAccounts() }
+            val transactions = async { syncTransactions() }
+            val rules = async { syncRules() }
+            val goals = async { syncGoals() }
+            val receivables = async { syncReceivables() }
+            accounts.await()
+            transactions.await()
+            rules.await()
+            goals.await()
+            receivables.await()
+        }
     }
 
     private suspend fun syncAccounts() {
@@ -61,14 +77,20 @@ class SyncEngine(
         val entities = remote.mapNotNull { it.toEntityOrNull() }
         ruleDao.upsertAll(entities)
         ruleDao.deleteAllExcept(entities.map { it.id })
-        remote.forEach { rule ->
-            val runs = runCatching { api.fetchRuleRuns(rule.id) }.getOrNull().orEmpty()
-            ruleRunDao.upsertAll(runs.map {
-                RuleRunEntity(
-                    id = it.id, ruleId = it.rule_id, status = it.status,
-                    executionType = it.execution_type, executedAt = it.executed_at ?: ""
-                )
-            })
+        // One fetchRuleRuns call per rule, same reasoning as syncAll: these are
+        // independent requests with no ordering dependency between them.
+        coroutineScope {
+            remote.map { rule ->
+                async {
+                    val runs = runCatching { api.fetchRuleRuns(rule.id) }.getOrNull().orEmpty()
+                    ruleRunDao.upsertAll(runs.map {
+                        RuleRunEntity(
+                            id = it.id, ruleId = it.rule_id, status = it.status,
+                            executionType = it.execution_type, executedAt = it.executed_at ?: ""
+                        )
+                    })
+                }
+            }.forEach { it.await() }
         }
     }
 

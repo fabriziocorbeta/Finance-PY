@@ -2,6 +2,7 @@ package py.com.cdco.financespy
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -45,8 +46,12 @@ class DashboardFakeApi : FinancePyApi(io.ktor.client.HttpClient()) {
     var dashboardToReturn: DashboardDto? = null
     var shouldFail: Boolean = false
     var lastRequestedPeriod: String? = null
+    var syncDelayMillis: Long = 0
 
-    override suspend fun fetchAllAccounts(): List<AccountDto> = emptyList()
+    override suspend fun fetchAllAccounts(): List<AccountDto> {
+        delay(syncDelayMillis)
+        return emptyList()
+    }
     override suspend fun fetchRecentTransactions(startDate: String): List<TransactionListItemDto> = emptyList()
     override suspend fun fetchAllRules(): List<RuleDto> = emptyList()
     override suspend fun fetchAllGoals(): List<GoalDto> = emptyList()
@@ -192,5 +197,36 @@ class DashboardViewModelTest {
         assertFalse(state.isSyncing)
         assertEquals("Network Error", state.syncError)
         assertNull(state.dashboard)
+    }
+
+    @Test
+    fun testDashboardLoadsWithoutWaitingForSlowSync() = testScope.runTest {
+        // Regression guard: the dashboard fetch and the local sync must run
+        // concurrently. Before this, refresh() awaited syncEngine.syncAll()
+        // before even starting the dashboard fetch, so a slow account sync
+        // stalled the dashboard the user is actually looking at, even though
+        // it comes from its own independent endpoint.
+        fakeApi.syncDelayMillis = 10_000
+        fakeApi.dashboardToReturn = DashboardDto(
+            greeting_name = "Fabrizio",
+            currency = "PYG",
+            period = PeriodDto(key = "current_month", label = "August 2026"),
+            net_worth = NetWorthDto(amount = 1000.0, currency = "PYG")
+        )
+
+        val viewModel = DashboardViewModel(
+            scope = this,
+            syncEngine = syncEngine,
+            api = fakeApi
+        )
+
+        // Advance only past the dashboard fetch's own (zero) latency, well
+        // short of the 10s the account sync is still stuck on.
+        testDispatcher.scheduler.advanceTimeBy(100)
+        testDispatcher.scheduler.runCurrent()
+
+        assertNotNull(viewModel.state.value.dashboard, "dashboard should be available without waiting for the slow sync")
+
+        testDispatcher.scheduler.advanceUntilIdle()
     }
 }
