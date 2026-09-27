@@ -136,39 +136,41 @@ class OidcAccountsController < ApplicationController
       @user.role = User.role_for_new_family_creator(fallback_role: provider_default_role || :admin)
     end
 
-    if RlsContext.with_auth_bypass(reason: "signup") { @user.save }
-      # Create the OIDC (or other SSO) identity
-      identity = OidcIdentity.create_from_omniauth(
-        build_auth_hash(@pending_auth),
-        @user
-      )
-
-      # Only log JIT account creation if identity was successfully created
-      if identity.persisted?
-        SsoAuditLog.log_jit_account_created!(
-          user: @user,
-          provider: @pending_auth["provider"],
-          request: request
+    RlsContext.with_auth_bypass(reason: "jit_signup") do
+      if @user.save
+        # Create the OIDC (or other SSO) identity
+        identity = OidcIdentity.create_from_omniauth(
+          build_auth_hash(@pending_auth),
+          @user
         )
-      end
 
-      # Mark invitation as accepted if one was used
-      invitation&.update!(accepted_at: Time.current)
+        # Only log JIT account creation if identity was successfully created
+        if identity.persisted?
+          SsoAuditLog.log_jit_account_created!(
+            user: @user,
+            provider: @pending_auth["provider"],
+            request: request
+          )
+        end
 
-      # Clear pending auth from session
-      session.delete(:pending_oidc_auth)
+        # Mark invitation as accepted if one was used
+        invitation&.update!(accepted_at: Time.current)
 
-      @session = create_session_for(@user)
-      notice = if invitation.present?
-        t("invitations.accept_choice.joined_household")
-      elsif accept_pending_invitation_for(@user)
-        t("invitations.accept_choice.joined_household")
+        # Clear pending auth from session
+        session.delete(:pending_oidc_auth)
+
+        @session = create_session_for(@user)
+        notice = if invitation.present?
+          t("invitations.accept_choice.joined_household")
+        elsif accept_pending_invitation_for(@user)
+          t("invitations.accept_choice.joined_household")
+        else
+          "Welcome! Your account has been created."
+        end
+        redirect_to root_path, notice: notice
       else
-        "Welcome! Your account has been created."
+        render :new_user, status: :unprocessable_entity
       end
-      redirect_to root_path, notice: notice
-    else
-      render :new_user, status: :unprocessable_entity
     end
   end
 

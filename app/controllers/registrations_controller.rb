@@ -62,19 +62,21 @@ class RegistrationsController < ApplicationController
 
       success = false
 
-      ActiveRecord::Base.transaction do
-        unless RlsContext.with_auth_bypass(reason: "signup") { @user.save }
-          raise ActiveRecord::Rollback
-        end
+      RlsContext.with_auth_bypass(reason: "signup") do
+        ActiveRecord::Base.transaction do
+          unless @user.save
+            raise ActiveRecord::Rollback
+          end
 
-        if invite_code_required? && !InviteCode.claim!(invite_code)
-          @invite_code_invalid = true
-          raise ActiveRecord::Rollback
-        end
+          if invite_code_required? && !InviteCode.claim!(invite_code)
+            @invite_code_invalid = true
+            raise ActiveRecord::Rollback
+          end
 
-        @invitation&.update!(accepted_at: Time.current)
-        @session = create_session_for(@user)
-        success = true
+          @invitation&.update!(accepted_at: Time.current)
+          @session = create_session_for(@user)
+          success = true
+        end
       end
 
       success

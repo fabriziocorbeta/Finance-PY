@@ -13,7 +13,7 @@ module SelfHostable
     end
 
     def self_hosted_first_login?
-      self_hosted? && User.count.zero?
+      self_hosted? && (RlsContext.with_auth_bypass(reason: "self_hosted_check") { User.count.zero? })
     end
 
     def verify_self_host_config

@@ -484,4 +484,142 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
 
     assert new_user.persisted?
   end
+
+  test "with_auth_bypass allows inserting into families without a family context under forced RLS" do
+    ActiveRecord::Base.connection.execute("ALTER TABLE families FORCE ROW LEVEL SECURITY")
+    ActiveRecord::Base.connection.execute("SET ROLE app_user")
+
+    new_family = Family.new(name: "New Family Under Forced RLS", currency: "USD")
+
+    assert_raises(ActiveRecord::StatementInvalid) do
+      new_family.save!
+    end
+
+    count_before = RlsContext.with_auth_bypass { Family.count }
+    RlsContext.with_auth_bypass { new_family.save! }
+    count_after = RlsContext.with_auth_bypass { Family.count }
+    assert_equal count_before + 1, count_after
+
+    assert new_family.persisted?
+  ensure
+    ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
+    ActiveRecord::Base.connection.execute("ALTER TABLE families NO FORCE ROW LEVEL SECURITY") rescue nil
+  end
+
+  test "web signup creates user and session under forced RLS" do
+    ActiveRecord::Base.connection.execute("SET ROLE app_user")
+
+    assert_difference -> { RlsContext.with_auth_bypass { User.count } } => 1,
+                      -> { RlsContext.with_auth_bypass { Session.count } } => 1 do
+      post "/registration", params: {
+        user: {
+          email: "forced_rls_web@example.com",
+          password: "Password123!"
+        }
+      }
+    end
+
+    assert_response :redirect
+    created_user = User.auth_find_by_email("forced_rls_web@example.com")
+    assert_not_nil created_user
+    assert_not_nil cookies[:session_token]
+  end
+
+  test "mobile api signup creates user and device under forced RLS" do
+    Doorkeeper::Application.find_or_create_by!(name: "FinancePY Mobile") do |app|
+      app.redirect_uri = "financespy://oauth/callback"
+      app.scopes = "read read_write"
+      app.confidential = false
+    end.update!(scopes: "read read_write")
+    MobileDevice.instance_variable_set(:@shared_oauth_application, nil)
+
+    ActiveRecord::Base.connection.execute("SET ROLE app_user")
+
+    assert_difference -> { RlsContext.with_auth_bypass { User.count } } => 1,
+                      -> { RlsContext.with_auth_bypass { MobileDevice.count } } => 1 do
+      post "/api/v1/auth/signup", params: {
+        user: {
+          email: "forced_rls_mobile@example.com",
+          password: "Password123!",
+          first_name: "Mobile",
+          last_name: "User"
+        },
+        device: {
+          device_id: "mobile-device-rls-1",
+          device_name: "iPhone Test",
+          device_type: "ios",
+          os_version: "17.0",
+          app_version: "1.0.0"
+        }
+      }
+    end
+
+    assert_response :created
+    json = JSON.parse(response.body)
+    assert json["access_token"].present?
+    assert json["refresh_token"].present?
+    assert_equal "forced_rls_mobile@example.com", json["user"]["email"]
+  end
+
+  test "web login succeeds and creates session under forced RLS" do
+    ActiveRecord::Base.connection.execute("SET ROLE app_user")
+
+    assert_difference -> { RlsContext.with_auth_bypass { Session.count } } => 1 do
+      post "/sessions", params: {
+        email: @user_a.email,
+        password: user_password_test
+      }
+    end
+
+    assert_response :redirect
+    assert_not_nil cookies[:session_token]
+  end
+
+  test "mobile api refresh token succeeds under forced RLS" do
+    Doorkeeper::Application.find_or_create_by!(name: "FinancePY Mobile") do |app|
+      app.redirect_uri = "financespy://oauth/callback"
+      app.scopes = "read read_write"
+      app.confidential = false
+    end.update!(scopes: "read read_write")
+    MobileDevice.instance_variable_set(:@shared_oauth_application, nil)
+
+    device = MobileDevice.upsert_device!(@user_a, {
+      device_id: "device-refresh-rls",
+      device_name: "Test",
+      device_type: "android",
+      os_version: "14",
+      app_version: "1.0"
+    })
+    tokens = device.issue_token!
+
+    ActiveRecord::Base.connection.execute("SET ROLE app_user")
+
+    post "/api/v1/auth/refresh", params: {
+      refresh_token: tokens[:refresh_token],
+      device: { device_id: "device-refresh-rls" }
+    }
+
+    assert_response :ok
+    json = JSON.parse(response.body)
+    assert json["access_token"].present?
+    assert json["refresh_token"].present?
+  end
+
+  test "DemoFamilyRefreshJob counts sessions under forced RLS" do
+    ActiveRecord::Base.connection.execute("SET ROLE app_user")
+    job = DemoFamilyRefreshJob.new
+    count_a = job.send(:sessions_count_for, @family_a, period_start: 24.hours.ago, period_end: Time.current)
+    assert_equal 2, count_a
+    count_b = job.send(:sessions_count_for, @family_b, period_start: 24.hours.ago, period_end: Time.current)
+    assert_equal 1, count_b
+  end
+
+  test "connection pool checkout hook detects and purges leaked rls_auth_bypass" do
+    ActiveRecord::Base.connection.execute("SET app.rls_auth_bypass = 'true'")
+    assert_equal "true", ActiveRecord::Base.connection.select_value("SELECT current_setting('app.rls_auth_bypass', true)")
+
+    RlsContext.reset(ActiveRecord::Base.connection)
+    val = ActiveRecord::Base.connection.select_value("SELECT current_setting('app.rls_auth_bypass', true)")
+    assert_predicate val.to_s, :empty?
+  end
 end

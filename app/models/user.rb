@@ -63,16 +63,22 @@ class User < ApplicationRecord
   # Returns the appropriate role for a new user creating a family.
   # The very first user of an instance becomes super_admin; subsequent users
   # get the specified fallback role (typically :admin for family creators).
-  def self.auth_find_by_email(email)
-    RlsContext.with_auth_bypass { find_by(email: email) }
+  def self.auth_find_by_email(email = nil, **kwargs)
+    target = email || kwargs[:email]
+    RlsContext.with_auth_bypass(reason: "auth_find_by_email") { find_by(email: target) }
+  end
+
+  def self.auth_find_by_email!(email = nil, **kwargs)
+    target = email || kwargs[:email]
+    RlsContext.with_auth_bypass(reason: "auth_find_by_email!") { find_by!(email: target) }
   end
 
   def self.auth_find_by_id(id)
-    RlsContext.with_auth_bypass { find_by(id: id) }
+    RlsContext.with_auth_bypass(reason: "auth_find_by_id") { find_by(id: id) }
   end
 
   def self.auth_authenticate_by(attributes)
-    RlsContext.with_auth_bypass { authenticate_by(attributes) }
+    RlsContext.with_auth_bypass(reason: "auth_authenticate_by") { authenticate_by(attributes) }
   end
 
   # Lookups by token happen during password reset and email confirmation,

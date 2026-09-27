@@ -7123,7 +7123,7 @@ ALTER TABLE public.families ENABLE ROW LEVEL SECURITY;
 -- Name: families families_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY families_family_isolation_policy ON public.families USING ((id = public.current_family_id())) WITH CHECK ((id = public.current_family_id()));
+CREATE POLICY families_family_isolation_policy ON public.families USING (((id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8085,6 +8085,7 @@ CREATE POLICY versions_family_isolation_policy ON public.versions USING ((family
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260927010000'),
 ('20260925224530'),
 ('20260925210741'),
 ('20260924145501'),

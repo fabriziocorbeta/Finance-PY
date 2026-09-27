@@ -52,13 +52,15 @@ module Api
         token_response = nil
         begin
           ActiveRecord::Base.transaction do
-            unless user.save
-              render json: { errors: user.errors.full_messages }, status: :unprocessable_entity
-              raise ActiveRecord::Rollback
+            RlsContext.with_auth_bypass(reason: "mobile_signup") do
+              unless user.save
+                render json: { errors: user.errors.full_messages }, status: :unprocessable_entity
+                raise ActiveRecord::Rollback
+              end
+              InviteCode.claim!(params[:invite_code]) if params[:invite_code].present?
+              device = MobileDevice.upsert_device!(user, device_params)
+              token_response = device.issue_token!
             end
-            InviteCode.claim!(params[:invite_code]) if params[:invite_code].present?
-            device = MobileDevice.upsert_device!(user, device_params)
-            token_response = device.issue_token!
           end
         rescue ActiveRecord::RecordInvalid => e
           Rails.logger.error("[Auth] Device registration failed: #{e.class} - #{e.message}")
@@ -156,7 +158,7 @@ module Api
         cached = validate_linking_code(linking_code)
         return unless cached
 
-        user = User.authenticate_by(email: params[:email], password: params[:password])
+        user = User.auth_authenticate_by(email: params[:email], password: params[:password])
 
         unless user
           render json: { error: "Invalid email or password" }, status: :unauthorized
@@ -171,7 +173,9 @@ module Api
         # Atomically claim the code before creating the identity
         return render json: { error: "Linking code is invalid or expired" }, status: :unauthorized unless consume_linking_code!(linking_code)
 
-        OidcIdentity.create_from_omniauth(build_omniauth_hash(cached), user)
+        RlsContext.with_auth_bypass(reason: "mobile_sso_link") do
+          OidcIdentity.create_from_omniauth(build_omniauth_hash(cached), user)
+        end
 
         SsoAuditLog.log_link!(
           user: user,
@@ -219,11 +223,17 @@ module Api
           user.role = User.role_for_new_family_creator(fallback_role: provider_default_role || :admin)
         end
 
-        if user.save
+        saved = RlsContext.with_auth_bypass(reason: "mobile_sso_signup") do
+          user.save
+        end
+
+        if saved
           # Mark invitation as accepted if one was used
           invitation&.update!(accepted_at: Time.current)
 
-          OidcIdentity.create_from_omniauth(build_omniauth_hash(cached), user)
+          RlsContext.with_auth_bypass(reason: "mobile_sso_signup_identity") do
+            OidcIdentity.create_from_omniauth(build_omniauth_hash(cached), user)
+          end
 
           SsoAuditLog.log_jit_account_created!(
             user: user,
