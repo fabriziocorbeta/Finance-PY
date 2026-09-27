@@ -63,7 +63,7 @@ class RegistrationsController < ApplicationController
       success = false
 
       ActiveRecord::Base.transaction do
-        unless @user.save
+        unless RlsContext.with_auth_bypass(reason: "signup") { @user.save }
           raise ActiveRecord::Rollback
         end
 

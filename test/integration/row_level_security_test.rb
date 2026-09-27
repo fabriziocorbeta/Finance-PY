@@ -456,4 +456,32 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
   ensure
     ActiveRecord::Base.connection.execute("RESET app.current_family_id") rescue nil
   end
+
+  test "with_auth_bypass allows inserting into auth tables without a family context" do
+    ActiveRecord::Base.connection.execute("SET ROLE app_user")
+
+    # Normally INSERT without a family context fails due to WITH CHECK policy (defaults to USING)
+    new_user = User.new(
+      email: "newuser@example.com",
+      password: "Password123!",
+      first_name: "New",
+      last_name: "User",
+      role: :admin,
+      default_period: "current_month",
+      default_account_order: "name_asc",
+      family: @family_b
+    )
+
+    assert_raises(ActiveRecord::StatementInvalid) do
+      new_user.save!
+    end
+
+    # But with auth bypass, INSERT is allowed
+    count_before = RlsContext.with_auth_bypass { User.count }
+    RlsContext.with_auth_bypass { new_user.save! }
+    count_after = RlsContext.with_auth_bypass { User.count }
+    assert_equal count_before + 1, count_after
+
+    assert new_user.persisted?
+  end
 end

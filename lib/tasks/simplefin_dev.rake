@@ -12,7 +12,7 @@ namespace :simplefin do
       ENV["USER_EMAIL"].presence ||
       abort("Usage: bin/rails 'simplefin:seed_fraud_scenario[user@example.com]'")
 
-    user = User.find_by!(email: email)
+    user = User.auth_find_by_email!(email: email)
     family = user.family
     puts "Seeding fraud scenario for #{user.email} (family: #{family.id})"
 
@@ -100,7 +100,7 @@ namespace :simplefin do
       ENV["USER_EMAIL"].presence ||
       abort("Usage: bin/rails 'simplefin:cleanup_fraud_scenario[user@example.com]'")
 
-    user = User.find_by!(email: email)
+    user = User.auth_find_by_email!(email: email)
     family = user.family
     # Drop seeded sfas by account_id prefix (see seed_* values in the seed task)
     # plus the Sure account created by the seed. This handles both the
