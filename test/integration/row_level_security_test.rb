@@ -485,6 +485,27 @@ class RowLevelSecurityTest < ActionDispatch::IntegrationTest
     assert new_user.persisted?
   end
 
+  test "with_auth_bypass allows inserting into families without a family context under forced RLS" do
+    ActiveRecord::Base.connection.execute("ALTER TABLE families FORCE ROW LEVEL SECURITY")
+    ActiveRecord::Base.connection.execute("SET ROLE app_user")
+
+    new_family = Family.new(name: "New Family Under Forced RLS", currency: "USD")
+
+    assert_raises(ActiveRecord::StatementInvalid) do
+      new_family.save!
+    end
+
+    count_before = RlsContext.with_auth_bypass { Family.count }
+    RlsContext.with_auth_bypass { new_family.save! }
+    count_after = RlsContext.with_auth_bypass { Family.count }
+    assert_equal count_before + 1, count_after
+
+    assert new_family.persisted?
+  ensure
+    ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
+    ActiveRecord::Base.connection.execute("ALTER TABLE families NO FORCE ROW LEVEL SECURITY") rescue nil
+  end
+
   test "web signup creates user and session under forced RLS" do
     ActiveRecord::Base.connection.execute("SET ROLE app_user")
 
