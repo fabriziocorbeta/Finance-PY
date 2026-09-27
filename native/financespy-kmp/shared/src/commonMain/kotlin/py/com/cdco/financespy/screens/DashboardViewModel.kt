@@ -1,6 +1,8 @@
 package py.com.cdco.financespy.screens
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,10 +65,19 @@ class DashboardViewModel(
     fun refresh() {
         scope.launch {
             _state.update { it.copy(isSyncing = true, syncError = null) }
-            runCatching {
-                syncEngine.syncAll()
+            // The dashboard comes from its own server-side endpoint
+            // (api.fetchDashboard), computed from the server's own data --
+            // it does not read from the local Room tables that syncAll()
+            // populates. Waiting for the full local sync (accounts,
+            // transactions, rules, goals, receivables) before even starting
+            // the dashboard fetch only added its own latency on top for no
+            // correctness reason. Run both concurrently instead.
+            coroutineScope {
+                val sync = async { runCatching { syncEngine.syncAll() } }
+                val dashboard = async { loadDashboardInternal() }
+                sync.await()
+                dashboard.await()
             }
-            loadDashboardInternal()
         }
     }
 
