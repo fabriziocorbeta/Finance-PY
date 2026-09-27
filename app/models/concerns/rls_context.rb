@@ -40,7 +40,7 @@ module RlsContext
       true
     rescue => e
       Rails.logger.error(
-        "[RlsContext] RESET app.current_family_id failed (#{e.class}: #{e.message}); " \
+        "[RlsContext] RESET app.current_family_id / app.rls_auth_bypass failed (#{e.class}: #{e.message}); " \
         "reconnecting to purge session state instead of returning a possibly-poisoned connection to the pool"
       )
       begin

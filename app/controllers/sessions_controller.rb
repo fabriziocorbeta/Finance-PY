@@ -151,14 +151,16 @@ class SessionsController < ApplicationController
       return
     end
 
-    # Security fix: Look up by provider + uid, not just email
-    oidc_identity = RlsContext.with_auth_bypass { OidcIdentity.find_by(provider: auth.provider, uid: auth.uid) }
+    oidc_identity = RlsContext.with_auth_bypass(reason: "sso_callback") { OidcIdentity.find_by(provider: auth.provider, uid: auth.uid) }
 
     if oidc_identity
       # Existing OIDC identity found - authenticate the user
-      user = oidc_identity.user
-      oidc_identity.record_authentication!
-      oidc_identity.sync_user_attributes!(auth)
+      user = RlsContext.with_auth_bypass(reason: "sso_callback") do
+        u = oidc_identity.user
+        oidc_identity.record_authentication!
+        oidc_identity.sync_user_attributes!(auth)
+        u
+      end
 
       # Log successful SSO login
       SsoAuditLog.log_login!(user: user, provider: auth.provider, request: request)

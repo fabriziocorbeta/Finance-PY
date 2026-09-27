@@ -21,15 +21,17 @@ module Authentication
     def authenticate_user!
       if session_record = find_session_by_cookie
         if session_expired?(session_record)
-          session_record.destroy
+          RlsContext.with_auth_bypass(reason: "destroy_expired_session") do
+            session_record.destroy
+          end
           cookies.delete(:session_token)
           redirect_to new_session_url, alert: "Tu sesión ha expirado por inactividad."
           return
         end
 
-        session_record.touch
         Current.session = session_record
         RlsContext.set_family(Current.family&.id)
+        session_record.touch
       else
         if self_hosted_first_login?
           redirect_to new_registration_url
@@ -49,8 +51,8 @@ module Authentication
       cookie_value = cookies.signed[:session_token]
 
       if cookie_value.present?
-        RlsContext.with_auth_bypass do
-          Session.find_by(id: cookie_value)
+        RlsContext.with_auth_bypass(reason: "find_session_by_cookie") do
+          Session.includes(:user).find_by(id: cookie_value)
         end
       else
         nil
@@ -58,13 +60,15 @@ module Authentication
     end
 
     def create_session_for(user)
-      session = user.sessions.create!
+      session = RlsContext.with_auth_bypass(reason: "create_session") do
+        user.sessions.create!
+      end
       cookies.signed.permanent[:session_token] = { value: session.id, httponly: true }
       session
     end
 
     def self_hosted_first_login?
-      Rails.application.config.app_mode.self_hosted? && User.count.zero?
+      Rails.application.config.app_mode.self_hosted? && (RlsContext.with_auth_bypass(reason: "self_hosted_check") { User.count.zero? })
     end
 
     def set_request_details
