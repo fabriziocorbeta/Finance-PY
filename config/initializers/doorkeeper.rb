@@ -10,9 +10,13 @@ Doorkeeper.configure do
     # Manually replicate the app's session-based authentication logic, since
     # Doorkeeper controllers don't include our Authentication concern.
     if (session_id = cookies.signed[:session_token]).present?
-      if (session_record = RlsContext.with_auth_bypass { Session.find_by(id: session_id) })
+      session_record = RlsContext.with_auth_bypass(reason: "doorkeeper_auth") do
+        Session.includes(:user).find_by(id: session_id)
+      end
+      if session_record
         # Set Current.session so downstream code expecting it behaves normally.
         Current.session = session_record
+        RlsContext.set_family(session_record.user&.family_id)
         # Return the authenticated user object as the resource owner.
         session_record.user
       else
@@ -30,8 +34,12 @@ Doorkeeper.configure do
   #
   admin_authenticator do
     if (session_id = cookies.signed[:session_token]).present?
-      if (session_record = RlsContext.with_auth_bypass { Session.find_by(id: session_id) })
+      session_record = RlsContext.with_auth_bypass(reason: "doorkeeper_admin_auth") do
+        Session.includes(:user).find_by(id: session_id)
+      end
+      if session_record
         Current.session = session_record
+        RlsContext.set_family(session_record.user&.family_id)
         head :forbidden unless session_record.user&.super_admin?
       else
         redirect_to new_session_url
