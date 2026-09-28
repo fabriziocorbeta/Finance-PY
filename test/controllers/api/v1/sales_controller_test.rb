@@ -104,8 +104,12 @@ class Api::V1::SalesControllerTest < ActionDispatch::IntegrationTest
     )
     Redis.new.del("api_rate_limit:#{restricted_key.id}")
 
-    assert_not Account.writable_by(restricted_user).exists?(id: accounts(:depository).id),
-      "fixture assumption: family_member should not have write access to depository"
+    # credit_card is shared with family_member read_only (see
+    # test/fixtures/account_shares.yml) -- visible, but not writable.
+    # depository is shared full_control, so it's the wrong fixture here.
+    read_only_account = accounts(:credit_card)
+    assert_not Account.writable_by(restricted_user).exists?(id: read_only_account.id),
+      "fixture assumption: family_member should not have write access to credit_card"
 
     assert_no_difference -> { Sale.count } do
       post api_v1_sales_url,
@@ -113,7 +117,7 @@ class Api::V1::SalesControllerTest < ActionDispatch::IntegrationTest
              sale: {
                client_name: "Attempted IDOR",
                currency: "pyg",
-               account_id: accounts(:depository).id,
+               account_id: read_only_account.id,
                sale_items_attributes: [
                  { product_id: @product.id, quantity: 1, unit_price: 20 }
                ]
