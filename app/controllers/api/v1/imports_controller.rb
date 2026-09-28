@@ -71,9 +71,15 @@ class Api::V1::ImportsController < Api::V1::BaseController
     # 2. Build the import object with permitted config attributes
     @import = family.imports.build(import_config_params.merge(type: type))
     if params[:account_id].present?
-      account = family.accounts.writable_by(current_resource_owner).find_by(id: params[:account_id])
-      return render json: { error: "not_found", message: "Account not found" }, status: :not_found unless account
-      @import.account_id = account.id
+      account_in_family = family.accounts.find_by(id: params[:account_id])
+      # An account_id from another family (or a bogus id) is left to
+      # Import's own account_belongs_to_family validation below (422,
+      # existing behavior) -- only an account that IS in this family but
+      # the caller can't write to is an IDOR to block here explicitly.
+      if account_in_family && !family.accounts.writable_by(current_resource_owner).exists?(id: account_in_family.id)
+        return render json: { error: "not_found", message: "Account not found" }, status: :not_found
+      end
+      @import.account_id = params[:account_id]
     end
 
     # 3. Attach the uploaded file if present (with validation)

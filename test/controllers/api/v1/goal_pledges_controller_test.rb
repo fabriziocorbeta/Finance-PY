@@ -146,10 +146,16 @@ class Api::V1::GoalPledgesControllerTest < ActionDispatch::IntegrationTest
     )
     Redis.new.del("api_rate_limit:#{restricted_key.id}")
 
-    assert_not Account.writable_by(restricted_user).exists?(id: @account.id),
-      "fixture assumption: family_member should not have write access to depository"
+    # credit_card is shared with family_member read_only (see
+    # test/fixtures/account_shares.yml) -- visible, but not writable. Linked
+    # to the goal too, so this exercises the linked_accounts.merge(writable_accounts)
+    # branch specifically, not just the writable_accounts fallback.
+    read_only_account = accounts(:credit_card)
+    @goal.goal_accounts.create!(account: read_only_account)
+    assert_not Account.writable_by(restricted_user).exists?(id: read_only_account.id),
+      "fixture assumption: family_member should not have write access to credit_card"
 
-    params = { pledge: { amount: 250, account_id: @account.id } }
+    params = { pledge: { amount: 250, account_id: read_only_account.id } }
 
     assert_no_difference -> { GoalPledge.count } do
       post api_v1_goal_pledges_url(@goal), params: params, headers: api_headers(restricted_key), as: :json

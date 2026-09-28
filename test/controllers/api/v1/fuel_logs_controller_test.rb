@@ -143,14 +143,17 @@ class Api::V1::FuelLogsControllerTest < ActionDispatch::IntegrationTest
     )
     Redis.new.del("api_rate_limit:#{restricted_key.id}")
 
-    assert_not Account.writable_by(restricted_user).exists?(id: @account.id),
-      "fixture assumption: family_member should not have write access to depository"
+    # credit_card is shared with family_member read_only (see
+    # test/fixtures/account_shares.yml) -- visible, but not writable.
+    read_only_account = accounts(:credit_card)
+    assert_not Account.writable_by(restricted_user).exists?(id: read_only_account.id),
+      "fixture assumption: family_member should not have write access to credit_card"
 
     assert_no_difference -> { FuelLog.count } do
       post api_v1_fleet_vehicle_fuel_logs_url(@vehicle),
            params: {
              fuel_log: {
-               account_id: @account.id,
+               account_id: read_only_account.id,
                logged_at: Date.current.iso8601,
                fuel_log_lines_attributes: [ { fuel_type: "nafta", liters: 40, cost: 300000 } ]
              }
