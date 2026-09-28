@@ -1,7 +1,7 @@
 class AndroidPurchase::WebhookProcessor
   Error = Class.new(StandardError)
 
-  def initialize(params, family: nil)
+  def initialize(params, family: nil, user: nil)
     @account_id = params[:account_id].to_s
     @amount = params[:amount]
     @merchant = params[:merchant].to_s
@@ -9,16 +9,18 @@ class AndroidPurchase::WebhookProcessor
     @timestamp = params[:timestamp].to_s
     @raw_text = params[:raw_text].to_s
     @family = family
+    @user = user
   end
 
   def process
     raise Error, "account_id is required" if @account_id.blank?
     raise Error, "amount is required and must be numeric" if numeric_amount.nil?
 
-    account = Account.find_by(id: @account_id)
-    # Same "Unknown account_id" message for both "doesn't exist" and "wrong
-    # family" so a caller with a valid token can't use this to enumerate
-    # which account ids exist in other families.
+    account = resolve_account
+    # Same "Unknown account_id" message for both "doesn't exist", "wrong
+    # family" and "not writable by this user" so a caller with a valid
+    # token can't use this to enumerate which account ids exist in other
+    # families or which accounts are restricted from them.
     if account.nil? || (@family.present? && account.family_id != @family.id)
       raise Error, "Unknown account_id: #{@account_id}"
     end
@@ -60,6 +62,17 @@ class AndroidPurchase::WebhookProcessor
   end
 
   private
+
+    # A restricted family member's writable_by scope is empty of any account
+    # they haven't been given write access to -- falls back to a bare
+    # Account.find_by(id:) only when no user is passed (background/console
+    # callers without a request context), matching the previous behavior for
+    # those, but every real webhook request always passes user:.
+    def resolve_account
+      return Account.find_by(id: @account_id) if @user.nil?
+
+      Account.writable_by(@user).find_by(id: @account_id)
+    end
 
     # Best-effort: reuses the same Rules engine the rest of the app uses for
     # merchant-name-based categorization (Settings > Rules), so a Wallet

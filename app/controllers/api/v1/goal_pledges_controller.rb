@@ -31,7 +31,9 @@ class Api::V1::GoalPledgesController < Api::V1::BaseController
   def create
     raw_params = pledge_raw_params
     account_id = raw_params[:account_id]
-    account = @goal.linked_accounts.find_by(id: account_id) || current_resource_owner.family.accounts.find_by(id: account_id)
+    writable_accounts = current_resource_owner.family.accounts.writable_by(current_resource_owner)
+    account = @goal.linked_accounts.merge(writable_accounts).find_by(id: account_id) ||
+      writable_accounts.find_by(id: account_id)
 
     @pledge = @goal.goal_pledges.build(
       amount: raw_params[:amount],

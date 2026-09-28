@@ -185,6 +185,50 @@ class Api::V1::ImportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ 6, 7, 8 ], json_response["data"].map { |row| row["row_number"] }
   end
 
+  test "should not list or show imports linked to accounts the caller cannot access (IDOR)" do
+    restricted_user = users(:family_member)
+    restricted_user.api_keys.active.destroy_all
+    restricted_key = ApiKey.create!(
+      user: restricted_user,
+      name: "Restricted Key",
+      scopes: [ "read_write" ],
+      display_key: "test_restricted_#{SecureRandom.hex(8)}",
+      source: "web"
+    )
+    Redis.new.del("api_rate_limit:#{restricted_key.id}")
+
+    assert_not Account.accessible_by(restricted_user).exists?(id: @account.id),
+      "fixture assumption: family_member should not have access to depository"
+
+    get api_v1_imports_url, headers: api_headers(restricted_key)
+    ids = JSON.parse(response.body)["data"].map { |i| i["id"] }
+    assert_not_includes ids, @diagnostic_import.id
+
+    get api_v1_import_url(@diagnostic_import), headers: api_headers(restricted_key)
+    assert_response :not_found
+  end
+
+  test "should reject creating an import against an account the caller cannot write to (IDOR)" do
+    restricted_user = users(:family_member)
+    restricted_user.api_keys.active.destroy_all
+    restricted_key = ApiKey.create!(
+      user: restricted_user,
+      name: "Restricted Key",
+      scopes: [ "read_write" ],
+      display_key: "test_restricted_create_#{SecureRandom.hex(8)}",
+      source: "web"
+    )
+    Redis.new.del("api_rate_limit:#{restricted_key.id}")
+
+    post api_v1_imports_url, params: {
+      type: "TransactionImport",
+      account_id: @account.id,
+      raw_file_content: "date,amount,name\n01/15/2024,-10.00,Test"
+    }, headers: api_headers(restricted_key)
+
+    assert_response :not_found
+  end
+
   test "should not expose another family's import rows" do
     other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
     other_import = other_family.imports.create!(type: "TransactionImport", raw_file_str: "date,amount,name")

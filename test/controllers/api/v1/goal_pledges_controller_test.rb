@@ -134,6 +134,30 @@ class Api::V1::GoalPledgesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "validation_failed", json_response["error"]
   end
 
+  test "should not create pledge against an account the caller cannot write to (IDOR)" do
+    restricted_user = users(:family_member)
+    restricted_user.api_keys.active.destroy_all
+    restricted_key = ApiKey.create!(
+      user: restricted_user,
+      name: "Restricted Write Key",
+      scopes: [ "read_write" ],
+      source: "mobile",
+      display_key: "test_restricted_#{SecureRandom.hex(8)}"
+    )
+    Redis.new.del("api_rate_limit:#{restricted_key.id}")
+
+    assert_not Account.writable_by(restricted_user).exists?(id: @account.id),
+      "fixture assumption: family_member should not have write access to depository"
+
+    params = { pledge: { amount: 250, account_id: @account.id } }
+
+    assert_no_difference -> { GoalPledge.count } do
+      post api_v1_goal_pledges_url(@goal), params: params, headers: api_headers(restricted_key), as: :json
+    end
+
+    assert_response :unprocessable_entity
+  end
+
   test "should fail to create duplicate open pledge" do
     params = {
       pledge: {

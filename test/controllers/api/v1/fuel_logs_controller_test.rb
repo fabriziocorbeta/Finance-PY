@@ -131,6 +131,36 @@ class Api::V1::FuelLogsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "should not create fuel log against an account the caller cannot write to (IDOR)" do
+    restricted_user = users(:family_member)
+    restricted_user.api_keys.active.destroy_all
+    restricted_key = ApiKey.create!(
+      user: restricted_user,
+      name: "Restricted Write Key",
+      scopes: [ "read_write" ],
+      source: "mobile",
+      display_key: "test_restricted_#{SecureRandom.hex(8)}"
+    )
+    Redis.new.del("api_rate_limit:#{restricted_key.id}")
+
+    assert_not Account.writable_by(restricted_user).exists?(id: @account.id),
+      "fixture assumption: family_member should not have write access to depository"
+
+    assert_no_difference -> { FuelLog.count } do
+      post api_v1_fleet_vehicle_fuel_logs_url(@vehicle),
+           params: {
+             fuel_log: {
+               account_id: @account.id,
+               logged_at: Date.current.iso8601,
+               fuel_log_lines_attributes: [ { fuel_type: "nafta", liters: 40, cost: 300000 } ]
+             }
+           },
+           headers: api_headers(restricted_key)
+    end
+
+    assert_response :unprocessable_entity
+  end
+
   private
 
     def api_headers(api_key)
