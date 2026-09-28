@@ -14,11 +14,29 @@ class BudgetsController < ApplicationController
   end
 
   def update
+    # TODO: Tech debt - Missing `last_updated_at` is supported for backward compatibility.
+    # Require it once Android/iOS/Web clients adopt this parameter to fully prevent lost updates.
+    if params[:last_updated_at].present?
+      last_updated_at = params[:last_updated_at].to_i
+      if @budget.updated_at.to_i > last_updated_at
+        return render plain: "Otra persona de tu familia modificó este presupuesto, recargá la pantalla.", status: :conflict
+      end
+    end
+
     @budget.update!(budget_params)
     redirect_to budget_budget_categories_path(@budget)
   end
 
   def copy_previous
+    # TODO: Tech debt - Missing `last_updated_at` is supported for backward compatibility.
+    # Require it once Android/iOS/Web clients adopt this parameter to fully prevent lost updates.
+    if params[:last_updated_at].present?
+      last_updated_at = params[:last_updated_at].to_i
+      if @budget.updated_at.to_i > last_updated_at
+        return render plain: "Otra persona de tu familia modificó este presupuesto, recargá la pantalla.", status: :conflict
+      end
+    end
+
     if @budget.initialized?
       redirect_to budget_path(@budget), alert: t("budgets.copy_previous.already_initialized")
       return
