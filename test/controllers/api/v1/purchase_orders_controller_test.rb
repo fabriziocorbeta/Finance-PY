@@ -92,6 +92,43 @@ class Api::V1::PurchaseOrdersControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Global Corp", json_response["supplier_name"]
   end
 
+  test "should reject creating a purchase order against an account the caller cannot write to (IDOR)" do
+    restricted_user = users(:family_member)
+    restricted_user.api_keys.active.destroy_all
+    restricted_key = ApiKey.create!(
+      user: restricted_user,
+      name: "Restricted Write Key",
+      scopes: [ "read_write" ],
+      source: "mobile",
+      display_key: "test_restricted_#{SecureRandom.hex(8)}"
+    )
+    Redis.new.del("api_rate_limit:#{restricted_key.id}")
+
+    # credit_card is shared with family_member read_only (see
+    # test/fixtures/account_shares.yml) -- visible, but not writable.
+    # depository is shared full_control, so it's the wrong fixture here.
+    read_only_account = accounts(:credit_card)
+    assert_not Account.writable_by(restricted_user).exists?(id: read_only_account.id),
+      "fixture assumption: family_member should not have write access to credit_card"
+
+    assert_no_difference -> { PurchaseOrder.count } do
+      post api_v1_purchase_orders_url,
+           params: {
+             purchase_order: {
+               supplier_name: "Attempted IDOR",
+               currency: "pyg",
+               account_id: read_only_account.id,
+               purchase_order_items_attributes: [
+                 { product_id: @product.id, quantity: 1, unit_cost: 10 }
+               ]
+             }
+           },
+           headers: api_headers(restricted_key)
+    end
+
+    assert_response :unprocessable_entity
+  end
+
   test "should receive purchase order and increase product stock" do
     assert_equal 5, @product.reload.stock
 
