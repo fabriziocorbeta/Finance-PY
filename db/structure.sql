@@ -133,6 +133,8 @@ CREATE TABLE public.account_providers (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.account_providers FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: account_shares; Type: TABLE; Schema: public; Owner: -
@@ -148,6 +150,8 @@ CREATE TABLE public.account_shares (
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_account_shares_permission CHECK (((permission)::text = ANY (ARRAY[('full_control'::character varying)::text, ('read_write'::character varying)::text, ('read_only'::character varying)::text])))
 );
+
+ALTER TABLE ONLY public.account_shares FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -579,6 +583,8 @@ CREATE TABLE public.credit_cards (
     family_id uuid
 );
 
+ALTER TABLE ONLY public.credit_cards FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: cryptos; Type: TABLE; Schema: public; Owner: -
@@ -593,6 +599,8 @@ CREATE TABLE public.cryptos (
     tax_treatment character varying DEFAULT 'taxable'::character varying NOT NULL,
     family_id uuid
 );
+
+ALTER TABLE ONLY public.cryptos FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -638,6 +646,8 @@ CREATE TABLE public.depositories (
     subtype character varying,
     family_id uuid
 );
+
+ALTER TABLE ONLY public.depositories FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1285,6 +1295,8 @@ CREATE TABLE public.investments (
     family_id uuid
 );
 
+ALTER TABLE ONLY public.investments FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: invitations; Type: TABLE; Schema: public; Owner: -
@@ -1354,6 +1366,8 @@ CREATE TABLE public.loans (
     subtype character varying,
     family_id uuid
 );
+
+ALTER TABLE ONLY public.loans FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1656,6 +1670,8 @@ CREATE TABLE public.other_assets (
     family_id uuid
 );
 
+ALTER TABLE ONLY public.other_assets FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: other_liabilities; Type: TABLE; Schema: public; Owner: -
@@ -1669,6 +1685,8 @@ CREATE TABLE public.other_liabilities (
     subtype character varying,
     family_id uuid
 );
+
+ALTER TABLE ONLY public.other_liabilities FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1793,6 +1811,8 @@ CREATE TABLE public.properties (
     subtype character varying,
     family_id uuid
 );
+
+ALTER TABLE ONLY public.properties FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -2445,6 +2465,8 @@ CREATE TABLE public.trades (
     family_id uuid
 );
 
+ALTER TABLE ONLY public.trades FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: transactions; Type: TABLE; Schema: public; Owner: -
@@ -2557,6 +2579,8 @@ CREATE TABLE public.vehicles (
     subtype character varying,
     family_id uuid
 );
+
+ALTER TABLE ONLY public.vehicles FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -8089,6 +8113,7 @@ CREATE POLICY versions_family_isolation_policy ON public.versions USING ((family
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260928040000'),
 ('20260927010000'),
 ('20260926175734'),
 ('20260925224530'),
