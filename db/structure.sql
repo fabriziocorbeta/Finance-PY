@@ -250,6 +250,8 @@ CREATE TABLE public.addresses (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.addresses FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: api_keys; Type: TABLE; Schema: public; Owner: -
@@ -350,6 +352,8 @@ CREATE TABLE public.binance_accounts (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.binance_accounts FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: binance_items; Type: TABLE; Schema: public; Owner: -
@@ -373,6 +377,8 @@ CREATE TABLE public.binance_items (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+ALTER TABLE ONLY public.binance_items FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -449,6 +455,8 @@ CREATE TABLE public.chats (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.chats FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: coinbase_accounts; Type: TABLE; Schema: public; Owner: -
@@ -470,6 +478,8 @@ CREATE TABLE public.coinbase_accounts (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+ALTER TABLE ONLY public.coinbase_accounts FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -497,6 +507,8 @@ CREATE TABLE public.coinbase_items (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.coinbase_items FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: coinstats_accounts; Type: TABLE; Schema: public; Owner: -
@@ -519,6 +531,8 @@ CREATE TABLE public.coinstats_accounts (
     updated_at timestamp(6) without time zone NOT NULL,
     wallet_address character varying
 );
+
+ALTER TABLE ONLY public.coinstats_accounts FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -546,6 +560,8 @@ CREATE TABLE public.coinstats_items (
     exchange_portfolio_id character varying,
     exchange_connection_id character varying
 );
+
+ALTER TABLE ONLY public.coinstats_items FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -619,6 +635,8 @@ CREATE TABLE public.data_enrichments (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.data_enrichments FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: deletion_records; Type: TABLE; Schema: public; Owner: -
@@ -676,6 +694,8 @@ CREATE TABLE public.enable_banking_accounts (
     identification_hashes jsonb DEFAULT '[]'::jsonb
 );
 
+ALTER TABLE ONLY public.enable_banking_accounts FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: enable_banking_items; Type: TABLE; Schema: public; Owner: -
@@ -713,6 +733,8 @@ CREATE TABLE public.enable_banking_items (
     last_psu_ip character varying,
     psu_type character varying
 );
+
+ALTER TABLE ONLY public.enable_banking_items FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -893,6 +915,8 @@ CREATE TABLE public.families (
     CONSTRAINT month_start_day_range CHECK (((month_start_day >= 1) AND (month_start_day <= 28)))
 );
 
+ALTER TABLE ONLY public.families FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: family_documents; Type: TABLE; Schema: public; Owner: -
@@ -911,6 +935,8 @@ CREATE TABLE public.family_documents (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.family_documents FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: family_exports; Type: TABLE; Schema: public; Owner: -
@@ -923,6 +949,8 @@ CREATE TABLE public.family_exports (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+ALTER TABLE ONLY public.family_exports FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -937,6 +965,8 @@ CREATE TABLE public.family_merchant_associations (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+ALTER TABLE ONLY public.family_merchant_associations FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1012,6 +1042,8 @@ CREATE TABLE public.goal_accounts (
     CONSTRAINT chk_goal_accounts_allocation_non_negative CHECK (((allocated_amount IS NULL) OR (allocated_amount >= (0)::numeric)))
 );
 
+ALTER TABLE ONLY public.goal_accounts FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: goal_pledges; Type: TABLE; Schema: public; Owner: -
@@ -1031,6 +1063,8 @@ CREATE TABLE public.goal_pledges (
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_goal_pledges_amount_positive CHECK ((amount > (0)::numeric))
 );
+
+ALTER TABLE ONLY public.goal_pledges FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1137,6 +1171,8 @@ CREATE TABLE public.import_mappings (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.import_mappings FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: import_rows; Type: TABLE; Schema: public; Owner: -
@@ -1178,6 +1214,8 @@ CREATE TABLE public.import_rows (
     card_type character varying,
     CONSTRAINT chk_import_rows_source_row_number_positive CHECK ((source_row_number > 0))
 );
+
+ALTER TABLE ONLY public.import_rows FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1223,6 +1261,8 @@ CREATE TABLE public.imports (
     extracted_data jsonb
 );
 
+ALTER TABLE ONLY public.imports FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: indexa_capital_accounts; Type: TABLE; Schema: public; Owner: -
@@ -1253,6 +1293,8 @@ CREATE TABLE public.indexa_capital_accounts (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.indexa_capital_accounts FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: indexa_capital_items; Type: TABLE; Schema: public; Owner: -
@@ -1280,6 +1322,8 @@ CREATE TABLE public.indexa_capital_items (
     updated_at timestamp(6) without time zone NOT NULL,
     api_token text
 );
+
+ALTER TABLE ONLY public.indexa_capital_items FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1316,6 +1360,8 @@ CREATE TABLE public.invitations (
     token_digest character varying
 );
 
+ALTER TABLE ONLY public.invitations FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: invite_codes; Type: TABLE; Schema: public; Owner: -
@@ -1348,6 +1394,8 @@ CREATE TABLE public.llm_usages (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+ALTER TABLE ONLY public.llm_usages FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1393,6 +1441,8 @@ CREATE TABLE public.lunchflow_accounts (
     raw_holdings_payload jsonb
 );
 
+ALTER TABLE ONLY public.lunchflow_accounts FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: lunchflow_items; Type: TABLE; Schema: public; Owner: -
@@ -1418,6 +1468,8 @@ CREATE TABLE public.lunchflow_items (
     api_key text,
     base_url character varying
 );
+
+ALTER TABLE ONLY public.lunchflow_items FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1462,6 +1514,8 @@ CREATE TABLE public.mercury_accounts (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.mercury_accounts FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: mercury_items; Type: TABLE; Schema: public; Owner: -
@@ -1488,6 +1542,8 @@ CREATE TABLE public.mercury_items (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.mercury_items FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: messages; Type: TABLE; Schema: public; Owner: -
@@ -1506,6 +1562,8 @@ CREATE TABLE public.messages (
     provider_id character varying,
     reasoning boolean DEFAULT false
 );
+
+ALTER TABLE ONLY public.messages FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1712,6 +1770,8 @@ CREATE TABLE public.plaid_accounts (
     raw_liabilities_payload jsonb DEFAULT '{}'::jsonb
 );
 
+ALTER TABLE ONLY public.plaid_accounts FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: plaid_items; Type: TABLE; Schema: public; Owner: -
@@ -1737,6 +1797,8 @@ CREATE TABLE public.plaid_items (
     raw_payload jsonb DEFAULT '{}'::jsonb,
     raw_institution_payload jsonb DEFAULT '{}'::jsonb
 );
+
+ALTER TABLE ONLY public.plaid_items FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1913,6 +1975,8 @@ CREATE TABLE public.rejected_transfers (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.rejected_transfers FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: rule_actions; Type: TABLE; Schema: public; Owner: -
@@ -1926,6 +1990,8 @@ CREATE TABLE public.rule_actions (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+ALTER TABLE ONLY public.rule_actions FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1942,6 +2008,8 @@ CREATE TABLE public.rule_conditions (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+ALTER TABLE ONLY public.rule_conditions FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1963,6 +2031,8 @@ CREATE TABLE public.rule_runs (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+ALTER TABLE ONLY public.rule_runs FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -2157,6 +2227,8 @@ CREATE TABLE public.simplefin_accounts (
     raw_holdings_payload jsonb
 );
 
+ALTER TABLE ONLY public.simplefin_accounts FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: simplefin_items; Type: TABLE; Schema: public; Owner: -
@@ -2181,6 +2253,8 @@ CREATE TABLE public.simplefin_items (
     institution_color character varying,
     sync_start_date date
 );
+
+ALTER TABLE ONLY public.simplefin_items FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -2214,6 +2288,8 @@ CREATE TABLE public.snaptrade_accounts (
     sync_start_date date
 );
 
+ALTER TABLE ONLY public.snaptrade_accounts FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: snaptrade_items; Type: TABLE; Schema: public; Owner: -
@@ -2243,6 +2319,8 @@ CREATE TABLE public.snaptrade_items (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.snaptrade_items FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: sophtron_accounts; Type: TABLE; Schema: public; Owner: -
@@ -2268,6 +2346,8 @@ CREATE TABLE public.sophtron_accounts (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+ALTER TABLE ONLY public.sophtron_accounts FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -2295,6 +2375,8 @@ CREATE TABLE public.sophtron_items (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+ALTER TABLE ONLY public.sophtron_items FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -2353,6 +2435,8 @@ CREATE TABLE public.statement_imports (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.statement_imports FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: subscriptions; Type: TABLE; Schema: public; Owner: -
@@ -2372,6 +2456,8 @@ CREATE TABLE public.subscriptions (
     updated_at timestamp(6) without time zone NOT NULL,
     cancel_at_period_end boolean DEFAULT false NOT NULL
 );
+
+ALTER TABLE ONLY public.subscriptions FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -2398,6 +2484,8 @@ CREATE TABLE public.syncs (
     family_id uuid
 );
 
+ALTER TABLE ONLY public.syncs FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: taggings; Type: TABLE; Schema: public; Owner: -
@@ -2411,6 +2499,8 @@ CREATE TABLE public.taggings (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+ALTER TABLE ONLY public.taggings FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -2445,6 +2535,8 @@ CREATE TABLE public.tool_calls (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+ALTER TABLE ONLY public.tool_calls FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -2502,6 +2594,8 @@ CREATE TABLE public.transfers (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+ALTER TABLE ONLY public.transfers FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -8113,6 +8207,7 @@ CREATE POLICY versions_family_isolation_policy ON public.versions USING ((family
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260928170000'),
 ('20260928040000'),
 ('20260927010000'),
 ('20260926175734'),
