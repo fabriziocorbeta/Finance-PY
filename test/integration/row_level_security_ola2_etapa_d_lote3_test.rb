@@ -46,8 +46,8 @@ class RowLevelSecurityOla2EtapaDLote3Test < ActionDispatch::IntegrationTest
     family_a = families(:dylan_family)
     family_b = Family.create!(name: "Etapa D Lote3 Family B", currency: "USD")
 
-    doc_a = FamilyDocument.create!(family: family_a, document_type: "other", provider_file_id: "doc-a-#{SecureRandom.hex(4)}")
-    doc_b = FamilyDocument.create!(family: family_b, document_type: "other", provider_file_id: "doc-b-#{SecureRandom.hex(4)}")
+    doc_a = FamilyDocument.create!(family: family_a, filename: "doc-a-#{SecureRandom.hex(4)}.pdf")
+    doc_b = FamilyDocument.create!(family: family_b, filename: "doc-b-#{SecureRandom.hex(4)}.pdf")
 
     RowLevelSecurityTest.ensure_non_superuser_role
     ActiveRecord::Base.connection.execute("SET ROLE app_user")
@@ -116,7 +116,7 @@ class RowLevelSecurityOla2EtapaDLote3Test < ActionDispatch::IntegrationTest
 
     chat_b = chats(:intro)
     message_b = Message.create!(chat: chat_b, type: "AssistantMessage", content: "cross family assistant", ai_model: "gpt-4.1")
-    tool_call_b = ToolCall::Function.create!(message: message_b, provider_id: "fc-lote3-b", provider_call_id: "call-lote3-b", function_name: "get_user_info", function_arguments: {})
+    tool_call_b = ToolCall::Function.create!(message: message_b, provider_id: "fc-lote3-b", provider_call_id: "call-lote3-b", function_name: "get_user_info", function_arguments: {}, function_result: "ok")
 
     RowLevelSecurityTest.ensure_non_superuser_role
     ActiveRecord::Base.connection.execute("SET ROLE app_user")
