@@ -10,8 +10,7 @@ class Api::V1::ImportsController < Api::V1::BaseController
   before_action :set_import, only: [ :rows ]
 
   def index
-    family = current_resource_owner.family
-    imports_query = family.imports.ordered
+    imports_query = readable_imports_scope.ordered
 
     # Apply filters
     if params[:status].present?
@@ -71,7 +70,17 @@ class Api::V1::ImportsController < Api::V1::BaseController
 
     # 2. Build the import object with permitted config attributes
     @import = family.imports.build(import_config_params.merge(type: type))
-    @import.account_id = params[:account_id] if params[:account_id].present?
+    if params[:account_id].present?
+      account_in_family = family.accounts.find_by(id: params[:account_id])
+      # An account_id from another family (or a bogus id) is left to
+      # Import's own account_belongs_to_family validation below (422,
+      # existing behavior) -- only an account that IS in this family but
+      # the caller can't write to is an IDOR to block here explicitly.
+      if account_in_family && !family.accounts.writable_by(current_resource_owner).exists?(id: account_in_family.id)
+        return render json: { error: "not_found", message: "Account not found" }, status: :not_found
+      end
+      @import.account_id = params[:account_id]
+    end
 
     # 3. Attach the uploaded file if present (with validation)
     if params[:file].present?
@@ -151,7 +160,17 @@ class Api::V1::ImportsController < Api::V1::BaseController
     end
 
     def import_scope
-      current_resource_owner.family.imports
+      readable_imports_scope
+    end
+
+    # An import isn't scoped to an account by itself (account_id can be nil,
+    # e.g. a SureImport), so we can't join accessible_accounts directly --
+    # match imports with no account (visible to everyone in the family) or
+    # whose account is one the current user can see.
+    def readable_imports_scope
+      family = current_resource_owner.family
+      readable_account_ids = family.accounts.accessible_by(current_resource_owner).select(:id)
+      family.imports.where(account_id: nil).or(family.imports.where(account_id: readable_account_ids))
     end
 
     def render_import_not_found

@@ -66,6 +66,32 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
     end
   end
 
+  test "raises Error when the requesting user cannot write to the account (IDOR)" do
+    restricted_user = users(:family_member)
+    # credit_card is shared with family_member read_only (see
+    # test/fixtures/account_shares.yml) -- visible, but not writable.
+    read_only_account = accounts(:credit_card)
+    assert_not Account.writable_by(restricted_user).exists?(id: read_only_account.id),
+      "fixture assumption: family_member should not have write access to credit_card"
+
+    error = assert_raises(AndroidPurchase::WebhookProcessor::Error) do
+      AndroidPurchase::WebhookProcessor.new(
+        {
+          account_id: read_only_account.id,
+          amount: 50000,
+          merchant: "Google Play",
+          item: "Some App Pro",
+          timestamp: "2026-07-28T10:15:00-04:00",
+          raw_text: "x"
+        },
+        family: @family,
+        user: restricted_user
+      ).process
+    end
+
+    assert_match(/Unknown account_id/, error.message)
+  end
+
   test "raises Error for a missing account_id" do
     error = assert_raises(AndroidPurchase::WebhookProcessor::Error) do
       AndroidPurchase::WebhookProcessor.new(

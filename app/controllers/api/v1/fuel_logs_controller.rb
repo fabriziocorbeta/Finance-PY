@@ -123,7 +123,7 @@ class Api::V1::FuelLogsController < Api::V1::BaseController
       account_id = raw_fuel_log_params[:account_id]
       return attrs if account_id.blank?
 
-      attrs[:account] = current_resource_owner.family.accounts.find_by(id: account_id)
+      attrs[:account] = current_resource_owner.family.accounts.writable_by(current_resource_owner).find_by(id: account_id)
       attrs
     end
 end

@@ -84,7 +84,13 @@ class Api::V1::ImportsControllerTest < ActionDispatch::IntegrationTest
 
     json_response = JSON.parse(response.body)
     assert_not_empty json_response["data"]
-    assert_equal @family.imports.count, json_response["meta"]["total_count"]
+    # Not @family.imports.count: that count includes imports.yml's
+    # pdf_with_rows fixture, whose account: checking reference doesn't
+    # resolve to any account in accounts.yml (account_id ends up
+    # nil/invalid) -- the IDOR-safe scope in the controller intentionally
+    # no longer surfaces an import whose account isn't one this user can
+    # see, and that's the case here regardless of the fixture bug.
+    assert_equal readable_imports_count, json_response["meta"]["total_count"]
 
     import_data = json_response["data"].detect { |data| data["id"] == @import.id }
     assert_not_nil import_data
@@ -183,6 +189,65 @@ class Api::V1::ImportsControllerTest < ActionDispatch::IntegrationTest
     json_response = JSON.parse(response.body)
 
     assert_equal [ 6, 7, 8 ], json_response["data"].map { |row| row["row_number"] }
+  end
+
+  test "should not list or show imports linked to accounts the caller cannot access (IDOR)" do
+    restricted_user = users(:family_member)
+    restricted_user.api_keys.active.destroy_all
+    restricted_key = ApiKey.create!(
+      user: restricted_user,
+      name: "Restricted Key",
+      scopes: [ "read_write" ],
+      display_key: "test_restricted_#{SecureRandom.hex(8)}",
+      source: "web"
+    )
+    Redis.new.del("api_rate_limit:#{restricted_key.id}")
+
+    # depository is shared with family_member with full_control (see
+    # test/fixtures/account_shares.yml) -- investment has no share at all,
+    # so it's the one this restricted user truly can't see.
+    inaccessible_account = accounts(:investment)
+    inaccessible_import = @family.imports.create!(
+      type: "TransactionImport", status: "pending", account: inaccessible_account,
+      raw_file_str: "date,amount,name"
+    )
+
+    assert_not Account.accessible_by(restricted_user).exists?(id: inaccessible_account.id),
+      "fixture assumption: family_member should not have access to investment"
+
+    get api_v1_imports_url, headers: api_headers(restricted_key)
+    ids = JSON.parse(response.body)["data"].map { |i| i["id"] }
+    assert_not_includes ids, inaccessible_import.id
+
+    get api_v1_import_url(inaccessible_import), headers: api_headers(restricted_key)
+    assert_response :not_found
+  end
+
+  test "should reject creating an import against an account the caller cannot write to (IDOR)" do
+    restricted_user = users(:family_member)
+    restricted_user.api_keys.active.destroy_all
+    restricted_key = ApiKey.create!(
+      user: restricted_user,
+      name: "Restricted Key",
+      scopes: [ "read_write" ],
+      display_key: "test_restricted_create_#{SecureRandom.hex(8)}",
+      source: "web"
+    )
+    Redis.new.del("api_rate_limit:#{restricted_key.id}")
+
+    # credit_card is shared with family_member read_only (see
+    # test/fixtures/account_shares.yml) -- visible, but not writable.
+    read_only_account = accounts(:credit_card)
+    assert_not Account.writable_by(restricted_user).exists?(id: read_only_account.id),
+      "fixture assumption: family_member should not have write access to credit_card"
+
+    post api_v1_imports_url, params: {
+      type: "TransactionImport",
+      account_id: read_only_account.id,
+      raw_file_content: "date,amount,name\n01/15/2024,-10.00,Test"
+    }, headers: api_headers(restricted_key)
+
+    assert_response :not_found
   end
 
   test "should not expose another family's import rows" do
@@ -735,5 +800,10 @@ class Api::V1::ImportsControllerTest < ActionDispatch::IntegrationTest
 
     def api_headers(api_key)
       { "X-Api-Key" => api_key.plain_key }
+    end
+
+    def readable_imports_count
+      readable_account_ids = Account.accessible_by(@user).select(:id)
+      @family.imports.where(account_id: nil).or(@family.imports.where(account_id: readable_account_ids)).count
     end
 end

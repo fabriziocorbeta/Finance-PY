@@ -134,6 +134,36 @@ class Api::V1::GoalPledgesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "validation_failed", json_response["error"]
   end
 
+  test "should not create pledge against an account the caller cannot write to (IDOR)" do
+    restricted_user = users(:family_member)
+    restricted_user.api_keys.active.destroy_all
+    restricted_key = ApiKey.create!(
+      user: restricted_user,
+      name: "Restricted Write Key",
+      scopes: [ "read_write" ],
+      source: "mobile",
+      display_key: "test_restricted_#{SecureRandom.hex(8)}"
+    )
+    Redis.new.del("api_rate_limit:#{restricted_key.id}")
+
+    # credit_card is shared with family_member read_only (see
+    # test/fixtures/account_shares.yml) -- visible, but not writable. Linked
+    # to the goal too, so this exercises the linked_accounts.merge(writable_accounts)
+    # branch specifically, not just the writable_accounts fallback.
+    read_only_account = accounts(:credit_card)
+    @goal.goal_accounts.create!(account: read_only_account)
+    assert_not Account.writable_by(restricted_user).exists?(id: read_only_account.id),
+      "fixture assumption: family_member should not have write access to credit_card"
+
+    params = { pledge: { amount: 250, account_id: read_only_account.id } }
+
+    assert_no_difference -> { GoalPledge.count } do
+      post api_v1_goal_pledges_url(@goal), params: params, headers: api_headers(restricted_key), as: :json
+    end
+
+    assert_response :unprocessable_entity
+  end
+
   test "should fail to create duplicate open pledge" do
     params = {
       pledge: {
