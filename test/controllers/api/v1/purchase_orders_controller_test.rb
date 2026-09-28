@@ -92,6 +92,39 @@ class Api::V1::PurchaseOrdersControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Global Corp", json_response["supplier_name"]
   end
 
+  test "should reject creating a purchase order against an account the caller cannot write to (IDOR)" do
+    restricted_user = users(:family_member)
+    restricted_user.api_keys.active.destroy_all
+    restricted_key = ApiKey.create!(
+      user: restricted_user,
+      name: "Restricted Write Key",
+      scopes: [ "read_write" ],
+      source: "mobile",
+      display_key: "test_restricted_#{SecureRandom.hex(8)}"
+    )
+    Redis.new.del("api_rate_limit:#{restricted_key.id}")
+
+    assert_not Account.writable_by(restricted_user).exists?(id: accounts(:depository).id),
+      "fixture assumption: family_member should not have write access to depository"
+
+    assert_no_difference -> { PurchaseOrder.count } do
+      post api_v1_purchase_orders_url,
+           params: {
+             purchase_order: {
+               supplier_name: "Attempted IDOR",
+               currency: "pyg",
+               account_id: accounts(:depository).id,
+               purchase_order_items_attributes: [
+                 { product_id: @product.id, quantity: 1, unit_cost: 10 }
+               ]
+             }
+           },
+           headers: api_headers(restricted_key)
+    end
+
+    assert_response :unprocessable_entity
+  end
+
   test "should receive purchase order and increase product stock" do
     assert_equal 5, @product.reload.stock
 

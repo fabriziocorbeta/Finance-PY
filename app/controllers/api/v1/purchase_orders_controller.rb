@@ -162,10 +162,11 @@ class Api::V1::PurchaseOrdersController < Api::V1::BaseController
         purchase_order_items_attributes: [ :id, :product_id, :quantity, :unit_cost, :_destroy ]
       )
 
-      # account_id is deliberately NOT mass-assigned: resolve it inside the caller's
-      # own family so a foreign account id can never be attached.
+      # account_id is deliberately NOT mass-assigned: resolve it inside the
+      # accounts the caller can write to, so neither a foreign account id nor
+      # a family account the caller only has read access to can be attached.
       if raw.respond_to?(:key?) && raw.key?(:account_id)
-        permitted[:account_id] = current_resource_owner.family.accounts.find_by(id: raw[:account_id])&.id
+        permitted[:account_id] = current_resource_owner.family.accounts.writable_by(current_resource_owner).find_by(id: raw[:account_id])&.id
       end
       permitted
     end
