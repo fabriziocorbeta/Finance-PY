@@ -34,11 +34,17 @@ class OidcAccountsController < ApplicationController
     user = User.auth_authenticate_by(email: params[:email], password: params[:password])
 
     if user
-      # Create the OIDC identity link
-      oidc_identity = OidcIdentity.create_from_omniauth(
-        build_auth_hash(@pending_auth),
-        user
-      )
+      # Create the OIDC identity link. This action is skip_authentication
+      # (linking happens before a session exists), so app.current_family_id
+      # is never set here -- same bootstrap gap the 2026-09-29 P0 was about,
+      # now for oidc_identities. create_user below already gets this right
+      # via jit_signup; create_link didn't.
+      oidc_identity = RlsContext.with_auth_bypass(reason: "oidc_account_link") do
+        OidcIdentity.create_from_omniauth(
+          build_auth_hash(@pending_auth),
+          user
+        )
+      end
 
       # Log account linking
       SsoAuditLog.log_link!(

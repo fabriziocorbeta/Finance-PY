@@ -157,11 +157,16 @@ coinstats_items:
   policy_present: true
 consents:
   class: Consent
-  classification: auth
-  family_path: consents.user_id -> users.family_id, consents.family_id
-  force: false
-  notes: Opt-in de procesamiento IA y analitica (E8); consultado a nivel usuario y familia antes o fuera del contexto RLS.
-  policy_present: false
+  classification: direct
+  family_path: consents.family_id
+  force: true
+  notes: >-
+    Opt-in de procesamiento IA y analitica (E8). FORCE'd en lote 4
+    (2026-09-29): sin riesgo de bootstrap, todo call site
+    (User#toggle_ai_processing_consent!, FamilyPurger,
+    InactiveFamilyCleanerJob) corre ya autenticado o dentro de
+    RlsContext.with_family.
+  policy_present: true
 credit_cards:
   class: CreditCard
   classification: direct-nullable
@@ -525,9 +530,15 @@ oidc_identities:
   class: OidcIdentity
   classification: auth
   family_path: oidc_identities.user_id -> users.family_id
-  force: false
-  notes: SSO (OIDC) identity linking.
-  policy_present: false
+  force: true
+  notes: >-
+    SSO (OIDC) identity linking. FORCE'd en lote 4 (2026-09-29) con
+    auth_bypass, mismo patron que Phase C (PR 392): se lee/escribe en
+    SessionsController#openid_connect y
+    OidcAccountsController#create_link/#create_user, antes de que exista
+    contexto de family. create_link no tenia el bypass (create_user si);
+    arreglado en el mismo PR.
+  policy_present: true
 other_assets:
   class: OtherAsset
   classification: direct-nullable
@@ -870,6 +881,11 @@ webauthn_credentials:
   class: WebauthnCredential
   classification: auth
   family_path: webauthn_credentials.user_id -> users.family_id
-  force: false
-  notes: Passkeys.
-  policy_present: false
+  force: true
+  notes: >-
+    Passkeys. FORCE'd en lote 4 (2026-09-29) con auth_bypass, mismo
+    patron que Phase C (PR 392): se lee/escribe en
+    MfaController#webauthn_options/#verify_webauthn, antes de que exista
+    contexto de family (paso MFA corre entre login por password y sesion
+    real). Incluye el with_lock del verify (SELECT FOR UPDATE propio).
+  policy_present: true
