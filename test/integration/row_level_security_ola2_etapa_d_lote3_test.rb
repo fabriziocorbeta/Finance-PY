@@ -15,7 +15,7 @@ class RowLevelSecurityOla2EtapaDLote3Test < ActionDispatch::IntegrationTest
   FORCED_TABLES = %w[
     addresses binance_accounts binance_items chats coinbase_accounts
     coinbase_items coinstats_accounts coinstats_items data_enrichments
-    enable_banking_accounts enable_banking_items families family_documents
+    enable_banking_accounts enable_banking_items family_documents
     family_exports family_merchant_associations goal_accounts goal_pledges
     import_mappings import_rows imports indexa_capital_accounts
     indexa_capital_items invitations llm_usages lunchflow_accounts

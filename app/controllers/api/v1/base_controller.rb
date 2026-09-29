@@ -317,7 +317,13 @@ class Api::V1::BaseController < ApplicationController
         # path (Authentication#authenticate_user!) sets the RLS session variable
         # explicitly, and this API path bypasses that entirely (skip_authentication).
         # Without this, every family-scoped query below silently returns zero rows.
-        RlsContext.set_family(Current.family&.id)
+        #
+        # Use the raw family_id column, not Current.family (delegates to the
+        # user.family AR association): with families under FORCE ROW LEVEL
+        # SECURITY, that association query runs before app.current_family_id
+        # is set and returns zero rows, leaving the RLS context unset for the
+        # whole request. See Authentication#authenticate_user! for the same fix.
+        RlsContext.set_family(@current_user.family_id)
       end
     end
 
