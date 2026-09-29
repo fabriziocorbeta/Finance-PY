@@ -66,6 +66,16 @@ class Api::V1::FamilySettingsControllerTest < ActionDispatch::IntegrationTest
     assert_response :unauthorized
   end
 
+  test "does not read the family through the AR association, to avoid the RLS bootstrap footgun from the 2026-09-29 incident" do
+    source = File.read(Rails.root.join("app/controllers/api/v1/family_settings_controller.rb"))
+    assert_no_match(/current_resource_owner\.family\b/, source,
+      "The AR-association form of reading the current family issues a SELECT " \
+      "against `families`, gated by RLS. It happens to be safe today because it " \
+      "runs after setup_current_context_for_api sets app.current_family_id, but " \
+      "it's the exact pattern that broke login in the 2026-09-29 P0 (see " \
+      "row_level_security_families_bootstrap_test.rb) -- use family_id instead.")
+  end
+
   test "requires read scope" do
     api_key_without_read = ApiKey.new(
       user: @user,
