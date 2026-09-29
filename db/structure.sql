@@ -580,6 +580,8 @@ CREATE TABLE public.consents (
     updated_at timestamp(6) without time zone NOT NULL
 );
 
+ALTER TABLE ONLY public.consents FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: credit_cards; Type: TABLE; Schema: public; Owner: -
@@ -1712,6 +1714,8 @@ CREATE TABLE public.oidc_identities (
     issuer character varying
 );
 
+ALTER TABLE ONLY public.oidc_identities FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: other_assets; Type: TABLE; Schema: public; Owner: -
@@ -2730,6 +2734,8 @@ CREATE TABLE public.webauthn_credentials (
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_webauthn_credentials_sign_count_non_negative CHECK ((sign_count >= 0))
 );
+
+ALTER TABLE ONLY public.webauthn_credentials FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -7123,6 +7129,19 @@ CREATE POLICY coinstats_items_family_isolation_policy ON public.coinstats_items 
 
 
 --
+-- Name: consents; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.consents ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: consents consents_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY consents_family_isolation_policy ON public.consents USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+
+
+--
 -- Name: credit_cards; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -7634,6 +7653,21 @@ ALTER TABLE public.mobile_devices ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY mobile_devices_family_isolation_policy ON public.mobile_devices USING (((user_id IN ( SELECT users.id
+   FROM public.users
+  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
+
+
+--
+-- Name: oidc_identities; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.oidc_identities ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: oidc_identities oidc_identities_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY oidc_identities_family_isolation_policy ON public.oidc_identities USING (((user_id IN ( SELECT users.id
    FROM public.users
   WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
@@ -8199,12 +8233,28 @@ CREATE POLICY versions_family_isolation_policy ON public.versions USING ((family
 
 
 --
+-- Name: webauthn_credentials; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.webauthn_credentials ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: webauthn_credentials webauthn_credentials_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY webauthn_credentials_family_isolation_policy ON public.webauthn_credentials USING (((user_id IN ( SELECT users.id
+   FROM public.users
+  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
+
+
+--
 -- PostgreSQL database dump complete
 --
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260929203000'),
 ('20260929030000'),
 ('20260928170000'),
 ('20260928040000'),

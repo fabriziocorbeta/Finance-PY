@@ -46,8 +46,16 @@ class MfaController < ApplicationController
       return render json: { error: t(".unavailable") }, status: :unprocessable_entity
     end
 
+    # This step runs between password login and the real session (MFA is a
+    # skip_authentication action, so app.current_family_id is never set here)
+    # -- same bootstrap gap that caused the 2026-09-29 P0 on `families`, now
+    # for webauthn_credentials.
+    credential_ids = RlsContext.with_auth_bypass(reason: "mfa_webauthn_options") do
+      @user.webauthn_credentials.pluck(:credential_id)
+    end
+
     options = webauthn_relying_party.options_for_authentication(
-      allow: @user.webauthn_credentials.pluck(:credential_id),
+      allow: credential_ids,
       user_verification: "preferred"
     )
     session[:webauthn_authentication_challenge] = options.challenge
@@ -67,24 +75,32 @@ class MfaController < ApplicationController
       webauthn_credential_payload,
       relying_party: webauthn_relying_party
     )
-    stored_credential = @user.webauthn_credentials.find_by(credential_id: credential.id)
+    # Same bootstrap gap as webauthn_options above: no family context exists
+    # yet at this point in the MFA flow.
+    stored_credential = RlsContext.with_auth_bypass(reason: "mfa_verify_webauthn") do
+      @user.webauthn_credentials.find_by(credential_id: credential.id)
+    end
 
     unless stored_credential
       return render json: { error: t(".invalid_credential") }, status: :unprocessable_entity
     end
 
-    stored_credential.with_lock do
-      credential.verify(
-        challenge,
-        public_key: stored_credential.public_key,
-        sign_count: stored_credential.sign_count,
-        user_presence: true
-      )
+    # with_lock issues its own SELECT ... FOR UPDATE (via reload(lock: true)),
+    # also gated by RLS -- the whole block needs the bypass, not just update!.
+    RlsContext.with_auth_bypass(reason: "mfa_verify_webauthn") do
+      stored_credential.with_lock do
+        credential.verify(
+          challenge,
+          public_key: stored_credential.public_key,
+          sign_count: stored_credential.sign_count,
+          user_presence: true
+        )
 
-      stored_credential.update!(
-        sign_count: credential.sign_count,
-        last_used_at: Time.current
-      )
+        stored_credential.update!(
+          sign_count: credential.sign_count,
+          last_used_at: Time.current
+        )
+      end
     end
     complete_mfa_sign_in(@user)
 
