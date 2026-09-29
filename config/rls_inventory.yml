@@ -57,9 +57,12 @@ api_keys:
   class: ApiKey
   classification: auth
   family_path: api_keys.user_id -> users.family_id
-  force: false
-  notes: Autenticacion API v1.
-  policy_present: false
+  force: true
+  notes: >-
+    Autenticacion API v1. FORCE'd junto con sessions/users en PR 392 (Phase C
+    auth tables); bootstrap resuelto con RlsContext.with_auth_bypass en
+    ApiKey.find_by_value.
+  policy_present: true
 ar_internal_metadata:
   class: ActiveRecord::InternalMetadata
   classification: global
@@ -79,8 +82,8 @@ balances:
   class: Balance
   classification: indirect
   family_path: balances.account_id -> accounts.family_id
-  force: false
-  notes: Snapshot diario de saldo.
+  force: true
+  notes: Snapshot diario de saldo. FORCE'd en PR 395.
   policy_present: true
 binance_accounts:
   class: BinanceAccount
@@ -351,8 +354,8 @@ holdings:
   class: Holding
   classification: indirect
   family_path: holdings.account_id -> accounts.family_id
-  force: false
-  notes: Tambien security_id/account_provider_id/provider_security_id.
+  force: true
+  notes: Tambien security_id/account_provider_id/provider_security_id. FORCE'd en PR 395.
   policy_present: true
 impersonation_session_logs:
   class: ImpersonationSessionLog
@@ -492,8 +495,10 @@ mobile_devices:
   class: MobileDevice
   classification: indirect
   family_path: mobile_devices.user_id -> users.family_id
-  force: false
-  notes: Push notification device registration; tambien referenciado desde oauth_access_tokens.mobile_device_id.
+  force: true
+  notes: >-
+    Push notification device registration; tambien referenciado desde
+    oauth_access_tokens.mobile_device_id. FORCE'd junto con sessions/users en PR 392.
   policy_present: true
 oauth_access_grants:
   class: OauthAccessGrant
@@ -691,9 +696,12 @@ sessions:
   class: Session
   classification: auth
   family_path: sessions.user_id -> users.family_id
-  force: false
-  notes: Sesiones son EL mecanismo de bootstrap del family context.
-  policy_present: false
+  force: true
+  notes: >-
+    Sesiones son EL mecanismo de bootstrap del family context. FORCE'd en
+    PR 392; bootstrap resuelto con RlsContext.with_auth_bypass en
+    Authentication#find_session_by_cookie.
+  policy_present: true
 settings:
   class: Setting
   classification: global
@@ -828,9 +836,12 @@ users:
   class: User
   classification: auth
   family_path: users.family_id (propio, pero la tabla se consulta ANTES de conocer la family)
-  force: false
-  notes: Raiz de identidad; Session#user, find_by(email:) en login, etc.
-  policy_present: false
+  force: true
+  notes: >-
+    Raiz de identidad; Session#user, find_by(email:) en login, etc. FORCE'd en
+    PR 392; bootstrap resuelto porque find_session_by_cookie carga user via
+    includes(:user) dentro del mismo RlsContext.with_auth_bypass.
+  policy_present: true
 valuations:
   class: Valuation
   classification: direct

@@ -111,10 +111,15 @@ class Api::V1::BaseController < ApplicationController
         return false
       end
 
-      @api_key.update_last_used!
       @authentication_method = :api_key
       @rate_limiter = ApiRateLimiter.limit(@api_key)
       setup_current_context_for_api
+      # Must run after setup_current_context_for_api: api_keys is under FORCE
+      # ROW LEVEL SECURITY (see config/rls_inventory.yml) and this UPDATE has
+      # no auth_bypass, so it needs app.current_family_id already set or the
+      # policy silently matches zero rows (update_column doesn't check
+      # rowcount) and last_used_at never advances.
+      @api_key.update_last_used!
       true
     end
 
