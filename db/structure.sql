@@ -90,30 +90,21 @@ $$;
 
 
 --
--- Name: rule_condition_root_rule_id(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: rule_conditions_set_root_rule_id(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.rule_condition_root_rule_id(condition_id uuid) RETURNS uuid
-    LANGUAGE plpgsql STABLE SECURITY DEFINER
-    SET row_security TO 'off'
+CREATE FUNCTION public.rule_conditions_set_root_rule_id() RETURNS trigger
+    LANGUAGE plpgsql
     AS $$
-DECLARE
-  result uuid;
-BEGIN
-  WITH RECURSIVE condition_chain AS (
-    SELECT rc.id, rc.parent_id, rc.rule_id
-    FROM rule_conditions rc
-    WHERE rc.id = condition_id
-    UNION ALL
-    SELECT parent.id, parent.parent_id, parent.rule_id
-    FROM rule_conditions parent
-    JOIN condition_chain ON parent.id = condition_chain.parent_id
-    WHERE condition_chain.rule_id IS NULL
-  )
-  SELECT rule_id INTO result FROM condition_chain WHERE rule_id IS NOT NULL LIMIT 1;
-  RETURN result;
-END;
-$$;
+      BEGIN
+        IF NEW.parent_id IS NULL THEN
+          NEW.root_rule_id := NEW.rule_id;
+        ELSE
+          SELECT root_rule_id INTO NEW.root_rule_id FROM rule_conditions WHERE id = NEW.parent_id;
+        END IF;
+        RETURN NEW;
+      END;
+      $$;
 
 
 SET default_tablespace = '';
@@ -2008,7 +1999,8 @@ CREATE TABLE public.rule_conditions (
     operator character varying NOT NULL,
     value character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    root_rule_id uuid
 );
 
 ALTER TABLE ONLY public.rule_conditions FORCE ROW LEVEL SECURITY;
@@ -5213,6 +5205,13 @@ CREATE INDEX index_rule_conditions_on_parent_id ON public.rule_conditions USING 
 
 
 --
+-- Name: index_rule_conditions_on_root_rule_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_rule_conditions_on_root_rule_id ON public.rule_conditions USING btree (root_rule_id);
+
+
+--
 -- Name: index_rule_conditions_on_rule_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5784,6 +5783,13 @@ CREATE UNIQUE INDEX index_webauthn_credentials_on_credential_id ON public.webaut
 --
 
 CREATE INDEX index_webauthn_credentials_on_user_id ON public.webauthn_credentials USING btree (user_id);
+
+
+--
+-- Name: rule_conditions rule_conditions_set_root_rule_id_trigger; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER rule_conditions_set_root_rule_id_trigger BEFORE INSERT OR UPDATE OF parent_id, rule_id ON public.rule_conditions FOR EACH ROW EXECUTE FUNCTION public.rule_conditions_set_root_rule_id();
 
 
 --
@@ -7871,9 +7877,9 @@ ALTER TABLE public.rule_conditions ENABLE ROW LEVEL SECURITY;
 -- Name: rule_conditions rule_conditions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY rule_conditions_family_isolation_policy ON public.rule_conditions USING ((public.rule_condition_root_rule_id(id) IN ( SELECT rules.id
+CREATE POLICY rule_conditions_family_isolation_policy ON public.rule_conditions USING ((root_rule_id IN ( SELECT rules.id
    FROM public.rules
-  WHERE (rules.family_id = public.current_family_id())))) WITH CHECK ((public.rule_condition_root_rule_id(id) IN ( SELECT rules.id
+  WHERE (rules.family_id = public.current_family_id())))) WITH CHECK ((root_rule_id IN ( SELECT rules.id
    FROM public.rules
   WHERE (rules.family_id = public.current_family_id()))));
 
@@ -8254,6 +8260,7 @@ CREATE POLICY webauthn_credentials_family_isolation_policy ON public.webauthn_cr
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260929231800'),
 ('20260929203000'),
 ('20260929030000'),
 ('20260928170000'),
