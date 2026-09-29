@@ -271,10 +271,16 @@ families:
   class: Family
   classification: root
   family_path: families.id es la raiz del grafo
-  force: true
+  force: false
   notes: Tabla ancla; no tiene RLS (no aplicaria, es ella misma la unidad de aislamiento) pero SI se consulta
     en super_admin/impersonation/rake/demo-refresh sin restriccion -- correcto por diseno, ya que esas
-    rutas son platform-level, no request-scoped.
+    rutas son platform-level, no request-scoped. INTENTAR FORCE de nuevo (PR #403) tumbo produccion:
+    Authentication#authenticate_user! y Api::V1::BaseController arrancaban el contexto RLS con
+    Current.family&.id (association, dispara SELECT a families) ANTES de setear app.current_family_id
+    -- bajo FORCE esa query da 0 filas y el bootstrap nunca se completa. Revertido en
+    NoForceRlsForFamilies (20260929030000); los call sites ahora usan user.family_id directo. No volver
+    a forzar esta tabla sin antes auditar TODO lugar que lea Current.family/user.family antes de que el
+    contexto ya este seteado.
   policy_present: true
 family_documents:
   class: FamilyDocument

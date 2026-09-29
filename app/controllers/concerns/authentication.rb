@@ -30,7 +30,13 @@ module Authentication
         end
 
         Current.session = session_record
-        RlsContext.set_family(Current.family&.id)
+        # Current.family (delegate to user.family, an AR association) issues a
+        # SELECT against `families` -- with families under FORCE ROW LEVEL
+        # SECURITY, that query runs before app.current_family_id is set and
+        # returns zero rows (id = NULL is never true), leaving Current.family
+        # nil and the RLS context never established for the whole request.
+        # user.family_id is the raw FK column: no query, no chicken-and-egg.
+        RlsContext.set_family(Current.user&.family_id)
         session_record.touch
       else
         if self_hosted_first_login?

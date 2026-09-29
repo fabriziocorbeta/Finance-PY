@@ -915,8 +915,6 @@ CREATE TABLE public.families (
     CONSTRAINT month_start_day_range CHECK (((month_start_day >= 1) AND (month_start_day <= 28)))
 );
 
-ALTER TABLE ONLY public.families FORCE ROW LEVEL SECURITY;
-
 
 --
 -- Name: family_documents; Type: TABLE; Schema: public; Owner: -
@@ -8207,6 +8205,7 @@ CREATE POLICY versions_family_isolation_policy ON public.versions USING ((family
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260929030000'),
 ('20260928170000'),
 ('20260928040000'),
 ('20260927010000'),
