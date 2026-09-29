@@ -87,6 +87,17 @@ jobs:
           FINANCESPY_RELEASE_KEY_PASSWORD: ${{ secrets.FINANCESPY_RELEASE_KEY_PASSWORD }}
         run: ./gradlew :androidApp:assembleRelease --no-daemon
 
+      # Play Console no acepta APK para apps nuevas -- exige Android App
+      # Bundle (.aab). Se genera en el mismo paso que el release APK
+      # (mismo keystore, mismo build) para no duplicar la firma.
+      - name: Build release AAB (for Play Console)
+        if: inputs.buildType == 'release'
+        env:
+          FINANCESPY_RELEASE_STORE_PASSWORD: ${{ secrets.FINANCESPY_RELEASE_STORE_PASSWORD }}
+          FINANCESPY_RELEASE_KEY_ALIAS: ${{ secrets.FINANCESPY_RELEASE_KEY_ALIAS }}
+          FINANCESPY_RELEASE_KEY_PASSWORD: ${{ secrets.FINANCESPY_RELEASE_KEY_PASSWORD }}
+        run: ./gradlew :androidApp:bundleRelease --no-daemon
+
       - name: Upload debug APK artifact
         if: inputs.buildType != 'release'
         uses: actions/upload-artifact@v7
@@ -102,5 +113,14 @@ jobs:
         with:
           name: financespy-release-apk
           path: native/financespy-kmp/androidApp/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload release AAB artifact
+        if: inputs.buildType == 'release'
+        uses: actions/upload-artifact@v7
+        with:
+          name: financespy-release-aab
+          path: native/financespy-kmp/androidApp/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 30

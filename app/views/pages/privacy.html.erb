@@ -1,12 +1,81 @@
 <% content_for :title, t(".title") %>
 
 <div class="flex items-center justify-center h-full p-4 sm:p-6 lg:p-8">
-  <div class="w-full max-w-md sm:max-w-lg lg:max-w-2xl">
-    <div class="bg-container border border-primary rounded-xl p-6 sm:p-8 shadow-sm">
-      <div class="text-center">
-        <h1 class="text-xl sm:text-2xl font-bold text-primary mb-4"><%= t(".heading") %></h1>
-        <p class="text-sm sm:text-base text-subdued"><%= t(".placeholder") %></p>
-      </div>
+  <div class="w-full max-w-md sm:max-w-lg lg:max-w-3xl">
+    <div class="bg-container border border-primary rounded-xl p-6 sm:p-8 shadow-sm prose prose-sm max-w-none">
+      <h1 class="text-xl sm:text-2xl font-bold text-primary mb-2"><%= t(".heading") %></h1>
+      <p class="text-sm text-subdued mb-6">Última actualización: 29 de septiembre de 2026</p>
+
+      <p class="text-sm sm:text-base text-primary mb-4">
+        FinancePY ("nosotros", "la aplicación") es un servicio de gestión de finanzas
+        personales y familiares operado por CD & Co. Esta política explica qué datos
+        recopilamos, cómo los usamos, con quién los compartimos y qué control tenés
+        sobre ellos.
+      </p>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">1. Qué datos recopilamos</h2>
+      <ul class="list-disc pl-5 text-sm sm:text-base text-primary mb-4 space-y-1">
+        <li><strong>Datos de cuenta:</strong> nombre, correo electrónico, contraseña (encriptada), foto de perfil opcional.</li>
+        <li><strong>Datos financieros:</strong> saldos, transacciones, categorías, presupuestos, metas y demás información que ingresás manualmente o que obtenemos de las instituciones financieras que conectás.</li>
+        <li><strong>Datos de conexión bancaria/inversión:</strong> cuando vinculás una cuenta bancaria, tarjeta, billetera cripto o cuenta de inversión, la sincronización se hace a través de proveedores de agregación de datos financieros (ver sección 3). No almacenamos tus credenciales bancarias.</li>
+        <li><strong>Contenido del asistente IA:</strong> los mensajes que le escribís al asistente financiero dentro de la app, y el contexto financiero necesario para responderte.</li>
+        <li><strong>Datos de dispositivo y uso:</strong> tipo de dispositivo, sistema operativo, identificadores de la app, registros de errores y métricas de rendimiento.</li>
+        <li><strong>Datos biométricos locales:</strong> si activás desbloqueo por huella o Face ID, la verificación biométrica la maneja el sistema operativo de tu dispositivo — FinancePY nunca recibe ni almacena tus datos biométricos.</li>
+      </ul>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">2. Cómo usamos tus datos</h2>
+      <ul class="list-disc pl-5 text-sm sm:text-base text-primary mb-4 space-y-1">
+        <li>Mostrarte tu información financiera consolidada (dashboard, reportes, presupuestos, flujo de caja).</li>
+        <li>Sincronizar automáticamente tus cuentas conectadas.</li>
+        <li>Generar respuestas del asistente financiero con inteligencia artificial.</li>
+        <li>Procesar pagos de suscripción a la app.</li>
+        <li>Detectar y corregir errores técnicos, y mejorar el rendimiento del servicio.</li>
+        <li>Comunicarte novedades del producto o cambios importantes en el servicio.</li>
+      </ul>
+      <p class="text-sm sm:text-base text-primary mb-4">
+        No vendemos tus datos personales ni financieros a terceros con fines publicitarios.
+      </p>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">3. Con quién compartimos datos</h2>
+      <p class="text-sm sm:text-base text-primary mb-2">
+        Compartimos datos únicamente con proveedores que necesitamos para operar el
+        servicio, bajo sus propias políticas de privacidad y acuerdos de confidencialidad:
+      </p>
+      <ul class="list-disc pl-5 text-sm sm:text-base text-primary mb-4 space-y-1">
+        <li><strong>Agregadores financieros</strong> (Plaid, Enable Banking, SnapTrade, Sophtron, SimpleFin y proveedores de exchanges como Binance/Coinbase): para conectar y sincronizar tus cuentas bancarias, de inversión o cripto.</li>
+        <li><strong>Proveedores de inteligencia artificial</strong> (OpenAI, Anthropic): procesan el contenido de tus consultas al asistente financiero para generar respuestas. Solo se envía el contexto financiero necesario para responder tu consulta puntual.</li>
+        <li><strong>Stripe:</strong> procesamiento de pagos de suscripción. FinancePY no almacena números de tarjeta.</li>
+        <li><strong>Sentry y Skylight:</strong> monitoreo de errores y rendimiento técnico de la aplicación (no incluyen datos financieros).</li>
+      </ul>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">4. Seguridad</h2>
+      <p class="text-sm sm:text-base text-primary mb-4">
+        Tus datos están cifrados en tránsito (TLS) y en reposo. El acceso a datos
+        financieros está segmentado por familia a nivel de base de datos (aislamiento
+        de fila), de forma que ningún usuario puede ver datos de otra familia. El acceso
+        administrativo interno queda registrado en auditoría.
+      </p>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">5. Tus derechos</h2>
+      <ul class="list-disc pl-5 text-sm sm:text-base text-primary mb-4 space-y-1">
+        <li>Acceder, corregir o exportar tus datos desde la sección de Ajustes.</li>
+        <li>Desconectar cualquier cuenta bancaria o de inversión en cualquier momento.</li>
+        <li>Solicitar la eliminación de tu cuenta y de tus datos personales escribiendo a <a href="mailto:soporte@financespy.com" class="underline">soporte@financespy.com</a>.</li>
+        <li>Revocar el acceso del asistente IA a tu contexto financiero.</li>
+      </ul>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">6. Retención de datos</h2>
+      <p class="text-sm sm:text-base text-primary mb-4">
+        Conservamos tus datos mientras tu cuenta esté activa. Si eliminás tu cuenta,
+        tus datos personales y financieros se eliminan de nuestros sistemas dentro de
+        un plazo razonable, salvo obligación legal de conservarlos por más tiempo.
+      </p>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">7. Contacto</h2>
+      <p class="text-sm sm:text-base text-primary mb-4">
+        Para consultas sobre privacidad o el tratamiento de tus datos, escribinos a
+        <a href="mailto:soporte@financespy.com" class="underline">soporte@financespy.com</a>.
+      </p>
     </div>
   </div>
 </div>

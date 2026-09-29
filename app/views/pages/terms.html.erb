@@ -1,12 +1,86 @@
 <% content_for :title, t(".title") %>
 
 <div class="flex items-center justify-center h-full p-4 sm:p-6 lg:p-8">
-  <div class="w-full max-w-md sm:max-w-lg lg:max-w-2xl">
-    <div class="bg-container border border-primary rounded-xl p-6 sm:p-8 shadow-sm">
-      <div class="text-center">
-        <h1 class="text-xl sm:text-2xl font-bold text-primary mb-4"><%= t(".heading") %></h1>
-        <p class="text-sm sm:text-base text-subdued"><%= t(".placeholder") %></p>
-      </div>
+  <div class="w-full max-w-md sm:max-w-lg lg:max-w-3xl">
+    <div class="bg-container border border-primary rounded-xl p-6 sm:p-8 shadow-sm prose prose-sm max-w-none">
+      <h1 class="text-xl sm:text-2xl font-bold text-primary mb-2"><%= t(".heading") %></h1>
+      <p class="text-sm text-subdued mb-6">Última actualización: 29 de septiembre de 2026</p>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">1. Aceptación</h2>
+      <p class="text-sm sm:text-base text-primary mb-4">
+        Al crear una cuenta o usar FinancePY, aceptás estas Condiciones del Servicio.
+        Si no estás de acuerdo, no debés usar la aplicación.
+      </p>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">2. Descripción del servicio</h2>
+      <p class="text-sm sm:text-base text-primary mb-4">
+        FinancePY es una aplicación de gestión de finanzas personales y familiares que
+        permite conectar cuentas bancarias, tarjetas, inversiones y billeteras cripto,
+        organizar presupuestos, metas de ahorro y consultar un asistente financiero
+        con inteligencia artificial. FinancePY no es un banco, no otorga créditos ni
+        presta servicios de inversión: es una herramienta de visualización y
+        organización de tu información financiera.
+      </p>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">3. Cuentas familiares</h2>
+      <p class="text-sm sm:text-base text-primary mb-4">
+        FinancePY permite compartir el acceso a las finanzas de una familia entre
+        varios usuarios. El administrador de la familia controla qué miembros tienen
+        acceso y con qué nivel de permisos. Cada usuario es responsable de la
+        confidencialidad de su propia cuenta.
+      </p>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">4. Conexión de cuentas de terceros</h2>
+      <p class="text-sm sm:text-base text-primary mb-4">
+        Al conectar una cuenta bancaria, de inversión o cripto, autorizás a FinancePY
+        a acceder a tu información financiera a través de nuestros proveedores de
+        agregación de datos, únicamente para mostrártela dentro de la app. Sos
+        responsable de la veracidad de las credenciales que utilices y de cumplir los
+        términos de tu institución financiera al conectarla.
+      </p>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">5. Asistente con inteligencia artificial</h2>
+      <p class="text-sm sm:text-base text-primary mb-4">
+        Las respuestas del asistente financiero son generadas automáticamente y
+        pueden contener errores. No constituyen asesoramiento financiero,
+        impositivo ni legal profesional. Las decisiones financieras que tomes en
+        base a esa información son tu responsabilidad.
+      </p>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">6. Suscripciones y pagos</h2>
+      <p class="text-sm sm:text-base text-primary mb-4">
+        Algunas funciones de FinancePY requieren una suscripción paga, procesada a
+        través de Stripe. Los precios y condiciones de facturación se muestran antes
+        de confirmar la suscripción. Podés cancelar en cualquier momento desde
+        Ajustes; la cancelación aplica al siguiente ciclo de facturación.
+      </p>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">7. Uso aceptable</h2>
+      <p class="text-sm sm:text-base text-primary mb-4">
+        No está permitido usar FinancePY para actividades ilegales, intentar acceder
+        a cuentas de otros usuarios sin autorización, ni realizar ingeniería inversa
+        de la aplicación.
+      </p>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">8. Limitación de responsabilidad</h2>
+      <p class="text-sm sm:text-base text-primary mb-4">
+        FinancePY se ofrece "tal cual". No garantizamos que la sincronización con
+        instituciones financieras esté libre de interrupciones o errores. No somos
+        responsables por decisiones financieras tomadas en base a la información
+        mostrada en la app.
+      </p>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">9. Cambios a estas condiciones</h2>
+      <p class="text-sm sm:text-base text-primary mb-4">
+        Podemos actualizar estas condiciones. Te avisaremos de cambios importantes
+        dentro de la app o por correo electrónico.
+      </p>
+
+      <h2 class="text-lg font-semibold text-primary mt-6 mb-2">10. Contacto</h2>
+      <p class="text-sm sm:text-base text-primary mb-4">
+        Para consultas sobre estas condiciones, escribinos a
+        <a href="mailto:soporte@financespy.com" class="underline">soporte@financespy.com</a>.
+      </p>
     </div>
   </div>
 </div>
