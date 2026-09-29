@@ -649,10 +649,21 @@ rule_actions:
 rule_conditions:
   class: RuleCondition
   classification: indirect
-  family_path: rule_conditions.rule_id -> rules.family_id (self-referencial via parent_id para condiciones
-    anidadas)
+  family_path: rule_conditions.root_rule_id -> rules.family_id (denormalizada por trigger en insert/update,
+    NO usar rule_id que queda NULL en sub-conditions a proposito)
   force: true
-  notes: null
+  notes: >-
+    Policy original (PR 384) llamaba una funcion SECURITY DEFINER que
+    recorria recursivamente la misma tabla que protegia (via parent_id) --
+    circular. Funcionaba en tests porque el dueño de la funcion ahi es
+    superusuario, pero rompio en produccion (PG::InsufficientPrivilege) en
+    cuanto financespy_app (dueño real, sin BYPASSRLS) quedo como dueño de
+    la funcion Y de la tabla FORCE'd. Arreglado 2026-09-29: columna nueva
+    root_rule_id (NO reusar rule_id, que Rule#conditions usa via has_many
+    sin scope para significar "solo nivel raiz") poblada por trigger en
+    cada insert/update, policy ahora plana sin funcion ni recursion. Ver
+    docs/security/rls-design.md seccion "SECURITY DEFINER does not bypass
+    FORCE" para el patron general.
   policy_present: true
 rule_runs:
   class: RuleRun
