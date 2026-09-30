@@ -181,6 +181,18 @@ class Api::V1::BaseController < ApplicationController
       @current_user
     end
 
+    # Deliberately not the `.family` AR association: that delegate issues a
+    # live SELECT against `families`, gated by RLS the moment `families` is
+    # ever FORCE'd. family_id is the raw FK column already on the loaded
+    # user record, so this needs no RLS context to be correct -- same fix
+    # as FamilySettingsController#show and setup_current_context_for_api
+    # below. See docs/security/rls-design.md.
+    def current_family
+      return nil unless current_resource_owner
+
+      @current_family ||= Family.find(current_resource_owner.family_id)
+    end
+
     # Get current scopes from either authentication method
     def current_scopes
       case @authentication_method
@@ -344,7 +356,7 @@ class Api::V1::BaseController < ApplicationController
     end
 
     def require_business_mode!
-      unless current_resource_owner&.family&.business_mode_enabled?
+      unless current_family&.business_mode_enabled?
         render_json({ error: "business_mode_disabled", message: "Business mode is not enabled for your family" }, status: :forbidden)
         return false
       end

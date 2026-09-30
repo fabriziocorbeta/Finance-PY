@@ -9,7 +9,7 @@ class Api::V1::FamilyExportsController < Api::V1::BaseController
   before_action :set_family_export, only: [ :show, :download ]
 
   def index
-    family_exports_query = current_resource_owner.family
+    family_exports_query = current_family
       .family_exports
       .with_attached_export_file
       .ordered
@@ -45,7 +45,7 @@ class Api::V1::FamilyExportsController < Api::V1::BaseController
       return
     end
 
-    @family_export = current_resource_owner.family.family_exports.create!
+    @family_export = current_family.family_exports.create!
     FamilyDataExportJob.perform_later(@family_export)
 
     render :show, status: :accepted
@@ -84,7 +84,7 @@ class Api::V1::FamilyExportsController < Api::V1::BaseController
     def set_family_export
       raise ActiveRecord::RecordNotFound unless valid_uuid?(params[:id])
 
-      @family_export = current_resource_owner.family.family_exports.find(params[:id])
+      @family_export = current_family.family_exports.find(params[:id])
     end
 
     def ensure_read_scope

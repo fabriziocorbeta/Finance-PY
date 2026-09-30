@@ -11,7 +11,7 @@ class Api::V1::BudgetsController < Api::V1::BaseController
     @per_page = safe_per_page_param
 
     @pagy, @budgets = pagy(
-      current_resource_owner.family.budgets.order(start_date: :desc, id: :asc),
+      current_family.budgets.order(start_date: :desc, id: :asc),
       page: safe_page_param,
       limit: @per_page
     )
@@ -40,7 +40,7 @@ class Api::V1::BudgetsController < Api::V1::BaseController
   end
 
   def create
-    family = current_resource_owner.family
+    family = current_family
     @budget = family.budgets.new(budget_params)
     @budget.currency ||= family.currency
     if @budget.start_date.present? && @budget.end_date.blank?
@@ -103,7 +103,7 @@ class Api::V1::BudgetsController < Api::V1::BaseController
   private
 
     def set_budget
-      @budget = current_resource_owner.family.budgets.find(params[:id])
+      @budget = current_family.budgets.find(params[:id])
     rescue ActiveRecord::RecordNotFound
       render json: {
         error: "not_found",

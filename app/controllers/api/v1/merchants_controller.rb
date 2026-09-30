@@ -21,7 +21,7 @@ module Api
       #
       # @return [Array<Hash>] JSON array of merchant objects
       def index
-        family = current_resource_owner.family
+        family = current_family
         user = current_resource_owner
 
         # Single query with OR conditions - more efficient than Ruby deduplication
@@ -52,7 +52,7 @@ module Api
       # @param id [String] The merchant ID
       # @return [Hash] JSON merchant object or error
       def show
-        family = current_resource_owner.family
+        family = current_family
         user = current_resource_owner
 
         @merchant = family.merchants.find_by(id: params[:id]) ||

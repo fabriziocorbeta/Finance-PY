@@ -5,7 +5,7 @@ class Api::V1::SyncController < Api::V1::BaseController
   before_action :ensure_write_scope, only: [ :create ]
 
   def create
-    family = current_resource_owner.family
+    family = current_family
 
     # Trigger family sync which will:
     # 1. Apply all active rules

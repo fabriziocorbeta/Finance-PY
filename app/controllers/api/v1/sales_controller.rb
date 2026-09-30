@@ -41,7 +41,7 @@ class Api::V1::SalesController < Api::V1::BaseController
   end
 
   def create
-    @sale = current_resource_owner.family.sales.new(sale_params)
+    @sale = current_family.sales.new(sale_params)
 
     if @sale.save
       render :show, status: :created
@@ -152,7 +152,7 @@ class Api::V1::SalesController < Api::V1::BaseController
     end
 
     def sales_scope
-      current_resource_owner.family.sales
+      current_family.sales
     end
 
     def sale_params
@@ -167,7 +167,7 @@ class Api::V1::SalesController < Api::V1::BaseController
       # accounts the caller can write to, so neither a foreign account id nor
       # a family account the caller only has read access to can be attached.
       if raw.respond_to?(:key?) && raw.key?(:account_id)
-        permitted[:account_id] = current_resource_owner.family.accounts.writable_by(current_resource_owner).find_by(id: raw[:account_id])&.id
+        permitted[:account_id] = current_family.accounts.writable_by(current_resource_owner).find_by(id: raw[:account_id])&.id
       end
       permitted
     end

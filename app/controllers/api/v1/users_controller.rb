@@ -6,7 +6,7 @@ class Api::V1::UsersController < Api::V1::BaseController
   before_action :ensure_admin, only: %i[reset reset_status]
 
   def reset
-    family = current_resource_owner.family
+    family = current_family
     begin
       job = FamilyResetJob.perform_later(family)
     rescue StandardError => e
@@ -29,7 +29,7 @@ class Api::V1::UsersController < Api::V1::BaseController
   end
 
   def reset_status
-    family = current_resource_owner.family
+    family = current_family
     counts = reset_target_counts(family)
     reset_complete = counts.values.sum.zero?
 

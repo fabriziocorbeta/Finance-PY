@@ -40,7 +40,7 @@ class Api::V1::FleetVehiclesController < Api::V1::BaseController
   end
 
   def create
-    @fleet_vehicle = current_resource_owner.family.fleet_vehicles.new(extracted_params)
+    @fleet_vehicle = current_family.fleet_vehicles.new(extracted_params)
 
     if @fleet_vehicle.save
       render :show, status: :created
@@ -126,7 +126,7 @@ class Api::V1::FleetVehiclesController < Api::V1::BaseController
     end
 
     def fleet_vehicles_scope
-      current_resource_owner.family.fleet_vehicles
+      current_family.fleet_vehicles
     end
 
     def extracted_params

@@ -40,7 +40,7 @@ class Api::V1::AccountsController < Api::V1::BaseController
       nil
     end || (Time.zone.today - 2.years)
 
-    account = current_resource_owner.family.accounts.create_and_sync(
+    account = current_family.accounts.create_and_sync(
       create_params.except(:opening_balance_date).merge(accountable_type: accountable_type, owner: current_resource_owner),
       opening_balance_date: opening_balance_date
     )
@@ -183,7 +183,7 @@ class Api::V1::AccountsController < Api::V1::BaseController
     end
 
     def accounts_scope
-      scope = current_resource_owner.family.accounts
+      scope = current_family.accounts
                                     .accessible_by(current_resource_owner)
                                     .includes(:accountable, account_providers: :provider)
       include_disabled_accounts? ? scope : scope.visible

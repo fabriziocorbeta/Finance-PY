@@ -8,7 +8,7 @@ class Api::V1::TradesController < Api::V1::BaseController
   before_action :set_trade, only: [ :show, :update, :destroy ]
 
   def index
-    family = current_resource_owner.family
+    family = current_family
     trades_query = family.trades.visible
 
     trades_query = apply_filters(trades_query)
@@ -39,7 +39,7 @@ class Api::V1::TradesController < Api::V1::BaseController
       return render_validation_error("Account ID is required", [ "Account ID is required" ])
     end
 
-    account = current_resource_owner.family.accounts.visible.writable_by(current_resource_owner).find(trade_params[:account_id])
+    account = current_family.accounts.visible.writable_by(current_resource_owner).find(trade_params[:account_id])
 
     unless account.supports_trades?
       return render_validation_error(
@@ -108,7 +108,7 @@ class Api::V1::TradesController < Api::V1::BaseController
   private
 
     def set_trade
-      family = current_resource_owner.family
+      family = current_family
       @trade = current_resource_owner.accessible_accounts.joins(:trades).merge(family.trades.visible).find_by!(trades: { id: params[:id] }).trades.visible.find(params[:id])
       @entry = @trade.entry
     rescue ActiveRecord::RecordNotFound
@@ -263,7 +263,7 @@ class Api::V1::TradesController < Api::V1::BaseController
         attrs[:investment_activity_label] = label
       end
       if trade_params[:category_id].present?
-        category = current_resource_owner.family.categories.find_by(id: trade_params[:category_id])
+        category = current_family.categories.find_by(id: trade_params[:category_id])
         unless category
           render_validation_error("Category not found or does not belong to your family", [ "category_id is invalid" ])
           return

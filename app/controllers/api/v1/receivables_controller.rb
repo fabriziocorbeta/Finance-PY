@@ -45,11 +45,11 @@ class Api::V1::ReceivablesController < Api::V1::BaseController
     balance_amt = attrs[:balance].presence || total_amt || 0
 
     Account.transaction do
-      @account = current_resource_owner.family.accounts.create_and_sync(
+      @account = current_family.accounts.create_and_sync(
         {
           name: attrs[:name].presence || "Receivable",
           balance: balance_amt,
-          currency: attrs[:currency].presence || current_resource_owner.family.currency,
+          currency: attrs[:currency].presence || current_family.currency,
           notes: attrs[:notes],
           owner: current_resource_owner,
           accountable_type: "Receivable",
@@ -195,7 +195,7 @@ class Api::V1::ReceivablesController < Api::V1::BaseController
       # dentro de una misma familia una cuenta puede ser privada de otro
       # usuario. Mismo criterio que ya aplica el controller web equivalente
       # (app/controllers/receivables_controller.rb) y que accounts_controller.
-      account_ids = current_resource_owner.family.accounts
+      account_ids = current_family.accounts
                                           .visible
                                           .accessible_by(current_resource_owner)
                                           .where(accountable_type: "Receivable")

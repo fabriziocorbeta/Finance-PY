@@ -9,7 +9,7 @@ class Api::V1::TransactionsController < Api::V1::BaseController
   before_action :set_transaction, only: [ :show, :update, :destroy ]
 
   def index
-    family = current_resource_owner.family
+    family = current_family
     accessible_account_ids = family.accounts.accessible_by(current_resource_owner).select(:id)
     transactions_query = family.transactions.visible
       .joins(:entry).where(entries: { account_id: accessible_account_ids })
@@ -72,7 +72,7 @@ class Api::V1::TransactionsController < Api::V1::BaseController
   end
 
   def create
-    family = current_resource_owner.family
+    family = current_family
 
     # Validate account_id is present
     unless transaction_params[:account_id].present?
@@ -184,7 +184,7 @@ class Api::V1::TransactionsController < Api::V1::BaseController
   private
 
     def set_transaction
-      family = current_resource_owner.family
+      family = current_family
       @transaction = family.transactions
         .joins(entry: :account)
         .merge(Account.accessible_by(current_resource_owner))
@@ -298,7 +298,7 @@ class Api::V1::TransactionsController < Api::V1::BaseController
         name: transaction_params[:name] || transaction_params[:description],
         date: transaction_params[:date],
         amount: calculate_signed_amount,
-        currency: transaction_params[:currency] || current_resource_owner.family.currency,
+        currency: transaction_params[:currency] || current_family.currency,
         notes: transaction_params[:notes],
         entryable_type: "Transaction",
         entryable_attributes: {

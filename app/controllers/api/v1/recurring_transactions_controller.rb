@@ -48,7 +48,7 @@ class Api::V1::RecurringTransactionsController < Api::V1::BaseController
   end
 
   def create
-    @recurring_transaction = current_resource_owner.family.recurring_transactions.new(
+    @recurring_transaction = current_family.recurring_transactions.new(
       recurring_transaction_create_attributes
     )
     validate_create_write_params(@recurring_transaction)
@@ -159,12 +159,12 @@ class Api::V1::RecurringTransactionsController < Api::V1::BaseController
     end
 
     def read_recurring_transactions_scope
-      current_resource_owner.family.recurring_transactions.accessible_by(current_resource_owner)
+      current_family.recurring_transactions.accessible_by(current_resource_owner)
     end
 
     def write_recurring_transactions_scope
-      scope = current_resource_owner.family.recurring_transactions
-      writable_account_ids = current_resource_owner.family.accounts.writable_by(current_resource_owner).select(:id)
+      scope = current_family.recurring_transactions
+      writable_account_ids = current_family.accounts.writable_by(current_resource_owner).select(:id)
       scope.where(account_id: writable_account_ids).or(scope.where(account_id: nil))
     end
 
@@ -197,7 +197,7 @@ class Api::V1::RecurringTransactionsController < Api::V1::BaseController
       return nil if account_id.blank?
       raise ActiveRecord::RecordNotFound, "Account not found" unless valid_uuid?(account_id)
 
-      current_resource_owner.family.accounts.writable_by(current_resource_owner).find_by(id: account_id) ||
+      current_family.accounts.writable_by(current_resource_owner).find_by(id: account_id) ||
         raise(ActiveRecord::RecordNotFound, "Account not found")
     end
 
@@ -205,7 +205,7 @@ class Api::V1::RecurringTransactionsController < Api::V1::BaseController
       return nil if merchant_id.blank?
       raise ActiveRecord::RecordNotFound, "Merchant not found" unless valid_uuid?(merchant_id)
 
-      current_resource_owner.family.merchants.find_by(id: merchant_id) ||
+      current_family.merchants.find_by(id: merchant_id) ||
         raise(ActiveRecord::RecordNotFound, "Merchant not found")
     end
 

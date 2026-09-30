@@ -11,7 +11,7 @@ class Api::V1::GoalsController < Api::V1::BaseController
     @per_page = safe_per_page_param
 
     @pagy, @goals = pagy(
-      current_resource_owner.family.goals.order(created_at: :desc, id: :asc),
+      current_family.goals.order(created_at: :desc, id: :asc),
       page: safe_page_param,
       limit: @per_page
     )
@@ -43,12 +43,12 @@ class Api::V1::GoalsController < Api::V1::BaseController
     raw_params = goal_raw_params
     goal_attrs = extract_goal_params(raw_params)
 
-    @goal = current_resource_owner.family.goals.new(goal_attrs)
+    @goal = current_family.goals.new(goal_attrs)
     process_account_links(@goal, raw_params)
 
     if @goal.currency.blank?
       first_account = @goal.goal_accounts.map(&:account).compact.first
-      @goal.currency = first_account&.currency || current_resource_owner.family.primary_currency_code
+      @goal.currency = first_account&.currency || current_family.primary_currency_code
     end
 
     if @goal.save
@@ -134,7 +134,7 @@ class Api::V1::GoalsController < Api::V1::BaseController
   private
 
     def set_goal
-      @goal = current_resource_owner.family.goals.find(params[:id])
+      @goal = current_family.goals.find(params[:id])
     rescue ActiveRecord::RecordNotFound
       render json: {
         error: "not_found",
@@ -165,12 +165,12 @@ class Api::V1::GoalsController < Api::V1::BaseController
         attrs_list.each do |ga_attr|
           acc_id = ga_attr[:account_id] || ga_attr["account_id"]
           allocated = ga_attr[:allocated_amount] || ga_attr["allocated_amount"]
-          account = current_resource_owner.family.accounts.accessible_by(current_resource_owner).find_by(id: acc_id) if acc_id.present?
+          account = current_family.accounts.accessible_by(current_resource_owner).find_by(id: acc_id) if acc_id.present?
           goal.goal_accounts.build(account: account, allocated_amount: allocated) if account
         end
       elsif raw_params.key?(:account_ids)
         account_ids = Array(raw_params[:account_ids]).reject(&:blank?)
-        accounts = current_resource_owner.family.accounts.accessible_by(current_resource_owner).where(id: account_ids).to_a
+        accounts = current_family.accounts.accessible_by(current_resource_owner).where(id: account_ids).to_a
         allocations = submitted_allocations(raw_params)
         accounts.each do |account|
           goal.goal_accounts.build(account: account, allocated_amount: allocations[account.id.to_s])
@@ -181,7 +181,7 @@ class Api::V1::GoalsController < Api::V1::BaseController
     def sync_account_links(goal, raw_params)
       if raw_params.key?(:account_ids)
         account_ids = Array(raw_params[:account_ids]).reject(&:blank?)
-        accounts = current_resource_owner.family.accounts.accessible_by(current_resource_owner).where(id: account_ids).to_a
+        accounts = current_family.accounts.accessible_by(current_resource_owner).where(id: account_ids).to_a
         allocations = submitted_allocations(raw_params)
 
         desired_ids = accounts.map(&:id).to_set
@@ -218,7 +218,7 @@ class Api::V1::GoalsController < Api::V1::BaseController
               end
             end
           elsif acc_id.present?
-            account = current_resource_owner.family.accounts.accessible_by(current_resource_owner).find_by(id: acc_id)
+            account = current_family.accounts.accessible_by(current_resource_owner).find_by(id: acc_id)
             if account
               existing = goal.goal_accounts.reject(&:marked_for_destruction?).find { |ga| ga.account_id == account.id }
               if existing
