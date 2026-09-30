@@ -207,7 +207,10 @@ class DashboardViewModelTest {
 
         val state = viewModel.state.value
         assertFalse(state.isSyncing)
-        assertEquals("Network Error", state.syncError)
+        // describeForUser() appends "(ExceptionClassName)" for diagnosability
+        // (see NetworkErrors.kt) -- this test predates that and was never
+        // updated, invisible until CI started actually running these tests.
+        assertEquals("Network Error (RuntimeException)", state.syncError)
         assertNull(state.dashboard)
     }
 
