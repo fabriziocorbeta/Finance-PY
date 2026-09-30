@@ -86,7 +86,7 @@ module RlsContext
       ActiveRecord::Base.connection.execute("SET app.rls_system_access = 'true'")
       yield
     ensure
-      reset_guc_unless_already_active("app.rls_system_access", already_active)
+      reset_guc_unless_already_active("app.rls_system_access", already_active, "RESET app.rls_system_access")
     end
 
     # Bypasses RLS strictly for authentication workflows before a user/family context
@@ -107,7 +107,7 @@ module RlsContext
       ActiveRecord::Base.connection.execute("SET app.rls_auth_bypass = 'true'")
       yield
     ensure
-      reset_guc_unless_already_active("app.rls_auth_bypass", already_active)
+      reset_guc_unless_already_active("app.rls_auth_bypass", already_active, "RESET app.rls_auth_bypass")
     end
 
     private
@@ -125,14 +125,17 @@ module RlsContext
       # (already_active) and must leave it set on exit -- resetting here
       # would un-bypass the remainder of the outer block for no reason other
       # than this inner call happening to finish first.
-      def reset_guc_unless_already_active(guc_name, already_active)
+      #
+      # reset_sql is always one of the two hardcoded literals passed by the
+      # two callers above (never built from guc_name via interpolation) --
+      # RESET doesn't support a bind-parameterized identifier, and a literal
+      # per call site keeps this out of Brakeman's SQL-injection heuristics,
+      # which can't otherwise tell guc_name is never user input.
+      def reset_guc_unless_already_active(guc_name, already_active, reset_sql)
         return if already_active
 
         begin
-          # guc_name is always one of our own hardcoded GUC names (never
-          # user input), so plain interpolation is safe -- RESET doesn't
-          # support a bind-parameterized identifier anyway.
-          ActiveRecord::Base.connection.execute("RESET #{guc_name}")
+          ActiveRecord::Base.connection.execute(reset_sql)
         rescue => e
           Rails.logger.error(
             "[RlsContext] RESET #{guc_name} failed (#{e.class}: #{e.message}); reconnecting"

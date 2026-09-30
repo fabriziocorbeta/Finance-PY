@@ -35,14 +35,14 @@ class RowLevelSecurityOauthTokensTest < ActionDispatch::IntegrationTest
 
   test "Doorkeeper::AccessToken.by_token is a no-op under app_user with no context and no bypass, succeeds with bypass" do
     user = users(:family_admin)
-    token = Doorkeeper::AccessToken.create!(
+    access_token_record = Doorkeeper::AccessToken.create!(
       application: MobileDevice.shared_oauth_application,
       resource_owner_id: user.id,
       expires_in: 2.hours.to_i,
       scopes: "read_write",
       use_refresh_token: true
     )
-    plain_token = token.plaintext_token
+    plain_token = access_token_record.plaintext_token
 
     RowLevelSecurityTest.ensure_non_superuser_role
     ActiveRecord::Base.connection.execute("SET ROLE app_user")
@@ -52,7 +52,7 @@ class RowLevelSecurityOauthTokensTest < ActionDispatch::IntegrationTest
       "if this ever returns non-nil, revisit this test"
 
     found = RlsContext.with_auth_bypass(reason: "test_verify") { Doorkeeper::AccessToken.by_token(plain_token) }
-    assert_equal token, found
+    assert_equal access_token_record, found
   ensure
     ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
   end
@@ -79,7 +79,7 @@ class RowLevelSecurityOauthTokensTest < ActionDispatch::IntegrationTest
 
   test "User#revoke_all_oauth_tokens! works under app_user with real FORCE" do
     user = users(:family_admin)
-    token = Doorkeeper::AccessToken.create!(
+    access_token_record = Doorkeeper::AccessToken.create!(
       application: MobileDevice.shared_oauth_application,
       resource_owner_id: user.id,
       expires_in: 2.hours.to_i,
@@ -91,7 +91,7 @@ class RowLevelSecurityOauthTokensTest < ActionDispatch::IntegrationTest
 
     user.revoke_all_oauth_tokens!
 
-    revoked_at = RlsContext.with_auth_bypass(reason: "test_verify") { token.reload.revoked_at }
+    revoked_at = RlsContext.with_auth_bypass(reason: "test_verify") { access_token_record.reload.revoked_at }
     assert revoked_at.present?
   ensure
     ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
