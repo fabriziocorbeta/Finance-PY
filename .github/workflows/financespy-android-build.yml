@@ -68,6 +68,12 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      # Nothing else in this workflow ever ran the KMP unit tests (only
+      # compiles the APK) -- commonTest only executes via the Android
+      # unit test task since `shared` has no jvm()/ios*() targets.
+      - name: Run shared module unit tests
+        run: ./gradlew :shared:testDebugUnitTest --no-daemon
+
       - name: Decode release keystore
         if: inputs.buildType == 'release'
         working-directory: .

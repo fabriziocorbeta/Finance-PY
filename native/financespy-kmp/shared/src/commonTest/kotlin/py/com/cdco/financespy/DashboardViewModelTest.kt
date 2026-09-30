@@ -22,6 +22,7 @@ import py.com.cdco.financespy.api.dto.PeriodDto
 import py.com.cdco.financespy.api.dto.ReceivableDto
 import py.com.cdco.financespy.api.dto.RuleDto
 import py.com.cdco.financespy.api.dto.TransactionListItemDto
+import py.com.cdco.financespy.cache.DashboardCache
 import py.com.cdco.financespy.db.AccountDao
 import py.com.cdco.financespy.db.AccountEntity
 import py.com.cdco.financespy.db.EntryDao
@@ -41,6 +42,16 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+/** In-memory stand-in for AndroidDashboardCache, same key-collapsing behavior (null -> "default"). */
+class FakeDashboardCache : DashboardCache {
+    private val store = mutableMapOf<String, String>()
+    override fun load(periodKey: String?): String? = store[periodKey ?: "default"]
+    override fun save(periodKey: String?, json: String) {
+        store[periodKey ?: "default"] = json
+    }
+}
 
 class DashboardFakeApi : FinancePyApi(io.ktor.client.HttpClient()) {
     var dashboardToReturn: DashboardDto? = null
@@ -226,6 +237,52 @@ class DashboardViewModelTest {
         testDispatcher.scheduler.runCurrent()
 
         assertNotNull(viewModel.state.value.dashboard, "dashboard should be available without waiting for the slow sync")
+
+        testDispatcher.scheduler.advanceUntilIdle()
+    }
+
+    @Test
+    fun testColdStartOfflineFallbackUsesCacheSavedWithNoExplicitPeriod() = testScope.runTest {
+        // Regression guard: a successful load with no period explicitly
+        // selected (selectedPeriod == null, the normal cold-start case)
+        // resolves and saves under the server's real period key (e.g.
+        // "current_month"), never under the null/"default" key. The NEXT
+        // cold start also starts with selectedPeriod == null, so
+        // loadFromCache() looked up "default" and always missed -- the
+        // offline fallback silently never worked on the one path that
+        // matters (opening the app with no signal). Airplane-mode test on
+        // the real device (2026-09-30) reproduced exactly this: dashboard
+        // showed "sin cuentas" instead of the last known data.
+        val cache = FakeDashboardCache()
+        fakeApi.dashboardToReturn = DashboardDto(
+            greeting_name = "Fabrizio",
+            currency = "PYG",
+            period = PeriodDto(key = "current_month", label = "Mes actual"),
+            net_worth = NetWorthDto(amount = 1000000.0, currency = "PYG")
+        )
+
+        val firstLaunch = DashboardViewModel(
+            scope = this,
+            syncEngine = syncEngine,
+            api = fakeApi,
+            dashboardCache = cache
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertNotNull(firstLaunch.state.value.dashboard)
+
+        // Second launch: offline cold start, same cache, no period selected.
+        fakeApi.shouldFail = true
+        val coldStart = DashboardViewModel(
+            scope = this,
+            syncEngine = syncEngine,
+            api = fakeApi,
+            dashboardCache = cache
+        )
+        // loadFromCache() runs synchronously in init before any dispatch --
+        // check immediately, independent of the (failing) network call.
+        assertNotNull(coldStart.state.value.dashboard, "cold start with no connectivity should show the last cached dashboard")
+        assertEquals("Fabrizio", coldStart.state.value.dashboard?.greeting_name)
+        assertTrue(coldStart.state.value.isShowingCachedData)
 
         testDispatcher.scheduler.advanceUntilIdle()
     }
