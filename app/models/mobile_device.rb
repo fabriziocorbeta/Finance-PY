@@ -61,8 +61,15 @@ class MobileDevice < ApplicationRecord
       .where("expires_in IS NULL OR created_at + expires_in * interval '1 second' > ?", Time.current)
   end
 
+  # oauth_access_tokens is FORCE RLS'd; called from login/signup/SSO flows
+  # that run before any family context exists, as well as from
+  # already-authenticated requests (device management) -- with_auth_bypass
+  # is safe either way since this always scopes by this exact device/user,
+  # never a family-wide read.
   def revoke_all_tokens!
-    active_tokens.update_all(revoked_at: Time.current)
+    RlsContext.with_auth_bypass(reason: "mobile_device_revoke_tokens") do
+      active_tokens.update_all(revoked_at: Time.current)
+    end
   end
 
   # Issues a fresh Doorkeeper access token for this device, revoking any
@@ -71,14 +78,16 @@ class MobileDevice < ApplicationRecord
   def issue_token!
     revoke_all_tokens!
 
-    access_token = Doorkeeper::AccessToken.create!(
-      application: self.class.shared_oauth_application,
-      resource_owner_id: user_id,
-      mobile_device_id: id,
-      expires_in: 30.days.to_i,
-      scopes: "read_write",
-      use_refresh_token: true
-    )
+    access_token = RlsContext.with_auth_bypass(reason: "mobile_device_issue_token") do
+      Doorkeeper::AccessToken.create!(
+        application: self.class.shared_oauth_application,
+        resource_owner_id: user_id,
+        mobile_device_id: id,
+        expires_in: 30.days.to_i,
+        scopes: "read_write",
+        use_refresh_token: true
+      )
+    end
 
     {
       access_token: access_token.plaintext_token,

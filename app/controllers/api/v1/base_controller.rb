@@ -55,7 +55,11 @@ class Api::V1::BaseController < ApplicationController
 
       # Manually verify the token (bypassing doorkeeper_authorize! which had scope issues)
       token_string = request.authorization&.split(" ")&.last
-      access_token = Doorkeeper::AccessToken.by_token(token_string)
+      # oauth_access_tokens is FORCE RLS'd; this lookup runs before
+      # setup_current_context_for_api below sets app.current_family_id.
+      access_token = RlsContext.with_auth_bypass(reason: "api_oauth_token_lookup") do
+        Doorkeeper::AccessToken.by_token(token_string)
+      end
 
       # Check token validity and scope (read_write includes read access)
       has_sufficient_scope = access_token&.scopes&.include?("read") || access_token&.scopes&.include?("read_write")

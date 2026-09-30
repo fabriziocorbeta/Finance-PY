@@ -275,33 +275,39 @@ module Api
           return
         end
 
-        # Find the access token associated with this refresh token
-        access_token = Doorkeeper::AccessToken.by_refresh_token(refresh_token)
+        # oauth_access_tokens is FORCE RLS'd; this whole exchange runs before
+        # any family context exists (a refresh token proves the caller's
+        # identity, but there's no session yet to have set it from).
+        new_token = RlsContext.with_auth_bypass(reason: "refresh_token") do
+          # Find the access token associated with this refresh token
+          access_token = Doorkeeper::AccessToken.by_refresh_token(refresh_token)
 
-        if access_token.nil? || access_token.revoked?
-          render json: { error: "Invalid refresh token" }, status: :unauthorized
-          return
-        end
+          if access_token.nil? || access_token.revoked?
+            render json: { error: "Invalid refresh token" }, status: :unauthorized
+            next
+          end
 
-        # Create new access token
-        new_token = Doorkeeper::AccessToken.create!(
-          application: access_token.application,
-          resource_owner_id: access_token.resource_owner_id,
-          mobile_device_id: access_token.mobile_device_id,
-          expires_in: 30.days.to_i,
-          scopes: access_token.scopes,
-          use_refresh_token: true
-        )
+          # Create new access token
+          created = Doorkeeper::AccessToken.create!(
+            application: access_token.application,
+            resource_owner_id: access_token.resource_owner_id,
+            mobile_device_id: access_token.mobile_device_id,
+            expires_in: 30.days.to_i,
+            scopes: access_token.scopes,
+            use_refresh_token: true
+          )
 
-        # Revoke old access token
-        access_token.revoke
+          # Revoke old access token
+          access_token.revoke
 
-        # Update device last seen
-        RlsContext.with_auth_bypass(reason: "refresh_token") do
+          # Update device last seen
           user = User.auth_find_by_id(access_token.resource_owner_id)
           device = user.mobile_devices.find_by(device_id: params[:device][:device_id])
           device&.update_last_seen!
+
+          created
         end
+        return if performed?
 
         render json: {
           access_token: new_token.plaintext_token,

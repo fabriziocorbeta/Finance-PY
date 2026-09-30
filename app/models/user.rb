@@ -218,8 +218,13 @@ class User < ApplicationRecord
   end
 
   # Ends every API/mobile session (access and refresh tokens share the row).
+  # oauth_access_tokens is FORCE RLS'd; called from deactivate/password-reset
+  # flows that can run before any family context exists, scoped by this
+  # exact user id regardless.
   def revoke_all_oauth_tokens!
-    Doorkeeper::AccessToken.where(resource_owner_id: id, revoked_at: nil).update_all(revoked_at: Time.current)
+    RlsContext.with_auth_bypass(reason: "user_revoke_all_oauth_tokens") do
+      Doorkeeper::AccessToken.where(resource_owner_id: id, revoked_at: nil).update_all(revoked_at: Time.current)
+    end
   end
 
   def can_deactivate

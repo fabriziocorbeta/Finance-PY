@@ -1593,6 +1593,8 @@ CREATE TABLE public.oauth_access_grants (
     revoked_at timestamp(6) without time zone
 );
 
+ALTER TABLE ONLY public.oauth_access_grants FORCE ROW LEVEL SECURITY;
+
 
 --
 -- Name: oauth_access_grants_id_seq; Type: SEQUENCE; Schema: public; Owner: -
@@ -1630,6 +1632,8 @@ CREATE TABLE public.oauth_access_tokens (
     previous_refresh_token character varying DEFAULT ''::character varying NOT NULL,
     mobile_device_id uuid
 );
+
+ALTER TABLE ONLY public.oauth_access_tokens FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -7664,6 +7668,36 @@ CREATE POLICY mobile_devices_family_isolation_policy ON public.mobile_devices US
 
 
 --
+-- Name: oauth_access_grants; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.oauth_access_grants ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: oauth_access_grants oauth_access_grants_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY oauth_access_grants_family_isolation_policy ON public.oauth_access_grants USING ((((resource_owner_id)::text IN ( SELECT (users.id)::text AS id
+   FROM public.users
+  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
+
+
+--
+-- Name: oauth_access_tokens; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.oauth_access_tokens ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: oauth_access_tokens oauth_access_tokens_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY oauth_access_tokens_family_isolation_policy ON public.oauth_access_tokens USING ((((resource_owner_id)::text IN ( SELECT (users.id)::text AS id
+   FROM public.users
+  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
+
+
+--
 -- Name: oidc_identities; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -8260,6 +8294,7 @@ CREATE POLICY webauthn_credentials_family_isolation_policy ON public.webauthn_cr
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260930001500'),
 ('20260929231800'),
 ('20260929203000'),
 ('20260929030000'),

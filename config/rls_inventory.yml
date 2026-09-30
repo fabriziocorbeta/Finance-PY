@@ -509,16 +509,32 @@ oauth_access_grants:
   class: OauthAccessGrant
   classification: auth
   family_path: oauth_access_grants.resource_owner_id -> users.family_id
-  force: false
-  notes: Doorkeeper.
-  policy_present: false
+  force: true
+  notes: >-
+    Doorkeeper. FORCE'd 2026-09-30 con auth_bypass, mismo patron que Phase C
+    (PR 392). Se lee/escribe desde los controllers montados por Doorkeeper
+    (/oauth/authorize, /oauth/token, /oauth/revoke) via clases internas
+    del gem que nunca corren por nuestro RlsContext -- ver
+    DoorkeeperRlsController (base_controller de Doorkeeper) que envuelve
+    cada action montada en with_auth_bypass.
+  policy_present: true
 oauth_access_tokens:
   class: OauthAccessToken
   classification: auth
   family_path: oauth_access_tokens.resource_owner_id -> users.family_id
-  force: false
-  notes: Doorkeeper; tambien mobile_device_id.
-  policy_present: false
+  force: true
+  notes: >-
+    Doorkeeper; tambien mobile_device_id. FORCE'd 2026-09-30, mismo
+    mecanismo que oauth_access_grants (ver esa nota). Ademas de
+    DoorkeeperRlsController, varios call sites de la app propia lo tocan
+    fuera de un request de Doorkeeper (Api::V1::BaseController#authenticate_oauth,
+    Api::V1::AuthController#refresh, MobileDevice#issue_token!/#revoke_all_tokens!,
+    User#revoke_all_oauth_tokens!), todos envueltos ahora en
+    RlsContext.with_auth_bypass. Este fix tambien fue el motivo de hacer
+    with_auth_bypass/with_system_access reentrantes (ver
+    app/models/concerns/rls_context.rb): varios de estos call sites anidan
+    un bypass dentro de otro.
+  policy_present: true
 oauth_applications:
   class: OauthApplication
   classification: auth

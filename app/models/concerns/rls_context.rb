@@ -82,38 +82,63 @@ module RlsContext
         "[RlsContext] system access granted: reason=#{reason.inspect} " \
         "caller=#{caller_location&.path}:#{caller_location&.lineno}"
       )
+      already_active = guc_true?("app.rls_system_access")
       ActiveRecord::Base.connection.execute("SET app.rls_system_access = 'true'")
       yield
     ensure
-      begin
-        ActiveRecord::Base.connection.execute("RESET app.rls_system_access")
-      rescue => e
-        Rails.logger.error(
-          "[RlsContext] RESET app.rls_system_access failed (#{e.class}: #{e.message}); reconnecting"
-        )
-        ActiveRecord::Base.connection.reconnect! rescue nil
-      end
+      reset_guc_unless_already_active("app.rls_system_access", already_active)
     end
 
     # Bypasses RLS strictly for authentication workflows before a user/family context
     # is established. This is required because tables like `users` and `sessions`
     # must be queried by email or token during login, when `current_family_id` is NULL.
+    #
+    # Reentrant: a call nested inside another with_auth_bypass block (e.g. code
+    # in app/controllers/api/v1/base_controller.rb calling into a model method
+    # that also wraps itself) leaves the GUC set until the *outermost* block
+    # exits, instead of the inner block's `ensure` resetting it early and
+    # silently un-bypassing the rest of the outer block's queries.
     def with_auth_bypass(reason: nil)
       caller_location = caller_locations(1, 1)&.first
       if reason
         Rails.logger.warn("[RlsContext] auth bypass granted: reason=#{reason.inspect} caller=#{caller_location&.path}:#{caller_location&.lineno}")
       end
+      already_active = guc_true?("app.rls_auth_bypass")
       ActiveRecord::Base.connection.execute("SET app.rls_auth_bypass = 'true'")
       yield
     ensure
-      begin
-        ActiveRecord::Base.connection.execute("RESET app.rls_auth_bypass")
-      rescue => e
-        Rails.logger.error(
-          "[RlsContext] RESET app.rls_auth_bypass failed (#{e.class}: #{e.message}); reconnecting"
-        )
-        ActiveRecord::Base.connection.reconnect! rescue nil
-      end
+      reset_guc_unless_already_active("app.rls_auth_bypass", already_active)
     end
+
+    private
+
+      def guc_true?(guc_name)
+        ActiveRecord::Base.connection.select_value(
+          ActiveRecord::Base.sanitize_sql([ "SELECT current_setting(?, true)", guc_name ])
+        ) == "true"
+      rescue
+        false
+      end
+
+      # Only the outermost with_auth_bypass/with_system_access call resets the
+      # GUC. A nested call detected the outer one was already active
+      # (already_active) and must leave it set on exit -- resetting here
+      # would un-bypass the remainder of the outer block for no reason other
+      # than this inner call happening to finish first.
+      def reset_guc_unless_already_active(guc_name, already_active)
+        return if already_active
+
+        begin
+          # guc_name is always one of our own hardcoded GUC names (never
+          # user input), so plain interpolation is safe -- RESET doesn't
+          # support a bind-parameterized identifier anyway.
+          ActiveRecord::Base.connection.execute("RESET #{guc_name}")
+        rescue => e
+          Rails.logger.error(
+            "[RlsContext] RESET #{guc_name} failed (#{e.class}: #{e.message}); reconnecting"
+          )
+          ActiveRecord::Base.connection.reconnect! rescue nil
+        end
+      end
   end
 end

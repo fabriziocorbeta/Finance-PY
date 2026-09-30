@@ -99,4 +99,66 @@ class RlsContextTest < ActiveSupport::TestCase
 
     assert_equal false, conn.select_value("SELECT is_system_context()")
   end
+
+  test "with_auth_bypass sets and resets app.rls_auth_bypass around the block" do
+    during_value = nil
+
+    RlsContext.with_auth_bypass(reason: "test coverage") do
+      during_value = ActiveRecord::Base.connection.select_value("SELECT current_setting('app.rls_auth_bypass', true)")
+    end
+
+    after_value = ActiveRecord::Base.connection.select_value("SELECT current_setting('app.rls_auth_bypass', true)").to_s
+
+    assert_equal "true", during_value
+    assert_predicate after_value, :empty?
+  end
+
+  test "with_auth_bypass resets app.rls_auth_bypass even when the block raises" do
+    assert_raises(RuntimeError) do
+      RlsContext.with_auth_bypass(reason: "test coverage") { raise "boom" }
+    end
+
+    after_value = ActiveRecord::Base.connection.select_value("SELECT current_setting('app.rls_auth_bypass', true)").to_s
+    assert_predicate after_value, :empty?
+  end
+
+  # Regression coverage for a real bug found 2026-09-30 while wiring Doorkeeper
+  # into RlsContext.with_auth_bypass: app/controllers/api/v1/base_controller.rb
+  # (or a Doorkeeper hook) can call a model method that ALSO wraps itself in
+  # with_auth_bypass. Before this fix, the inner block's `ensure` reset the
+  # GUC unconditionally, un-bypassing the remainder of the outer block even
+  # though the outer block was still relying on it.
+  test "with_auth_bypass is reentrant: a nested call does not reset the GUC before the outer block exits" do
+    inner_value = nil
+    value_immediately_after_inner_block = nil
+
+    RlsContext.with_auth_bypass(reason: "outer") do
+      RlsContext.with_auth_bypass(reason: "inner") do
+        inner_value = ActiveRecord::Base.connection.select_value("SELECT current_setting('app.rls_auth_bypass', true)")
+      end
+      value_immediately_after_inner_block = ActiveRecord::Base.connection.select_value("SELECT current_setting('app.rls_auth_bypass', true)")
+    end
+
+    after_outer_value = ActiveRecord::Base.connection.select_value("SELECT current_setting('app.rls_auth_bypass', true)").to_s
+
+    assert_equal "true", inner_value
+    assert_equal "true", value_immediately_after_inner_block,
+      "the inner with_auth_bypass block must not reset the GUC while the outer block is still executing"
+    assert_predicate after_outer_value, :empty?,
+      "the outermost with_auth_bypass block must still reset the GUC on its own exit"
+  end
+
+  test "with_system_access is reentrant: a nested call does not reset the GUC before the outer block exits" do
+    value_immediately_after_inner_block = nil
+
+    RlsContext.with_system_access(reason: "outer") do
+      RlsContext.with_system_access(reason: "inner") { }
+      value_immediately_after_inner_block = ActiveRecord::Base.connection.select_value("SELECT current_setting('app.rls_system_access', true)")
+    end
+
+    after_outer_value = ActiveRecord::Base.connection.select_value("SELECT current_setting('app.rls_system_access', true)").to_s
+
+    assert_equal "true", value_immediately_after_inner_block
+    assert_predicate after_outer_value, :empty?
+  end
 end
