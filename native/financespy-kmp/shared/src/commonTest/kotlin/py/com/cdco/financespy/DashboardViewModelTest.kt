@@ -107,6 +107,7 @@ class DashboardViewModelTest {
 
     private val dummyTransactionDao = object : TransactionDao {
         override suspend fun upsertAll(transactions: List<TransactionEntity>) {}
+        override suspend fun getAll(): List<TransactionEntity> = emptyList()
         override suspend fun findById(id: String): TransactionEntity? = null
     }
 
