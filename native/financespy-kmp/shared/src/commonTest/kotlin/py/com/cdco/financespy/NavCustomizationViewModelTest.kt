@@ -8,7 +8,6 @@ import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.navigation.NavItems
 import py.com.cdco.financespy.navigation.NavPreferences
 import py.com.cdco.financespy.screens.NavCustomizationViewModel
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -50,17 +49,19 @@ class NavCustomizationViewModelTest {
         assertEquals(NavItems.CORE_DEFAULT_ORDER, vm.uiState.value.selectedIds)
     }
 
-    // Pre-existing failure, unrelated to PR #412: CORE_DEFAULT_ORDER already
-    // has 6 items and maxSelectable is 6 (see cannotSelectMoreThanMax below),
-    // so toggling a 7th item (RULES) silently no-ops -- this test assumes it
-    // succeeds. Invisible until now because CI never ran the shared module's
-    // tests. Needs someone to decide the actual intended behavior (raise the
-    // max, or pick a different starting state), not a blind fix here.
-    @Ignore
     @Test
     fun toggleAddsAndRemovesItems() = testScope.runTest {
         val prefs = FakeNavPreferences()
         val vm = NavCustomizationViewModel(testScope, prefs, FakeNavApi(), businessModeEnabled = false)
+
+        // CORE_DEFAULT_ORDER starts full (6/6, same as maxSelectable) -- this
+        // is a fixed-size bottom bar, so adding a new item means swapping one
+        // out first, same as a real user would. Toggling RULES straight away
+        // on a fresh default state is a no-op by design (see
+        // cannotSelectMoreThanMax below), which is what this test originally
+        // got wrong.
+        vm.toggle(NavItems.GOALS.id)
+        assertTrue(NavItems.GOALS.id !in vm.uiState.value.selectedIds)
 
         vm.toggle(NavItems.RULES.id)
         assertTrue(NavItems.RULES.id in vm.uiState.value.selectedIds)
@@ -138,15 +139,16 @@ class NavCustomizationViewModelTest {
         assertEquals(remoteOrder, prefs.loadOrder())
     }
 
-    // Same root cause as toggleAddsAndRemovesItems above (max-items no-op).
-    @Ignore
     @Test
     fun pushesChangesToServerOnToggle() = testScope.runTest {
         val prefs = FakeNavPreferences()
         val api = FakeNavApi()
         val vm = NavCustomizationViewModel(testScope, prefs, api, businessModeEnabled = false)
 
-        vm.toggle(NavItems.RULES.id)
+        // GOALS is already selected by default (CORE_DEFAULT_ORDER), so
+        // toggling it off is a real change and should push to the server --
+        // same root cause fix as toggleAddsAndRemovesItems above.
+        vm.toggle(NavItems.GOALS.id)
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(vm.uiState.value.selectedIds, api.lastPushedOrder)
