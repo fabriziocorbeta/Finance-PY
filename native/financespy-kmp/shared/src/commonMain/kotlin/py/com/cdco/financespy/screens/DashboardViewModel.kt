@@ -97,7 +97,18 @@ class DashboardViewModel(
         }.onSuccess { dto ->
             val resolvedPeriod = dto.period?.key ?: period
             runCatching {
-                dashboardCache?.save(resolvedPeriod, dashboardCacheJson.encodeToString(DashboardDto.serializer(), dto))
+                val json = dashboardCacheJson.encodeToString(DashboardDto.serializer(), dto)
+                dashboardCache?.save(resolvedPeriod, json)
+                // loadFromCache() on a cold start always looks up
+                // `selectedPeriod`, which is null until a network response
+                // resolves it -- so a save under only `resolvedPeriod` (e.g.
+                // "2026-09") is invisible to that lookup (keyed "default")
+                // and the offline fallback never hits on the very next cold
+                // start with no connectivity. Mirror the save under the
+                // original request key too when they differ.
+                if (period != resolvedPeriod) {
+                    dashboardCache?.save(period, json)
+                }
             }
             _state.update {
                 it.copy(
