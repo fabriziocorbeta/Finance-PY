@@ -147,7 +147,12 @@ Doorkeeper.configure do
   # +ActionController::API+. The return value of this option must be a stringified class name.
   # See https://doorkeeper.gitbook.io/guides/configuration/other-configurations#custom-controllers
   #
-  # base_controller 'ApplicationController'
+  # DoorkeeperRlsController (app/controllers/doorkeeper_rls_controller.rb)
+  # wraps every Doorkeeper-mounted action in RlsContext.with_auth_bypass --
+  # required once oauth_access_tokens/oauth_access_grants are FORCE
+  # ROW LEVEL SECURITY'd, since Doorkeeper's own internal strategy classes
+  # read/write those tables with no awareness of app.current_family_id.
+  base_controller "DoorkeeperRlsController"
 
   # Reuse access token for the same resource owner within an application (disabled by default).
   #
