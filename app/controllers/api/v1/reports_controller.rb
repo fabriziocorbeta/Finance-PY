@@ -6,7 +6,7 @@ class Api::V1::ReportsController < Api::V1::BaseController
   # GET /api/v1/reports/summary
   def summary
     builder = Reports::SummaryBuilder.new(
-      family: current_resource_owner.family,
+      family: current_family,
       user: current_resource_owner,
       period_type: params[:period_type],
       start_date: params[:start_date],
@@ -27,7 +27,7 @@ class Api::V1::ReportsController < Api::V1::BaseController
   # GET /api/v1/reports/export_transactions
   def export_transactions
     builder = Reports::TransactionsCsvBuilder.new(
-      family: current_resource_owner.family,
+      family: current_family,
       user: current_resource_owner,
       period_type: params[:period_type],
       start_date: params[:start_date],

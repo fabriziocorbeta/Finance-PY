@@ -53,7 +53,7 @@ class Api::V1::BudgetCategoriesController < Api::V1::BaseController
   private
 
     def set_budget
-      @budget = current_resource_owner.family.budgets.find(params[:budget_id])
+      @budget = current_family.budgets.find(params[:budget_id])
     rescue ActiveRecord::RecordNotFound
       render json: {
         error: "not_found",

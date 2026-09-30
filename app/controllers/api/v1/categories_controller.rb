@@ -7,7 +7,7 @@ class Api::V1::CategoriesController < Api::V1::BaseController
   before_action :set_category, only: :show
 
   def index
-    family = current_resource_owner.family
+    family = current_family
     categories_query = family.categories.includes(:parent, :subcategories).alphabetically
 
     # Apply filters
@@ -48,7 +48,7 @@ class Api::V1::CategoriesController < Api::V1::BaseController
   private
 
     def set_category
-      family = current_resource_owner.family
+      family = current_family
       @category = family.categories.includes(:parent, :subcategories).find(params[:id])
     rescue ActiveRecord::RecordNotFound
       render json: {

@@ -41,7 +41,7 @@ class Api::V1::PurchaseOrdersController < Api::V1::BaseController
   end
 
   def create
-    @purchase_order = current_resource_owner.family.purchase_orders.new(purchase_order_params)
+    @purchase_order = current_family.purchase_orders.new(purchase_order_params)
 
     if @purchase_order.save
       render :show, status: :created
@@ -152,7 +152,7 @@ class Api::V1::PurchaseOrdersController < Api::V1::BaseController
     end
 
     def purchase_orders_scope
-      current_resource_owner.family.purchase_orders
+      current_family.purchase_orders
     end
 
     def purchase_order_params
@@ -166,7 +166,7 @@ class Api::V1::PurchaseOrdersController < Api::V1::BaseController
       # accounts the caller can write to, so neither a foreign account id nor
       # a family account the caller only has read access to can be attached.
       if raw.respond_to?(:key?) && raw.key?(:account_id)
-        permitted[:account_id] = current_resource_owner.family.accounts.writable_by(current_resource_owner).find_by(id: raw[:account_id])&.id
+        permitted[:account_id] = current_family.accounts.writable_by(current_resource_owner).find_by(id: raw[:account_id])&.id
       end
       permitted
     end

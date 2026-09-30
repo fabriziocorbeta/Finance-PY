@@ -7,7 +7,7 @@ class Api::V1::TransfersController < Api::V1::BaseController
   # Registers a payment/transfer between two accounts of the same family
   # (e.g. paying down a receivable, a credit card, a loan).
   def create
-    family = current_resource_owner.family
+    family = current_family
     source_account = family.accounts.writable_by(current_resource_owner).find(transfer_params[:from_account_id])
     destination_account = family.accounts.writable_by(current_resource_owner).find(transfer_params[:to_account_id])
 

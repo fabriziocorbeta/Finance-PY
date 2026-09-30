@@ -8,7 +8,7 @@ class Api::V1::DashboardController < Api::V1::BaseController
 
   # GET /api/v1/dashboard?period=last_30_days
   def show
-    family = current_resource_owner.family
+    family = current_family
     period = resolve_period
     summary = Dashboard::SummaryBuilder.new(family: family, period: period)
 
@@ -42,8 +42,8 @@ class Api::V1::DashboardController < Api::V1::BaseController
     def resolve_period
       return Period.from_key(params[:period]) if params[:period].present?
 
-      Period.current_month_for(current_resource_owner.family)
+      Period.current_month_for(current_family)
     rescue Period::InvalidKeyError
-      Period.current_month_for(current_resource_owner.family)
+      Period.current_month_for(current_family)
     end
 end

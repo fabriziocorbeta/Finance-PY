@@ -8,7 +8,7 @@ class Api::V1::BalanceSheetController < Api::V1::BaseController
   # GET /api/v1/balance_sheet
   # Returns net worth, total assets, and total liabilities as Money objects.
   def show
-    family = current_resource_owner.family
+    family = current_family
     balance_sheet = family.balance_sheet(user: current_resource_owner)
 
     render json: {

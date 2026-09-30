@@ -49,7 +49,7 @@ class Api::V1::ProductsController < Api::V1::BaseController
       return render_validation_error([ "Initial stock must be zero or positive" ])
     end
 
-    @product = current_resource_owner.family.products.new(cleaned_params)
+    @product = current_family.products.new(cleaned_params)
 
     saved = Product.transaction do
       if @product.save
@@ -141,7 +141,7 @@ class Api::V1::ProductsController < Api::V1::BaseController
     end
 
     def products_scope
-      current_resource_owner.family.products
+      current_family.products
     end
 
     def product_raw_params

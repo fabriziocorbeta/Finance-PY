@@ -61,7 +61,7 @@ class Api::V1::ImportsController < Api::V1::BaseController
   end
 
   def create
-    family = current_resource_owner.family
+    family = current_family
 
     # 1. Determine type and validate
     type = params[:type].to_s
@@ -168,7 +168,7 @@ class Api::V1::ImportsController < Api::V1::BaseController
     # match imports with no account (visible to everyone in the family) or
     # whose account is one the current user can see.
     def readable_imports_scope
-      family = current_resource_owner.family
+      family = current_family
       readable_account_ids = family.accounts.accessible_by(current_resource_owner).select(:id)
       family.imports.where(account_id: nil).or(family.imports.where(account_id: readable_account_ids))
     end

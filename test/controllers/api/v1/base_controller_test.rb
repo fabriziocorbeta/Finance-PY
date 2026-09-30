@@ -425,6 +425,45 @@ class Api::V1::BaseControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "current_family returns the raw family_id record and memoizes within a request" do
+    access_token = Doorkeeper::AccessToken.create!(
+      application: @oauth_app,
+      resource_owner_id: @user.id,
+      scopes: "read"
+    )
+
+    get "/api/v1/test_current_family", params: {}, headers: {
+      "Authorization" => "Bearer #{access_token.token}"
+    }
+
+    assert_response :success
+    response_body = JSON.parse(response.body)
+    assert_equal @user.family_id, response_body["family_id"]
+    assert_equal @user.family_id, response_body["current_family_id"]
+    assert response_body["memoized"], "current_family should memoize the Family lookup within a request"
+  end
+
+  test "no controller uses the risky current_resource_owner.family AR association" do
+    # The `.family` delegate issues a live SELECT against `families`, gated by
+    # RLS the moment `families` is ever FORCE'd -- same root cause as the
+    # `families` P0 (2026-09-29). Every controller must go through the
+    # current_family helper (raw family_id column) instead. Regression guard
+    # for the 2026-09-30 cleanup across 31 files.
+    offending_lines = []
+
+    Dir.glob(Rails.root.join("app/controllers/**/*.rb")).each do |file|
+      File.readlines(file).each_with_index do |line, index|
+        next unless line.match?(/current_resource_owner&?\.family\b/)
+        next if line.match?(/current_resource_owner&?\.family_id\b/)
+
+        offending_lines << "#{file.sub(Rails.root.to_s + '/', '')}:#{index + 1}"
+      end
+    end
+
+    assert_empty offending_lines,
+      "Found risky current_resource_owner.family AR association calls (use current_family instead): #{offending_lines.join(', ')}"
+  end
+
 private
 
   def capture_log(&block)

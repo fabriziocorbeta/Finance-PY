@@ -23,7 +23,7 @@ class Api::V1::RulesController < Api::V1::BaseController
     return render_invalid_resource_type_filter if invalid_resource_type_filter?
 
     resource_type = params[:resource_type].presence || "transaction"
-    transient_rule = current_resource_owner.family.rules.build(resource_type: resource_type)
+    transient_rule = current_family.rules.build(resource_type: resource_type)
 
     render json: {
       filters: transient_rule.registry.condition_filters.map { |filter| localized_filter_json(filter) },
@@ -35,7 +35,7 @@ class Api::V1::RulesController < Api::V1::BaseController
     return render_invalid_resource_type_filter if invalid_resource_type_filter?
 
     @per_page = safe_per_page_param
-    rules_query = current_resource_owner.family.rules
+    rules_query = current_family.rules
       .includes(:actions, conditions: :sub_conditions)
       .order(:created_at, :id)
 
@@ -61,7 +61,7 @@ class Api::V1::RulesController < Api::V1::BaseController
   end
 
   def create
-    @rule = current_resource_owner.family.rules.new(rule_params)
+    @rule = current_family.rules.new(rule_params)
 
     if @rule.save
       render :show, status: :created
@@ -118,7 +118,7 @@ class Api::V1::RulesController < Api::V1::BaseController
   private
 
     def set_rule
-      @rule = current_resource_owner.family.rules
+      @rule = current_family.rules
         .includes(:actions, conditions: :sub_conditions)
         .find(params[:id])
     end

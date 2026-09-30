@@ -44,4 +44,15 @@ class Api::V1::TestController < Api::V1::BaseController
       scopes: current_scopes
     })
   end
+
+  def current_family_check
+    first_call = current_family
+    second_call = current_family
+
+    render_json({
+      family_id: current_resource_owner.family_id,
+      current_family_id: first_call.id,
+      memoized: first_call.equal?(second_call)
+    })
+  end
 end

@@ -31,7 +31,7 @@ class Api::V1::GoalPledgesController < Api::V1::BaseController
   def create
     raw_params = pledge_raw_params
     account_id = raw_params[:account_id]
-    writable_accounts = current_resource_owner.family.accounts.writable_by(current_resource_owner)
+    writable_accounts = current_family.accounts.writable_by(current_resource_owner)
     account = @goal.linked_accounts.merge(writable_accounts).find_by(id: account_id) ||
       writable_accounts.find_by(id: account_id)
 
@@ -107,7 +107,7 @@ class Api::V1::GoalPledgesController < Api::V1::BaseController
   private
 
     def set_goal
-      @goal = current_resource_owner.family.goals.find(params[:goal_id])
+      @goal = current_family.goals.find(params[:goal_id])
     rescue ActiveRecord::RecordNotFound
       render json: {
         error: "not_found",

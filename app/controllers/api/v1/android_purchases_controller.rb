@@ -7,7 +7,7 @@ class Api::V1::AndroidPurchasesController < Api::V1::BaseController
   def create
     result = AndroidPurchase::WebhookProcessor.new(
       android_purchase_params.merge(account_id: account_id_param),
-      family: current_resource_owner.family,
+      family: current_family,
       user: current_resource_owner
     ).process
 

@@ -29,7 +29,7 @@ module Api::V1::SecurityResourceFiltering
     end
 
     def accessible_account_ids
-      @accessible_account_ids ||= current_resource_owner.family.accounts.visible.accessible_by(current_resource_owner).select(:id)
+      @accessible_account_ids ||= current_family.accounts.visible.accessible_by(current_resource_owner).select(:id)
     end
 
     def parse_boolean_filter_param(key)
