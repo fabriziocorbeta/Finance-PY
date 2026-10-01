@@ -101,7 +101,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@e8944e80fb94b20106697132f8c20c665fab29e9 # v1
@@ -204,7 +204,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@e8944e80fb94b20106697132f8c20c665fab29e9 # v1
