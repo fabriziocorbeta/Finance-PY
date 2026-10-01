@@ -42,6 +42,8 @@ import py.com.cdco.financespy.screens.BudgetDashboardScreen
 import py.com.cdco.financespy.screens.BudgetDashboardViewModel
 import py.com.cdco.financespy.screens.DashboardScreen
 import py.com.cdco.financespy.screens.DashboardViewModel
+import py.com.cdco.financespy.screens.DebtsListScreen
+import py.com.cdco.financespy.screens.DebtsListViewModel
 import py.com.cdco.financespy.screens.FleetListScreen
 import py.com.cdco.financespy.screens.FleetListViewModel
 import py.com.cdco.financespy.screens.FleetVehicleDetailScreen
@@ -119,6 +121,7 @@ fun App(
     receivablesListViewModelFactory: () -> ReceivablesListViewModel,
     receivableDetailViewModelFactory: (String) -> ReceivableDetailViewModel,
     receivableFormViewModelFactory: (String?) -> ReceivableFormViewModel,
+    debtsListViewModelFactory: () -> DebtsListViewModel,
     productsListViewModelFactory: () -> ProductsListViewModel,
     productFormViewModelFactory: (String?) -> ProductFormViewModel,
     salesListViewModelFactory: () -> SalesListViewModel,
@@ -179,6 +182,7 @@ fun App(
                     currentRoute == Routes.RULES ||
                     currentRoute == Routes.GOALS ||
                     currentRoute == Routes.RECEIVABLES ||
+                    currentRoute == Routes.DEBTS ||
                     currentRoute == Routes.REPORTS ||
                     (isBusinessModeEnabled && currentRoute in businessRoutes)
 
@@ -384,6 +388,12 @@ fun App(
                                 viewModel = remember { receivablesListViewModelFactory() },
                                 onReceivableClick = { receivableId -> navController.navigate(Routes.receivableDetail(receivableId)) },
                                 onCreateClick = { navController.navigate(Routes.receivableFormCreate()) }
+                            )
+                        }
+                        composable(Routes.DEBTS) {
+                            DebtsListScreen(
+                                viewModel = remember { debtsListViewModelFactory() },
+                                onAccountClick = { accountId -> navController.navigate(Routes.accountDetail(accountId)) }
                             )
                         }
                         composable(Routes.RECEIVABLE_DETAIL) { entry ->

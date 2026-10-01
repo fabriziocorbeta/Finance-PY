@@ -8,6 +8,7 @@ object Routes {
     const val RULES = "rules"
     const val GOALS = "goals"
     const val RECEIVABLES = "receivables"
+    const val DEBTS = "debts"
     const val REPORTS = "reports"
     const val FLEET = "fleet"
     const val FLEET_VEHICLE_DETAIL = "fleet_vehicle/{vehicleId}"
