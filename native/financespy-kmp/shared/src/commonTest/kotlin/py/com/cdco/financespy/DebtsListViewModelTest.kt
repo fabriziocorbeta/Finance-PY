@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.resetMain
@@ -70,6 +71,11 @@ class DebtsListViewModelTest {
         )
 
         val viewModel = DebtsListViewModel(scope = this, accountDao = dao)
+        // debts/totalOwedByCurrency are stateIn(WhileSubscribed) -- the
+        // upstream flow only starts collecting once something subscribes,
+        // so reading .value with no active collector sees only the initial
+        // empty value regardless of what the fake DAO returns.
+        val collector = launch { viewModel.debts.collect {} }
         testDispatcher.scheduler.advanceUntilIdle()
 
         val debts = viewModel.debts.value
@@ -77,6 +83,8 @@ class DebtsListViewModelTest {
         assertTrue(debts.none { it.classification == "asset" })
         assertTrue(debts.any { it.id == "acc-2" })
         assertTrue(debts.any { it.id == "acc-3" })
+
+        collector.cancel()
     }
 
     @Test
@@ -90,11 +98,14 @@ class DebtsListViewModelTest {
         )
 
         val viewModel = DebtsListViewModel(scope = this, accountDao = dao)
+        val collector = launch { viewModel.totalOwedByCurrency.collect {} }
         testDispatcher.scheduler.advanceUntilIdle()
 
         val totals = viewModel.totalOwedByCurrency.value
         assertEquals(31_200_000L, totals["PYG"])
         assertEquals(500L, totals["USD"])
+
+        collector.cancel()
     }
 
     @Test
@@ -104,9 +115,14 @@ class DebtsListViewModelTest {
         )
 
         val viewModel = DebtsListViewModel(scope = this, accountDao = dao)
+        val debtsCollector = launch { viewModel.debts.collect {} }
+        val totalsCollector = launch { viewModel.totalOwedByCurrency.collect {} }
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(viewModel.debts.value.isEmpty())
         assertTrue(viewModel.totalOwedByCurrency.value.isEmpty())
+
+        debtsCollector.cancel()
+        totalsCollector.cancel()
     }
 }
