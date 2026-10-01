@@ -32,7 +32,16 @@ class InvitationsController < ApplicationController
   end
 
   def accept
-    @invitation = Invitation.find_by!(token: params[:id])
+    # Unauthenticated by design (skip_authentication above) -- the whole
+    # point of an invitation is reaching someone with no session and no
+    # family yet, so current_family_id is NULL here. invitations is under
+    # FORCE ROW LEVEL SECURITY; without this, RLS hides every invitation
+    # from its own accept link. family/inviter are eager-loaded here too:
+    # the view reads both, and letting that lazy-load after this block exits
+    # would run it back outside the bypass.
+    @invitation = RlsContext.with_auth_bypass(reason: "invitations_accept") do
+      Invitation.includes(:family, :inviter).find_by!(token: params[:id])
+    end
 
     if @invitation.pending?
       # If the person clicking the link is already signed in to the account
@@ -52,9 +61,18 @@ class InvitationsController < ApplicationController
   # new-registration flow) that ever moves an existing user into another
   # family -- an admin sending an invitation never does this on its own.
   def confirm_accept
-    @invitation = Invitation.find_by!(token: params[:id])
+    # Current.user is authenticated here, but under their OWN (or no)
+    # family -- this invitation belongs to a DIFFERENT family by design
+    # (that's the family they're being invited to join), so both finding it
+    # AND accept_for's writes (moving the user into that family) are a
+    # deliberate cross-family operation that current_family_id's normal
+    # scoping can never satisfy, same reasoning as #accept above.
+    accepted = RlsContext.with_auth_bypass(reason: "invitations_confirm_accept") do
+      @invitation = Invitation.find_by!(token: params[:id])
+      @invitation.accept_for(Current.user)
+    end
 
-    if @invitation.accept_for(Current.user)
+    if accepted
       flash[:notice] = t("invitations.accept_choice.joined_household")
     else
       flash[:alert] = t("invitations.confirm_accept.failure")
