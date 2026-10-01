@@ -154,6 +154,15 @@ Doorkeeper.configure do
   # read/write those tables with no awareness of app.current_family_id.
   base_controller "DoorkeeperRlsController"
 
+  # TokensController (/oauth/token, /oauth/revoke, /oauth/introspect) does
+  # NOT inherit from the above -- Doorkeeper hardcodes it to
+  # Doorkeeper::ApplicationMetalController, a separate lightweight base
+  # resolved from THIS option instead. Without setting it too, every token
+  # exchange and refresh runs completely unwrapped: same FORCE RLS tables,
+  # no bypass, invalid_grant on every single request. See
+  # DoorkeeperRlsMetalController for the full story.
+  base_metal_controller "DoorkeeperRlsMetalController"
+
   # Reuse access token for the same resource owner within an application (disabled by default).
   #
   # This option protects your application from creating new tokens before old **valid** one becomes

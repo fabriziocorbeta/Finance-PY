@@ -119,11 +119,85 @@ class RowLevelSecurityOauthTokensTest < ActionDispatch::IntegrationTest
     ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
   end
 
-  test "DoorkeeperRlsController wraps every Doorkeeper-mounted action in RlsContext.with_auth_bypass" do
+  test "DoorkeeperRlsController wraps Doorkeeper::ApplicationController actions (/oauth/authorize) in RlsContext.with_auth_bypass" do
     assert_equal "DoorkeeperRlsController", Doorkeeper.config.base_controller.to_s.demodulize,
       "Doorkeeper.configure's base_controller must point at DoorkeeperRlsController " \
-      "so /oauth/authorize, /oauth/token and /oauth/revoke all get the bypass"
+      "so /oauth/authorize gets the bypass"
     assert_includes Doorkeeper::ApplicationController.ancestors, DoorkeeperRlsController
+  end
+
+  # Doorkeeper::TokensController (/oauth/token, /oauth/revoke, /oauth/introspect)
+  # does NOT inherit from Doorkeeper::ApplicationController -- it's hardcoded
+  # to Doorkeeper::ApplicationMetalController, which resolves the SEPARATE
+  # `base_metal_controller` config key (default plain ActionController::API,
+  # no bypass at all). The test above only ever proved the /oauth/authorize
+  # half was wrapped; this is the other half, and its absence is exactly what
+  # let every token exchange silently 100%-fail with invalid_grant after
+  # oauth_access_tokens/oauth_access_grants went FORCE RLS on 2026-09-30,
+  # undetected because this test's wrong assertion and the happy-path gap
+  # below both passed CI.
+  test "DoorkeeperRlsMetalController wraps Doorkeeper::ApplicationMetalController actions (/oauth/token) in RlsContext.with_auth_bypass" do
+    assert_equal "DoorkeeperRlsMetalController", Doorkeeper.config.base_metal_controller.to_s.demodulize,
+      "Doorkeeper.configure's base_metal_controller must point at DoorkeeperRlsMetalController " \
+      "so /oauth/token and /oauth/revoke get the bypass too"
+    assert_includes Doorkeeper::ApplicationMetalController.ancestors, DoorkeeperRlsMetalController
+  end
+
+  # End-to-end happy path, under real FORCE RLS as the non-superuser app
+  # role -- the thing no existing oauth test ever did. oauth_basic_test.rb's
+  # "/oauth/token endpoint exists" only ever posted an invalid_code/
+  # invalid_client pair (fails before any table read matters), and every
+  # oauth_mobile_test.rb case stops at /oauth/authorize. Mirrors the real
+  # Android client: PKCE S256, MobileDevice.shared_oauth_application,
+  # custom-scheme redirect_uri.
+  test "a full PKCE authorization_code exchange succeeds end-to-end under FORCE RLS as app_user" do
+    user = users(:family_admin)
+    sign_in(user)
+
+    verifier = SecureRandom.alphanumeric(64)
+    challenge = Base64.urlsafe_encode64(Digest::SHA256.digest(verifier), padding: false)
+    app = MobileDevice.shared_oauth_application
+
+    post "/oauth/authorize", params: {
+      client_id: app.uid,
+      redirect_uri: app.redirect_uri,
+      response_type: "code",
+      scope: "read_write",
+      code_challenge: challenge,
+      code_challenge_method: "S256",
+      display: "mobile"
+    }
+    assert_response :success
+    code = response.body[/financespy:\/\/oauth\/callback\?code=([^"&]+)/, 1]
+    assert code.present?, "Expected an authorization code in the mobile redirect interstitial: #{response.body}"
+
+    RowLevelSecurityTest.ensure_non_superuser_role
+    ActiveRecord::Base.connection.execute("SET ROLE app_user")
+    # The real Android client hits /oauth/token as a separate, unauthenticated
+    # request -- no session cookie, no app.current_family_id ever set on
+    # whatever connection services it. In production the connection-pool
+    # checkin/checkout hooks (rls_connection_safety.rb) guarantee that; here,
+    # transactional-fixture tests keep ONE connection checked out for the
+    # whole test, so the family context /oauth/authorize just set above
+    # would otherwise leak into this call and let the policy pass on
+    # family membership alone, masking exactly the bug this test exists to
+    # catch. Reset explicitly to reproduce the real boundary.
+    ActiveRecord::Base.connection.execute("RESET app.current_family_id")
+
+    post "/oauth/token", params: {
+      grant_type: "authorization_code",
+      client_id: app.uid,
+      code: code,
+      redirect_uri: app.redirect_uri,
+      code_verifier: verifier
+    }
+
+    assert_response :success, "Token exchange failed: #{response.body}"
+    body = JSON.parse(response.body)
+    assert body["access_token"].present?
+    assert body["refresh_token"].present?
+  ensure
+    ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
   end
 
   test "authenticate_oauth wraps the Doorkeeper::AccessToken.by_token lookup in with_auth_bypass" do
