@@ -179,6 +179,46 @@ class Api::V1::BudgetsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 6000, @budget.expected_income
   end
 
+  test "should return 409 conflict if last_updated_at is older than budget updated_at" do
+    old_updated_at = @budget.updated_at.to_i - 10
+
+    # Update it in the background to simulate Client B
+    @budget.touch
+
+    patch api_v1_budget_url(id: @budget.id),
+          params: { budget: { budgeted_spending: 5000 }, last_updated_at: old_updated_at },
+          headers: api_headers(@write_api_key)
+
+    assert_response :conflict
+    json_response = JSON.parse(response.body)
+    assert_equal "conflict", json_response["error"]
+    assert_equal "Otra persona de tu familia modificó este presupuesto, recargá la pantalla.", json_response["message"]
+  end
+
+  test "should update successfully if last_updated_at is equal to budget updated_at" do
+    current_updated_at = @budget.updated_at.to_i
+
+    patch api_v1_budget_url(id: @budget.id),
+          params: { budget: { budgeted_spending: 5500 }, last_updated_at: current_updated_at },
+          headers: api_headers(@write_api_key)
+
+    assert_response :success
+    @budget.reload
+    assert_equal 5500, @budget.budgeted_spending
+  end
+
+  test "should update successfully if last_updated_at is newer than budget updated_at" do
+    new_updated_at = @budget.updated_at.to_i + 10
+
+    patch api_v1_budget_url(id: @budget.id),
+          params: { budget: { budgeted_spending: 6500 }, last_updated_at: new_updated_at },
+          headers: api_headers(@write_api_key)
+
+    assert_response :success
+    @budget.reload
+    assert_equal 6500, @budget.budgeted_spending
+  end
+
   test "should fail to update budget without write scope" do
     patch api_v1_budget_url(id: @budget.id),
           params: { budget: { budgeted_spending: 5000 } },

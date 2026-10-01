@@ -68,6 +68,18 @@ class Api::V1::BudgetsController < Api::V1::BaseController
   end
 
   def update
+    # TODO: Tech debt - Missing `last_updated_at` is supported for backward compatibility.
+    # Require it once Android/iOS/Web clients adopt this parameter to fully prevent lost updates.
+    if params[:last_updated_at].present?
+      last_updated_at = params[:last_updated_at].to_i
+      if @budget.updated_at.to_i > last_updated_at
+        return render json: {
+          error: "conflict",
+          message: "Otra persona de tu familia modificó este presupuesto, recargá la pantalla."
+        }, status: :conflict
+      end
+    end
+
     if @budget.update(budget_params)
       render :show
     else
