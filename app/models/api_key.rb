@@ -34,7 +34,12 @@ class ApiKey < ApplicationRecord
 
     # Find by encrypted display_key (deterministic encryption allows querying)
     # Bypass RLS because this happens during API authentication before a family context is set.
-    record = RlsContext.with_auth_bypass { find_by(display_key: plain_key) }
+    # :user is eager-loaded inside the same block: callers (reports_controller,
+    # mcp_controller, Api::V1::BaseController) all read api_key.user right
+    # after this returns, by which point the bypass has already reset --
+    # without this, that association lazy-loads under no family context at
+    # all and silently returns nil instead of the real user.
+    record = RlsContext.with_auth_bypass { find_by(display_key: plain_key)&.tap { |k| k.user } }
     return record if record&.active?
     nil
   end

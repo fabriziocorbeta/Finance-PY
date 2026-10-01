@@ -1044,12 +1044,23 @@ class ReportsController < ApplicationController
 
       # Find or create a session for this API request
       # We need to find or create a persisted session so that Current.user delegation works properly
-      session = @current_user.sessions.first_or_create!(
-        user_agent: request.user_agent,
-        ip_address: request.ip
-      )
+      #
+      # sessions is under FORCE ROW LEVEL SECURITY, scoped by the owning
+      # user's family -- current_family_id is NULL here (this is the
+      # bootstrap step itself, same chicken-and-egg as
+      # Authentication#authenticate_user!), so first_or_create! needs the
+      # bypass same as that path. set_family below then establishes the
+      # real, persistent context for the rest of this request (the actual
+      # CSV export queries), not just this one lookup.
+      session = RlsContext.with_auth_bypass(reason: "reports_export_api_key") do
+        @current_user.sessions.first_or_create!(
+          user_agent: request.user_agent,
+          ip_address: request.ip
+        )
+      end
 
       Current.session = session
+      RlsContext.set_family(@current_user.family_id)
 
       # Verify the delegation chain works
       unless Current.user
