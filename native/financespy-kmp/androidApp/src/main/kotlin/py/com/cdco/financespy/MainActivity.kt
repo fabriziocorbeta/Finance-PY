@@ -46,6 +46,7 @@ import py.com.cdco.financespy.screens.AccountFormViewModel
 import py.com.cdco.financespy.screens.BudgetAllocationEditorViewModel
 import py.com.cdco.financespy.screens.BudgetDashboardViewModel
 import py.com.cdco.financespy.screens.DashboardViewModel
+import py.com.cdco.financespy.screens.DebtsListViewModel
 import py.com.cdco.financespy.screens.GoalDetailViewModel
 import py.com.cdco.financespy.screens.OnboardingViewModel
 import py.com.cdco.financespy.screens.GoalFormViewModel
@@ -219,6 +220,12 @@ class MainActivity : FragmentActivity() {
             scope = lifecycleScope,
             api = api,
             receivableDao = database.receivableDao()
+        )
+    }
+    private val debtsListViewModel by lazy {
+        DebtsListViewModel(
+            scope = lifecycleScope,
+            accountDao = database.accountDao()
         )
     }
     private val productsListViewModel by lazy {
@@ -413,6 +420,7 @@ class MainActivity : FragmentActivity() {
                     )
                 },
                 receivablesListViewModelFactory = { receivablesListViewModel },
+                debtsListViewModelFactory = { debtsListViewModel },
                 receivableDetailViewModelFactory = { receivableId ->
                     ReceivableDetailViewModel(
                         scope = lifecycleScope, receivableId = receivableId, api = api,
