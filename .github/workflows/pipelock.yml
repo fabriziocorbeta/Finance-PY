@@ -42,3 +42,4 @@ jobs:
             app/models/provider/binance.rb
             app/controllers/internal/versions_controller.rb
             db/structure.sql
+            test/integration/row_level_security_reports_export_test.rb
