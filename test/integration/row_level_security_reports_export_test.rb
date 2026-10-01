@@ -26,9 +26,8 @@ class RowLevelSecurityReportsExportTest < ActionDispatch::IntegrationTest
       format: :csv,
       period_type: :ytd,
       start_date: Date.current.beginning_of_year,
-      end_date: Date.current,
-      api_key: api_key.plain_key
-    )
+      end_date: Date.current
+    ), headers: { "X-Api-Key" => api_key.plain_key }
 
     assert_response :ok, "API-key export must not fail under FORCE RLS: #{response.body}"
     assert_equal "text/csv", response.media_type
