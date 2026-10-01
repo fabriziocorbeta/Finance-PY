@@ -4,7 +4,10 @@ nav_sections = [
     header: t(".general_section_title"),
     items: [
       { label: t(".accounts_label"), path: accounts_path, icon: "layers" },
-      { label: t(".bank_sync_label"), path: settings_bank_sync_path, icon: "banknote" },
+      # Bank/exchange provider linking (Plaid, Mercury, Binance, etc.) is a
+      # Sure-upstream feature with no support in FinancePY's market
+      # (Paraguay/LatAm) -- never surface it.
+      { label: t(".bank_sync_label"), path: settings_bank_sync_path, icon: "banknote", if: false },
       { label: t(".preferences_label"), path: settings_preferences_path, icon: "bolt" },
       { label: t(".appearance_label"), path: settings_appearance_path, icon: "palette" },
       { label: t(".profile_label"), path: settings_profile_path, icon: "circle-user" },
@@ -34,7 +37,10 @@ nav_sections = [
         { label: "LLM Usage", path: settings_llm_usage_path, icon: "activity" },
         { label: t(".api_keys_label"), path: settings_api_key_path, icon: "key" },
         { label: t(".self_hosting_label"), path: settings_hosting_path, icon: "database", if: self_hosted? },
-        { label: "Providers", path: settings_providers_path, icon: "plug" },
+        # Bank/exchange provider linking (Plaid, Mercury, Binance, etc.) is a
+        # Sure-upstream feature with no support in FinancePY's market
+        # (Paraguay/LatAm) -- never surface its config page.
+        { label: "Providers", path: settings_providers_path, icon: "plug", if: false },
         { label: t(".imports_label"), path: imports_path, icon: "download" },
         { label: t(".exports_label"), path: family_exports_path, icon: "upload" },
         { label: "SSO Providers", path: admin_sso_providers_path, icon: "key-round", if: Current.user&.super_admin? },

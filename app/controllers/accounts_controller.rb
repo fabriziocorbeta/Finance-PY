@@ -33,10 +33,10 @@ class AccountsController < ApplicationController
   end
 
   def new
-    # Get all registered providers with any credentials configured
-    @provider_configs = Provider::Factory.registered_adapters.flat_map do |adapter_class|
-      adapter_class.connection_configs(family: family)
-    end
+    # Bank/exchange provider linking (Plaid, Mercury, Binance, etc.) is a
+    # Sure-upstream feature with no support in FinancePY's market
+    # (Paraguay/LatAm) -- never offer it, regardless of what's registered.
+    @provider_configs = []
   end
 
   def sync_all
