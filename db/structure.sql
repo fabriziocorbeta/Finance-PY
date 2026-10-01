@@ -7531,7 +7531,7 @@ ALTER TABLE public.invitations ENABLE ROW LEVEL SECURITY;
 -- Name: invitations invitations_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY invitations_family_isolation_policy ON public.invitations USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY invitations_family_isolation_policy ON public.invitations USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8296,6 +8296,7 @@ CREATE POLICY webauthn_credentials_family_isolation_policy ON public.webauthn_cr
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261001192000'),
 ('20261001180257'),
 ('20260930001500'),
 ('20260929231800'),
