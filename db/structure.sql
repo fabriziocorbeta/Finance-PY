@@ -1590,7 +1590,9 @@ CREATE TABLE public.oauth_access_grants (
     redirect_uri text NOT NULL,
     scopes character varying DEFAULT ''::character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    revoked_at timestamp(6) without time zone
+    revoked_at timestamp(6) without time zone,
+    code_challenge character varying,
+    code_challenge_method character varying
 );
 
 ALTER TABLE ONLY public.oauth_access_grants FORCE ROW LEVEL SECURITY;
@@ -8294,6 +8296,7 @@ CREATE POLICY webauthn_credentials_family_isolation_policy ON public.webauthn_cr
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261001180257'),
 ('20260930001500'),
 ('20260929231800'),
 ('20260929203000'),
