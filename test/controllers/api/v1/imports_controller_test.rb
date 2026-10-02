@@ -796,6 +796,115 @@ class Api::V1::ImportsControllerTest < ActionDispatch::IntegrationTest
     assert_response :created
   end
 
+  test "should create PdfImport with uploaded PDF and enqueue AI processing" do
+    pdf_file = Rack::Test::UploadedFile.new(
+      StringIO.new("%PDF-1.4 fake statement content"),
+      "application/pdf",
+      original_filename: "statement.pdf"
+    )
+
+    assert_difference("Import.count") do
+      assert_enqueued_with(job: ProcessPdfJob) do
+        post api_v1_imports_url,
+             params: {
+               type: "PdfImport",
+               account_id: @account.id,
+               file: pdf_file
+             },
+             headers: api_headers(@api_key)
+      end
+    end
+
+    assert_response :created
+    import = Import.find(JSON.parse(response.body)["data"]["id"])
+    assert_instance_of PdfImport, import
+    assert import.pdf_file.attached?
+    assert_equal @account.id, import.account_id
+  end
+
+  test "should reject PdfImport without account_id" do
+    pdf_file = Rack::Test::UploadedFile.new(
+      StringIO.new("%PDF-1.4 fake statement content"),
+      "application/pdf",
+      original_filename: "statement.pdf"
+    )
+
+    assert_no_difference("Import.count") do
+      post api_v1_imports_url,
+           params: { type: "PdfImport", file: pdf_file },
+           headers: api_headers(@api_key)
+    end
+
+    assert_response :unprocessable_entity
+    assert_equal "account_required", JSON.parse(response.body)["error"]
+  end
+
+  test "should reject PdfImport with non-PDF file" do
+    bad_file = Rack::Test::UploadedFile.new(
+      StringIO.new("not a pdf"),
+      "text/plain",
+      original_filename: "statement.txt"
+    )
+
+    assert_no_difference("Import.count") do
+      post api_v1_imports_url,
+           params: { type: "PdfImport", account_id: @account.id, file: bad_file },
+           headers: api_headers(@api_key)
+    end
+
+    assert_response :unprocessable_entity
+    assert_equal "invalid_file_type", JSON.parse(response.body)["error"]
+  end
+
+  test "should reject PdfImport write with read-only API key" do
+    pdf_file = Rack::Test::UploadedFile.new(
+      StringIO.new("%PDF-1.4 fake statement content"),
+      "application/pdf",
+      original_filename: "statement.pdf"
+    )
+
+    assert_no_difference("Import.count") do
+      post api_v1_imports_url,
+           params: { type: "PdfImport", account_id: @account.id, file: pdf_file },
+           headers: api_headers(@read_only_api_key)
+    end
+
+    assert_response :forbidden
+  end
+
+  test "should publish a reviewed PdfImport and create the transaction" do
+    pdf_import = @family.imports.create!(
+      type: "PdfImport",
+      account: @account,
+      status: "pending",
+      document_type: "bank_statement",
+      ai_summary: "Test statement summary"
+    )
+    pdf_import.rows.create!(
+      source_row_number: 1,
+      date: "01/15/2026",
+      amount: "-10.00",
+      name: "Grocery Run",
+      currency: "USD"
+    )
+    pdf_import.update_column(:rows_count, 1)
+
+    post publish_api_v1_import_url(pdf_import), headers: api_headers(@api_key)
+
+    assert_response :success
+    pdf_import.reload
+    assert pdf_import.importing? || pdf_import.complete?
+  end
+
+  test "should refuse to publish an import that is not publishable" do
+    pdf_import = @family.imports.create!(type: "PdfImport", account: @account, status: "pending")
+
+    post publish_api_v1_import_url(pdf_import), headers: api_headers(@api_key)
+
+    assert_response :unprocessable_entity
+    assert_equal "not_publishable", JSON.parse(response.body)["error"]
+  end
+
   private
 
     def api_headers(api_key)
