@@ -9,6 +9,18 @@ module ActiveJobRowLevelSecurity
 
   private
 
+    # ActiveJob deserializes GlobalID arguments (e.g. a UserMessage passed
+    # directly to perform_later) in #deserialize_arguments_if_needed, which
+    # runs in #perform_now BEFORE the around_perform chain below starts. Any
+    # argument pointing at a FORCE-RLS table (messages, etc.) fails that
+    # lookup with no RLS context set, raising ActiveJob::DeserializationError
+    # -- which ApplicationJob's `discard_on` then silently swallows. Bypass
+    # RLS for this step only; the job's own queries still get properly
+    # scoped by set_postgres_rls_context_for_job once it actually runs.
+    def deserialize_arguments_if_needed
+      RlsContext.with_auth_bypass { super }
+    end
+
     def set_postgres_rls_context_for_job
       family = resolve_job_family
 
