@@ -526,6 +526,7 @@ Rails.application.routes.draw do
       end
       resources :imports, only: [ :index, :show, :create ] do
         get :rows, on: :member
+        post :publish, on: :member
       end
       resource :usage, only: [ :show ], controller: :usage
       resource :balance_sheet, only: [ :show ], controller: :balance_sheet

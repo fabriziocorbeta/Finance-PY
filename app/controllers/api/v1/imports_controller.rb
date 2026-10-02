@@ -5,9 +5,9 @@ class Api::V1::ImportsController < Api::V1::BaseController
 
   # Ensure proper scope authorization
   before_action :ensure_read_scope, only: [ :index, :show, :rows ]
-  before_action :ensure_write_scope, only: [ :create ]
+  before_action :ensure_write_scope, only: [ :create, :publish ]
   before_action :set_import_with_rows, only: [ :show ]
-  before_action :set_import, only: [ :rows ]
+  before_action :set_import, only: [ :rows, :publish ]
 
   def index
     imports_query = readable_imports_scope.ordered
@@ -65,6 +65,7 @@ class Api::V1::ImportsController < Api::V1::BaseController
 
     # 1. Determine type and validate
     type = params[:type].to_s
+    return create_pdf_import(family) if type == "PdfImport"
     type = "TransactionImport" unless Import::TYPES.include?(type)
     return create_sure_import(family) if type == "SureImport"
 
@@ -145,7 +146,79 @@ class Api::V1::ImportsController < Api::V1::BaseController
     render json: { error: "internal_server_error", message: e.message }, status: :internal_server_error
   end
 
+  # Finalizes a reviewed import (e.g. a PdfImport whose extracted rows the
+  # user just confirmed) into real transactions. Separate from #create
+  # because PDF imports go through an async AI processing step first --
+  # there's no file/config payload to re-validate here, just "the rows this
+  # import already has are good, commit them."
+  def publish
+    unless @import.publishable?
+      return render json: {
+        error: "not_publishable",
+        message: "Import is not ready to publish."
+      }, status: :unprocessable_entity
+    end
+
+    @import.publish_later
+    render :show
+  rescue StandardError => e
+    Rails.logger.error "ImportsController#publish error: #{e.message}"
+    render json: { error: "internal_server_error", message: e.message }, status: :internal_server_error
+  end
+
   private
+
+    # PDF statement import (bank/credit card statement -> AI-extracted
+    # transactions, reviewed by the user, then #publish'd). Separate from
+    # the CSV/raw-data branch above: the file is a PDF, not text content,
+    # and processing is async (ProcessPdfJob) instead of synchronous CSV
+    # row generation -- the client polls #show/#rows for status instead of
+    # getting rows back in this same response.
+    def create_pdf_import(family)
+      unless params[:account_id].present?
+        return render json: {
+          error: "account_required",
+          message: "account_id is required for PDF statement imports."
+        }, status: :unprocessable_entity
+      end
+
+      account = family.accounts.writable_by(current_resource_owner).find_by(id: params[:account_id])
+      return render json: { error: "not_found", message: "Account not found" }, status: :not_found unless account
+
+      unless params[:file].present?
+        return render json: { error: "missing_file", message: "A PDF file is required." }, status: :unprocessable_entity
+      end
+
+      file = params[:file]
+
+      if file.size > Import::MAX_PDF_SIZE
+        return render json: {
+          error: "file_too_large",
+          message: "File is too large. Maximum size is #{Import::MAX_PDF_SIZE / 1.megabyte}MB."
+        }, status: :unprocessable_entity
+      end
+
+      unless Import::ALLOWED_PDF_MIME_TYPES.include?(file.content_type)
+        return render json: {
+          error: "invalid_file_type",
+          message: "Invalid file type. Please upload a PDF file."
+        }, status: :unprocessable_entity
+      end
+
+      @import = family.imports.build(type: "PdfImport", account: account)
+      @import.pdf_file.attach(io: file, filename: file.original_filename, content_type: file.content_type)
+
+      if @import.save
+        @import.process_with_ai_later
+        render :show, status: :created
+      else
+        render json: {
+          error: "validation_failed",
+          message: "Import could not be created",
+          errors: @import.errors.full_messages
+        }, status: :unprocessable_entity
+      end
+    end
 
     def set_import
       @import = import_scope.find(params[:id])
