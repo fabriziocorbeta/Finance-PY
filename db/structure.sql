@@ -7073,11 +7073,11 @@ ALTER TABLE public.chats ENABLE ROW LEVEL SECURITY;
 -- Name: chats chats_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY chats_family_isolation_policy ON public.chats USING ((user_id IN ( SELECT users.id
+CREATE POLICY chats_family_isolation_policy ON public.chats USING (((user_id IN ( SELECT users.id
    FROM public.users
-  WHERE (users.family_id = public.current_family_id())))) WITH CHECK ((user_id IN ( SELECT users.id
+  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((user_id IN ( SELECT users.id
    FROM public.users
-  WHERE (users.family_id = public.current_family_id()))));
+  WHERE (users.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8296,6 +8296,7 @@ CREATE POLICY webauthn_credentials_family_isolation_policy ON public.webauthn_cr
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261002150000'),
 ('20261002140000'),
 ('20261001192000'),
 ('20261001180257'),
