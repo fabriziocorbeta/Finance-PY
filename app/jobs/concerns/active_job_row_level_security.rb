@@ -22,7 +22,15 @@ module ActiveJobRowLevelSecurity
     end
 
     def set_postgres_rls_context_for_job
-      family = resolve_job_family
+      # resolve_job_family itself reads association chains (arg.chat.family,
+      # Model.find_by(id:)) against tables that may be under FORCE RLS (chats,
+      # messages, etc). At this point no RLS context is set yet -- that's the
+      # whole thing this method exists to determine -- so those lookups would
+      # otherwise silently return nil (not raise) and the job would run with
+      # no family context at all, breaking any association access inside the
+      # job body (e.g. UserMessage#chat returning nil). Bypass RLS for this
+      # read-only resolution step only.
+      family = RlsContext.with_auth_bypass { resolve_job_family }
 
       if family.present?
         RlsContext.with_family(family) do
