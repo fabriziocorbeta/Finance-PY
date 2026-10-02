@@ -91,6 +91,8 @@ import py.com.cdco.financespy.screens.SettingsScreen
 import py.com.cdco.financespy.screens.SettingsViewModel
 import py.com.cdco.financespy.screens.UpayImportScreen
 import py.com.cdco.financespy.screens.UpayImportViewModel
+import py.com.cdco.financespy.screens.PdfStatementImportScreen
+import py.com.cdco.financespy.screens.PdfStatementImportViewModel
 import py.com.cdco.financespy.screens.TransactionFormScreen
 import py.com.cdco.financespy.screens.TransactionFormViewModel
 import py.com.cdco.financespy.screens.TransactionsScreen
@@ -142,9 +144,11 @@ fun App(
     onToggleScreenCaptureBlock: ((Boolean) -> Unit)? = null,
     reportsViewModelFactory: () -> ReportsViewModel,
     upayImportViewModelFactory: () -> UpayImportViewModel,
+    pdfStatementImportViewModelFactory: () -> PdfStatementImportViewModel,
     onOpenNotificationSettings: (() -> Unit)? = null,
     onShareFile: ((ByteArray, String, String) -> Unit)? = null,
-    onPickUpayCsv: ((onPicked: (ByteArray, String) -> Unit) -> Unit)? = null
+    onPickUpayCsv: ((onPicked: (ByteArray, String) -> Unit) -> Unit)? = null,
+    onPickPdfFile: ((onPicked: (ByteArray, String) -> Unit) -> Unit)? = null
 ) {
     FinancePyTheme {
         if (isLoggedIn != null) {
@@ -268,7 +272,8 @@ fun App(
                                 onShareFile = onShareFile,
                                 onNavigateToRules = { navController.navigate(Routes.RULES) },
                                 onNavigateToNavCustomization = { navController.navigate(Routes.NAV_CUSTOMIZATION) },
-                                onNavigateToUpayImport = { navController.navigate(Routes.UPAY_IMPORT) }
+                                onNavigateToUpayImport = { navController.navigate(Routes.UPAY_IMPORT) },
+                                onNavigateToPdfStatementImport = { navController.navigate(Routes.PDF_STATEMENT_IMPORT) }
                             )
                         }
                         composable(Routes.UPAY_IMPORT) {
@@ -276,6 +281,14 @@ fun App(
                             UpayImportScreen(
                                 viewModel = upayImportVm,
                                 onPickCsvFile = { onPicked -> onPickUpayCsv?.invoke(onPicked) },
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Routes.PDF_STATEMENT_IMPORT) {
+                            val pdfImportVm = remember { pdfStatementImportViewModelFactory() }
+                            PdfStatementImportScreen(
+                                viewModel = pdfImportVm,
+                                onPickPdfFile = { onPicked -> onPickPdfFile?.invoke(onPicked) },
                                 onBack = { navController.popBackStack() }
                             )
                         }

@@ -70,6 +70,7 @@ import py.com.cdco.financespy.screens.RuleFormViewModel
 import py.com.cdco.financespy.screens.RulesListViewModel
 import py.com.cdco.financespy.screens.SettingsViewModel
 import py.com.cdco.financespy.screens.UpayImportViewModel
+import py.com.cdco.financespy.screens.PdfStatementImportViewModel
 import py.com.cdco.financespy.screens.TransactionFormViewModel
 import py.com.cdco.financespy.screens.TransactionsViewModel
 import py.com.cdco.financespy.sync.SyncEngine
@@ -111,6 +112,10 @@ class MainActivity : FragmentActivity() {
     private var upayCsvPickedCallback: ((ByteArray, String) -> Unit)? = null
     private val upayCsvPickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { handleUpayCsvPicked(it) }
+    }
+    private var pdfFilePickedCallback: ((ByteArray, String) -> Unit)? = null
+    private val pdfFilePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { handlePdfFilePicked(it) }
     }
 
     private val tokenStorage by lazy { AndroidTokenStorage(applicationContext) }
@@ -488,6 +493,10 @@ class MainActivity : FragmentActivity() {
                 upayImportViewModelFactory = {
                     UpayImportViewModel(scope = lifecycleScope, api = api, accountDao = database.accountDao())
                 },
+                pdfStatementImportViewModelFactory = {
+                    PdfStatementImportViewModel(scope = lifecycleScope, api = api, accountDao = database.accountDao())
+                },
+                onPickPdfFile = { onPicked -> pickPdfFile(onPicked) },
                 onOpenNotificationSettings = {
                     val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -805,6 +814,34 @@ class MainActivity : FragmentActivity() {
                 Log.e("FinancePYUpayImport", "Error reading picked CSV", e)
             } finally {
                 upayCsvPickedCallback = null
+            }
+        }
+    }
+
+    private fun pickPdfFile(onPicked: (ByteArray, String) -> Unit) {
+        pdfFilePickedCallback = onPicked
+        pdfFilePickerLauncher.launch("application/pdf")
+    }
+
+    private fun handlePdfFilePicked(uri: Uri) {
+        val callback = pdfFilePickedCallback ?: return
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val fileName = contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (cursor.moveToFirst() && nameIndex >= 0) cursor.getString(nameIndex) else null
+                } ?: uri.lastPathSegment ?: "extracto.pdf"
+
+                val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: throw IllegalStateException("No se pudo leer el archivo seleccionado")
+
+                withContext(Dispatchers.Main) {
+                    callback(bytes, fileName)
+                }
+            } catch (e: Exception) {
+                Log.e("FinancePYPdfImport", "Error reading picked PDF", e)
+            } finally {
+                pdfFilePickedCallback = null
             }
         }
     }

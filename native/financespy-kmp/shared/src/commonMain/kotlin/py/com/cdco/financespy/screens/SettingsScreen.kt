@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Rule
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.UploadFile
@@ -62,7 +63,8 @@ fun SettingsScreen(
     onShareFile: ((ByteArray, String, String) -> Unit)? = null,
     onNavigateToRules: (() -> Unit)? = null,
     onNavigateToNavCustomization: (() -> Unit)? = null,
-    onNavigateToUpayImport: (() -> Unit)? = null
+    onNavigateToUpayImport: (() -> Unit)? = null,
+    onNavigateToPdfStatementImport: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsState()
     val pendingOutboxCount by viewModel.pendingOutboxCount.collectAsState()
@@ -299,7 +301,7 @@ fun SettingsScreen(
                     }
                 }
 
-                if (onNavigateToRules != null || onNavigateToNavCustomization != null || (onNavigateToUpayImport != null && state.businessModeEnabled)) {
+                if (onNavigateToRules != null || onNavigateToNavCustomization != null || (onNavigateToUpayImport != null && state.businessModeEnabled) || onNavigateToPdfStatementImport != null) {
                     item {
                         Text(
                             text = "Navegación",
@@ -328,6 +330,13 @@ fun SettingsScreen(
                                         icon = Icons.Filled.UploadFile,
                                         label = "Importar liquidación Upay",
                                         onClick = onNavigateToUpayImport
+                                    )
+                                }
+                                if (onNavigateToPdfStatementImport != null) {
+                                    SettingsNavRow(
+                                        icon = Icons.Filled.PictureAsPdf,
+                                        label = "Importar extracto (PDF)",
+                                        onClick = onNavigateToPdfStatementImport
                                     )
                                 }
                             }

@@ -32,6 +32,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val NAV_CUSTOMIZATION = "nav_customization"
     const val UPAY_IMPORT = "upay_import"
+    const val PDF_STATEMENT_IMPORT = "pdf_statement_import"
     const val ACCOUNT_FORM = "account_form"
 
     fun accountDetail(accountId: String) = "account/$accountId"

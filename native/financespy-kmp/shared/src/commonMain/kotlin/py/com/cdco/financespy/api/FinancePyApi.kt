@@ -26,6 +26,9 @@ import py.com.cdco.financespy.api.dto.CreateAccountRequest
 import py.com.cdco.financespy.api.dto.NavPreferencesDto
 import py.com.cdco.financespy.api.dto.UpayImportResponseDto
 import py.com.cdco.financespy.api.dto.UpayImportResultDto
+import py.com.cdco.financespy.api.dto.PdfImportResultDto
+import py.com.cdco.financespy.api.dto.PdfImportRowDto
+import py.com.cdco.financespy.api.dto.PdfImportRowsResponseDto
 import py.com.cdco.financespy.api.dto.BalanceSeriesDto
 import py.com.cdco.financespy.api.dto.AccountsResponse
 import py.com.cdco.financespy.api.dto.BalanceSheetResponse
@@ -476,6 +479,39 @@ open class FinancePyApi(private val http: HttpClient) {
 
     open suspend fun fetchImport(importId: String): UpayImportResultDto {
         val response: UpayImportResponseDto = http.get("/api/v1/imports/$importId").body()
+        return response.data
+    }
+
+    // --- PDF statement import (bank/credit card statement -> AI-extracted
+    // transactions). Deliberately does NOT send publish=true: unlike Upay's
+    // auto-publish, the extracted rows need a human to look at what the AI
+    // read off the PDF before any of it becomes real transactions -- see
+    // #fetchPdfImportRows / #publishImport, called only after the user
+    // reviews and confirms.
+    open suspend fun uploadPdfStatement(accountId: String, fileBytes: ByteArray, fileName: String): PdfImportResultDto {
+        val response: UpayImportResponseDto = http.submitFormWithBinaryData(
+            url = "/api/v1/imports",
+            formData = formData {
+                append("type", "PdfImport")
+                append("account_id", accountId)
+                append("file", fileBytes, Headers.build {
+                    append(HttpHeaders.ContentType, "application/pdf")
+                    append(HttpHeaders.ContentDisposition, "form-data; name=\"file\"; filename=\"$fileName\"")
+                })
+            }
+        ).body()
+        return response.data
+    }
+
+    open suspend fun fetchPdfImportRows(importId: String): List<PdfImportRowDto> {
+        val response: PdfImportRowsResponseDto = http.get("/api/v1/imports/$importId/rows") {
+            parameter("per_page", 100)
+        }.body()
+        return response.data
+    }
+
+    open suspend fun publishImport(importId: String): PdfImportResultDto {
+        val response: UpayImportResponseDto = http.post("/api/v1/imports/$importId/publish").body()
         return response.data
     }
 
