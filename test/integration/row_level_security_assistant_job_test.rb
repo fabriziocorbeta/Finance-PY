@@ -37,4 +37,27 @@ class RowLevelSecurityAssistantJobTest < ActiveSupport::TestCase
   ensure
     ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
   end
+
+  test "AssistantResponseJob resolves the message's real chat (not nil) when it actually runs under real FORCE RLS" do
+    chat = chats(:one)
+    user_message = chat.messages.create!(type: "UserMessage", content: "hola", ai_model: "gpt-4.1")
+    assistant_message = chat.messages.create!(type: "AssistantMessage", content: "", ai_model: "gpt-4.1", status: :pending)
+
+    # chats is also under FORCE RLS (20260928170000): resolve_job_family's own
+    # `arg.chat.family` lookup happens before any RLS context is set, so
+    # without bypassing it there too, the association silently returns nil,
+    # no family gets resolved, and the job body's `message.chat` is nil --
+    # NoMethodError: undefined method 'ask_assistant' for nil, same user-
+    # visible symptom (chat never responds) as the GlobalID bug above.
+    Chat.any_instance.expects(:ask_assistant).once.with do |msg, assistant_message: nil|
+      msg.id == user_message.id
+    end
+
+    RowLevelSecurityTest.ensure_non_superuser_role
+    ActiveRecord::Base.connection.execute("SET ROLE app_user")
+
+    AssistantResponseJob.new(user_message, assistant_message).perform_now
+  ensure
+    ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
+  end
 end
