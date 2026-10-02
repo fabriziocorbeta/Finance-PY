@@ -43,12 +43,18 @@ class RowLevelSecurityAssistantJobTest < ActiveSupport::TestCase
     user_message = chat.messages.create!(type: "UserMessage", content: "hola", ai_model: "gpt-4.1")
     assistant_message = chat.messages.create!(type: "AssistantMessage", content: "", ai_model: "gpt-4.1", status: :pending)
 
-    # chats is also under FORCE RLS (20260928170000): resolve_job_family's own
-    # `arg.chat.family` lookup happens before any RLS context is set, so
-    # without bypassing it there too, the association silently returns nil,
-    # no family gets resolved, and the job body's `message.chat` is nil --
-    # NoMethodError: undefined method 'ask_assistant' for nil, same user-
-    # visible symptom (chat never responds) as the GlobalID bug above.
+    # `chats` is also under FORCE RLS (20260928170000): resolve_job_family's
+    # own `arg.chat.family` lookup happens before any RLS context is set, so
+    # without the policy itself honoring the bypass GUC, that association
+    # silently returns nil, no family gets resolved, and the job body's
+    # `message.chat` is nil -- NoMethodError: undefined method 'ask_assistant'
+    # for nil, same user-visible symptom (chat never responds) as the
+    # GlobalID bug above. Go through a real ActiveJob::Base.deserialize round
+    # trip (not AssistantResponseJob.new(user_message, ...)) so `chat` is
+    # re-queried from the DB instead of reusing the in-memory association
+    # `chat.messages.create!` already cached -- a plain `.new` call here
+    # passed this test even against the real (unfixed) production policy,
+    # because it never issued the query that actually hits RLS.
     Chat.any_instance.expects(:ask_assistant).once.with do |msg, assistant_message: nil|
       msg.id == user_message.id
     end
@@ -56,7 +62,10 @@ class RowLevelSecurityAssistantJobTest < ActiveSupport::TestCase
     RowLevelSecurityTest.ensure_non_superuser_role
     ActiveRecord::Base.connection.execute("SET ROLE app_user")
 
-    AssistantResponseJob.new(user_message, assistant_message).perform_now
+    job = AssistantResponseJob.new(user_message, assistant_message)
+    deserialized_job = ActiveJob::Base.deserialize(job.serialize)
+    deserialized_job.send(:deserialize_arguments_if_needed)
+    deserialized_job.perform_now
   ensure
     ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
   end
