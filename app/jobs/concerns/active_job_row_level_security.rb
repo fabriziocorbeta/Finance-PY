@@ -65,8 +65,8 @@ module ActiveJobRowLevelSecurity
         arg.family
       elsif arg.respond_to?(:family_id) && arg.family_id.present?
         Family.find_by(id: arg.family_id)
-      elsif arg.respond_to?(:chat) && arg.chat.respond_to?(:family) && arg.chat.family.is_a?(Family)
-        arg.chat.family
+      elsif arg.respond_to?(:chat) && arg.chat.respond_to?(:user) && arg.chat.user.respond_to?(:family) && arg.chat.user.family.is_a?(Family)
+        arg.chat.user.family
       elsif arg.is_a?(Hash)
         extract_family_from_hash(arg)
       elsif arg.is_a?(String) || arg.is_a?(Integer)

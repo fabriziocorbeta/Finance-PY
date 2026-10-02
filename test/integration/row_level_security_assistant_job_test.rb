@@ -69,4 +69,32 @@ class RowLevelSecurityAssistantJobTest < ActiveSupport::TestCase
   ensure
     ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
   end
+
+  test "resolve_job_family finds the family via chat.user.family, not chat.family" do
+    # Chat has no #family method at all (it belongs_to :user, and User
+    # belongs_to :family) -- extract_family's chat branch checked
+    # `arg.chat.respond_to?(:family)`, which was always false, so
+    # resolve_job_family has never resolved a family for a chat-bearing
+    # message, with or without the RLS bypass fixes above. The job always
+    # ran under RlsContext.reset, which is exactly why message.chat kept
+    # coming back nil even after both the messages and chats bypass-clause
+    # migrations were deployed. Confirmed by replaying the real production
+    # job for the message that was actually stuck "Procesando..." -- it
+    # only produced a real AI response once this was fixed.
+    chat = chats(:one)
+    user_message = chat.messages.create!(type: "UserMessage", content: "hola", ai_model: "gpt-4.1")
+    assistant_message = chat.messages.create!(type: "AssistantMessage", content: "", ai_model: "gpt-4.1", status: :pending)
+
+    RowLevelSecurityTest.ensure_non_superuser_role
+    ActiveRecord::Base.connection.execute("SET ROLE app_user")
+
+    job = AssistantResponseJob.new(user_message, assistant_message)
+    deserialized_job = ActiveJob::Base.deserialize(job.serialize)
+    deserialized_job.send(:deserialize_arguments_if_needed)
+
+    family = RlsContext.with_auth_bypass { deserialized_job.send(:resolve_job_family) }
+    assert_equal chat.user.family_id, family&.id, "Expected resolve_job_family to find the chat owner's family"
+  ensure
+    ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
+  end
 end
