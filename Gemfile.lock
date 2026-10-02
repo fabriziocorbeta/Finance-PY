@@ -543,7 +543,7 @@ GEM
     raabro (1.4.0)
     racc (1.8.1)
     rack (3.2.7)
-    rack-attack (6.7.0)
+    rack-attack (6.8.0)
       rack (>= 1.0, < 4)
     rack-cors (3.0.0)
       logger
@@ -928,7 +928,7 @@ DEPENDENCIES
   propshaft
   puma (>= 5.0)
   pundit
-  rack-attack (~> 6.6)
+  rack-attack (~> 6.8)
   rack-cors
   rack-mini-profiler
   rails (~> 7.2.2)
