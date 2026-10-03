@@ -7300,7 +7300,7 @@ ALTER TABLE public.family_exports ENABLE ROW LEVEL SECURITY;
 -- Name: family_exports family_exports_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY family_exports_family_isolation_policy ON public.family_exports USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY family_exports_family_isolation_policy ON public.family_exports USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7475,7 +7475,7 @@ ALTER TABLE public.imports ENABLE ROW LEVEL SECURITY;
 -- Name: imports imports_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY imports_family_isolation_policy ON public.imports USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY imports_family_isolation_policy ON public.imports USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7947,7 +7947,7 @@ ALTER TABLE public.rules ENABLE ROW LEVEL SECURITY;
 -- Name: rules rules_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY rules_family_isolation_policy ON public.rules USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY rules_family_isolation_policy ON public.rules USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8121,7 +8121,7 @@ ALTER TABLE public.syncs ENABLE ROW LEVEL SECURITY;
 -- Name: syncs syncs_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY syncs_family_isolation_policy ON public.syncs USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY syncs_family_isolation_policy ON public.syncs USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8296,6 +8296,7 @@ CREATE POLICY webauthn_credentials_family_isolation_policy ON public.webauthn_cr
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261003041800'),
 ('20261002150000'),
 ('20261002140000'),
 ('20261001192000'),
