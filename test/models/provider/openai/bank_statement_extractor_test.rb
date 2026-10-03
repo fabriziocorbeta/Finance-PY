@@ -114,7 +114,16 @@ class Provider::Openai::BankStatementExtractorTest < ActiveSupport::TestCase
       } ]
     }
 
-    @client.expects(:chat).twice.returns(first_response, second_response)
+    # Chunks now run concurrently (see BankStatementExtractor#extract), so
+    # nothing guarantees which chunk's request Mocha sees first -- match each
+    # stubbed response by which chunk it actually belongs to (only chunk 0
+    # gets the "with metadata" system prompt) instead of by call order.
+    @client.stubs(:chat).with { |parameters:|
+      parameters[:messages].first[:content].include?("bank statement data as JSON")
+    }.returns(first_response)
+    @client.stubs(:chat).with { |parameters:|
+      parameters[:messages].first[:content].include?("Extract transactions from bank statement text")
+    }.returns(second_response)
 
     extractor = Provider::Openai::BankStatementExtractor.new(
       client: @client,
