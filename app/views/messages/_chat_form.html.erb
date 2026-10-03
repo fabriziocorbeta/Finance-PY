@@ -17,8 +17,14 @@
 
     <div class="flex items-center justify-between gap-1">
       <div class="items-center gap-1 hidden lg:flex">
+        <%= render DS::Link.new(
+          icon: "plus",
+          variant: "icon",
+          href: new_import_path(type: "PdfImport"),
+          frame: "modal"
+        ) %>
         <%# These are disabled for now, but in the future, will all open specific menus with their own context and search %>
-        <% ["plus", "command", "at-sign", "mouse-pointer-click"].each do |icon| %>
+        <% ["command", "at-sign", "mouse-pointer-click"].each do |icon| %>
           <%= icon(icon, as_button: true, disabled: true, class: "cursor-not-allowed", title: "Coming soon") %>
         <% end %>
       </div>
