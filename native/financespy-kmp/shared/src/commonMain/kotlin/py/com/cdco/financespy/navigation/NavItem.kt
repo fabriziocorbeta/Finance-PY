@@ -41,17 +41,17 @@ object NavItems {
     val FLEET = NavItem("fleet", "Flota", Routes.FLEET, Icons.Filled.DirectionsCar)
     val CHAT = NavItem("chat", "Asistente", Routes.CHAT, Icons.Filled.SmartToy)
 
-    // Mismos 6 ítems y mismo orden que la barra inferior mobile de la web
+    // Mismos 7 ítems y mismo orden que la barra inferior mobile de la web
     // (app/views/layouts/application.html.erb, mobile_nav_items) -- default de
     // fábrica para que el primer arranque ya se vea igual a la web sin configurar nada.
-    val CORE_DEFAULT_ORDER = listOf(DASHBOARD, TRANSACTIONS, REPORTS, BUDGETS, GOALS, RECEIVABLES, CHAT).map { it.id }
+    val CORE_DEFAULT_ORDER = listOf(DASHBOARD, TRANSACTIONS, REPORTS, BUDGETS, GOALS, RECEIVABLES).map { it.id }
 
     // Todos los ítems core (sin depender de business_mode) + los de modo negocio,
     // que solo se ofrecen como opción si la family los tiene habilitados. DEBTS
     // queda afuera de CORE_DEFAULT_ORDER a propósito (ese default replica
     // exactamente la barra mobile de la web) pero disponible acá para agregar
     // vía personalización o "Más opciones".
-    val CORE = listOf(DASHBOARD, TRANSACTIONS, REPORTS, BUDGETS, GOALS, RECEIVABLES, DEBTS, RULES)
+    val CORE = listOf(DASHBOARD, TRANSACTIONS, REPORTS, BUDGETS, GOALS, RECEIVABLES, DEBTS, RULES, CHAT)
     val BUSINESS = listOf(PRODUCTS, SALES, PURCHASE_ORDERS, FLEET)
 
     fun byId(id: String): NavItem? = (CORE + BUSINESS).find { it.id == id }

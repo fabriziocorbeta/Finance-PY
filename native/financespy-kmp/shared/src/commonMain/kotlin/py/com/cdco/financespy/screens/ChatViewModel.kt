@@ -123,7 +123,7 @@ class ChatViewModel(
         val id = actualChatId ?: return
         var attempts = 0
 
-        while (attempts < 30) { // Max 1 minute polling (2s * 30)
+        while (attempts < 90) { // Max 3 minutes polling (2s * 90)
             delay(2000)
             try {
                 val response = api.fetchChat(id, page = 1)
@@ -144,6 +144,11 @@ class ChatViewModel(
                 // Keep trying on intermittent failures
             }
             attempts++
+            if (attempts >= 90) {
+                 _state.value = _state.value.copy(
+                     error = "La IA todavía está procesando. Por favor, revisá más tarde."
+                 )
+            }
         }
         isPolling = false
     }
