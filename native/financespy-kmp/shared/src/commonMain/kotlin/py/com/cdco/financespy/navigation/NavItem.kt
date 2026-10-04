@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Rule
 import androidx.compose.material.icons.filled.TrackChanges
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.ui.graphics.vector.ImageVector
 
 // Ítem navegable único, identificado por un id estable (persistido en preferencias
@@ -38,11 +39,12 @@ object NavItems {
     val SALES = NavItem("sales", "Ventas", Routes.SALES, Icons.Filled.ReceiptLong)
     val PURCHASE_ORDERS = NavItem("purchase_orders", "Compras", Routes.PURCHASE_ORDERS, Icons.Filled.LocalShipping)
     val FLEET = NavItem("fleet", "Flota", Routes.FLEET, Icons.Filled.DirectionsCar)
+    val CHAT = NavItem("chat", "Asistente", Routes.CHAT, Icons.Filled.SmartToy)
 
     // Mismos 6 ítems y mismo orden que la barra inferior mobile de la web
     // (app/views/layouts/application.html.erb, mobile_nav_items) -- default de
     // fábrica para que el primer arranque ya se vea igual a la web sin configurar nada.
-    val CORE_DEFAULT_ORDER = listOf(DASHBOARD, TRANSACTIONS, REPORTS, BUDGETS, GOALS, RECEIVABLES).map { it.id }
+    val CORE_DEFAULT_ORDER = listOf(DASHBOARD, TRANSACTIONS, REPORTS, BUDGETS, GOALS, RECEIVABLES, CHAT).map { it.id }
 
     // Todos los ítems core (sin depender de business_mode) + los de modo negocio,
     // que solo se ofrecen como opción si la family los tiene habilitados. DEBTS
