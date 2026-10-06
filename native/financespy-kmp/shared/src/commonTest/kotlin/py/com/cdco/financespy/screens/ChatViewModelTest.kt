@@ -11,6 +11,7 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -31,7 +32,7 @@ import kotlin.test.assertTrue
 class ChatViewModelTest {
 
     private lateinit var scheduler: TestCoroutineScheduler
-    private lateinit var dispatcher: StandardTestDispatcher
+    private lateinit var dispatcher: TestDispatcher
     private lateinit var scope: TestScope
 
     @BeforeTest

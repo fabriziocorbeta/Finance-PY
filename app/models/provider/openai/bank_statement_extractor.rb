@@ -3,6 +3,14 @@ class Provider::Openai::BankStatementExtractor
   include Provider::Openai::Concerns::UntrustedDataFormatting
 
   MAX_CHARS_PER_CHUNK = 3000
+
+  # Caps how many chunk requests run at once. NVIDIA's free-tier NIM
+  # endpoint enforces its own per-key concurrency ceiling (observed as a 503
+  # "Worker local total request limit reached" at 16 concurrent requests) --
+  # stay well under that, and under what a single real statement's chunk
+  # count (build_chunks keeps each ~3000 chars) would ever realistically hit.
+  MAX_CONCURRENT_CHUNKS = 5
+
   attr_reader :client, :pdf_content, :model
 
   def initialize(client:, pdf_content:, model:)
@@ -18,13 +26,30 @@ class Provider::Openai::BankStatementExtractor
     chunks = build_chunks(pages)
     Rails.logger.info("BankStatementExtractor: Processing #{chunks.size} chunk(s) from #{pages.size} page(s)")
 
+    # Each chunk is an independent AI call with no dependency on any other
+    # chunk's result (process_chunk only reads its own text + whether it's
+    # chunk 0), so running them serially was pure wasted wall-clock time --
+    # 7 chunks at ~15-20s each made a single PDF import take 3+ minutes.
+    # Run them concurrently and merge in original chunk order afterward, so
+    # the metadata-overwrite logic below stays deterministic regardless of
+    # which thread happens to finish first.
+    results = Concurrent::Array.new(chunks.size)
+    pool = Concurrent::FixedThreadPool.new([ chunks.size, MAX_CONCURRENT_CHUNKS ].min)
+
+    chunks.each_with_index do |chunk, index|
+      pool.post do
+        Rails.logger.info("BankStatementExtractor: Processing chunk #{index + 1}/#{chunks.size}")
+        results[index] = process_chunk(chunk, index == 0)
+      end
+    end
+
+    pool.shutdown
+    pool.wait_for_termination
+
     all_transactions = []
     metadata = {}
 
-    chunks.each_with_index do |chunk, index|
-      Rails.logger.info("BankStatementExtractor: Processing chunk #{index + 1}/#{chunks.size}")
-      result = process_chunk(chunk, index == 0)
-
+    results.each_with_index do |result, index|
       # Tag transactions with chunk index for deduplication
       tagged_transactions = (result[:transactions] || []).map { |t| t.merge(chunk_index: index) }
       all_transactions.concat(tagged_transactions)
