@@ -28,6 +28,10 @@ import py.com.cdco.financespy.api.dto.UpayImportResponseDto
 import py.com.cdco.financespy.api.dto.UpayImportResultDto
 import py.com.cdco.financespy.api.dto.PdfImportResultDto
 import py.com.cdco.financespy.api.dto.PdfImportRowDto
+import py.com.cdco.financespy.api.dto.ChatResponseDto
+import py.com.cdco.financespy.api.dto.ChatsListResponseDto
+import py.com.cdco.financespy.api.dto.MessageDto
+import py.com.cdco.financespy.api.dto.ChatDto
 import py.com.cdco.financespy.api.dto.PdfImportRowsResponseDto
 import py.com.cdco.financespy.api.dto.BalanceSeriesDto
 import py.com.cdco.financespy.api.dto.AccountsResponse
@@ -718,5 +722,36 @@ open class FinancePyApi(private val http: HttpClient) {
             if (startDate != null) parameter("start_date", startDate)
             if (endDate != null) parameter("end_date", endDate)
         }.bodyAsBytes()
+    }
+
+    // --- Chats & Messages ---
+    open suspend fun fetchChats(page: Int = 1): ChatsListResponseDto {
+        return http.get("/api/v1/chats") {
+            parameter("page", page)
+        }.body()
+    }
+
+    open suspend fun createChat(title: String? = null, message: String? = null, model: String? = null): ChatResponseDto {
+        return http.post("/api/v1/chats") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("title" to title, "message" to message, "model" to model))
+        }.body()
+    }
+
+    open suspend fun fetchChat(id: String, page: Int = 1): ChatResponseDto {
+        return http.get("/api/v1/chats/$id") {
+            parameter("page", page)
+        }.body()
+    }
+
+    open suspend fun sendMessage(chatId: String, content: String, model: String? = null): MessageDto {
+        return http.post("/api/v1/chats/$chatId/messages") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("content" to content, "model" to model))
+        }.body()
+    }
+
+    open suspend fun retryMessage(chatId: String): MessageDto {
+        return http.post("/api/v1/chats/$chatId/messages/retry").body()
     }
 }

@@ -97,6 +97,10 @@ import py.com.cdco.financespy.screens.TransactionFormScreen
 import py.com.cdco.financespy.screens.TransactionFormViewModel
 import py.com.cdco.financespy.screens.TransactionsScreen
 import py.com.cdco.financespy.screens.TransactionsViewModel
+import py.com.cdco.financespy.screens.ChatsListScreen
+import py.com.cdco.financespy.screens.ChatsListViewModel
+import py.com.cdco.financespy.screens.ChatScreen
+import py.com.cdco.financespy.screens.ChatViewModel
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.FinancePyTheme
 
@@ -148,7 +152,9 @@ fun App(
     onOpenNotificationSettings: (() -> Unit)? = null,
     onShareFile: ((ByteArray, String, String) -> Unit)? = null,
     onPickUpayCsv: ((onPicked: (ByteArray, String) -> Unit) -> Unit)? = null,
-    onPickPdfFile: ((onPicked: (ByteArray, String) -> Unit) -> Unit)? = null
+    onPickPdfFile: ((onPicked: (ByteArray, String) -> Unit) -> Unit)? = null,
+    chatsListViewModelFactory: () -> ChatsListViewModel = { TODO() },
+    chatViewModelFactory: (String?) -> ChatViewModel = { _ -> TODO() }
 ) {
     FinancePyTheme {
         if (isLoggedIn != null) {
@@ -506,7 +512,23 @@ fun App(
                                 onBack = { navController.popBackStack() }
                             )
                         }
-                    }
+                        composable(Routes.CHAT) {
+                            ChatsListScreen(
+                                viewModel = remember { chatsListViewModelFactory() },
+                                onChatClick = { chatId -> navController.navigate(Routes.chatDetail(chatId)) },
+                                onNewChatClick = { navController.navigate(Routes.chatDetail("new")) }
+                            )
+                        }
+
+                        composable(Routes.CHAT_DETAIL) { backStackEntry ->
+                            val chatId = backStackEntry.arguments?.getString("chatId")
+                            ChatScreen(
+                                viewModel = remember(chatId) { chatViewModelFactory(chatId) },
+                                onBackClick = { navController.popBackStack() },
+                                onNavigateToPdfImport = { navController.navigate(Routes.PDF_STATEMENT_IMPORT) },
+                                chatId = chatId
+                            )
+                        }
                     }
 
                     if (showHamburgerMenu) {
@@ -520,4 +542,5 @@ fun App(
             }
         }
     }
+}
 }
