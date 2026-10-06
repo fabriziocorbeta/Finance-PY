@@ -497,8 +497,6 @@ class MainActivity : FragmentActivity() {
                     PdfStatementImportViewModel(scope = lifecycleScope, api = api, accountDao = database.accountDao())
                 },
                 onPickPdfFile = { onPicked -> pickPdfFile(onPicked) },
-                chatsListViewModelFactory = { py.com.cdco.financespy.screens.ChatsListViewModel(scope = lifecycleScope, api = api) },
-                chatViewModelFactory = { chatId -> py.com.cdco.financespy.screens.ChatViewModel(scope = lifecycleScope, api = api, chatId = chatId) },
                 onOpenNotificationSettings = {
                     val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

@@ -2,8 +2,6 @@ package py.com.cdco.financespy.navigation
 
 object Routes {
     const val ONBOARDING = "onboarding"
-    const val CHAT = "chat"
-    const val CHAT_DETAIL = "chat/{chatId}"
     const val DASHBOARD = "dashboard"
     const val BUDGETS = "budgets"
     const val TRANSACTIONS = "transactions"
@@ -37,7 +35,6 @@ object Routes {
     const val PDF_STATEMENT_IMPORT = "pdf_statement_import"
     const val ACCOUNT_FORM = "account_form"
 
-    fun chatDetail(chatId: String) = "chat/$chatId"
     fun accountDetail(accountId: String) = "account/$accountId"
     fun ruleDetail(ruleId: String) = "rule/$ruleId"
     fun ruleFormEdit(ruleId: String) = "rule_form?ruleId=$ruleId"
