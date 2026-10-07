@@ -59,59 +59,59 @@ class AddAuthBypassToRemainingForceRlsPolicies < ActiveRecord::Migration[7.2]
 
   private
 
-  def add_bypass(table)
-    policy = "#{table}_family_isolation_policy"
-    qual, check = policy_definition(table, policy)
-    return if qual.nil? # policy not found under the expected name -- leave alone
-    return if qual.include?("rls_auth_bypass") # already fixed, idempotent
+    def add_bypass(table)
+      policy = "#{table}_family_isolation_policy"
+      qual, check = policy_definition(table, policy)
+      return if qual.nil? # policy not found under the expected name -- leave alone
+      return if qual.include?("rls_auth_bypass") # already fixed, idempotent
 
-    new_qual  = "(#{qual}) OR (#{BYPASS_CLAUSE})"
-    new_check = check.present? ? "(#{check}) OR (#{BYPASS_CLAUSE})" : new_qual
+      new_qual  = "(#{qual}) OR (#{BYPASS_CLAUSE})"
+      new_check = check.present? ? "(#{check}) OR (#{BYPASS_CLAUSE})" : new_qual
 
-    execute <<-SQL
+      execute <<-SQL
       DROP POLICY IF EXISTS #{policy} ON #{table};
       CREATE POLICY #{policy} ON #{table}
       USING (#{new_qual})
       WITH CHECK (#{new_check});
     SQL
-  end
+    end
 
-  def remove_bypass(table)
-    policy = "#{table}_family_isolation_policy"
-    qual, check = policy_definition(table, policy)
-    return if qual.nil?
-    return unless qual.include?("rls_auth_bypass")
+    def remove_bypass(table)
+      policy = "#{table}_family_isolation_policy"
+      qual, check = policy_definition(table, policy)
+      return if qual.nil?
+      return unless qual.include?("rls_auth_bypass")
 
-    stripped_qual  = strip_bypass(qual)
-    stripped_check = check.present? ? strip_bypass(check) : stripped_qual
+      stripped_qual  = strip_bypass(qual)
+      stripped_check = check.present? ? strip_bypass(check) : stripped_qual
 
-    execute <<-SQL
+      execute <<-SQL
       DROP POLICY IF EXISTS #{policy} ON #{table};
       CREATE POLICY #{policy} ON #{table}
       USING (#{stripped_qual})
       WITH CHECK (#{stripped_check});
     SQL
-  end
+    end
 
-  def policy_definition(table, policy)
-    conn = ActiveRecord::Base.connection
-    row = conn.select_one(<<-SQL)
+    def policy_definition(table, policy)
+      conn = ActiveRecord::Base.connection
+      row = conn.select_one(<<-SQL)
       SELECT qual, with_check
       FROM pg_policies
       WHERE schemaname = 'public' AND tablename = #{conn.quote(table)}
         AND policyname = #{conn.quote(policy)}
     SQL
-    return [nil, nil] if row.nil?
+      return [ nil, nil ] if row.nil?
 
-    [row["qual"], row["with_check"]]
-  end
+      [ row["qual"], row["with_check"] ]
+    end
 
-  # expr is always, once #up has run, "(<original> OR (current_setting(...)))" --
-  # Postgres's own canonical deparse of whatever #up wrote. Peel the OR
-  # wrapper to recover exactly the <original> pg_policies would show if the
-  # bypass clause had never been added.
-  def strip_bypass(expr)
-    inner = expr.sub(/\A\((.*)\)\z/m, '\1')
-    inner.sub(NORMALIZED_BYPASS_SUFFIX, "")
-  end
+    # expr is always, once #up has run, "(<original> OR (current_setting(...)))" --
+    # Postgres's own canonical deparse of whatever #up wrote. Peel the OR
+    # wrapper to recover exactly the <original> pg_policies would show if the
+    # bypass clause had never been added.
+    def strip_bypass(expr)
+      inner = expr.sub(/\A\((.*)\)\z/m, '\1')
+      inner.sub(NORMALIZED_BYPASS_SUFFIX, "")
+    end
 end
