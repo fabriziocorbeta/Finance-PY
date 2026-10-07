@@ -18,6 +18,25 @@ class Holding::ForwardCalculatorTest < ActiveSupport::TestCase
     assert_equal [], calculated
   end
 
+  # Regression test for a real production incident: a Trade row deleted
+  # independently of its parent Entry (entryable is a polymorphic (type, id)
+  # pair, not a real foreign key) left an Entry with entryable_type "Trade"
+  # pointing at nothing. #calculate used to do
+  # `trade_entry.entryable.security_id` with no nil check and crash every
+  # future sync for the account with `undefined method 'security_id' for
+  # nil` -- see Holding::PortfolioCache#trades, where this is now filtered.
+  test "a trade whose row was deleted independently of its entry does not crash the calculation" do
+    voo = Security.create!(ticker: "VOO", name: "Vanguard S&P 500 ETF")
+    Security::Price.create!(security: voo, date: Date.current, price: 500)
+
+    trade = create_trade(voo, qty: 10, date: 1.day.ago.to_date, price: 490, account: @account).trade
+    Trade.delete(trade.id) # bypasses callbacks/dependent destroy on purpose, like the prod anomaly
+
+    calculated = nil
+    assert_nothing_raised { calculated = Holding::ForwardCalculator.new(@account).calculate }
+    assert_equal [], calculated
+  end
+
   test "holding generation respects user timezone and last generated date is current user date" do
     # Simulate user in EST timezone
     Time.use_zone("America/New_York") do

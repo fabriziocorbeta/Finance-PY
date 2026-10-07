@@ -56,4 +56,25 @@ class Holding::PortfolioCacheTest < ActiveSupport::TestCase
     cache = Holding::PortfolioCache.new(@account, use_holdings: true)
     assert_equal holding.price, cache.get_price(@security.id, holding.date).price
   end
+
+  # Regression test for a real production incident: a Trade row deleted
+  # independently of its parent Entry (entryable is a polymorphic (type, id)
+  # pair, not a real foreign key, so the DB doesn't stop this) left an Entry
+  # with entryable_type "Trade" pointing at nothing. #trades previously did
+  # `trade_entry.entryable.security_id` with no nil check, so every sync for
+  # the account crashed with `undefined method 'security_id' for nil` from
+  # then on -- the account's balance (and its holdings/"detail" view) never
+  # updated again.
+  test "skips an entry whose Trade row no longer exists instead of crashing" do
+    orphaned_entry = @trade.entry
+    Trade.delete(@trade.id) # bypasses callbacks/dependent destroy on purpose, like the prod anomaly
+
+    cache = nil
+    assert_nothing_raised do
+      cache = Holding::PortfolioCache.new(@account)
+    end
+
+    assert_equal [], cache.get_trades(date: orphaned_entry.date)
+    assert_equal [], cache.get_trades
+  end
 end
