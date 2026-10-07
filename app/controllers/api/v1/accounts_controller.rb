@@ -17,7 +17,7 @@ class Api::V1::AccountsController < Api::V1::BaseController
     "Vehicle" => [ :make, :model, :year, :mileage_value, :mileage_unit ],
     "OtherAsset" => [],
     "CreditCard" => [ :available_credit, :minimum_payment, :apr, :annual_fee, :expiration_date ],
-    "Loan" => [ :subtype, :rate_type, :interest_rate, :term_months, :initial_balance ]
+    "Loan" => [ :subtype, :rate_type, :interest_rate, :term_months, :initial_balance, :amortization_method ]
   }.freeze
 
   # Ensure proper scope authorization for read access

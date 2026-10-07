@@ -8,6 +8,9 @@ en:
       interest_rate_placeholder: '5.25'
       initial_balance: Original loan balance
       rate_type: Rate type
+      amortization_method: Amortization method
+      amortization_method_french: French (fixed installment)
+      amortization_method_german: German (fixed principal)
       term_months: Term (months)
       term_months_placeholder: '360'
       subtype_prompt: Select loan type
@@ -17,6 +20,11 @@ en:
     overview:
       interest_rate: Interest Rate
       monthly_payment: Monthly Payment
+      first_payment: First Payment
+      amortization_method: Amortization Method
+      amortization_method_french: French
+      amortization_method_german: German
+      german_payment_hint: Decreases every installment (German system)
       not_applicable: N/A
       original_principal: Original Principal
       remaining_principal: Remaining Principal

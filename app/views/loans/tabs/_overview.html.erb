@@ -17,11 +17,14 @@
     <% end %>
   <% end %>
 
-  <%= summary_card title: t(".monthly_payment") do %>
+  <%= summary_card title: account.loan.german_amortization? ? t(".first_payment") : t(".monthly_payment") do %>
     <% if account.loan.rate_type.present? && account.loan.rate_type != 'fixed' %>
       <%= t(".not_applicable") %>
     <% elsif account.loan.rate_type == 'fixed' && account.loan.monthly_payment.present? %>
       <%= format_money(account.loan.monthly_payment) %>
+      <% if account.loan.german_amortization? %>
+        <div class="text-xs text-secondary"><%= t(".german_payment_hint") %></div>
+      <% end %>
     <% else %>
       <%= t(".unknown") %>
     <% end %>
@@ -41,6 +44,10 @@
 
   <%= summary_card title: t(".type") do %>
     <%= account.loan.rate_type&.titleize || t(".unknown") %>
+  <% end %>
+
+  <%= summary_card title: t(".amortization_method") do %>
+    <%= account.loan.german_amortization? ? t(".amortization_method_german") : t(".amortization_method_french") %>
   <% end %>
 </div>
 
