@@ -19,8 +19,8 @@ data class MessageDto(
     val role: String,
     val content: String?,
     val model: String? = null,
-    val created_at: String?,
-    val updated_at: String?,
+    val created_at: String? = null,
+    val updated_at: String? = null,
     val ai_response_status: String? = null,
     val ai_response_message: String? = null,
     val tool_calls: List<ToolCallDto>? = null
@@ -42,8 +42,8 @@ data class ChatResponseDto(
     val id: String,
     val title: String?,
     val error: String?,
-    val created_at: String?,
-    val updated_at: String?,
+    val created_at: String? = null,
+    val updated_at: String? = null,
     val messages: List<MessageDto>? = null,
     val pagination: PaginationDto? = null
 )
