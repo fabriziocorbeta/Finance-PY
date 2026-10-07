@@ -8095,7 +8095,7 @@ ALTER TABLE public.statement_imports ENABLE ROW LEVEL SECURITY;
 -- Name: statement_imports statement_imports_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY statement_imports_family_isolation_policy ON public.statement_imports USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY statement_imports_family_isolation_policy ON public.statement_imports USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8296,6 +8296,7 @@ CREATE POLICY webauthn_credentials_family_isolation_policy ON public.webauthn_cr
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261007140000'),
 ('20261003041800'),
 ('20261002150000'),
 ('20261002140000'),
