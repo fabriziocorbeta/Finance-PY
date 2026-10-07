@@ -261,6 +261,21 @@ class Provider::Openai::BankStatementExtractorTest < ActiveSupport::TestCase
     assert_equal malicious_page, wrapped_body.strip
   end
 
+  test "a failing chunk raises instead of returning a nil result" do
+    @client.stubs(:chat).raises(RuntimeError, "boom")
+
+    extractor = Provider::Openai::BankStatementExtractor.new(
+      client: @client, pdf_content: "dummy", model: @model
+    )
+    extractor.stubs(:extract_pages_from_pdf).returns([
+      "Page 1 " * 500,
+      "Page 2 " * 500
+    ])
+
+    error = assert_raises(RuntimeError) { extractor.extract }
+    assert_equal "boom", error.message
+  end
+
   test "parses a PYG amount string with dot thousands separators" do
     extractor = Provider::Openai::BankStatementExtractor.new(
       client: @client, pdf_content: "dummy", model: @model
