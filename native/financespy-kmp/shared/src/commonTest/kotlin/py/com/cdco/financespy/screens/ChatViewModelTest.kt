@@ -2,6 +2,7 @@ package py.com.cdco.financespy.screens
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.MockEngineConfig
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.HttpHeaders
@@ -15,7 +16,6 @@ import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -52,7 +52,12 @@ class ChatViewModelTest {
     fun testPollingLogicResolvesPendingMessage() = scope.runTest {
         var callCount = 0
 
-        val mockEngine = MockEngine { request ->
+        val mockConfig = MockEngineConfig()
+        // Ktor's default engine dispatcher is a real thread pool, so the response would resume outside
+        // the test scheduler and the virtual-time steps below could never observe it. Run the handler
+        // on the test dispatcher instead.
+        mockConfig.dispatcher = dispatcher
+        mockConfig.addHandler { request ->
             callCount++
 
             // First call happens immediately inside checkAndPoll / pollForAssistantResponse
@@ -63,6 +68,7 @@ class ChatViewModelTest {
                 {
                   "id": "chat_1",
                   "title": "Chat",
+                  "error": null,
                   "messages": [
                     {
                       "id": "msg_1",
@@ -81,6 +87,7 @@ class ChatViewModelTest {
                 {
                   "id": "chat_1",
                   "title": "Chat",
+                  "error": null,
                   "messages": [
                     {
                       "id": "msg_1",
@@ -106,6 +113,7 @@ class ChatViewModelTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json")
             )
         }
+        val mockEngine = MockEngine(mockConfig)
 
         val httpClient = HttpClient(mockEngine) {
             install(ContentNegotiation) {
@@ -117,7 +125,8 @@ class ChatViewModelTest {
         val viewModel = ChatViewModel(scope, api, chatId = "chat_1")
 
         // Let initialization run (it will call refresh() which fetches the first "pending" response)
-        scheduler.advanceUntilIdle()
+        // advanceUntilIdle() would also skip the poll's 2 s delay, so the pending state checked below would be gone.
+        scheduler.runCurrent()
 
         var state = viewModel.state.value
         if (state.messages.isEmpty()) {
