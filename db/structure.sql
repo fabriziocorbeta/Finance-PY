@@ -6905,11 +6905,11 @@ ALTER TABLE public.account_providers ENABLE ROW LEVEL SECURITY;
 -- Name: account_providers account_providers_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY account_providers_family_isolation_policy ON public.account_providers USING ((account_id IN ( SELECT accounts.id
+CREATE POLICY account_providers_family_isolation_policy ON public.account_providers USING (((account_id IN ( SELECT accounts.id
    FROM public.accounts
-  WHERE (accounts.family_id = public.current_family_id())))) WITH CHECK ((account_id IN ( SELECT accounts.id
+  WHERE (accounts.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((account_id IN ( SELECT accounts.id
    FROM public.accounts
-  WHERE (accounts.family_id = public.current_family_id()))));
+  WHERE (accounts.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -6922,11 +6922,11 @@ ALTER TABLE public.account_shares ENABLE ROW LEVEL SECURITY;
 -- Name: account_shares account_shares_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY account_shares_family_isolation_policy ON public.account_shares USING ((account_id IN ( SELECT accounts.id
+CREATE POLICY account_shares_family_isolation_policy ON public.account_shares USING (((account_id IN ( SELECT accounts.id
    FROM public.accounts
-  WHERE (accounts.family_id = public.current_family_id())))) WITH CHECK ((account_id IN ( SELECT accounts.id
+  WHERE (accounts.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((account_id IN ( SELECT accounts.id
    FROM public.accounts
-  WHERE (accounts.family_id = public.current_family_id()))));
+  WHERE (accounts.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -6939,7 +6939,7 @@ ALTER TABLE public.accounts ENABLE ROW LEVEL SECURITY;
 -- Name: accounts accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY accounts_family_isolation_policy ON public.accounts USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY accounts_family_isolation_policy ON public.accounts USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -6952,11 +6952,11 @@ ALTER TABLE public.addresses ENABLE ROW LEVEL SECURITY;
 -- Name: addresses addresses_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY addresses_family_isolation_policy ON public.addresses USING ((((addressable_type)::text = 'Property'::text) AND (addressable_id IN ( SELECT properties.id
+CREATE POLICY addresses_family_isolation_policy ON public.addresses USING (((((addressable_type)::text = 'Property'::text) AND (addressable_id IN ( SELECT properties.id
    FROM public.properties
-  WHERE (properties.family_id = public.current_family_id()))))) WITH CHECK ((((addressable_type)::text = 'Property'::text) AND (addressable_id IN ( SELECT properties.id
+  WHERE (properties.family_id = public.current_family_id())))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((((addressable_type)::text = 'Property'::text) AND (addressable_id IN ( SELECT properties.id
    FROM public.properties
-  WHERE (properties.family_id = public.current_family_id())))));
+  WHERE (properties.family_id = public.current_family_id())))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -6984,11 +6984,11 @@ ALTER TABLE public.balances ENABLE ROW LEVEL SECURITY;
 -- Name: balances balances_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY balances_family_isolation_policy ON public.balances USING ((account_id IN ( SELECT accounts.id
+CREATE POLICY balances_family_isolation_policy ON public.balances USING (((account_id IN ( SELECT accounts.id
    FROM public.accounts
-  WHERE (accounts.family_id = public.current_family_id())))) WITH CHECK ((account_id IN ( SELECT accounts.id
+  WHERE (accounts.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((account_id IN ( SELECT accounts.id
    FROM public.accounts
-  WHERE (accounts.family_id = public.current_family_id()))));
+  WHERE (accounts.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7001,11 +7001,11 @@ ALTER TABLE public.binance_accounts ENABLE ROW LEVEL SECURITY;
 -- Name: binance_accounts binance_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY binance_accounts_family_isolation_policy ON public.binance_accounts USING ((binance_item_id IN ( SELECT binance_items.id
+CREATE POLICY binance_accounts_family_isolation_policy ON public.binance_accounts USING (((binance_item_id IN ( SELECT binance_items.id
    FROM public.binance_items
-  WHERE (binance_items.family_id = public.current_family_id())))) WITH CHECK ((binance_item_id IN ( SELECT binance_items.id
+  WHERE (binance_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((binance_item_id IN ( SELECT binance_items.id
    FROM public.binance_items
-  WHERE (binance_items.family_id = public.current_family_id()))));
+  WHERE (binance_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7018,7 +7018,7 @@ ALTER TABLE public.binance_items ENABLE ROW LEVEL SECURITY;
 -- Name: binance_items binance_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY binance_items_family_isolation_policy ON public.binance_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY binance_items_family_isolation_policy ON public.binance_items USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7031,11 +7031,11 @@ ALTER TABLE public.budget_categories ENABLE ROW LEVEL SECURITY;
 -- Name: budget_categories budget_categories_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY budget_categories_family_isolation_policy ON public.budget_categories USING ((budget_id IN ( SELECT budgets.id
+CREATE POLICY budget_categories_family_isolation_policy ON public.budget_categories USING (((budget_id IN ( SELECT budgets.id
    FROM public.budgets
-  WHERE (budgets.family_id = public.current_family_id())))) WITH CHECK ((budget_id IN ( SELECT budgets.id
+  WHERE (budgets.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((budget_id IN ( SELECT budgets.id
    FROM public.budgets
-  WHERE (budgets.family_id = public.current_family_id()))));
+  WHERE (budgets.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7048,7 +7048,7 @@ ALTER TABLE public.budgets ENABLE ROW LEVEL SECURITY;
 -- Name: budgets budgets_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY budgets_family_isolation_policy ON public.budgets USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY budgets_family_isolation_policy ON public.budgets USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7061,7 +7061,7 @@ ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 -- Name: categories categories_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY categories_family_isolation_policy ON public.categories USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY categories_family_isolation_policy ON public.categories USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7091,11 +7091,11 @@ ALTER TABLE public.coinbase_accounts ENABLE ROW LEVEL SECURITY;
 -- Name: coinbase_accounts coinbase_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY coinbase_accounts_family_isolation_policy ON public.coinbase_accounts USING ((coinbase_item_id IN ( SELECT coinbase_items.id
+CREATE POLICY coinbase_accounts_family_isolation_policy ON public.coinbase_accounts USING (((coinbase_item_id IN ( SELECT coinbase_items.id
    FROM public.coinbase_items
-  WHERE (coinbase_items.family_id = public.current_family_id())))) WITH CHECK ((coinbase_item_id IN ( SELECT coinbase_items.id
+  WHERE (coinbase_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((coinbase_item_id IN ( SELECT coinbase_items.id
    FROM public.coinbase_items
-  WHERE (coinbase_items.family_id = public.current_family_id()))));
+  WHERE (coinbase_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7108,7 +7108,7 @@ ALTER TABLE public.coinbase_items ENABLE ROW LEVEL SECURITY;
 -- Name: coinbase_items coinbase_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY coinbase_items_family_isolation_policy ON public.coinbase_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY coinbase_items_family_isolation_policy ON public.coinbase_items USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7121,11 +7121,11 @@ ALTER TABLE public.coinstats_accounts ENABLE ROW LEVEL SECURITY;
 -- Name: coinstats_accounts coinstats_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY coinstats_accounts_family_isolation_policy ON public.coinstats_accounts USING ((coinstats_item_id IN ( SELECT coinstats_items.id
+CREATE POLICY coinstats_accounts_family_isolation_policy ON public.coinstats_accounts USING (((coinstats_item_id IN ( SELECT coinstats_items.id
    FROM public.coinstats_items
-  WHERE (coinstats_items.family_id = public.current_family_id())))) WITH CHECK ((coinstats_item_id IN ( SELECT coinstats_items.id
+  WHERE (coinstats_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((coinstats_item_id IN ( SELECT coinstats_items.id
    FROM public.coinstats_items
-  WHERE (coinstats_items.family_id = public.current_family_id()))));
+  WHERE (coinstats_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7138,7 +7138,7 @@ ALTER TABLE public.coinstats_items ENABLE ROW LEVEL SECURITY;
 -- Name: coinstats_items coinstats_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY coinstats_items_family_isolation_policy ON public.coinstats_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY coinstats_items_family_isolation_policy ON public.coinstats_items USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7151,7 +7151,7 @@ ALTER TABLE public.consents ENABLE ROW LEVEL SECURITY;
 -- Name: consents consents_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY consents_family_isolation_policy ON public.consents USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY consents_family_isolation_policy ON public.consents USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7164,7 +7164,7 @@ ALTER TABLE public.credit_cards ENABLE ROW LEVEL SECURITY;
 -- Name: credit_cards credit_cards_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY credit_cards_family_isolation_policy ON public.credit_cards USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY credit_cards_family_isolation_policy ON public.credit_cards USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7177,7 +7177,7 @@ ALTER TABLE public.cryptos ENABLE ROW LEVEL SECURITY;
 -- Name: cryptos cryptos_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY cryptos_family_isolation_policy ON public.cryptos USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY cryptos_family_isolation_policy ON public.cryptos USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7196,13 +7196,13 @@ CREATE POLICY data_enrichments_family_isolation_policy ON public.data_enrichment
    FROM public.valuations
   WHERE (valuations.family_id = public.current_family_id())))) OR (((enrichable_type)::text = 'Trade'::text) AND (enrichable_id IN ( SELECT trades.id
    FROM public.trades
-  WHERE (trades.family_id = public.current_family_id())))))) WITH CHECK (((((enrichable_type)::text = 'Transaction'::text) AND (enrichable_id IN ( SELECT transactions.id
+  WHERE (trades.family_id = public.current_family_id())))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((((enrichable_type)::text = 'Transaction'::text) AND (enrichable_id IN ( SELECT transactions.id
    FROM public.transactions
   WHERE (transactions.family_id = public.current_family_id())))) OR (((enrichable_type)::text = 'Valuation'::text) AND (enrichable_id IN ( SELECT valuations.id
    FROM public.valuations
   WHERE (valuations.family_id = public.current_family_id())))) OR (((enrichable_type)::text = 'Trade'::text) AND (enrichable_id IN ( SELECT trades.id
    FROM public.trades
-  WHERE (trades.family_id = public.current_family_id()))))));
+  WHERE (trades.family_id = public.current_family_id())))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7215,7 +7215,7 @@ ALTER TABLE public.depositories ENABLE ROW LEVEL SECURITY;
 -- Name: depositories depositories_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY depositories_family_isolation_policy ON public.depositories USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY depositories_family_isolation_policy ON public.depositories USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7228,11 +7228,11 @@ ALTER TABLE public.enable_banking_accounts ENABLE ROW LEVEL SECURITY;
 -- Name: enable_banking_accounts enable_banking_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY enable_banking_accounts_family_isolation_policy ON public.enable_banking_accounts USING ((enable_banking_item_id IN ( SELECT enable_banking_items.id
+CREATE POLICY enable_banking_accounts_family_isolation_policy ON public.enable_banking_accounts USING (((enable_banking_item_id IN ( SELECT enable_banking_items.id
    FROM public.enable_banking_items
-  WHERE (enable_banking_items.family_id = public.current_family_id())))) WITH CHECK ((enable_banking_item_id IN ( SELECT enable_banking_items.id
+  WHERE (enable_banking_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((enable_banking_item_id IN ( SELECT enable_banking_items.id
    FROM public.enable_banking_items
-  WHERE (enable_banking_items.family_id = public.current_family_id()))));
+  WHERE (enable_banking_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7245,7 +7245,7 @@ ALTER TABLE public.enable_banking_items ENABLE ROW LEVEL SECURITY;
 -- Name: enable_banking_items enable_banking_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY enable_banking_items_family_isolation_policy ON public.enable_banking_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY enable_banking_items_family_isolation_policy ON public.enable_banking_items USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7258,11 +7258,11 @@ ALTER TABLE public.entries ENABLE ROW LEVEL SECURITY;
 -- Name: entries entries_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY entries_family_isolation_policy ON public.entries USING ((account_id IN ( SELECT accounts.id
+CREATE POLICY entries_family_isolation_policy ON public.entries USING (((account_id IN ( SELECT accounts.id
    FROM public.accounts
-  WHERE (accounts.family_id = public.current_family_id())))) WITH CHECK ((account_id IN ( SELECT accounts.id
+  WHERE (accounts.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((account_id IN ( SELECT accounts.id
    FROM public.accounts
-  WHERE (accounts.family_id = public.current_family_id()))));
+  WHERE (accounts.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7288,7 +7288,7 @@ ALTER TABLE public.family_documents ENABLE ROW LEVEL SECURITY;
 -- Name: family_documents family_documents_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY family_documents_family_isolation_policy ON public.family_documents USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY family_documents_family_isolation_policy ON public.family_documents USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7314,7 +7314,7 @@ ALTER TABLE public.family_merchant_associations ENABLE ROW LEVEL SECURITY;
 -- Name: family_merchant_associations family_merchant_associations_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY family_merchant_associations_family_isolation_policy ON public.family_merchant_associations USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY family_merchant_associations_family_isolation_policy ON public.family_merchant_associations USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7327,7 +7327,7 @@ ALTER TABLE public.fleet_vehicles ENABLE ROW LEVEL SECURITY;
 -- Name: fleet_vehicles fleet_vehicles_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY fleet_vehicles_family_isolation_policy ON public.fleet_vehicles USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY fleet_vehicles_family_isolation_policy ON public.fleet_vehicles USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7340,15 +7340,15 @@ ALTER TABLE public.fuel_log_lines ENABLE ROW LEVEL SECURITY;
 -- Name: fuel_log_lines fuel_log_lines_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY fuel_log_lines_family_isolation_policy ON public.fuel_log_lines USING ((fuel_log_id IN ( SELECT fuel_logs.id
+CREATE POLICY fuel_log_lines_family_isolation_policy ON public.fuel_log_lines USING (((fuel_log_id IN ( SELECT fuel_logs.id
    FROM public.fuel_logs
   WHERE (fuel_logs.fleet_vehicle_id IN ( SELECT fleet_vehicles.id
            FROM public.fleet_vehicles
-          WHERE (fleet_vehicles.family_id = public.current_family_id())))))) WITH CHECK ((fuel_log_id IN ( SELECT fuel_logs.id
+          WHERE (fleet_vehicles.family_id = public.current_family_id()))))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((fuel_log_id IN ( SELECT fuel_logs.id
    FROM public.fuel_logs
   WHERE (fuel_logs.fleet_vehicle_id IN ( SELECT fleet_vehicles.id
            FROM public.fleet_vehicles
-          WHERE (fleet_vehicles.family_id = public.current_family_id()))))));
+          WHERE (fleet_vehicles.family_id = public.current_family_id()))))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7361,11 +7361,11 @@ ALTER TABLE public.fuel_logs ENABLE ROW LEVEL SECURITY;
 -- Name: fuel_logs fuel_logs_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY fuel_logs_family_isolation_policy ON public.fuel_logs USING ((fleet_vehicle_id IN ( SELECT fleet_vehicles.id
+CREATE POLICY fuel_logs_family_isolation_policy ON public.fuel_logs USING (((fleet_vehicle_id IN ( SELECT fleet_vehicles.id
    FROM public.fleet_vehicles
-  WHERE (fleet_vehicles.family_id = public.current_family_id())))) WITH CHECK ((fleet_vehicle_id IN ( SELECT fleet_vehicles.id
+  WHERE (fleet_vehicles.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((fleet_vehicle_id IN ( SELECT fleet_vehicles.id
    FROM public.fleet_vehicles
-  WHERE (fleet_vehicles.family_id = public.current_family_id()))));
+  WHERE (fleet_vehicles.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7378,11 +7378,11 @@ ALTER TABLE public.goal_accounts ENABLE ROW LEVEL SECURITY;
 -- Name: goal_accounts goal_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY goal_accounts_family_isolation_policy ON public.goal_accounts USING ((goal_id IN ( SELECT goals.id
+CREATE POLICY goal_accounts_family_isolation_policy ON public.goal_accounts USING (((goal_id IN ( SELECT goals.id
    FROM public.goals
-  WHERE (goals.family_id = public.current_family_id())))) WITH CHECK ((goal_id IN ( SELECT goals.id
+  WHERE (goals.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((goal_id IN ( SELECT goals.id
    FROM public.goals
-  WHERE (goals.family_id = public.current_family_id()))));
+  WHERE (goals.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7395,11 +7395,11 @@ ALTER TABLE public.goal_pledges ENABLE ROW LEVEL SECURITY;
 -- Name: goal_pledges goal_pledges_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY goal_pledges_family_isolation_policy ON public.goal_pledges USING ((goal_id IN ( SELECT goals.id
+CREATE POLICY goal_pledges_family_isolation_policy ON public.goal_pledges USING (((goal_id IN ( SELECT goals.id
    FROM public.goals
-  WHERE (goals.family_id = public.current_family_id())))) WITH CHECK ((goal_id IN ( SELECT goals.id
+  WHERE (goals.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((goal_id IN ( SELECT goals.id
    FROM public.goals
-  WHERE (goals.family_id = public.current_family_id()))));
+  WHERE (goals.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7412,7 +7412,7 @@ ALTER TABLE public.goals ENABLE ROW LEVEL SECURITY;
 -- Name: goals goals_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY goals_family_isolation_policy ON public.goals USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY goals_family_isolation_policy ON public.goals USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7425,11 +7425,11 @@ ALTER TABLE public.holdings ENABLE ROW LEVEL SECURITY;
 -- Name: holdings holdings_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY holdings_family_isolation_policy ON public.holdings USING ((account_id IN ( SELECT accounts.id
+CREATE POLICY holdings_family_isolation_policy ON public.holdings USING (((account_id IN ( SELECT accounts.id
    FROM public.accounts
-  WHERE (accounts.family_id = public.current_family_id())))) WITH CHECK ((account_id IN ( SELECT accounts.id
+  WHERE (accounts.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((account_id IN ( SELECT accounts.id
    FROM public.accounts
-  WHERE (accounts.family_id = public.current_family_id()))));
+  WHERE (accounts.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7442,11 +7442,11 @@ ALTER TABLE public.import_mappings ENABLE ROW LEVEL SECURITY;
 -- Name: import_mappings import_mappings_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY import_mappings_family_isolation_policy ON public.import_mappings USING ((import_id IN ( SELECT imports.id
+CREATE POLICY import_mappings_family_isolation_policy ON public.import_mappings USING (((import_id IN ( SELECT imports.id
    FROM public.imports
-  WHERE (imports.family_id = public.current_family_id())))) WITH CHECK ((import_id IN ( SELECT imports.id
+  WHERE (imports.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((import_id IN ( SELECT imports.id
    FROM public.imports
-  WHERE (imports.family_id = public.current_family_id()))));
+  WHERE (imports.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7459,11 +7459,11 @@ ALTER TABLE public.import_rows ENABLE ROW LEVEL SECURITY;
 -- Name: import_rows import_rows_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY import_rows_family_isolation_policy ON public.import_rows USING ((import_id IN ( SELECT imports.id
+CREATE POLICY import_rows_family_isolation_policy ON public.import_rows USING (((import_id IN ( SELECT imports.id
    FROM public.imports
-  WHERE (imports.family_id = public.current_family_id())))) WITH CHECK ((import_id IN ( SELECT imports.id
+  WHERE (imports.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((import_id IN ( SELECT imports.id
    FROM public.imports
-  WHERE (imports.family_id = public.current_family_id()))));
+  WHERE (imports.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7489,11 +7489,11 @@ ALTER TABLE public.indexa_capital_accounts ENABLE ROW LEVEL SECURITY;
 -- Name: indexa_capital_accounts indexa_capital_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY indexa_capital_accounts_family_isolation_policy ON public.indexa_capital_accounts USING ((indexa_capital_item_id IN ( SELECT indexa_capital_items.id
+CREATE POLICY indexa_capital_accounts_family_isolation_policy ON public.indexa_capital_accounts USING (((indexa_capital_item_id IN ( SELECT indexa_capital_items.id
    FROM public.indexa_capital_items
-  WHERE (indexa_capital_items.family_id = public.current_family_id())))) WITH CHECK ((indexa_capital_item_id IN ( SELECT indexa_capital_items.id
+  WHERE (indexa_capital_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((indexa_capital_item_id IN ( SELECT indexa_capital_items.id
    FROM public.indexa_capital_items
-  WHERE (indexa_capital_items.family_id = public.current_family_id()))));
+  WHERE (indexa_capital_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7506,7 +7506,7 @@ ALTER TABLE public.indexa_capital_items ENABLE ROW LEVEL SECURITY;
 -- Name: indexa_capital_items indexa_capital_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY indexa_capital_items_family_isolation_policy ON public.indexa_capital_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY indexa_capital_items_family_isolation_policy ON public.indexa_capital_items USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7519,7 +7519,7 @@ ALTER TABLE public.investments ENABLE ROW LEVEL SECURITY;
 -- Name: investments investments_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY investments_family_isolation_policy ON public.investments USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY investments_family_isolation_policy ON public.investments USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7545,7 +7545,7 @@ ALTER TABLE public.llm_usages ENABLE ROW LEVEL SECURITY;
 -- Name: llm_usages llm_usages_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY llm_usages_family_isolation_policy ON public.llm_usages USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY llm_usages_family_isolation_policy ON public.llm_usages USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7558,7 +7558,7 @@ ALTER TABLE public.loans ENABLE ROW LEVEL SECURITY;
 -- Name: loans loans_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY loans_family_isolation_policy ON public.loans USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY loans_family_isolation_policy ON public.loans USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7571,11 +7571,11 @@ ALTER TABLE public.lunchflow_accounts ENABLE ROW LEVEL SECURITY;
 -- Name: lunchflow_accounts lunchflow_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY lunchflow_accounts_family_isolation_policy ON public.lunchflow_accounts USING ((lunchflow_item_id IN ( SELECT lunchflow_items.id
+CREATE POLICY lunchflow_accounts_family_isolation_policy ON public.lunchflow_accounts USING (((lunchflow_item_id IN ( SELECT lunchflow_items.id
    FROM public.lunchflow_items
-  WHERE (lunchflow_items.family_id = public.current_family_id())))) WITH CHECK ((lunchflow_item_id IN ( SELECT lunchflow_items.id
+  WHERE (lunchflow_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((lunchflow_item_id IN ( SELECT lunchflow_items.id
    FROM public.lunchflow_items
-  WHERE (lunchflow_items.family_id = public.current_family_id()))));
+  WHERE (lunchflow_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7588,7 +7588,7 @@ ALTER TABLE public.lunchflow_items ENABLE ROW LEVEL SECURITY;
 -- Name: lunchflow_items lunchflow_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY lunchflow_items_family_isolation_policy ON public.lunchflow_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY lunchflow_items_family_isolation_policy ON public.lunchflow_items USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7601,7 +7601,7 @@ ALTER TABLE public.merchants ENABLE ROW LEVEL SECURITY;
 -- Name: merchants merchants_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY merchants_family_isolation_policy ON public.merchants USING (((family_id = public.current_family_id()) OR (family_id IS NULL))) WITH CHECK (((family_id = public.current_family_id()) OR (family_id IS NULL)));
+CREATE POLICY merchants_family_isolation_policy ON public.merchants USING (((family_id = public.current_family_id()) OR (family_id IS NULL) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (family_id IS NULL) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7614,11 +7614,11 @@ ALTER TABLE public.mercury_accounts ENABLE ROW LEVEL SECURITY;
 -- Name: mercury_accounts mercury_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY mercury_accounts_family_isolation_policy ON public.mercury_accounts USING ((mercury_item_id IN ( SELECT mercury_items.id
+CREATE POLICY mercury_accounts_family_isolation_policy ON public.mercury_accounts USING (((mercury_item_id IN ( SELECT mercury_items.id
    FROM public.mercury_items
-  WHERE (mercury_items.family_id = public.current_family_id())))) WITH CHECK ((mercury_item_id IN ( SELECT mercury_items.id
+  WHERE (mercury_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((mercury_item_id IN ( SELECT mercury_items.id
    FROM public.mercury_items
-  WHERE (mercury_items.family_id = public.current_family_id()))));
+  WHERE (mercury_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7631,7 +7631,7 @@ ALTER TABLE public.mercury_items ENABLE ROW LEVEL SECURITY;
 -- Name: mercury_items mercury_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY mercury_items_family_isolation_policy ON public.mercury_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY mercury_items_family_isolation_policy ON public.mercury_items USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7725,7 +7725,7 @@ ALTER TABLE public.other_assets ENABLE ROW LEVEL SECURITY;
 -- Name: other_assets other_assets_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY other_assets_family_isolation_policy ON public.other_assets USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY other_assets_family_isolation_policy ON public.other_assets USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7738,7 +7738,7 @@ ALTER TABLE public.other_liabilities ENABLE ROW LEVEL SECURITY;
 -- Name: other_liabilities other_liabilities_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY other_liabilities_family_isolation_policy ON public.other_liabilities USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY other_liabilities_family_isolation_policy ON public.other_liabilities USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7751,11 +7751,11 @@ ALTER TABLE public.plaid_accounts ENABLE ROW LEVEL SECURITY;
 -- Name: plaid_accounts plaid_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY plaid_accounts_family_isolation_policy ON public.plaid_accounts USING ((plaid_item_id IN ( SELECT plaid_items.id
+CREATE POLICY plaid_accounts_family_isolation_policy ON public.plaid_accounts USING (((plaid_item_id IN ( SELECT plaid_items.id
    FROM public.plaid_items
-  WHERE (plaid_items.family_id = public.current_family_id())))) WITH CHECK ((plaid_item_id IN ( SELECT plaid_items.id
+  WHERE (plaid_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((plaid_item_id IN ( SELECT plaid_items.id
    FROM public.plaid_items
-  WHERE (plaid_items.family_id = public.current_family_id()))));
+  WHERE (plaid_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7768,7 +7768,7 @@ ALTER TABLE public.plaid_items ENABLE ROW LEVEL SECURITY;
 -- Name: plaid_items plaid_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY plaid_items_family_isolation_policy ON public.plaid_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY plaid_items_family_isolation_policy ON public.plaid_items USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7781,11 +7781,11 @@ ALTER TABLE public.product_stock_movements ENABLE ROW LEVEL SECURITY;
 -- Name: product_stock_movements product_stock_movements_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY product_stock_movements_family_isolation_policy ON public.product_stock_movements USING ((product_id IN ( SELECT products.id
+CREATE POLICY product_stock_movements_family_isolation_policy ON public.product_stock_movements USING (((product_id IN ( SELECT products.id
    FROM public.products
-  WHERE (products.family_id = public.current_family_id())))) WITH CHECK ((product_id IN ( SELECT products.id
+  WHERE (products.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((product_id IN ( SELECT products.id
    FROM public.products
-  WHERE (products.family_id = public.current_family_id()))));
+  WHERE (products.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7798,7 +7798,7 @@ ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 -- Name: products products_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY products_family_isolation_policy ON public.products USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY products_family_isolation_policy ON public.products USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7811,7 +7811,7 @@ ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
 -- Name: properties properties_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY properties_family_isolation_policy ON public.properties USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY properties_family_isolation_policy ON public.properties USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7824,11 +7824,11 @@ ALTER TABLE public.purchase_order_items ENABLE ROW LEVEL SECURITY;
 -- Name: purchase_order_items purchase_order_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY purchase_order_items_family_isolation_policy ON public.purchase_order_items USING ((purchase_order_id IN ( SELECT purchase_orders.id
+CREATE POLICY purchase_order_items_family_isolation_policy ON public.purchase_order_items USING (((purchase_order_id IN ( SELECT purchase_orders.id
    FROM public.purchase_orders
-  WHERE (purchase_orders.family_id = public.current_family_id())))) WITH CHECK ((purchase_order_id IN ( SELECT purchase_orders.id
+  WHERE (purchase_orders.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((purchase_order_id IN ( SELECT purchase_orders.id
    FROM public.purchase_orders
-  WHERE (purchase_orders.family_id = public.current_family_id()))));
+  WHERE (purchase_orders.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7841,7 +7841,7 @@ ALTER TABLE public.purchase_orders ENABLE ROW LEVEL SECURITY;
 -- Name: purchase_orders purchase_orders_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY purchase_orders_family_isolation_policy ON public.purchase_orders USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY purchase_orders_family_isolation_policy ON public.purchase_orders USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7854,7 +7854,7 @@ ALTER TABLE public.receivables ENABLE ROW LEVEL SECURITY;
 -- Name: receivables receivables_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY receivables_family_isolation_policy ON public.receivables USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY receivables_family_isolation_policy ON public.receivables USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7867,7 +7867,7 @@ ALTER TABLE public.recurring_transactions ENABLE ROW LEVEL SECURITY;
 -- Name: recurring_transactions recurring_transactions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY recurring_transactions_family_isolation_policy ON public.recurring_transactions USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY recurring_transactions_family_isolation_policy ON public.recurring_transactions USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7880,11 +7880,11 @@ ALTER TABLE public.rejected_transfers ENABLE ROW LEVEL SECURITY;
 -- Name: rejected_transfers rejected_transfers_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY rejected_transfers_family_isolation_policy ON public.rejected_transfers USING ((public.current_family_id() IN ( SELECT transactions.family_id
+CREATE POLICY rejected_transfers_family_isolation_policy ON public.rejected_transfers USING (((public.current_family_id() IN ( SELECT transactions.family_id
    FROM public.transactions
-  WHERE (transactions.id = ANY (ARRAY[rejected_transfers.inflow_transaction_id, rejected_transfers.outflow_transaction_id]))))) WITH CHECK ((public.current_family_id() IN ( SELECT transactions.family_id
+  WHERE (transactions.id = ANY (ARRAY[rejected_transfers.inflow_transaction_id, rejected_transfers.outflow_transaction_id])))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((public.current_family_id() IN ( SELECT transactions.family_id
    FROM public.transactions
-  WHERE (transactions.id = ANY (ARRAY[rejected_transfers.inflow_transaction_id, rejected_transfers.outflow_transaction_id])))));
+  WHERE (transactions.id = ANY (ARRAY[rejected_transfers.inflow_transaction_id, rejected_transfers.outflow_transaction_id])))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7897,11 +7897,11 @@ ALTER TABLE public.rule_actions ENABLE ROW LEVEL SECURITY;
 -- Name: rule_actions rule_actions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY rule_actions_family_isolation_policy ON public.rule_actions USING ((rule_id IN ( SELECT rules.id
+CREATE POLICY rule_actions_family_isolation_policy ON public.rule_actions USING (((rule_id IN ( SELECT rules.id
    FROM public.rules
-  WHERE (rules.family_id = public.current_family_id())))) WITH CHECK ((rule_id IN ( SELECT rules.id
+  WHERE (rules.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((rule_id IN ( SELECT rules.id
    FROM public.rules
-  WHERE (rules.family_id = public.current_family_id()))));
+  WHERE (rules.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7914,11 +7914,11 @@ ALTER TABLE public.rule_conditions ENABLE ROW LEVEL SECURITY;
 -- Name: rule_conditions rule_conditions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY rule_conditions_family_isolation_policy ON public.rule_conditions USING ((root_rule_id IN ( SELECT rules.id
+CREATE POLICY rule_conditions_family_isolation_policy ON public.rule_conditions USING (((root_rule_id IN ( SELECT rules.id
    FROM public.rules
-  WHERE (rules.family_id = public.current_family_id())))) WITH CHECK ((root_rule_id IN ( SELECT rules.id
+  WHERE (rules.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((root_rule_id IN ( SELECT rules.id
    FROM public.rules
-  WHERE (rules.family_id = public.current_family_id()))));
+  WHERE (rules.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7931,11 +7931,11 @@ ALTER TABLE public.rule_runs ENABLE ROW LEVEL SECURITY;
 -- Name: rule_runs rule_runs_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY rule_runs_family_isolation_policy ON public.rule_runs USING ((rule_id IN ( SELECT rules.id
+CREATE POLICY rule_runs_family_isolation_policy ON public.rule_runs USING (((rule_id IN ( SELECT rules.id
    FROM public.rules
-  WHERE (rules.family_id = public.current_family_id())))) WITH CHECK ((rule_id IN ( SELECT rules.id
+  WHERE (rules.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((rule_id IN ( SELECT rules.id
    FROM public.rules
-  WHERE (rules.family_id = public.current_family_id()))));
+  WHERE (rules.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7961,11 +7961,11 @@ ALTER TABLE public.sale_items ENABLE ROW LEVEL SECURITY;
 -- Name: sale_items sale_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY sale_items_family_isolation_policy ON public.sale_items USING ((sale_id IN ( SELECT sales.id
+CREATE POLICY sale_items_family_isolation_policy ON public.sale_items USING (((sale_id IN ( SELECT sales.id
    FROM public.sales
-  WHERE (sales.family_id = public.current_family_id())))) WITH CHECK ((sale_id IN ( SELECT sales.id
+  WHERE (sales.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((sale_id IN ( SELECT sales.id
    FROM public.sales
-  WHERE (sales.family_id = public.current_family_id()))));
+  WHERE (sales.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -7978,7 +7978,7 @@ ALTER TABLE public.sales ENABLE ROW LEVEL SECURITY;
 -- Name: sales sales_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY sales_family_isolation_policy ON public.sales USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY sales_family_isolation_policy ON public.sales USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8006,11 +8006,11 @@ ALTER TABLE public.simplefin_accounts ENABLE ROW LEVEL SECURITY;
 -- Name: simplefin_accounts simplefin_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY simplefin_accounts_family_isolation_policy ON public.simplefin_accounts USING ((simplefin_item_id IN ( SELECT simplefin_items.id
+CREATE POLICY simplefin_accounts_family_isolation_policy ON public.simplefin_accounts USING (((simplefin_item_id IN ( SELECT simplefin_items.id
    FROM public.simplefin_items
-  WHERE (simplefin_items.family_id = public.current_family_id())))) WITH CHECK ((simplefin_item_id IN ( SELECT simplefin_items.id
+  WHERE (simplefin_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((simplefin_item_id IN ( SELECT simplefin_items.id
    FROM public.simplefin_items
-  WHERE (simplefin_items.family_id = public.current_family_id()))));
+  WHERE (simplefin_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8023,7 +8023,7 @@ ALTER TABLE public.simplefin_items ENABLE ROW LEVEL SECURITY;
 -- Name: simplefin_items simplefin_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY simplefin_items_family_isolation_policy ON public.simplefin_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY simplefin_items_family_isolation_policy ON public.simplefin_items USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8036,11 +8036,11 @@ ALTER TABLE public.snaptrade_accounts ENABLE ROW LEVEL SECURITY;
 -- Name: snaptrade_accounts snaptrade_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY snaptrade_accounts_family_isolation_policy ON public.snaptrade_accounts USING ((snaptrade_item_id IN ( SELECT snaptrade_items.id
+CREATE POLICY snaptrade_accounts_family_isolation_policy ON public.snaptrade_accounts USING (((snaptrade_item_id IN ( SELECT snaptrade_items.id
    FROM public.snaptrade_items
-  WHERE (snaptrade_items.family_id = public.current_family_id())))) WITH CHECK ((snaptrade_item_id IN ( SELECT snaptrade_items.id
+  WHERE (snaptrade_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((snaptrade_item_id IN ( SELECT snaptrade_items.id
    FROM public.snaptrade_items
-  WHERE (snaptrade_items.family_id = public.current_family_id()))));
+  WHERE (snaptrade_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8053,7 +8053,7 @@ ALTER TABLE public.snaptrade_items ENABLE ROW LEVEL SECURITY;
 -- Name: snaptrade_items snaptrade_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY snaptrade_items_family_isolation_policy ON public.snaptrade_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY snaptrade_items_family_isolation_policy ON public.snaptrade_items USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8066,11 +8066,11 @@ ALTER TABLE public.sophtron_accounts ENABLE ROW LEVEL SECURITY;
 -- Name: sophtron_accounts sophtron_accounts_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY sophtron_accounts_family_isolation_policy ON public.sophtron_accounts USING ((sophtron_item_id IN ( SELECT sophtron_items.id
+CREATE POLICY sophtron_accounts_family_isolation_policy ON public.sophtron_accounts USING (((sophtron_item_id IN ( SELECT sophtron_items.id
    FROM public.sophtron_items
-  WHERE (sophtron_items.family_id = public.current_family_id())))) WITH CHECK ((sophtron_item_id IN ( SELECT sophtron_items.id
+  WHERE (sophtron_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((sophtron_item_id IN ( SELECT sophtron_items.id
    FROM public.sophtron_items
-  WHERE (sophtron_items.family_id = public.current_family_id()))));
+  WHERE (sophtron_items.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8083,7 +8083,7 @@ ALTER TABLE public.sophtron_items ENABLE ROW LEVEL SECURITY;
 -- Name: sophtron_items sophtron_items_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY sophtron_items_family_isolation_policy ON public.sophtron_items USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY sophtron_items_family_isolation_policy ON public.sophtron_items USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8109,7 +8109,7 @@ ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 -- Name: subscriptions subscriptions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY subscriptions_family_isolation_policy ON public.subscriptions USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY subscriptions_family_isolation_policy ON public.subscriptions USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8135,11 +8135,11 @@ ALTER TABLE public.taggings ENABLE ROW LEVEL SECURITY;
 -- Name: taggings taggings_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY taggings_family_isolation_policy ON public.taggings USING ((tag_id IN ( SELECT tags.id
+CREATE POLICY taggings_family_isolation_policy ON public.taggings USING (((tag_id IN ( SELECT tags.id
    FROM public.tags
-  WHERE (tags.family_id = public.current_family_id())))) WITH CHECK ((tag_id IN ( SELECT tags.id
+  WHERE (tags.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((tag_id IN ( SELECT tags.id
    FROM public.tags
-  WHERE (tags.family_id = public.current_family_id()))));
+  WHERE (tags.family_id = public.current_family_id()))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8152,7 +8152,7 @@ ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
 -- Name: tags tags_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY tags_family_isolation_policy ON public.tags USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY tags_family_isolation_policy ON public.tags USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8165,19 +8165,19 @@ ALTER TABLE public.tool_calls ENABLE ROW LEVEL SECURITY;
 -- Name: tool_calls tool_calls_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY tool_calls_family_isolation_policy ON public.tool_calls USING ((message_id IN ( SELECT messages.id
+CREATE POLICY tool_calls_family_isolation_policy ON public.tool_calls USING (((message_id IN ( SELECT messages.id
    FROM public.messages
   WHERE (messages.chat_id IN ( SELECT chats.id
            FROM public.chats
           WHERE (chats.user_id IN ( SELECT users.id
                    FROM public.users
-                  WHERE (users.family_id = public.current_family_id())))))))) WITH CHECK ((message_id IN ( SELECT messages.id
+                  WHERE (users.family_id = public.current_family_id()))))))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((message_id IN ( SELECT messages.id
    FROM public.messages
   WHERE (messages.chat_id IN ( SELECT chats.id
            FROM public.chats
           WHERE (chats.user_id IN ( SELECT users.id
                    FROM public.users
-                  WHERE (users.family_id = public.current_family_id()))))))));
+                  WHERE (users.family_id = public.current_family_id()))))))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8190,7 +8190,7 @@ ALTER TABLE public.trades ENABLE ROW LEVEL SECURITY;
 -- Name: trades trades_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY trades_family_isolation_policy ON public.trades USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY trades_family_isolation_policy ON public.trades USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8203,7 +8203,7 @@ ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 -- Name: transactions transactions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY transactions_family_isolation_policy ON public.transactions USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY transactions_family_isolation_policy ON public.transactions USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8216,11 +8216,11 @@ ALTER TABLE public.transfers ENABLE ROW LEVEL SECURITY;
 -- Name: transfers transfers_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY transfers_family_isolation_policy ON public.transfers USING ((public.current_family_id() IN ( SELECT transactions.family_id
+CREATE POLICY transfers_family_isolation_policy ON public.transfers USING (((public.current_family_id() IN ( SELECT transactions.family_id
    FROM public.transactions
-  WHERE (transactions.id = ANY (ARRAY[transfers.inflow_transaction_id, transfers.outflow_transaction_id]))))) WITH CHECK ((public.current_family_id() IN ( SELECT transactions.family_id
+  WHERE (transactions.id = ANY (ARRAY[transfers.inflow_transaction_id, transfers.outflow_transaction_id])))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((public.current_family_id() IN ( SELECT transactions.family_id
    FROM public.transactions
-  WHERE (transactions.id = ANY (ARRAY[transfers.inflow_transaction_id, transfers.outflow_transaction_id])))));
+  WHERE (transactions.id = ANY (ARRAY[transfers.inflow_transaction_id, transfers.outflow_transaction_id])))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8246,7 +8246,7 @@ ALTER TABLE public.valuations ENABLE ROW LEVEL SECURITY;
 -- Name: valuations valuations_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY valuations_family_isolation_policy ON public.valuations USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY valuations_family_isolation_policy ON public.valuations USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8259,7 +8259,7 @@ ALTER TABLE public.vehicles ENABLE ROW LEVEL SECURITY;
 -- Name: vehicles vehicles_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY vehicles_family_isolation_policy ON public.vehicles USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY vehicles_family_isolation_policy ON public.vehicles USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8272,7 +8272,7 @@ ALTER TABLE public.versions ENABLE ROW LEVEL SECURITY;
 -- Name: versions versions_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY versions_family_isolation_policy ON public.versions USING ((family_id = public.current_family_id())) WITH CHECK ((family_id = public.current_family_id()));
+CREATE POLICY versions_family_isolation_policy ON public.versions USING (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((family_id = public.current_family_id()) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8297,6 +8297,7 @@ CREATE POLICY webauthn_credentials_family_isolation_policy ON public.webauthn_cr
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261007160000'),
 ('20261007150000'),
 ('20261007140000'),
 ('20261003041800'),
