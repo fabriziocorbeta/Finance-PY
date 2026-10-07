@@ -27,6 +27,9 @@
         <%= loan_form.number_field :term_months,
                                  label: t("loans.form.term_months"),
                                  placeholder: t("loans.form.term_months_placeholder") %>
+        <%= loan_form.select :amortization_method,
+                           [[t("loans.form.amortization_method_french"), "french"], [t("loans.form.amortization_method_german"), "german"]],
+                           { label: t("loans.form.amortization_method") } %>
       </div>
 
       <div>

@@ -8,6 +8,9 @@ es:
       interest_rate: Tasa de interés
       interest_rate_placeholder: '5.25'
       rate_type: Tipo de interés
+      amortization_method: Sistema de amortización
+      amortization_method_french: Francés (cuota fija)
+      amortization_method_german: Alemán (capital fijo)
       none: Ninguno
       subtype_none: Ninguno
       subtype_prompt: Seleccioná el tipo de préstamo
@@ -18,6 +21,11 @@ es:
     overview:
       interest_rate: Tasa de interés
       monthly_payment: Pago mensual
+      first_payment: Primera cuota
+      amortization_method: Sistema de amortización
+      amortization_method_french: Francés
+      amortization_method_german: Alemán
+      german_payment_hint: Decrece cada cuota (sistema alemán)
       not_applicable: N/A
       original_principal: Principal original
       remaining_principal: Principal restante
@@ -28,6 +36,11 @@ es:
       overview:
         interest_rate: Tasa de interés
         monthly_payment: Pago mensual
+        first_payment: Primera cuota
+        amortization_method: Sistema de amortización
+        amortization_method_french: Francés
+        amortization_method_german: Alemán
+        german_payment_hint: Decrece cada cuota (sistema alemán)
         not_applicable: No aplica
         original_principal: Capital original
         remaining_principal: Capital restante

@@ -1403,7 +1403,8 @@ CREATE TABLE public.loans (
     initial_balance numeric(19,4),
     locked_attributes jsonb DEFAULT '{}'::jsonb,
     subtype character varying,
-    family_id uuid
+    family_id uuid,
+    amortization_method character varying DEFAULT 'french'::character varying NOT NULL
 );
 
 ALTER TABLE ONLY public.loans FORCE ROW LEVEL SECURITY;
@@ -8296,6 +8297,7 @@ CREATE POLICY webauthn_credentials_family_isolation_policy ON public.webauthn_cr
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261007150000'),
 ('20261007140000'),
 ('20261003041800'),
 ('20261002150000'),
