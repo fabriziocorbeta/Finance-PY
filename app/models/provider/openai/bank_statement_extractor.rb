@@ -34,17 +34,24 @@ class Provider::Openai::BankStatementExtractor
     # the metadata-overwrite logic below stays deterministic regardless of
     # which thread happens to finish first.
     results = Concurrent::Array.new(chunks.size)
+    errors = Concurrent::Array.new
     pool = Concurrent::FixedThreadPool.new([ chunks.size, MAX_CONCURRENT_CHUNKS ].min)
 
     chunks.each_with_index do |chunk, index|
       pool.post do
         Rails.logger.info("BankStatementExtractor: Processing chunk #{index + 1}/#{chunks.size}")
         results[index] = process_chunk(chunk, index == 0)
+      rescue => e
+        # pool.post swallows exceptions; collect them so a failed chunk
+        # surfaces to the caller instead of leaving a nil result behind.
+        errors << e
       end
     end
 
     pool.shutdown
     pool.wait_for_termination
+
+    raise errors.first if errors.any?
 
     all_transactions = []
     metadata = {}
