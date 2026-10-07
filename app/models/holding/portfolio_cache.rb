@@ -60,8 +60,30 @@ class Holding::PortfolioCache
   private
     PriceWithPriority = Data.define(:price, :priority, :source)
 
+    # account.entries.trades returns entries whose entryable_type is "Trade",
+    # but has no DB-level guarantee the referenced Trade row still exists --
+    # entryable is a plain polymorphic (type, id) pair, not a real foreign
+    # key. A Trade deleted independently of its Entry (confirmed in
+    # production: a crashed sync, `undefined method 'security_id' for nil`)
+    # leaves exactly that: an Entry whose #entryable silently loads as nil.
+    # Every caller here (forward/reverse calculators, load_prices below)
+    # immediately does `trade_entry.entryable.security_id` with no nil
+    # check, so one bad row crashed every future sync for the account
+    # forever -- filter it out once, here, instead of guarding every call
+    # site, and log it loudly since it means an entry+entryable pair went
+    # out of sync somewhere and that's worth knowing about.
     def trades
-      @trades ||= account.entries.includes(entryable: :security).trades.chronological.to_a
+      @trades ||= account.entries.includes(entryable: :security).trades.chronological.to_a.select do |trade_entry|
+        if trade_entry.entryable.nil?
+          Rails.logger.error(
+            "Holding::PortfolioCache: entry #{trade_entry.id} (account #{account.id}) " \
+            "has entryable_type Trade but the Trade row is gone -- skipping it"
+          )
+          false
+        else
+          true
+        end
+      end
     end
 
     def trades_by_date
