@@ -32,7 +32,10 @@ class MfaController < ApplicationController
 
     if @user&.verify_otp_with_lockout?(params[:code])
       complete_mfa_sign_in(@user)
-      redirect_to root_path
+      # Same resume-the-pending-/oauth/authorize-request fix as
+      # SessionsController#create, for users with OTP MFA enabled -- see the
+      # comment there and in config/initializers/doorkeeper.rb.
+      redirect_to(session.delete(:return_to).presence || root_path)
     else
       flash.now[:alert] = t(".invalid_code")
       render :verify, status: :unprocessable_entity

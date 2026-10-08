@@ -68,7 +68,14 @@ class SessionsController < ApplicationController
         log_super_admin_override_login(user)
         @session = create_session_for(user)
         flash[:notice] = t("invitations.accept_choice.joined_household") if accept_pending_invitation_for(user)
-        redirect_to root_path
+        # If Doorkeeper's resource_owner_authenticator sent us here with a
+        # pending /oauth/authorize request (return_to, stored by StoreLocation
+        # on the GET to /sessions/new), resume it instead of always landing on
+        # the web dashboard -- otherwise every native app login (the only
+        # consumer of /oauth/authorize) dead-ends here with no error and the
+        # app never gets a token. consumed once: never leave it in session for
+        # a later, unrelated login to pick up.
+        redirect_to(session.delete(:return_to).presence || root_path)
       end
     else
       flash.now[:alert] = t(".invalid_credentials")

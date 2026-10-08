@@ -20,10 +20,22 @@ Doorkeeper.configure do
         # Return the authenticated user object as the resource owner.
         session_record.user
       else
-        redirect_to new_session_url
+        # return_to is read back by StoreLocation (already included app-wide)
+        # and consumed in SessionsController#create / MfaController#verify_code
+        # once login succeeds, so the user lands back here -- on this exact
+        # /oauth/authorize request -- instead of the web dashboard. Without
+        # it, any native app's PKCE login (email+password, the only method
+        # this flow supports) would be a dead end: Doorkeeper bounces the
+        # user to /sessions/new with no memory of the pending authorization,
+        # login succeeds, and the user is dropped on root_path with no
+        # financespy://oauth/callback ever firing -- the native app never
+        # gets a token, silently, with no error anywhere. request.original_url
+        # is always same-host (this request's own URL), so this can't be
+        # used as an open redirect.
+        redirect_to new_session_url(return_to: request.original_url)
       end
     else
-      redirect_to new_session_url
+      redirect_to new_session_url(return_to: request.original_url)
     end
   end
 
