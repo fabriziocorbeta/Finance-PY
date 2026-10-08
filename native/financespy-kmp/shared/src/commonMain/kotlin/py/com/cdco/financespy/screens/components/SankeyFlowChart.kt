@@ -110,7 +110,21 @@ internal fun computeSankeyLayers(sankeyDto: CashflowSankeyDto): SankeyLayerInfo 
         incomingMap[i]?.isNotEmpty() == true
     }
 
-    val centerLayer = if (hasIncomeSubs) 2 else 1
+    // Column 0 is for income nodes. A period with zero income (no salary,
+    // no deposits -- just expenses against savings) has NO nodes at all
+    // feeding into centerIdx, so column 0 would render completely empty
+    // while "Flujo de caja" still claimed column 1, crowding it against
+    // column 2 and overlapping its label with the first expense node's
+    // (observed on a real zero-income month: "Flujo de caja" and
+    // "Transporte" labels landed on top of each other). Only reserve
+    // column 1 for the center node when there's actually an income node
+    // to put in column 0.
+    val hasAnyIncomeNodes = incomingMap[centerIdx]?.isNotEmpty() == true
+    val centerLayer = when {
+        hasIncomeSubs -> 2
+        hasAnyIncomeNodes -> 1
+        else -> 0
+    }
 
     val hasExpenseSubs = nodes.indices.any { j ->
         j != centerIdx &&

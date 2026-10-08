@@ -4,6 +4,7 @@ import py.com.cdco.financespy.api.dto.CashflowSankeyDto
 import py.com.cdco.financespy.api.dto.SankeyLinkDto
 import py.com.cdco.financespy.api.dto.SankeyNodeDto
 import py.com.cdco.financespy.screens.components.computeVerticalLabelPositions
+import py.com.cdco.financespy.screens.components.computeSankeyLayers
 import py.com.cdco.financespy.screens.components.capNodesPerLayer
 import py.com.cdco.financespy.screens.components.maxNodesInAnyLayer
 import kotlin.test.Ignore
@@ -240,4 +241,68 @@ class SankeyFlowChartTest {
     }
 
     private fun CashflowSankeyDto.maxNodesInAnyLayerHelper(): Int = maxNodesInAnyLayer(this)
+
+    @Test
+    fun testComputeSankeyLayers_zeroIncomeMonth_centerNodeGetsColumnZero() {
+        // Reproduce el dataset real reportado 2026-10-08: mes sin ningún
+        // ingreso (total_income=0, cero nodos de ingreso), solo gastos --
+        // alguno con sub-categoría (Transporte -> Combustible). Antes de
+        // este fix centerLayer quedaba fijo en 1 incluso sin nodos de
+        // ingreso, dejando la columna 0 vacía y apretando "Flujo de caja"
+        // contra "Transporte", cuyas labels terminaban superpuestas en la
+        // pantalla real.
+        val nodes = listOf(
+            SankeyNodeDto(name = "Flujo de caja", value = 0.0, color = "#9E9E9E"),
+            SankeyNodeDto(name = "Transporte", value = 232550.0, color = "#2222EC"),
+            SankeyNodeDto(name = "Combustible", value = 232550.0, color = "#2222EC"),
+            SankeyNodeDto(name = "Comidas y bebidas", value = 154000.0, color = "#EC2222"),
+            SankeyNodeDto(name = "Schatzi ❤️", value = 6500.0, color = "#EC2277")
+        )
+        val links = listOf(
+            SankeyLinkDto(source = 0, target = 1, value = 232550.0, color = "#2222EC"),
+            SankeyLinkDto(source = 1, target = 2, value = 232550.0, color = "#2222EC"),
+            SankeyLinkDto(source = 0, target = 3, value = 154000.0, color = "#EC2222"),
+            SankeyLinkDto(source = 0, target = 4, value = 6500.0, color = "#EC2277")
+        )
+        val dto = CashflowSankeyDto(nodes = nodes, links = links)
+
+        val layerInfo = computeSankeyLayers(dto)
+
+        assertEquals(0, layerInfo.centerIdx)
+        // Sin ningún nodo de ingreso, "Flujo de caja" debe caer en la
+        // columna 0 (no en la 1, que quedaría vacía).
+        assertEquals(0, layerInfo.centerLayer)
+        assertEquals(0, layerInfo.layerMap[0]) // Flujo de caja
+        assertEquals(1, layerInfo.layerMap[1]) // Transporte (gasto agregador, columna adyacente al centro)
+        // Las hojas (sin sub-categorías propias) van a la columna más
+        // externa, igual que un nodo de ingreso hoja va a la columna 0 del
+        // otro lado -- regla "d3-sankey real" documentada arriba en
+        // computeSankeyLayers: solo el agregador ocupa la columna
+        // adyacente al centro.
+        assertEquals(2, layerInfo.layerMap[2]) // Combustible (hoja)
+        assertEquals(2, layerInfo.layerMap[3]) // Comidas y bebidas (hoja)
+        assertEquals(2, layerInfo.layerMap[4]) // Schatzi (hoja)
+        assertEquals(2, layerInfo.maxLayer)
+    }
+
+    @Test
+    fun testComputeSankeyLayers_withIncome_centerLayerUnchanged() {
+        // Caso normal (con ingreso) no debe cambiar de comportamiento.
+        val nodes = listOf(
+            SankeyNodeDto(name = "Salario", value = 930000.0, color = "#10A861"),
+            SankeyNodeDto(name = "Flujo de caja", value = 930000.0, color = "#9E9E9E"),
+            SankeyNodeDto(name = "Comida", value = 500000.0, color = "#EC2222")
+        )
+        val links = listOf(
+            SankeyLinkDto(source = 0, target = 1, value = 930000.0, color = "#10A861"),
+            SankeyLinkDto(source = 1, target = 2, value = 500000.0, color = "#EC2222")
+        )
+        val dto = CashflowSankeyDto(nodes = nodes, links = links)
+
+        val layerInfo = computeSankeyLayers(dto)
+
+        assertEquals(1, layerInfo.centerIdx)
+        assertEquals(1, layerInfo.centerLayer)
+        assertEquals(0, layerInfo.layerMap[0]) // Salario, ingreso hoja
+    }
 }
