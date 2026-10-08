@@ -149,5 +149,12 @@ class ChatViewModelTest {
 
         // Total network calls should be 2 (initial fetch + 1 poll)
         assertEquals(2, callCount)
+
+        // ChatViewModel now owns a child Job (so its polling coroutine can be
+        // cancelled independently when the chat screen is left -- see
+        // DisposableEffect in App.kt). That Job stays active until disposed,
+        // even once its coroutines finish, so runTest sees it as a leaked
+        // child of the test scope unless we dispose it here.
+        viewModel.dispose()
     }
 }

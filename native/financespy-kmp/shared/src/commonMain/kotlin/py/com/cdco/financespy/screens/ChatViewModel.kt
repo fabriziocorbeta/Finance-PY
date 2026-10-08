@@ -1,6 +1,8 @@
 package py.com.cdco.financespy.screens
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,11 +26,27 @@ class ChatViewModel(
     private val api: FinancePyApi,
     val chatId: String?
 ) {
+    // `scope` is MainActivity's Activity-lifetime lifecycleScope, shared by
+    // every ChatViewModel instance (a new one is created per chat screen
+    // visit via `remember(chatId) { ... }`, but none of them own a scope
+    // tied to that screen). Launching directly on it meant the 2s/90-try
+    // assistant-response poll from an old instance kept running for up to
+    // 3 minutes after navigating to a different chat -- nothing ever
+    // cancelled it. This child job is cancelled by `dispose()`, called from
+    // the composable's DisposableEffect when the screen leaves or chatId
+    // changes, without needing MainActivity's lifecycleScope to be touched.
+    private val vmJob = SupervisorJob(scope.coroutineContext[Job])
+    private val vmScope = CoroutineScope(scope.coroutineContext + vmJob)
+
     private val _state = MutableStateFlow(ChatUiState(isNewChat = chatId == "new" || chatId == null))
     val state: StateFlow<ChatUiState> = _state.asStateFlow()
 
     private var actualChatId: String? = if (chatId == "new") null else chatId
     private var isPolling = false
+
+    fun dispose() {
+        vmJob.cancel()
+    }
 
     init {
         if (actualChatId != null) {
@@ -38,7 +56,7 @@ class ChatViewModel(
 
     fun refresh() {
         val id = actualChatId ?: return
-        scope.launch {
+        vmScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
             try {
                 val response = api.fetchChat(id, page = 1)
@@ -57,7 +75,7 @@ class ChatViewModel(
     fun sendMessage(content: String, model: String? = null) {
         if (content.isBlank()) return
 
-        scope.launch {
+        vmScope.launch {
             _state.value = _state.value.copy(isSending = true, error = null)
             try {
                 if (actualChatId == null) {
@@ -89,7 +107,7 @@ class ChatViewModel(
 
     fun retryMessage() {
         val id = actualChatId ?: return
-        scope.launch {
+        vmScope.launch {
             _state.value = _state.value.copy(isSending = true, error = null)
             try {
                 val response = api.retryMessage(id)
@@ -113,7 +131,7 @@ class ChatViewModel(
 
         if (hasPending && !isPolling) {
             isPolling = true
-            scope.launch {
+            vmScope.launch {
                 pollForAssistantResponse()
             }
         }
