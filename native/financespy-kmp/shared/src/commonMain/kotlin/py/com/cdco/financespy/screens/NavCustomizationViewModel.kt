@@ -13,7 +13,15 @@ import py.com.cdco.financespy.navigation.NavPreferences
 data class NavCustomizationUiState(
     val pool: List<NavItem> = emptyList(),
     val selectedIds: List<String> = emptyList(),
-    val maxSelectable: Int = 6
+    // Debe ser igual a CORE_DEFAULT_ORDER.size: el default de fábrica llena
+    // la barra por completo (AppBottomNav la reparte con weight(1f) por ítem,
+    // sin límite de ancho fijo, así que no hay una razón de layout para un
+    // tope independiente). Derivado en vez de un literal para que agregar o
+    // sacar un ítem default no vuelva a desincronizar este número en
+    // silencio -- CHAT se agregó a CORE_DEFAULT_ORDER (7 ítems, antes 6) y
+    // este literal se había quedado en 6, dejando el estado inicial por
+    // encima de su propio máximo.
+    val maxSelectable: Int = NavItems.CORE_DEFAULT_ORDER.size
 )
 
 // El orden de la barra inferior se sincroniza entre dispositivos vía
