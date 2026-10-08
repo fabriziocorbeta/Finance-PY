@@ -62,6 +62,16 @@ class ChatViewModelTest {
 
             // First call happens immediately inside checkAndPoll / pollForAssistantResponse
             // Second call happens after the first 2-second delay
+            //
+            // Neither mock response includes ai_response_status/
+            // ai_response_message -- show.json.jbuilder never serializes
+            // those (confirmed by reading it), so a mock that includes them
+            // tests a shape the real server never sends. The original
+            // version of this mock DID include "ai_response_status":
+            // "pending", which is exactly why it never caught the real bug:
+            // checkAndPoll relied on that field, so polling never started
+            // after sending a message on a real device, even though this
+            // test passed.
             val responseJson = if (callCount <= 1) {
                 // Return a pending message
                 """
@@ -74,9 +84,7 @@ class ChatViewModelTest {
                       "id": "msg_1",
                       "type": "user_message",
                       "role": "user",
-                      "content": "Hello",
-                      "ai_response_status": "pending",
-                      "ai_response_message": "Generating..."
+                      "content": "Hello"
                     }
                   ]
                 }
@@ -93,8 +101,7 @@ class ChatViewModelTest {
                       "id": "msg_1",
                       "type": "user_message",
                       "role": "user",
-                      "content": "Hello",
-                      "ai_response_status": "completed"
+                      "content": "Hello"
                     },
                     {
                       "id": "msg_2",
@@ -135,7 +142,10 @@ class ChatViewModelTest {
             state = viewModel.state.value
         }
         assertTrue(state.messages.isNotEmpty(), "Messages should not be empty")
-        assertEquals("pending", state.messages[0].ai_response_status)
+        // Real server response never includes ai_response_status -- polling
+        // must have started from hasPendingReply's ordering check (last
+        // message is still a user message) instead.
+        assertEquals("user", state.messages[0].role)
 
         // Fast forward 2.1 seconds. The polling loop should trigger the second request
         scheduler.advanceTimeBy(2500)
@@ -145,7 +155,6 @@ class ChatViewModelTest {
         assertEquals(2, state.messages.size)
         assertEquals("assistant", state.messages[0].role) // Reversed order in state
         assertEquals("user", state.messages[1].role)
-        assertEquals("completed", state.messages[1].ai_response_status)
 
         // Total network calls should be 2 (initial fetch + 1 poll)
         assertEquals(2, callCount)

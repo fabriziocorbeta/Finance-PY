@@ -126,8 +126,7 @@ class ChatViewModel(
     private fun checkAndPoll(messages: List<MessageDto>?) {
         if (messages.isNullOrEmpty()) return
 
-        // Find if there's any pending user message
-        val hasPending = messages.any { it.type == "user_message" && it.ai_response_status == "pending" }
+        val hasPending = hasPendingReply(messages)
 
         if (hasPending && !isPolling) {
             isPolling = true
@@ -153,8 +152,7 @@ class ChatViewModel(
                 )
 
                 // If there's an assistant message for the last user message, or no more pending, stop
-                val hasPending = messages.any { it.type == "user_message" && it.ai_response_status == "pending" }
-                if (!hasPending) {
+                if (!hasPendingReply(messages)) {
                     break
                 }
 
@@ -169,5 +167,22 @@ class ChatViewModel(
             }
         }
         isPolling = false
+    }
+
+    // The server never serializes ai_response_status/ai_response_message
+    // (show.json.jbuilder has no such fields -- confirmed by reading it;
+    // those MessageDto fields are dead on the wire). checkAndPoll relying on
+    // `it.ai_response_status == "pending"` meant hasPending was always
+    // false, so polling never started after sending a message: the chat
+    // screen was stuck showing the user's message with a permanent "typing"
+    // indicator, even once the assistant had actually replied -- only
+    // leaving and reopening the chat (a fresh fetchChat, independent of
+    // polling) ever showed the reply. Confirmed live on a real device.
+    // Messages come back ordered oldest-first (server's `ordered` scope),
+    // so whether a reply is still pending can be inferred directly: no
+    // reply has arrived yet exactly when the last message is still a user
+    // message.
+    private fun hasPendingReply(messages: List<MessageDto>): Boolean {
+        return messages.lastOrNull()?.type == "user_message"
     }
 }
