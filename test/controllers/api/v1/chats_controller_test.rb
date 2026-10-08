@@ -90,6 +90,19 @@ class Api::V1::ChatsControllerTest < ActionDispatch::IntegrationTest
     response_body = JSON.parse(response.body)
     assert_equal Chat.generate_title("Cual es mi balance actual"), response_body["title"]
     refute_empty response_body["title"]
+
+    # show.json.jbuilder iterates @messages, which only `show` ever set --
+    # this action saved @message fine but never assigned @messages before
+    # rendering the same template, so every native "new chat" response came
+    # back with "messages": [] even though the first message had actually
+    # saved. Confirmed live on a real device: chat created with the right
+    # title, message persisted in the DB, chat screen stayed empty.
+    # (Not asserting an exact count: UserMessage's after_create_commit can
+    # enqueue the assistant reply synchronously depending on the job
+    # adapter, so a second message may already be present here.)
+    refute_empty response_body["messages"]
+    assert response_body["messages"].any? { |m| m["content"] == "Cual es mi balance actual" },
+      "expected the just-sent user message to be in the response, got: #{response_body["messages"].inspect}"
   end
 
   test "should not create chat with read scope" do

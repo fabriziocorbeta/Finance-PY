@@ -43,6 +43,13 @@ class Api::V1::ChatsController < Api::V1::BaseController
           # resulting in duplicate AI responses with different content and wasted tokens.
           # See: https://github.com/dwvwdv/sure (mobile app integration issue)
           # AssistantResponseJob.perform_later(@message)
+          #
+          # show.json.jbuilder iterates @messages -- show sets it, but this
+          # action never did, so every "new chat with first message" response
+          # rendered "messages": [] even though @message had just saved fine.
+          # Confirmed live: chat + title created correctly, message persisted,
+          # but the native app's chat screen stayed empty after sending.
+          @messages = @chat.messages.ordered
           render :show, status: :created
         else
           @chat.destroy
