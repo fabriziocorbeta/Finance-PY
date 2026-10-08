@@ -73,6 +73,25 @@ class Api::V1::ChatsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "New chat", response_body["title"]
   end
 
+  test "should create chat with a generated title when none is given (native app's actual call shape)" do
+    # AuthRepository.kt/ChatViewModel.kt always call
+    # createChat(title = null, message = content, model = model) -- confirmed
+    # live on a real device, every mobile "new chat" 422'd with
+    # "Title no puede estar vacío" because this endpoint passed a nil title
+    # straight to Chat#save instead of generating one the way web's
+    # Chat.start! does.
+    assert_difference "Chat.count" do
+      post "/api/v1/chats",
+        params: { message: "Cual es mi balance actual" },
+        headers: bearer_auth_header(@write_token)
+    end
+
+    assert_response :created
+    response_body = JSON.parse(response.body)
+    assert_equal Chat.generate_title("Cual es mi balance actual"), response_body["title"]
+    refute_empty response_body["title"]
+  end
+
   test "should not create chat with read scope" do
     post "/api/v1/chats",
       params: { title: "New chat" },
