@@ -17,7 +17,16 @@ class Api::V1::ChatsController < Api::V1::BaseController
   end
 
   def create
-    @chat = Current.user.chats.build(title: chat_params[:title])
+    # The native mobile app's "new chat" flow deliberately sends no title --
+    # same as web's own ChatsController#create (Chat.start!), it expects one
+    # generated from the first message. This endpoint never did that: it
+    # passed chat_params[:title] straight through, so a nil title always hit
+    # `validates :title, presence: true` and every mobile "new chat" 422'd
+    # with "Title no puede estar vacío" (confirmed live on a real device).
+    # The only existing test for this action always supplied an explicit
+    # title, so nothing caught it. Reuses Chat.generate_title (already used
+    # by Chat.start!) instead of duplicating its truncation logic here.
+    @chat = Current.user.chats.build(title: chat_params[:title].presence || generated_title)
 
     if @chat.save
       if chat_params[:message].present?
@@ -81,6 +90,16 @@ class Api::V1::ChatsController < Api::V1::BaseController
 
     def chat_params
       params.permit(:title, :message, :model)
+    end
+
+    # Falls back to "New chat" only if somehow neither a title nor a message
+    # was sent -- keeps the pre-existing "blank title with no message"
+    # failure mode (a validation error, not a crash) instead of introducing
+    # a new one here.
+    def generated_title
+      return "New chat" unless chat_params[:message].present?
+
+      Chat.generate_title(chat_params[:message])
     end
 
     def update_chat_params
