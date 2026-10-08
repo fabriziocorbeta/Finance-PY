@@ -139,7 +139,12 @@ class GoalFormViewModel(
                     color = s.color.ifBlank { null },
                     icon = s.icon.ifBlank { null },
                     notes = s.notes.ifBlank { null },
-                    account_ids = if (selectedAccountList.isNotEmpty()) selectedAccountList else null,
+                    // Siempre mandar la lista real (incluso vacía) en un update: null
+                    // significa "no tocar" para el backend, así que desvincular TODAS
+                    // las cuentas y guardar quedaba como no-op silencioso -- la meta
+                    // conservaba sus cuentas viejas pese a que la UI mostraba ninguna
+                    // seleccionada y el guardado "funcionaba" sin error.
+                    account_ids = selectedAccountList,
                     allocations = allocationsMap,
                     goal_accounts_attributes = goalAccountsAttrs
                 )

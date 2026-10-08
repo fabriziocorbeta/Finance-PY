@@ -65,6 +65,32 @@ fun FleetVehicleDetailScreen(
             ) {
                 CircularProgressIndicator(color = FinancePyColors.textPrimary())
             }
+        } else if (vehicle == null) {
+            // Carga inicial fallida (vehicle sigue null y ya no está
+            // loading): antes esto no tenía ningún branch, dejando al
+            // usuario en una pantalla en blanco para siempre, sin error ni
+            // forma de reintentar.
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = error ?: "No se pudo cargar el vehículo",
+                    color = FinancePyColors.textSecondary(),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = { viewModel.refresh() }) {
+                    Text("Reintentar")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(onClick = onBack) {
+                    Text("← Volver", color = FinancePyColors.textSecondary())
+                }
+            }
         } else if (vehicle != null) {
             val v = vehicle!!
             Column(

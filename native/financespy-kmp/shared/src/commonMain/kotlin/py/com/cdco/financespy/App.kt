@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -522,8 +523,17 @@ fun App(
 
                         composable(Routes.CHAT_DETAIL) { backStackEntry ->
                             val chatId = backStackEntry.arguments?.getString("chatId")
+                            val chatViewModel = remember(chatId) { chatViewModelFactory(chatId) }
+                            // Cancela el polling del asistente de ESTA instancia al salir de
+                            // la pantalla o al cambiar de chat -- sin esto quedaba corriendo
+                            // hasta 3 minutos en background sobre el chat viejo (el
+                            // ViewModel lanzaba sus corrutinas en el lifecycleScope de la
+                            // Activity, compartido entre todas las instancias).
+                            DisposableEffect(chatViewModel) {
+                                onDispose { chatViewModel.dispose() }
+                            }
                             ChatScreen(
-                                viewModel = remember(chatId) { chatViewModelFactory(chatId) },
+                                viewModel = chatViewModel,
                                 onBackClick = { navController.popBackStack() },
                                 onNavigateToPdfImport = { navController.navigate(Routes.PDF_STATEMENT_IMPORT) },
                                 chatId = chatId

@@ -143,8 +143,16 @@ class SettingsViewModel(
     private fun startPollingForExports() {
         stopPolling()
         pollingJob = scope.launch {
-            while (true) {
+            var attempts = 0
+            // Cap de intentos (3s * 60 = 3 minutos, igual ventana que el
+            // polling de ChatViewModel) -- sin esto, un export que queda
+            // trabado en "processing" en el backend hacía pollear cada 3s
+            // para siempre mientras viviera el proceso: SettingsViewModel
+            // es un singleton de vida de la Activity, no algo que se
+            // recree por pantalla, así que el loop nunca se cortaba solo.
+            while (attempts < 60) {
                 delay(3000)
+                attempts++
                 runCatching {
                     api.fetchFamilyExports().data
                 }.onSuccess { exports ->
