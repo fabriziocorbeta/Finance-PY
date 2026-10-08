@@ -54,7 +54,7 @@ class NavCustomizationViewModelTest {
         val prefs = FakeNavPreferences()
         val vm = NavCustomizationViewModel(testScope, prefs, FakeNavApi(), businessModeEnabled = false)
 
-        // CORE_DEFAULT_ORDER starts full (6/6, same as maxSelectable) -- this
+        // CORE_DEFAULT_ORDER starts full (same size as maxSelectable) -- this
         // is a fixed-size bottom bar, so adding a new item means swapping one
         // out first, same as a real user would. Toggling RULES straight away
         // on a fresh default state is a no-op by design (see
@@ -75,10 +75,14 @@ class NavCustomizationViewModelTest {
         val prefs = FakeNavPreferences()
         val vm = NavCustomizationViewModel(testScope, prefs, FakeNavApi(), businessModeEnabled = true)
 
-        // Ya hay 6 core seleccionados por default -> intentar agregar un 7mo no debe aplicarse.
-        assertEquals(6, vm.uiState.value.selectedIds.size)
+        // Ya hay CORE_DEFAULT_ORDER.size core seleccionados por default (la
+        // barra llena su propio máximo) -> intentar agregar uno de más no
+        // debe aplicarse. No un literal: ese literal (6) fue justo lo que se
+        // desincronizó cuando CHAT se sumó a CORE_DEFAULT_ORDER sin tocar
+        // maxSelectable.
+        assertEquals(NavItems.CORE_DEFAULT_ORDER.size, vm.uiState.value.selectedIds.size)
         vm.toggle(NavItems.PRODUCTS.id)
-        assertEquals(6, vm.uiState.value.selectedIds.size)
+        assertEquals(NavItems.CORE_DEFAULT_ORDER.size, vm.uiState.value.selectedIds.size)
         assertTrue(NavItems.PRODUCTS.id !in vm.uiState.value.selectedIds)
     }
 

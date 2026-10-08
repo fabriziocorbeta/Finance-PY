@@ -12,8 +12,17 @@ class OauthBasicTest < ActionDispatch::IntegrationTest
 
     get "/oauth/authorize?client_id=#{oauth_app.uid}&redirect_uri=#{CGI.escape(oauth_app.redirect_uri)}&response_type=code&scope=read"
 
-    # Should redirect to login page when not authenticated
-    assert_redirected_to new_session_path
+    # Should redirect to login page when not authenticated -- carrying
+    # return_to so logging in can resume this exact /oauth/authorize request
+    # instead of dropping the user on the dashboard (see
+    # OauthMobileLoginResumeTest for the full round trip; this test used to
+    # stop right here and assert that as the complete, correct behavior,
+    # which is exactly how a real dead end for every native app login shipped
+    # unnoticed).
+    assert_response :redirect
+    redirect_uri = URI.parse(response.location)
+    assert_equal new_session_path, redirect_uri.path
+    assert_match %r{\A https?://.*/oauth/authorize\?}x, CGI.parse(redirect_uri.query)["return_to"]&.first.to_s
   end
 
   test "oauth token endpoint exists and handles requests" do
