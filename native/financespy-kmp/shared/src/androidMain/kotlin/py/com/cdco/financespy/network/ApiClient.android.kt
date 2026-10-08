@@ -8,6 +8,9 @@ import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.forms.submitForm
 import io.ktor.http.Parameters
 import io.ktor.serialization.kotlinx.json.json
@@ -22,6 +25,20 @@ private const val CLIENT_ID = "Ti8y1yGMsJVyNv35wsWE2taV7NR4B3zdKduf7E5IZEM"
 actual fun createPlatformClient(tokenStorage: TokenStorage, config: HttpClientConfig<*>.() -> Unit): HttpClient {
     return HttpClient(OkHttp) {
         config()
+        // TEMP DEBUG: remove once diagnosed. Release strips android.util.Log
+        // calls (proguard-rules.pro), so write to a file instead.
+        install(Logging) {
+            level = LogLevel.ALL
+            logger = object : Logger {
+                override fun log(message: String) {
+                    try {
+                        java.io.File("/data/data/py.com.cdco.financespy/files/http_debug.log")
+                            .appendText(message + "\n")
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+        }
         install(Auth) {
             bearer {
                 sendWithoutRequest { true }
