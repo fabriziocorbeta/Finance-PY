@@ -95,10 +95,17 @@ class AddAuthBypassToRemainingForceRlsPolicies < ActiveRecord::Migration[7.2]
 
     def policy_definition(table, policy)
       conn = ActiveRecord::Base.connection
+      # No schemaname filter: prod runs everything under schema `financespy`,
+      # dev/test under `public`. Hardcoding either one made #up silently
+      # match zero rows -- and therefore do nothing at all -- in whichever
+      # environment doesn't use that literal schema name. Confirmed single-
+      # schema per environment (no pg_tables/pg_policies rows under any other
+      # schema in either), so matching on table+policy name alone is
+      # unambiguous and portable.
       row = conn.select_one(<<-SQL)
       SELECT qual, with_check
       FROM pg_policies
-      WHERE schemaname = 'public' AND tablename = #{conn.quote(table)}
+      WHERE tablename = #{conn.quote(table)}
         AND policyname = #{conn.quote(policy)}
     SQL
       return [ nil, nil ] if row.nil?
