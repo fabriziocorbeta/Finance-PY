@@ -1,0 +1,37 @@
+<%= render "layouts/shared/htmldoc" do %>
+  <div class="flex flex-col h-full bg-surface pt-[env(safe-area-inset-top)] overflow-y-auto">
+    <header class="sticky top-0 z-10 bg-surface border-b border-tertiary shrink-0">
+      <div class="max-w-5xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <%= link_to root_path, class: "text-secondary hover:text-primary" do %>
+            <%= icon "arrow-left", class: "w-5 h-5" %>
+          <% end %>
+          <span class="font-semibold text-primary">FinancePY Admin</span>
+        </div>
+        <nav class="flex items-center gap-1 text-sm">
+          <% [
+            [ "Dashboard", admin_root_path ],
+            [ "Usuarios", admin_users_path ],
+            [ "Familias", admin_families_path ],
+            [ "SSO", admin_sso_providers_path ]
+          ].each do |label, path| %>
+            <%= link_to label, path,
+                  class: class_names(
+                    "px-3 py-1.5 rounded-lg font-medium",
+                    current_page?(path) ? "bg-container-inset text-primary" : "text-secondary hover:text-primary"
+                  ) %>
+          <% end %>
+        </nav>
+      </div>
+    </header>
+
+    <main class="grow">
+      <div class="max-w-5xl mx-auto w-full px-4 md:px-6 py-6">
+        <% if content_for?(:page_title) %>
+          <h1 class="text-primary text-xl font-medium mb-4"><%= content_for :page_title %></h1>
+        <% end %>
+        <%= yield %>
+      </div>
+    </main>
+  </div>
+<% end %>

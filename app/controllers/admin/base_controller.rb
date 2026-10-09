@@ -14,7 +14,10 @@ module Admin
     # only ever activates for a verified super_admin.
     around_action :wrap_in_rls_auth_bypass
 
-    layout "settings"
+    # Its own standalone layout (header + top nav, no app sidebar) -- this is
+    # a platform-owner tool, not another entry under the family's own
+    # Settings menu, so it shouldn't look like one.
+    layout "admin"
 
     private
       def require_super_admin!

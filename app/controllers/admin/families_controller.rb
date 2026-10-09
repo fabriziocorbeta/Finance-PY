@@ -12,7 +12,8 @@ class Admin::FamiliesController < Admin::BaseController
     @last_login_by_user = Session.where(user_id: user_ids).group(:user_id).maximum(:created_at)
     @sessions_count_by_user = Session.where(user_id: user_ids).group(:user_id).count
 
-    @accounts_count = @family.accounts.count
+    @accounts = @family.accounts.order(:name)
+    @accounts_count = @accounts.size
     @transactions_count = Entry.joins(:account).where(accounts: { family_id: @family.id }).count
     @chats_count = Chat.joins(:user).where(users: { family_id: @family.id }).count
     @messages_count = Message.joins(chat: :user).where(users: { family_id: @family.id }).count
