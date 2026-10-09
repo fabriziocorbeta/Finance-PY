@@ -166,4 +166,81 @@ class ChatViewModelTest {
         // child of the test scope unless we dispose it here.
         viewModel.dispose()
     }
+
+    @Test
+    fun testSendMessagePrependsNewMessageAndStartsPolling() = scope.runTest {
+        var callCount = 0
+
+        val mockConfig = MockEngineConfig()
+        mockConfig.dispatcher = dispatcher
+        mockConfig.addHandler { request ->
+            callCount++
+            val responseJson = when {
+                // 1: initial refresh() -- one already-answered message, no polling
+                callCount == 1 -> """
+                {
+                  "id": "chat_1", "title": "Chat", "error": null,
+                  "messages": [
+                    {"id": "msg_1", "type": "user_message", "role": "user", "content": "Old"},
+                    {"id": "msg_2", "type": "assistant_message", "role": "assistant", "content": "Old reply"}
+                  ]
+                }
+                """.trimIndent()
+                // 2: POST send -- server returns the newly created user message
+                callCount == 2 -> """
+                {"id": "msg_3", "type": "user_message", "role": "user", "content": "New"}
+                """.trimIndent()
+                // 3: poll fetch -- assistant has now replied
+                else -> """
+                {
+                  "id": "chat_1", "title": "Chat", "error": null,
+                  "messages": [
+                    {"id": "msg_1", "type": "user_message", "role": "user", "content": "Old"},
+                    {"id": "msg_2", "type": "assistant_message", "role": "assistant", "content": "Old reply"},
+                    {"id": "msg_3", "type": "user_message", "role": "user", "content": "New"},
+                    {"id": "msg_4", "type": "assistant_message", "role": "assistant", "content": "New reply"}
+                  ]
+                }
+                """.trimIndent()
+            }
+            respond(
+                content = responseJson,
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        val mockEngine = MockEngine(mockConfig)
+        val httpClient = HttpClient(mockEngine) {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+        val api = FinancePyApi(httpClient)
+        val viewModel = ChatViewModel(scope, api, chatId = "chat_1")
+
+        scheduler.runCurrent()
+        assertEquals(2, viewModel.state.value.messages.size)
+
+        viewModel.sendMessage("New")
+        scheduler.runCurrent()
+
+        // The just-sent message must be prepended (index 0 = bottom of the
+        // reverseLayout=true chat screen), not appended to the end -- appending
+        // put brand-new messages at the visual TOP of the chat instead of the
+        // bottom, confirmed live on device.
+        var state = viewModel.state.value
+        assertEquals(3, state.messages.size)
+        assertEquals("msg_3", state.messages[0].id)
+
+        // Polling must have started right away (not derived from the
+        // newest-first display list, which hasPendingReply can't read
+        // correctly) -- advancing past the poll delay should resolve it.
+        scheduler.advanceTimeBy(2500)
+        scheduler.runCurrent()
+
+        state = viewModel.state.value
+        assertEquals(4, state.messages.size)
+        assertEquals("assistant", state.messages[0].role)
+        assertEquals(3, callCount)
+
+        viewModel.dispose()
+    }
 }

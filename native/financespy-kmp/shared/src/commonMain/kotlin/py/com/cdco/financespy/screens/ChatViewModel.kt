@@ -90,14 +90,22 @@ class ChatViewModel(
                     )
                     checkAndPoll(response.messages)
                 } else {
-                    // Send message to existing chat
+                    // Send message to existing chat. `_state.value.messages` is
+                    // newest-first (see refresh()'s `.reversed()`, rendered with
+                    // reverseLayout=true so index 0 sits at the bottom) -- the
+                    // new message must be prepended, not appended, or it renders
+                    // at the top instead of the bottom. checkAndPoll/hasPendingReply
+                    // expect oldest-first order, which this list isn't, so poll
+                    // directly instead of re-deriving "pending" from it: we just
+                    // sent a user message ourselves, so a reply is pending by
+                    // definition.
                     val response = api.sendMessage(actualChatId!!, content, model)
-                    val updatedMessages = _state.value.messages + response // Append to end
+                    val updatedMessages = listOf(response) + _state.value.messages
                     _state.value = _state.value.copy(
                         messages = updatedMessages,
                         isSending = false
                     )
-                    checkAndPoll(updatedMessages)
+                    startPolling()
                 }
             } catch (e: Exception) {
                 _state.value = _state.value.copy(isSending = false, error = e.message ?: "Error al enviar mensaje")
@@ -111,12 +119,12 @@ class ChatViewModel(
             _state.value = _state.value.copy(isSending = true, error = null)
             try {
                 val response = api.retryMessage(id)
-                val updatedMessages = _state.value.messages + response
+                val updatedMessages = listOf(response) + _state.value.messages
                 _state.value = _state.value.copy(
                     messages = updatedMessages,
                     isSending = false
                 )
-                checkAndPoll(updatedMessages)
+                startPolling()
             } catch (e: Exception) {
                  _state.value = _state.value.copy(isSending = false, error = e.message ?: "Error al reintentar mensaje")
             }
@@ -126,9 +134,13 @@ class ChatViewModel(
     private fun checkAndPoll(messages: List<MessageDto>?) {
         if (messages.isNullOrEmpty()) return
 
-        val hasPending = hasPendingReply(messages)
+        if (hasPendingReply(messages)) {
+            startPolling()
+        }
+    }
 
-        if (hasPending && !isPolling) {
+    private fun startPolling() {
+        if (!isPolling) {
             isPolling = true
             vmScope.launch {
                 pollForAssistantResponse()
