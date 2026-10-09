@@ -668,6 +668,7 @@ Rails.application.routes.draw do
 
   # Admin namespace for super admin functionality
   namespace :admin do
+    root "dashboard#index"
     resources :sso_providers do
       member do
         patch :toggle
