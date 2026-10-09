@@ -19,6 +19,9 @@ es:
         messages_7d: "Mensajes (7d)"
         messages_30d: "Mensajes (30d)"
         active_chat_families_7d: "Familias usando el chat (7d)"
+        export_csv: "Exportar CSV"
+        growth_section: "Altas (últimos 30 días)"
+        growth_caption: "%{total} familias nuevas en los últimos 30 días"
         recent_families_section: "Registros recientes"
         table:
           family: "Familia"

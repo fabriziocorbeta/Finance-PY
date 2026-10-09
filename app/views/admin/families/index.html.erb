@@ -1,8 +1,9 @@
 <%= content_for :page_title, "Business Mode" %>
 
 <div class="bg-container rounded-xl shadow-border-xs p-4">
-  <div class="mb-6">
+  <div class="mb-6 flex items-center justify-between gap-4">
     <p class="text-sm text-secondary">Toggle premium business features (inventory, sales, orders, fleet) per family.</p>
+    <%= render DS::Button.new(href: export_admin_families_path, method: :get, variant: "secondary", size: "sm", text: "Export CSV") %>
   </div>
 
   <table class="w-full text-sm">
@@ -16,7 +17,7 @@
     <tbody>
       <% @families.each do |family| %>
         <tr class="border-t border-divider">
-          <td class="py-3"><%= family.name %></td>
+          <td class="py-3"><%= link_to family.name, admin_family_path(family), class: "text-primary hover:underline" %></td>
           <td class="py-3">
             <% if family.business_mode_enabled? %>
               <span class="text-sm font-medium text-green-600">Enabled</span>
