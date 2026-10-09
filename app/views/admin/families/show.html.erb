@@ -1,0 +1,68 @@
+<%= content_for :page_title, @family.name.presence || "Family" %>
+
+<div class="bg-container rounded-xl shadow-border-xs p-4">
+  <div class="mb-6 flex items-center justify-between">
+    <div>
+      <%= link_to "← Back", admin_families_path, class: "text-sm text-secondary hover:underline" %>
+      <h1 class="text-xl font-semibold text-primary mt-1"><%= @family.name.presence || "Unnamed Family/Group" %></h1>
+      <p class="text-sm text-secondary">Signed up <%= @family.created_at.to_fs(:long) %></p>
+    </div>
+    <% sub = @family.subscription %>
+    <% if sub&.trialing? %>
+      <span class="text-sm text-secondary">Trial ends: <%= sub.trial_ends_at&.to_fs(:long) || "n/a" %></span>
+    <% elsif sub %>
+      <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+        <%= sub.active? ? "bg-green-100 text-green-800" : "bg-surface text-secondary" %>">
+        <%= sub.status.humanize %>
+      </span>
+    <% else %>
+      <span class="text-sm text-secondary">No subscription</span>
+    <% end %>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+    <% [
+      [ "Accounts", @accounts_count ],
+      [ "Transactions", @transactions_count ],
+      [ "Chats", @chats_count ],
+      [ "Messages", @messages_count ],
+      [ "Last activity", @last_activity_at&.to_fs(:long) || "Never" ]
+    ].each do |label, value| %>
+      <div class="bg-container-inset rounded-lg p-4">
+        <p class="text-xs font-medium text-secondary uppercase mb-2"><%= label %></p>
+        <p class="text-lg font-semibold text-primary"><%= value.is_a?(Numeric) ? number_with_delimiter(value) : value %></p>
+      </div>
+    <% end %>
+  </div>
+
+  <h2 class="text-lg font-semibold text-primary mb-3">Members</h2>
+  <div class="bg-container-inset rounded-lg overflow-hidden">
+    <table class="w-full">
+      <thead class="bg-surface-default border-b border-primary">
+        <tr>
+          <th class="px-4 py-2 text-left text-xs font-medium text-secondary uppercase">User</th>
+          <th class="px-4 py-2 text-left text-xs font-medium text-secondary uppercase">Role</th>
+          <th class="px-4 py-2 text-left text-xs font-medium text-secondary uppercase">Last login</th>
+          <th class="px-4 py-2 text-right text-xs font-medium text-secondary uppercase">Sessions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-alpha-black-200 theme-dark:divide-alpha-white-200">
+        <% @family.users.each do |user| %>
+          <tr>
+            <td class="px-4 py-3">
+              <p class="font-medium text-primary"><%= user.display_name %></p>
+              <p class="text-sm text-secondary"><%= user.email %></p>
+            </td>
+            <td class="px-4 py-3 text-sm text-primary"><%= user.role.humanize %></td>
+            <td class="px-4 py-3 text-sm text-primary whitespace-nowrap">
+              <%= @last_login_by_user[user.id]&.to_fs(:long) || "Never" %>
+            </td>
+            <td class="px-4 py-3 text-sm text-primary text-right">
+              <%= number_with_delimiter(@sessions_count_by_user[user.id] || 0) %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

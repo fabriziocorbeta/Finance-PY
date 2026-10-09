@@ -677,7 +677,10 @@ Rails.application.routes.draw do
     end
     resources :users, only: [ :index, :update ]
     resources :invitations, only: [ :destroy ]
-    resources :families, only: [ :index, :update ] do
+    resources :families, only: [ :index, :show, :update ] do
+      collection do
+        get :export, defaults: { format: "csv" }
+      end
       member do
         delete :invitations, to: "invitations#destroy_all"
       end

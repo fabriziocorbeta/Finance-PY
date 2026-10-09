@@ -45,4 +45,30 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     get admin_root_url
     assert_redirected_to root_path
   end
+
+  test "index renders a 30-day signup bar chart that reflects a family other than the admin's own" do
+    # dylan_family (owned by users(:family_admin), a different family than
+    # the signed-in admin's own "empty" family) was created by fixtures in
+    # the past, so it won't show in a *new* 30-day signup, but a freshly
+    # created family here will -- proving the chart isn't scoped to the
+    # admin's own family, which created nothing today.
+    Family.create!(name: "Cross-family signup test")
+
+    get admin_root_url
+    assert_response :success
+
+    doc = Nokogiri::HTML(response.body)
+    rects = doc.css("svg#admin-signup-chart rect")
+    assert_equal 30, rects.size
+    total_height = rects.sum { |r| r["height"].to_f }
+    assert_operator total_height, :>, 0
+  end
+
+  test "index links recent families to their admin show page" do
+    family = families(:dylan_family)
+
+    get admin_root_url
+    assert_response :success
+    assert_select "a[href=?]", admin_family_path(family)
+  end
 end

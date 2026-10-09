@@ -1,8 +1,9 @@
 <%= content_for :page_title, t(".title") %>
 
 <div class="bg-container rounded-xl shadow-border-xs p-4">
-  <div class="mb-6">
+  <div class="mb-6 flex items-center justify-between gap-4">
     <p class="text-sm text-secondary"><%= t(".description") %></p>
+    <%= render DS::Button.new(href: export_admin_families_path, method: :get, variant: "secondary", size: "sm", text: t(".export_csv")) %>
   </div>
 
   <h2 class="text-lg font-semibold text-primary mb-3"><%= t(".families_section") %></h2>
@@ -63,6 +64,28 @@
     <% end %>
   </div>
 
+  <h2 class="text-lg font-semibold text-primary mb-3"><%= t(".growth_section") %></h2>
+  <div class="bg-container-inset rounded-lg p-4 mb-6">
+    <% max_count = [@signup_counts_30d.max, 1].max %>
+    <% bar_width = 100.0 / @signup_counts_30d.size %>
+    <svg id="admin-signup-chart" viewBox="0 0 100 40" preserveAspectRatio="none" class="w-full h-24">
+      <% @signup_counts_30d.each_with_index do |count, i| %>
+        <% bar_height = (count.to_f / max_count) * 36 %>
+        <rect
+          x="<%= i * bar_width + 0.5 %>"
+          y="<%= 38 - bar_height %>"
+          width="<%= bar_width - 1 %>"
+          height="<%= bar_height %>"
+          rx="0.5"
+          class="fill-current text-blue-500"
+        >
+          <title><%= count %></title>
+        </rect>
+      <% end %>
+    </svg>
+    <p class="text-xs text-secondary mt-2"><%= t(".growth_caption", total: @signup_counts_30d.sum) %></p>
+  </div>
+
   <h2 class="text-lg font-semibold text-primary mb-3"><%= t(".recent_families_section") %></h2>
   <div class="bg-container-inset rounded-lg overflow-hidden">
     <table class="w-full">
@@ -76,7 +99,9 @@
       <tbody class="divide-y divide-alpha-black-200 theme-dark:divide-alpha-white-200">
         <% @recent_families.each do |family| %>
           <tr>
-            <td class="px-4 py-3 text-sm text-primary"><%= family.name.presence || "—" %></td>
+            <td class="px-4 py-3 text-sm text-primary">
+              <%= link_to family.name.presence || "—", admin_family_path(family), class: "hover:underline" %>
+            </td>
             <td class="px-4 py-3 text-sm text-secondary whitespace-nowrap"><%= family.created_at.to_fs(:long) %></td>
             <td class="px-4 py-3 text-right">
               <% sub = family.subscription %>
