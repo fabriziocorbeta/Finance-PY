@@ -1,0 +1,97 @@
+<%= content_for :page_title, t(".title") %>
+
+<div class="bg-container rounded-xl shadow-border-xs p-4">
+  <div class="mb-6">
+    <p class="text-sm text-secondary"><%= t(".description") %></p>
+  </div>
+
+  <h2 class="text-lg font-semibold text-primary mb-3"><%= t(".families_section") %></h2>
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+    <% [
+      [t(".total_families"), @total_families, "users"],
+      [t(".total_users"), @total_users, "user"],
+      [t(".new_7d"), @new_families_7d, "sparkles"],
+      [t(".active_7d"), @active_families_7d, "activity"],
+      [t(".active_30d"), @active_families_30d, "activity"]
+    ].each do |label, value, ic| %>
+      <div class="bg-container-inset rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <%= icon ic, class: "w-5 h-5 text-secondary" %>
+          <p class="text-xs font-medium text-secondary uppercase"><%= label %></p>
+        </div>
+        <p class="text-2xl font-semibold text-primary"><%= number_with_delimiter(value) %></p>
+      </div>
+    <% end %>
+  </div>
+
+  <h2 class="text-lg font-semibold text-primary mb-3"><%= t(".subscriptions_section") %></h2>
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+    <% @subscription_counts.each do |status, count| %>
+      <div class="bg-container-inset rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <%= icon "credit-card", class: "w-5 h-5 text-secondary" %>
+          <p class="text-xs font-medium text-secondary uppercase"><%= status.humanize %></p>
+        </div>
+        <p class="text-2xl font-semibold text-primary"><%= number_with_delimiter(count) %></p>
+      </div>
+    <% end %>
+    <div class="bg-container-inset rounded-lg p-4">
+      <div class="flex items-center gap-2 mb-2">
+        <%= icon "calendar-clock", class: "w-5 h-5 text-secondary" %>
+        <p class="text-xs font-medium text-secondary uppercase"><%= t(".trials_expiring_7_days") %></p>
+      </div>
+      <p class="text-2xl font-semibold text-primary"><%= @trials_expiring_7_days %></p>
+    </div>
+  </div>
+
+  <h2 class="text-lg font-semibold text-primary mb-3"><%= t(".assistant_section") %></h2>
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+    <% [
+      [t(".total_chats"), @total_chats, "message-circle"],
+      [t(".families_using_chat"), @families_using_chat_ever, "users"],
+      [t(".active_chat_families_7d"), @active_chat_families_7d, "activity"],
+      [t(".messages_7d"), @messages_7d, "send"],
+      [t(".messages_30d"), @messages_30d, "send"]
+    ].each do |label, value, ic| %>
+      <div class="bg-container-inset rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <%= icon ic, class: "w-5 h-5 text-secondary" %>
+          <p class="text-xs font-medium text-secondary uppercase"><%= label %></p>
+        </div>
+        <p class="text-2xl font-semibold text-primary"><%= number_with_delimiter(value) %></p>
+      </div>
+    <% end %>
+  </div>
+
+  <h2 class="text-lg font-semibold text-primary mb-3"><%= t(".recent_families_section") %></h2>
+  <div class="bg-container-inset rounded-lg overflow-hidden">
+    <table class="w-full">
+      <thead class="bg-surface-default border-b border-primary">
+        <tr>
+          <th class="px-4 py-2 text-left text-xs font-medium text-secondary uppercase"><%= t(".table.family") %></th>
+          <th class="px-4 py-2 text-left text-xs font-medium text-secondary uppercase"><%= t(".table.created_at") %></th>
+          <th class="px-4 py-2 text-right text-xs font-medium text-secondary uppercase"><%= t(".table.status") %></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-alpha-black-200 theme-dark:divide-alpha-white-200">
+        <% @recent_families.each do |family| %>
+          <tr>
+            <td class="px-4 py-3 text-sm text-primary"><%= family.name.presence || "—" %></td>
+            <td class="px-4 py-3 text-sm text-secondary whitespace-nowrap"><%= family.created_at.to_fs(:long) %></td>
+            <td class="px-4 py-3 text-right">
+              <% sub = family.subscription %>
+              <% if sub %>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                  <%= sub.active? ? "bg-green-100 text-green-800" : "bg-surface text-secondary" %>">
+                  <%= sub.status.humanize %>
+                </span>
+              <% else %>
+                <span class="text-xs text-secondary"><%= t(".no_subscription") %></span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

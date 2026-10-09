@@ -1,0 +1,27 @@
+es:
+  admin:
+    dashboard:
+      index:
+        title: "Panel de administración"
+        description: "Resumen de uso de toda la plataforma, de todas las familias."
+        families_section: "Familias"
+        total_families: "Familias totales"
+        new_7d: "Nuevas (7d)"
+        new_30d: "Nuevas (30d)"
+        active_7d: "Activas (7d)"
+        active_30d: "Activas (30d)"
+        total_users: "Usuarios totales"
+        subscriptions_section: "Suscripciones"
+        trials_expiring_7_days: "Pruebas que vencen en 7 días"
+        assistant_section: "Uso del asistente IA"
+        total_chats: "Chats totales"
+        families_using_chat: "Familias que usaron el asistente"
+        messages_7d: "Mensajes (7d)"
+        messages_30d: "Mensajes (30d)"
+        active_chat_families_7d: "Familias usando el chat (7d)"
+        recent_families_section: "Registros recientes"
+        table:
+          family: "Familia"
+          created_at: "Fecha de registro"
+          status: "Suscripción"
+        no_subscription: "Sin suscripción"

@@ -1,0 +1,27 @@
+en:
+  admin:
+    dashboard:
+      index:
+        title: "Admin Dashboard"
+        description: "Platform-wide usage overview, across all families."
+        families_section: "Families"
+        total_families: "Total families"
+        new_7d: "New (7d)"
+        new_30d: "New (30d)"
+        active_7d: "Active (7d)"
+        active_30d: "Active (30d)"
+        total_users: "Total users"
+        subscriptions_section: "Subscriptions"
+        trials_expiring_7_days: "Trials expiring in 7 days"
+        assistant_section: "AI Assistant Usage"
+        total_chats: "Total chats"
+        families_using_chat: "Families that used the assistant"
+        messages_7d: "Messages (7d)"
+        messages_30d: "Messages (30d)"
+        active_chat_families_7d: "Families using chat (7d)"
+        recent_families_section: "Recently signed up"
+        table:
+          family: "Family"
+          created_at: "Signed up"
+          status: "Subscription"
+        no_subscription: "No subscription"
