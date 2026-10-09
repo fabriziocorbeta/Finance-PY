@@ -64,11 +64,26 @@ class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_operator total_height, :>, 0
   end
 
-  test "index links recent families to their admin show page" do
+  test "index links families to their admin show page" do
     family = families(:dylan_family)
 
     get admin_root_url
     assert_response :success
     assert_select "a[href=?]", admin_family_path(family)
+  end
+
+  test "index shows member count and balance for a family other than the admin's own" do
+    family = families(:dylan_family)
+    expected_balance = Account.where(family: family, currency: family.currency).sum(:balance)
+    expected_money = Money.new(expected_balance, family.currency).format
+
+    get admin_root_url
+    assert_response :success
+
+    doc = Nokogiri::HTML(response.body)
+    row = doc.css("tbody tr").find { |tr| tr.text.include?(family.name) }
+    assert_not_nil row, "Expected a table row for #{family.name}"
+    assert_includes row.text, User.where(family_id: family.id).count.to_s
+    assert_includes row.text, expected_money
   end
 end

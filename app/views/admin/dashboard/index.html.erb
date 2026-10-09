@@ -86,24 +86,34 @@
     <p class="text-xs text-secondary mt-2"><%= t(".growth_caption", total: @signup_counts_30d.sum) %></p>
   </div>
 
-  <h2 class="text-lg font-semibold text-primary mb-3"><%= t(".recent_families_section") %></h2>
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-lg font-semibold text-primary"><%= t(".families_table_section") %></h2>
+    <span class="text-xs font-medium text-secondary bg-container-inset px-2.5 py-1 rounded-full"><%= @families.size %></span>
+  </div>
   <div class="bg-container-inset rounded-lg overflow-hidden">
     <table class="w-full">
       <thead class="bg-surface-default border-b border-primary">
         <tr>
           <th class="px-4 py-2 text-left text-xs font-medium text-secondary uppercase"><%= t(".table.family") %></th>
+          <th class="px-4 py-2 text-right text-xs font-medium text-secondary uppercase"><%= t(".table.members") %></th>
+          <th class="px-4 py-2 text-right text-xs font-medium text-secondary uppercase"><%= t(".table.balance") %></th>
+          <th class="px-4 py-2 text-left text-xs font-medium text-secondary uppercase"><%= t(".table.plan") %></th>
+          <th class="px-4 py-2 text-left text-xs font-medium text-secondary uppercase"><%= t(".table.last_activity") %></th>
           <th class="px-4 py-2 text-left text-xs font-medium text-secondary uppercase"><%= t(".table.created_at") %></th>
-          <th class="px-4 py-2 text-right text-xs font-medium text-secondary uppercase"><%= t(".table.status") %></th>
         </tr>
       </thead>
       <tbody class="divide-y divide-alpha-black-200 theme-dark:divide-alpha-white-200">
-        <% @recent_families.each do |family| %>
+        <% @families.each do |family| %>
           <tr>
             <td class="px-4 py-3 text-sm text-primary">
               <%= link_to family.name.presence || "—", admin_family_path(family), class: "hover:underline" %>
             </td>
-            <td class="px-4 py-3 text-sm text-secondary whitespace-nowrap"><%= family.created_at.to_fs(:long) %></td>
-            <td class="px-4 py-3 text-right">
+            <td class="px-4 py-3 text-sm text-primary text-right"><%= @member_count_by_family[family.id] || 0 %></td>
+            <td class="px-4 py-3 text-sm text-primary text-right whitespace-nowrap">
+              <% balance = @balance_by_family[family.id] %>
+              <%= balance ? balance.format : "—" %>
+            </td>
+            <td class="px-4 py-3">
               <% sub = family.subscription %>
               <% if sub %>
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
@@ -114,6 +124,10 @@
                 <span class="text-xs text-secondary"><%= t(".no_subscription") %></span>
               <% end %>
             </td>
+            <td class="px-4 py-3 text-sm text-secondary whitespace-nowrap">
+              <%= @last_activity_by_family[family.id]&.to_fs(:long) || t(".never") %>
+            </td>
+            <td class="px-4 py-3 text-sm text-secondary whitespace-nowrap"><%= family.created_at.to_fs(:long) %></td>
           </tr>
         <% end %>
       </tbody>

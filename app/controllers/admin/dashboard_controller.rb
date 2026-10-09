@@ -24,7 +24,28 @@ class Admin::DashboardController < Admin::BaseController
     @active_chat_families_7d = Message.where(created_at: 7.days.ago..)
       .joins(chat: :user).distinct.count("users.family_id")
 
-    @recent_families = Family.order(created_at: :desc).limit(10)
+    # Full families table, like the ERP admin panel's single-page "Usuarios
+    # del Sistema" table -- members, balance, plan and last activity all
+    # visible together, not just a name/date/status summary needing a click
+    # into each family to see any of it.
+    @families = Family.order(created_at: :desc)
+    family_ids = @families.map(&:id)
+
+    @member_count_by_family = User.where(family_id: family_ids).group(:family_id).count
+    @last_activity_by_family = Session.where(created_at: 90.days.ago..)
+      .joins(:user).group("users.family_id").maximum(:created_at)
+
+    # Summed only within each family's own primary currency -- accounts in a
+    # different currency exist (multi-currency families) but naively adding
+    # raw balances across currencies would produce a meaningless number, so
+    # those are left out of this total rather than silently misrepresented.
+    balances = Account.where(family_id: family_ids)
+      .where("accounts.currency = families.currency")
+      .joins(:family)
+      .group(:family_id, :currency).sum(:balance)
+    @balance_by_family = balances.each_with_object({}) do |((fam_id, currency), sum), h|
+      h[fam_id] = Money.new(sum, currency)
+    end
 
     # group's SQL key is a raw "DATE(created_at)" expression, not a typed
     # column, so Rails can't infer its Ruby type and the resulting hash keys
