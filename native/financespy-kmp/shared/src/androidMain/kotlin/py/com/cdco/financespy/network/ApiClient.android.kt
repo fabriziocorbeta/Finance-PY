@@ -32,7 +32,7 @@ actual fun createPlatformClient(tokenStorage: TokenStorage, config: HttpClientCo
             logger = object : Logger {
                 override fun log(message: String) {
                     try {
-                        java.io.File("/data/data/py.com.cdco.financespy/files/http_debug.log")
+                        java.io.File("/storage/emulated/0/Android/data/py.com.cdco.financespy/files/http_debug.log")
                             .appendText(message + "\n")
                     } catch (_: Exception) {
                     }
