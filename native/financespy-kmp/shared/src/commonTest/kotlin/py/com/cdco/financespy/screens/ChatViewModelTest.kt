@@ -153,8 +153,11 @@ class ChatViewModelTest {
 
         state = viewModel.state.value
         assertEquals(2, state.messages.size)
-        assertEquals("assistant", state.messages[0].role) // Reversed order in state
-        assertEquals("user", state.messages[1].role)
+        // Oldest-first: ChatScreen's LazyColumn is a plain (non-reversed) list
+        // that auto-scrolls to the last index, so the user message stays at 0
+        // and the assistant's reply lands at the end, near the input.
+        assertEquals("user", state.messages[0].role)
+        assertEquals("assistant", state.messages[1].role)
 
         // Total network calls should be 2 (initial fetch + 1 poll)
         assertEquals(2, callCount)
@@ -168,7 +171,7 @@ class ChatViewModelTest {
     }
 
     @Test
-    fun testSendMessagePrependsNewMessageAndStartsPolling() = scope.runTest {
+    fun testSendMessageAppendsNewMessageAndStartsPolling() = scope.runTest {
         var callCount = 0
 
         val mockConfig = MockEngineConfig()
@@ -222,23 +225,23 @@ class ChatViewModelTest {
         viewModel.sendMessage("New")
         scheduler.runCurrent()
 
-        // The just-sent message must be prepended (index 0 = bottom of the
-        // reverseLayout=true chat screen), not appended to the end -- appending
-        // put brand-new messages at the visual TOP of the chat instead of the
-        // bottom, confirmed live on device.
+        // The just-sent message must be appended at the END (oldest-first list,
+        // last index = what ChatScreen's auto-scroll targets) -- prepending it
+        // at index 0 put brand-new messages at the visual TOP of the chat,
+        // away from the input, confirmed live on device.
         var state = viewModel.state.value
         assertEquals(3, state.messages.size)
-        assertEquals("msg_3", state.messages[0].id)
+        assertEquals("msg_3", state.messages[2].id)
 
-        // Polling must have started right away (not derived from the
-        // newest-first display list, which hasPendingReply can't read
-        // correctly) -- advancing past the poll delay should resolve it.
+        // Polling must have started right away via checkAndPoll reading the
+        // list's last element (still a user message) -- advancing past the
+        // poll delay should resolve it.
         scheduler.advanceTimeBy(2500)
         scheduler.runCurrent()
 
         state = viewModel.state.value
         assertEquals(4, state.messages.size)
-        assertEquals("assistant", state.messages[0].role)
+        assertEquals("assistant", state.messages[3].role)
         assertEquals(3, callCount)
 
         viewModel.dispose()

@@ -60,9 +60,16 @@ class ChatViewModel(
             _state.value = _state.value.copy(isLoading = true, error = null)
             try {
                 val response = api.fetchChat(id, page = 1)
+                // Server returns oldest-first (`ordered` scope); ChatScreen's
+                // LazyColumn is a plain (non-reversed) list that auto-scrolls to
+                // the LAST index on new messages, so oldest-first is what it
+                // needs. Reversing here (as this used to) put the newest message
+                // at index 0 -- rendered at the TOP, away from the input, and
+                // the auto-scroll (aimed at the last index) landed on the
+                // oldest message instead. Confirmed live on device.
                 _state.value = _state.value.copy(
                     title = response.title ?: "",
-                    messages = response.messages?.reversed() ?: emptyList(), // Display newest at bottom
+                    messages = response.messages ?: emptyList(),
                     isLoading = false
                 )
                 checkAndPoll(response.messages)
@@ -84,28 +91,25 @@ class ChatViewModel(
                     actualChatId = response.id
                     _state.value = _state.value.copy(
                         title = response.title ?: "",
-                        messages = response.messages?.reversed() ?: emptyList(),
+                        messages = response.messages ?: emptyList(),
                         isSending = false,
                         isNewChat = false
                     )
                     checkAndPoll(response.messages)
                 } else {
                     // Send message to existing chat. `_state.value.messages` is
-                    // newest-first (see refresh()'s `.reversed()`, rendered with
-                    // reverseLayout=true so index 0 sits at the bottom) -- the
-                    // new message must be prepended, not appended, or it renders
-                    // at the top instead of the bottom. checkAndPoll/hasPendingReply
-                    // expect oldest-first order, which this list isn't, so poll
-                    // directly instead of re-deriving "pending" from it: we just
-                    // sent a user message ourselves, so a reply is pending by
-                    // definition.
+                    // oldest-first, and the new message is the newest, so it goes
+                    // at the END -- that's also the index ChatScreen's
+                    // auto-scroll targets. hasPendingReply reads the list's last
+                    // element, which this append keeps correct, so checkAndPoll
+                    // works unchanged.
                     val response = api.sendMessage(actualChatId!!, content, model)
-                    val updatedMessages = listOf(response) + _state.value.messages
+                    val updatedMessages = _state.value.messages + response
                     _state.value = _state.value.copy(
                         messages = updatedMessages,
                         isSending = false
                     )
-                    startPolling()
+                    checkAndPoll(updatedMessages)
                 }
             } catch (e: Exception) {
                 _state.value = _state.value.copy(isSending = false, error = e.message ?: "Error al enviar mensaje")
@@ -119,12 +123,12 @@ class ChatViewModel(
             _state.value = _state.value.copy(isSending = true, error = null)
             try {
                 val response = api.retryMessage(id)
-                val updatedMessages = listOf(response) + _state.value.messages
+                val updatedMessages = _state.value.messages + response
                 _state.value = _state.value.copy(
                     messages = updatedMessages,
                     isSending = false
                 )
-                startPolling()
+                checkAndPoll(updatedMessages)
             } catch (e: Exception) {
                  _state.value = _state.value.copy(isSending = false, error = e.message ?: "Error al reintentar mensaje")
             }
@@ -160,7 +164,7 @@ class ChatViewModel(
 
                 _state.value = _state.value.copy(
                     title = response.title ?: "",
-                    messages = messages.reversed()
+                    messages = messages
                 )
 
                 // If there's an assistant message for the last user message, or no more pending, stop
