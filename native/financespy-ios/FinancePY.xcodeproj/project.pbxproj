@@ -20,6 +20,12 @@
 		30000000000000000000000B /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B /* LoginView.swift */; };
 		30000000000000000000000C /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000C /* DashboardView.swift */; };
 		30000000000000000000000D /* TransactionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* TransactionsView.swift */; };
+		800000000000000000000001 /* FinancePyApi+AccountsWrite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000F /* FinancePyApi+AccountsWrite.swift */; };
+		800000000000000000000002 /* FinancePyApi+Transactions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800000000000000000000012 /* FinancePyApi+Transactions.swift */; };
+		800000000000000000000003 /* AccountDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800000000000000000000013 /* AccountDetailView.swift */; };
+		800000000000000000000004 /* AccountFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800000000000000000000014 /* AccountFormView.swift */; };
+		800000000000000000000005 /* DebtsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800000000000000000000015 /* DebtsListView.swift */; };
+		800000000000000000000006 /* TransactionFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800000000000000000000016 /* TransactionFormView.swift */; };
 		50000000000000000000B1 /* FinancePyApi+Receivables.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60000000000000000000B1 /* FinancePyApi+Receivables.swift */; };
 		50000000000000000000B2 /* ReceivableEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60000000000000000000B2 /* ReceivableEntity.swift */; };
 		50000000000000000000B3 /* ReceivablesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60000000000000000000B3 /* ReceivablesListView.swift */; };
@@ -63,6 +69,12 @@
 		20000000000000000000000C /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		20000000000000000000000D /* TransactionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionsView.swift; sourceTree = "<group>"; };
 		20000000000000000000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		20000000000000000000000F /* FinancePyApi+AccountsWrite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+AccountsWrite.swift"; sourceTree = "<group>"; };
+		800000000000000000000012 /* FinancePyApi+Transactions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Transactions.swift"; sourceTree = "<group>"; };
+		800000000000000000000013 /* AccountDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountDetailView.swift; sourceTree = "<group>"; };
+		800000000000000000000014 /* AccountFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountFormView.swift; sourceTree = "<group>"; };
+		800000000000000000000015 /* DebtsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebtsListView.swift; sourceTree = "<group>"; };
+		800000000000000000000016 /* TransactionFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionFormView.swift; sourceTree = "<group>"; };
 		60000000000000000000B1 /* FinancePyApi+Receivables.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Receivables.swift"; sourceTree = "<group>"; };
 		60000000000000000000B2 /* ReceivableEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceivableEntity.swift; sourceTree = "<group>"; };
 		60000000000000000000B3 /* ReceivablesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceivablesListView.swift; sourceTree = "<group>"; };
@@ -146,6 +158,8 @@
 			children = (
 				200000000000000000000005 /* ApiClient.swift */,
 				200000000000000000000006 /* FinancePyApi.swift */,
+				20000000000000000000000F /* FinancePyApi+AccountsWrite.swift */,
+				800000000000000000000012 /* FinancePyApi+Transactions.swift */,
 				60000000000000000000B1 /* FinancePyApi+Receivables.swift */,
 				6000000000000000000000A1 /* FinancePyApi+Reports.swift */,
 				6000000000000000000000A2 /* ReportsDto.swift */,
@@ -184,6 +198,10 @@
 				20000000000000000000000B /* LoginView.swift */,
 				20000000000000000000000C /* DashboardView.swift */,
 				20000000000000000000000D /* TransactionsView.swift */,
+				800000000000000000000013 /* AccountDetailView.swift */,
+				800000000000000000000014 /* AccountFormView.swift */,
+				800000000000000000000015 /* DebtsListView.swift */,
+				800000000000000000000016 /* TransactionFormView.swift */,
 				60000000000000000000B3 /* ReceivablesListView.swift */,
 				60000000000000000000B4 /* ReceivableDetailView.swift */,
 				60000000000000000000B5 /* ReceivableFormView.swift */,
@@ -301,6 +319,12 @@
 				30000000000000000000000B /* LoginView.swift in Sources */,
 				30000000000000000000000C /* DashboardView.swift in Sources */,
 				30000000000000000000000D /* TransactionsView.swift in Sources */,
+				800000000000000000000001 /* FinancePyApi+AccountsWrite.swift in Sources */,
+				800000000000000000000002 /* FinancePyApi+Transactions.swift in Sources */,
+				800000000000000000000003 /* AccountDetailView.swift in Sources */,
+				800000000000000000000004 /* AccountFormView.swift in Sources */,
+				800000000000000000000005 /* DebtsListView.swift in Sources */,
+				800000000000000000000006 /* TransactionFormView.swift in Sources */,
 				50000000000000000000B1 /* FinancePyApi+Receivables.swift in Sources */,
 				50000000000000000000B2 /* ReceivableEntity.swift in Sources */,
 				50000000000000000000B3 /* ReceivablesListView.swift in Sources */,
