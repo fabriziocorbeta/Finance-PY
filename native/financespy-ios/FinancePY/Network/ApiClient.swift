@@ -120,6 +120,71 @@ final class ApiClient {
     func request<T: Decodable>(method: String, path: String, queryItems: [URLQueryItem]? = nil) async throws -> T {
         try await request(method: method, path: path, queryItems: queryItems, body: Optional<EmptyBody>.none)
     }
+
+    // multipart/form-data upload (imports: PDF statements, Upay CSVs, ...).
+    // Separate from request(...) because none of the JSON call sites need
+    // this, and encoding a file inside a Codable body isn't a good fit for
+    // the shared JSONEncoder path above.
+    func uploadMultipart<T: Decodable>(
+        path: String,
+        fields: [String: String],
+        fileField: String,
+        fileData: Data,
+        fileName: String,
+        mimeType: String
+    ) async throws -> T {
+        guard let url = URL(string: "\(baseUrl)\(path)") else {
+            throw NetworkError.invalidUrl
+        }
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        urlRequest.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        if let token = tokenStorage.accessToken(), !token.isEmpty {
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        var body = Data()
+        for (key, value) in fields {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(value)\r\n".data(using: .utf8)!)
+        }
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"\(fileField)\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(fileData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        urlRequest.httpBody = body
+
+        let (data, response) = try await session.data(for: urlRequest)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 401 {
+            tokenStorage.clear()
+            throw NetworkError.unauthorized
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let errorBody = String(data: data, encoding: .utf8)
+            throw NetworkError.httpError(httpResponse.statusCode, errorBody)
+        }
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw NetworkError.decodingError(error)
+        }
+    }
 }
 
 private struct EmptyBody: Encodable {}

@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		73456153FD76419B92265BF3 /* FinancePyApi+Imports.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E142FA614C4A96A2B7C403 /* FinancePyApi+Imports.swift */; };
+		C770730918DB46E39247C3D6 /* ImportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20786A095E874684BBB5216C /* ImportsView.swift */; };
 		03F55B74FAAA7C3CCF2FACE6 /* RulesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9663AA6245B37971F33B64B5 /* RulesListView.swift */; };
 		2F29C57F2AE5974B8C8D90B4 /* RuleDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107CE41D6AEDFA883264A39C /* RuleDetailView.swift */; };
 		08DA427AAB717615A229F95B /* FinancePyApi+PurchaseOrders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05D34C3CA1215DFFA58CA0D0 /* FinancePyApi+PurchaseOrders.swift */; };
@@ -69,6 +71,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		E6E142FA614C4A96A2B7C403 /* FinancePyApi+Imports.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Imports.swift"; sourceTree = "<group>"; };
+		20786A095E874684BBB5216C /* ImportsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Imports/ImportsView.swift"; sourceTree = "<group>"; };
 		107CE41D6AEDFA883264A39C /* RuleDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RuleDetailView.swift; sourceTree = "<group>"; };
 		05D34C3CA1215DFFA58CA0D0 /* FinancePyApi+PurchaseOrders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+PurchaseOrders.swift"; path = "FinancePyApi+PurchaseOrders.swift"; sourceTree = "<group>"; };
 		111111112222222233333308 /* FinancePY.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FinancePY.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -188,6 +192,7 @@
 			children = (
 				200000000000000000000005 /* ApiClient.swift */,
 				200000000000000000000006 /* FinancePyApi.swift */,
+				E6E142FA614C4A96A2B7C403 /* FinancePyApi+Imports.swift */,
 				62D1091125867FAB53C55766 /* FinancePyApi+Products.swift */,
 				CDF0C6E6BAC3A5B36FDEED4A /* FinancePyApi+Rules.swift */,
 				491942CEAD8FA1AB390CA4DC /* FinancePyApi+Sales.swift */,
@@ -258,6 +263,7 @@
 				200000000000000000000025 /* ChatView.swift */,
 				400000000000000000000006 /* Fleet */,
 				CB550928C18E4FDFD633FFA1 /* Budgets */,
+				20786A095E874684BBB5216C /* ImportsView.swift */,
 			);
 			path = Screens;
 			sourceTree = "<group>";
@@ -375,6 +381,8 @@
 				300000000000000000000004 /* AuthRepository.swift in Sources */,
 				300000000000000000000005 /* ApiClient.swift in Sources */,
 				300000000000000000000006 /* FinancePyApi.swift in Sources */,
+				73456153FD76419B92265BF3 /* FinancePyApi+Imports.swift in Sources */,
+				C770730918DB46E39247C3D6 /* ImportsView.swift in Sources */,
 				300000000000000000000007 /* AccountEntity.swift in Sources */,
 				300000000000000000000008 /* EntryEntity.swift in Sources */,
 				300000000000000000000009 /* TransactionEntity.swift in Sources */,
