@@ -86,7 +86,7 @@ struct GoalFormView: View {
                         Text("No hay cuentas disponibles.")
                             .foregroundColor(.secondary)
                     } else {
-                        ForEach(availableAccounts) { account in
+                        ForEach(availableAccounts, id: \.id) { account in
                             VStack(alignment: .leading, spacing: 8) {
                                 Toggle(isOn: Binding(
                                     get: { selectedAccountIds.contains(account.id) },

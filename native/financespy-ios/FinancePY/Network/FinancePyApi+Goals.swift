@@ -131,15 +131,15 @@ extension FinancePyApi {
     }
 
     func createGoal(body: CreateGoalBody) async throws -> GoalDto {
-        return try await ApiClient.shared.request(path: "/api/v1/goals", method: "POST", body: body)
+        return try await ApiClient.shared.request(method: "POST", path: "/api/v1/goals", body: body)
     }
 
     func updateGoal(id: String, body: UpdateGoalBody) async throws -> GoalDto {
-        return try await ApiClient.shared.request(path: "/api/v1/goals/\(id)", method: "PATCH", body: body)
+        return try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/goals/\(id)", body: body)
     }
 
     func deleteGoal(id: String) async throws {
-        _ = try await ApiClient.shared.requestEmpty(path: "/api/v1/goals/\(id)", method: "DELETE")
+        let _: EmptyResponse = try await ApiClient.shared.request(method: "DELETE", path: "/api/v1/goals/\(id)")
     }
 
     func fetchGoalPledges(goalId: String) async throws -> [GoalPledgeDto] {
@@ -147,14 +147,14 @@ extension FinancePyApi {
     }
 
     func createGoalPledge(goalId: String, body: CreateGoalPledgeBody) async throws -> GoalPledgeDto {
-        return try await ApiClient.shared.request(path: "/api/v1/goals/\(goalId)/pledges", method: "POST", body: body)
+        return try await ApiClient.shared.request(method: "POST", path: "/api/v1/goals/\(goalId)/pledges", body: body)
     }
 
     func cancelGoalPledge(goalId: String, pledgeId: String) async throws {
-        _ = try await ApiClient.shared.requestEmpty(path: "/api/v1/goals/\(goalId)/pledges/\(pledgeId)", method: "DELETE")
+        let _: EmptyResponse = try await ApiClient.shared.request(method: "DELETE", path: "/api/v1/goals/\(goalId)/pledges/\(pledgeId)")
     }
 
     func renewGoalPledge(goalId: String, pledgeId: String) async throws -> GoalPledgeDto {
-        return try await ApiClient.shared.request(path: "/api/v1/goals/\(goalId)/pledges/\(pledgeId)/renew", method: "PATCH")
+        return try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/goals/\(goalId)/pledges/\(pledgeId)/renew")
     }
 }
