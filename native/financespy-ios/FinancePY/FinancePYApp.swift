@@ -135,7 +135,27 @@ BudgetDashboardView()
     private func performLogout() {
         Task {
             await AuthRepository.shared.logout()
+            clearLocalCache()
             isLoggedIn = false
+        }
+    }
+
+    // Logout only cleared the Keychain token -- the local SwiftData cache
+    // (synced from whoever was logged in before) stayed on disk and kept
+    // rendering in the UI for whichever account logs in next on the same
+    // device/simulator, until a fresh SyncEngine pass happened to overwrite
+    // it. Wipe it here so switching accounts never shows stale data from
+    // the previous session, even for a moment.
+    private func clearLocalCache() {
+        let context = container.mainContext
+        do {
+            try context.delete(model: TransactionEntity.self)
+            try context.delete(model: EntryEntity.self)
+            try context.delete(model: AccountEntity.self)
+            try context.delete(model: ReceivableEntity.self)
+            try context.save()
+        } catch {
+            print("Failed to clear local cache on logout: \(error.localizedDescription)")
         }
     }
 }
