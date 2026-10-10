@@ -7,7 +7,7 @@ appcompat = "1.7.0"
 # further -- re-check when CI runs.
 biometric = "1.1.0"
 kotlin = "2.1.0"
-agp = "8.7.3"
+agp = "9.4.1"
 compose-multiplatform = "1.7.3"
 ktor = "3.0.3"
 # Room 2.x is in maintenance mode (no breaking API changes vs the 2.7.0-alpha11
