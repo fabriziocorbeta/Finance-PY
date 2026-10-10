@@ -27,6 +27,9 @@
 		CFE698A02D1EFEC7F4A589AA /* FinancePyApi+Products.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62D1091125867FAB53C55766 /* FinancePyApi+Products.swift */; };
 		DEF891153882886F78FB0BF7 /* ProductFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50375225E1131449A1E4694C /* ProductFormView.swift */; };
 		FB7144BA278D600E4C369A16 /* RuleFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E463FE87897FD7C6E5445CC2 /* RuleFormView.swift */; };
+		39467CF1DD72A4AD63395F6C /* FinancePyApi+Budgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288E07487EB64788205A5808 /* FinancePyApi+Budgets.swift */; };
+		8EA6AC3B378C049981434F15 /* BudgetDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40ACC679E52F92898B1F1087 /* BudgetDashboardView.swift */; };
+		C548B3D9EA1624EE47329FFF /* BudgetAllocationEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD564449563CBFDC1D2CB77F /* BudgetAllocationEditorView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -52,6 +55,9 @@
 		9663AA6245B37971F33B64B5 /* RulesListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RulesListView.swift; sourceTree = "<group>"; };
 		CDF0C6E6BAC3A5B36FDEED4A /* FinancePyApi+Rules.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Rules.swift"; sourceTree = "<group>"; };
 		E463FE87897FD7C6E5445CC2 /* RuleFormView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RuleFormView.swift; sourceTree = "<group>"; };
+		288E07487EB64788205A5808 /* FinancePyApi+Budgets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Budgets.swift"; sourceTree = "<group>"; };
+		40ACC679E52F92898B1F1087 /* BudgetDashboardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BudgetDashboardView.swift; sourceTree = "<group>"; };
+		CD564449563CBFDC1D2CB77F /* BudgetAllocationEditorView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BudgetAllocationEditorView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -112,6 +118,7 @@
 				200000000000000000000006 /* FinancePyApi.swift */,
 				62D1091125867FAB53C55766 /* FinancePyApi+Products.swift */,
 				CDF0C6E6BAC3A5B36FDEED4A /* FinancePyApi+Rules.swift */,
+				288E07487EB64788205A5808 /* FinancePyApi+Budgets.swift */,
 			);
 			path = Network;
 			sourceTree = "<group>";
@@ -142,6 +149,7 @@
 				20000000000000000000000D /* TransactionsView.swift */,
 				91297912783D598CBA702514 /* Products */,
 				CD6AA8128A2C69DB0DDCCBCB /* Rules */,
+				CB550928C18E4FDFD633FFA1 /* Budgets */,
 			);
 			path = Screens;
 			sourceTree = "<group>";
@@ -165,6 +173,16 @@
 			);
 			name = Rules;
 			path = Rules;
+			sourceTree = "<group>";
+		};
+		CB550928C18E4FDFD633FFA1 /* Budgets */ = {
+			isa = PBXGroup;
+			children = (
+				40ACC679E52F92898B1F1087 /* BudgetDashboardView.swift */,
+				CD564449563CBFDC1D2CB77F /* BudgetAllocationEditorView.swift */,
+			);
+			name = Budgets;
+			path = Budgets;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -254,6 +272,9 @@
 				03F55B74FAAA7C3CCF2FACE6 /* RulesListView.swift in Sources */,
 				2F29C57F2AE5974B8C8D90B4 /* RuleDetailView.swift in Sources */,
 				FB7144BA278D600E4C369A16 /* RuleFormView.swift in Sources */,
+				8EA6AC3B378C049981434F15 /* BudgetDashboardView.swift in Sources */,
+				C548B3D9EA1624EE47329FFF /* BudgetAllocationEditorView.swift in Sources */,
+				39467CF1DD72A4AD63395F6C /* FinancePyApi+Budgets.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
