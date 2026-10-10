@@ -81,6 +81,11 @@ BudgetDashboardView()
                 .tabItem {
                     Label("Transacciones", systemImage: "list.bullet.rectangle")
                 }
+
+            FleetListView()
+                .tabItem {
+                    Label("Flota", systemImage: "car.fill")
+                }
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
