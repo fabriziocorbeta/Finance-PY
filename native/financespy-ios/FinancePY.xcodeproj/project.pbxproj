@@ -24,6 +24,9 @@
 		300000000000000000000013 /* FinancePyApi+Fleet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30000000000000000000000F /* FinancePyApi+Fleet.swift */; };
 		300000000000000000000014 /* FleetListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300000000000000000000010 /* FleetListView.swift */; };
 		300000000000000000000015 /* FleetVehicleDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300000000000000000000011 /* FleetVehicleDetailView.swift */; };
+		39467CF1DD72A4AD63395F6C /* FinancePyApi+Budgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288E07487EB64788205A5808 /* FinancePyApi+Budgets.swift */; };
+		8EA6AC3B378C049981434F15 /* BudgetDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40ACC679E52F92898B1F1087 /* BudgetDashboardView.swift */; };
+		C548B3D9EA1624EE47329FFF /* BudgetAllocationEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD564449563CBFDC1D2CB77F /* BudgetAllocationEditorView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +49,9 @@
 		30000000000000000000000F /* FinancePyApi+Fleet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Fleet.swift"; sourceTree = "<group>"; };
 		300000000000000000000010 /* FleetListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetListView.swift; sourceTree = "<group>"; };
 		300000000000000000000011 /* FleetVehicleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetVehicleDetailView.swift; sourceTree = "<group>"; };
+		288E07487EB64788205A5808 /* FinancePyApi+Budgets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Budgets.swift"; sourceTree = "<group>"; };
+		40ACC679E52F92898B1F1087 /* BudgetDashboardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BudgetDashboardView.swift; sourceTree = "<group>"; };
+		CD564449563CBFDC1D2CB77F /* BudgetAllocationEditorView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BudgetAllocationEditorView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -106,6 +112,7 @@
 				200000000000000000000006 /* FinancePyApi.swift */,
 				30000000000000000000000F /* FinancePyApi+Fleet.swift */,
 				30000000000000000000000E /* FleetDto.swift */,
+				288E07487EB64788205A5808 /* FinancePyApi+Budgets.swift */,
 			);
 			path = Network;
 			sourceTree = "<group>";
@@ -135,6 +142,7 @@
 				20000000000000000000000C /* DashboardView.swift */,
 				20000000000000000000000D /* TransactionsView.swift */,
 				400000000000000000000006 /* Fleet */,
+				CB550928C18E4FDFD633FFA1 /* Budgets */,
 			);
 			path = Screens;
 			sourceTree = "<group>";
@@ -146,6 +154,16 @@
 				300000000000000000000011 /* FleetVehicleDetailView.swift */,
 			);
 			path = Fleet;
+			sourceTree = "<group>";
+		};
+		CB550928C18E4FDFD633FFA1 /* Budgets */ = {
+			isa = PBXGroup;
+			children = (
+				40ACC679E52F92898B1F1087 /* BudgetDashboardView.swift */,
+				CD564449563CBFDC1D2CB77F /* BudgetAllocationEditorView.swift */,
+			);
+			name = Budgets;
+			path = Budgets;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -233,6 +251,9 @@
 				300000000000000000000014 /* FleetListView.swift in Sources */,
 				300000000000000000000015 /* FleetVehicleDetailView.swift in Sources */,
 
+				8EA6AC3B378C049981434F15 /* BudgetDashboardView.swift in Sources */,
+				C548B3D9EA1624EE47329FFF /* BudgetAllocationEditorView.swift in Sources */,
+				39467CF1DD72A4AD63395F6C /* FinancePyApi+Budgets.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

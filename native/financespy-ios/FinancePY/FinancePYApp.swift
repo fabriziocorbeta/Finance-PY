@@ -67,6 +67,11 @@ struct MainTabView: View {
 
     var body: some View {
         TabView {
+BudgetDashboardView()
+    .tabItem {
+        Label("Presupuesto", systemImage: "chart.pie.fill")
+    }
+
             DashboardView(syncEngine: syncEngine)
                 .tabItem {
                     Label("Inicio", systemImage: "house.fill")
