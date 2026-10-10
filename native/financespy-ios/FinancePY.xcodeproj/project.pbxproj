@@ -20,6 +20,11 @@
 		30000000000000000000000B /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B /* LoginView.swift */; };
 		30000000000000000000000C /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000C /* DashboardView.swift */; };
 		30000000000000000000000D /* TransactionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* TransactionsView.swift */; };
+		300000000000000000000021 /* FinancePyApi+Chat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000021 /* FinancePyApi+Chat.swift */; };
+		300000000000000000000022 /* ChatsListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000022 /* ChatsListViewModel.swift */; };
+		300000000000000000000023 /* ChatsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000023 /* ChatsListView.swift */; };
+		300000000000000000000024 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000024 /* ChatViewModel.swift */; };
+		300000000000000000000025 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000025 /* ChatView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +43,11 @@
 		20000000000000000000000C /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		20000000000000000000000D /* TransactionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionsView.swift; sourceTree = "<group>"; };
 		20000000000000000000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		200000000000000000000021 /* FinancePyApi+Chat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinancePyApi+Chat.swift; sourceTree = "<group>"; };
+		200000000000000000000022 /* ChatsListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatsListViewModel.swift; sourceTree = "<group>"; };
+		200000000000000000000023 /* ChatsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatsListView.swift; sourceTree = "<group>"; };
+		200000000000000000000024 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
+		200000000000000000000025 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -96,6 +106,7 @@
 			children = (
 				200000000000000000000005 /* ApiClient.swift */,
 				200000000000000000000006 /* FinancePyApi.swift */,
+				200000000000000000000021 /* FinancePyApi+Chat.swift */,
 			);
 			path = Network;
 			sourceTree = "<group>";
@@ -124,6 +135,10 @@
 				20000000000000000000000B /* LoginView.swift */,
 				20000000000000000000000C /* DashboardView.swift */,
 				20000000000000000000000D /* TransactionsView.swift */,
+				200000000000000000000022 /* ChatsListViewModel.swift */,
+				200000000000000000000023 /* ChatsListView.swift */,
+				200000000000000000000024 /* ChatViewModel.swift */,
+				200000000000000000000025 /* ChatView.swift */,
 			);
 			path = Screens;
 			sourceTree = "<group>";
@@ -208,6 +223,11 @@
 				30000000000000000000000B /* LoginView.swift in Sources */,
 				30000000000000000000000C /* DashboardView.swift in Sources */,
 				30000000000000000000000D /* TransactionsView.swift in Sources */,
+				300000000000000000000021 /* FinancePyApi+Chat.swift in Sources */,
+				300000000000000000000022 /* ChatsListViewModel.swift in Sources */,
+				300000000000000000000023 /* ChatsListView.swift in Sources */,
+				300000000000000000000024 /* ChatViewModel.swift in Sources */,
+				300000000000000000000025 /* ChatView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

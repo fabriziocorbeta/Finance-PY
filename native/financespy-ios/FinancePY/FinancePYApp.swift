@@ -76,6 +76,11 @@ struct MainTabView: View {
                 .tabItem {
                     Label("Transacciones", systemImage: "list.bullet.rectangle")
                 }
+
+            ChatsListView()
+                .tabItem {
+                    Label("Asistente IA", systemImage: "sparkles")
+                }
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
