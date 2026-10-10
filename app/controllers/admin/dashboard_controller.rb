@@ -47,16 +47,17 @@ class Admin::DashboardController < Admin::BaseController
       h[fam_id] = Money.new(sum, currency)
     end
 
-    # group's SQL key is a raw "DATE(created_at)" expression, not a typed
-    # column, so Rails can't infer its Ruby type and the resulting hash keys
-    # may come back as Date or as String depending on adapter version --
-    # stringify both sides to compare reliably instead of relying on Date
-    # equality holding across that gap.
+    # Bucketed in Ruby, not via SQL `group("DATE(created_at)")` -- that
+    # truncates using Postgres' *session* timezone, which doesn't
+    # necessarily match Rails' app timezone (Time.current/.to_date below).
+    # Near either timezone's midnight boundary the two can disagree on what
+    # "today" even is, silently dropping a just-created family from every
+    # bucket (confirmed flaky in CI). Only 30 days of rows, so grouping
+    # in-memory is cheap and removes the ambiguity entirely.
     signups_by_day = Family.where(created_at: 30.days.ago.beginning_of_day..)
-      .group("DATE(created_at)").count
-      .transform_keys(&:to_s)
+      .pluck(:created_at).group_by(&:to_date).transform_values(&:size)
     @signup_counts_30d = (0..29).map do |days_ago|
-      signups_by_day[days_ago.days.ago.to_date.to_s] || 0
+      signups_by_day[days_ago.days.ago.to_date] || 0
     end.reverse
   end
 end
