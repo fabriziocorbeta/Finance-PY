@@ -1,0 +1,60 @@
+--- native/financespy-ios/FinancePY/Network/FinancePyApi+Sales.swift
++++ native/financespy-ios/FinancePY/Network/FinancePyApi+Sales.swift
+@@ -40,7 +40,8 @@
+     var saleItemsAttributes: [SaleItemAttributes]?
+ }
+
+-struct SaleItemAttributes: Codable {
++struct SaleItemAttributes: Codable, Identifiable {
++    var uniqueId = UUID()
+     var id: String?
+     var productId: String
+     var quantity: Int
+     var unitPrice: Double
+     var _destroy: Bool?
++
++    enum CodingKeys: String, CodingKey {
++        case id, productId, quantity, unitPrice, _destroy
++    }
+ }
+--- native/financespy-ios/FinancePY/Network/FinancePyApi+PurchaseOrders.swift
++++ native/financespy-ios/FinancePY/Network/FinancePyApi+PurchaseOrders.swift
+@@ -40,7 +40,8 @@
+     var purchaseOrderItemsAttributes: [PurchaseOrderItemAttributes]?
+ }
+
+-struct PurchaseOrderItemAttributes: Codable {
++struct PurchaseOrderItemAttributes: Codable, Identifiable {
++    var uniqueId = UUID()
+     var id: String?
+     var productId: String
+     var quantity: Int
+     var unitCost: Double
+     var _destroy: Bool?
++
++    enum CodingKeys: String, CodingKey {
++        case id, productId, quantity, unitCost, _destroy
++    }
+ }
+--- native/financespy-ios/FinancePY/Screens/Sales/SaleFormView.swift
++++ native/financespy-ios/FinancePY/Screens/Sales/SaleFormView.swift
+@@ -28,7 +28,7 @@
+             }
+
+             Section("Productos") {
+-                ForEach($items, id: \.productId) { $item in
++                ForEach($items, id: \.uniqueId) { $item in
+                     VStack(alignment: .leading) {
+                         TextField("ID Producto", text: $item.productId)
+                         HStack {
+--- native/financespy-ios/FinancePY/Screens/PurchaseOrders/PurchaseOrderFormView.swift
++++ native/financespy-ios/FinancePY/Screens/PurchaseOrders/PurchaseOrderFormView.swift
+@@ -28,7 +28,7 @@
+             }
+
+             Section("Productos") {
+-                ForEach($items, id: \.productId) { $item in
++                ForEach($items, id: \.uniqueId) { $item in
+                     VStack(alignment: .leading) {
+                         TextField("ID Producto", text: $item.productId)
+                         HStack {

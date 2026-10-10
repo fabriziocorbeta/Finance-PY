@@ -1,0 +1,100 @@
+import Foundation
+
+// MARK: - DTOs
+
+struct PurchaseOrderItemDto: Codable, Identifiable, Hashable {
+    var id: String?
+    var purchaseOrderId: String?
+    var productId: String
+    var productName: String?
+    var productSku: String?
+    var quantity: Int
+    var unitCost: Double
+    var subtotal: Double?
+    var createdAt: String?
+    var updatedAt: String?
+    var _destroy: Bool?
+}
+
+struct PurchaseOrderDto: Codable, Identifiable {
+    let id: String
+    let orderNumber: Int?
+    let supplierName: String?
+    let status: String
+    let currency: String
+    let expectedDate: String?
+    let notes: String?
+    let accountId: String?
+    let total: Double
+    let createdAt: String?
+    let updatedAt: String?
+    let purchaseOrderItems: [PurchaseOrderItemDto]?
+}
+
+struct PurchaseOrdersResponseDto: Codable {
+    let data: [PurchaseOrderDto]
+}
+
+struct PurchaseOrderPayload: Codable {
+    let purchaseOrder: PurchaseOrderDataPayload
+}
+
+struct PurchaseOrderDataPayload: Codable {
+    var supplierName: String?
+    var currency: String?
+    var expectedDate: String?
+    var notes: String?
+    var accountId: String?
+    var purchaseOrderItemsAttributes: [PurchaseOrderItemAttributes]?
+}
+
+struct PurchaseOrderItemAttributes: Codable, Identifiable {
+    var uniqueId = UUID()
+    var id: String?
+    var productId: String
+    var quantity: Int
+    var unitCost: Double
+    var _destroy: Bool?
+}
+
+extension FinancePyApi {
+    func fetchPurchaseOrders() async throws -> [PurchaseOrderDto] {
+        let queryItems = [
+            URLQueryItem(name: "page", value: "1"),
+            URLQueryItem(name: "per_page", value: "100")
+        ]
+        let response: PurchaseOrdersResponseDto = try await ApiClient.shared.request(path: "/api/v1/purchase_orders", queryItems: queryItems)
+        return response.data
+    }
+
+    func fetchPurchaseOrder(id: String) async throws -> PurchaseOrderDto {
+        let response: PurchaseOrderDto = try await ApiClient.shared.request(path: "/api/v1/purchase_orders/\(id)")
+        return response
+    }
+
+    func createPurchaseOrder(payload: PurchaseOrderDataPayload) async throws -> PurchaseOrderDto {
+        let body = PurchaseOrderPayload(purchaseOrder: payload)
+        let response: PurchaseOrderDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/purchase_orders", body: body)
+        return response
+    }
+
+    func updatePurchaseOrder(id: String, payload: PurchaseOrderDataPayload) async throws -> PurchaseOrderDto {
+        let body = PurchaseOrderPayload(purchaseOrder: payload)
+        let response: PurchaseOrderDto = try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/purchase_orders/\(id)", body: body)
+        return response
+    }
+
+    func deletePurchaseOrder(id: String) async throws {
+        let _: EmptyResponse = try await ApiClient.shared.request(method: "DELETE", path: "/api/v1/purchase_orders/\(id)")
+    }
+
+    func receivePurchaseOrder(id: String) async throws -> PurchaseOrderDto {
+        let response: PurchaseOrderDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/purchase_orders/\(id)/receive")
+        return response
+    }
+
+    func cancelPurchaseOrder(id: String) async throws -> PurchaseOrderDto {
+        let response: PurchaseOrderDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/purchase_orders/\(id)/cancel")
+        return response
+    }
+}
