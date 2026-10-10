@@ -76,6 +76,11 @@ struct MainTabView: View {
                 .tabItem {
                     Label("Transacciones", systemImage: "list.bullet.rectangle")
                 }
+
+            GoalsListView()
+                .tabItem {
+                    Label("Metas", systemImage: "target")
+                }
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
