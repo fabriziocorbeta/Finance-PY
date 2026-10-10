@@ -14,7 +14,8 @@ struct FinancePYApp: App {
             let schema = Schema([
                 AccountEntity.self,
                 EntryEntity.self,
-                TransactionEntity.self
+                TransactionEntity.self,
+                ReceivableEntity.self
             ])
             let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
             self.container = try ModelContainer(for: schema, configurations: [config])
@@ -90,6 +91,31 @@ BudgetDashboardView()
             RulesListView()
                 .tabItem {
                     Label("Reglas", systemImage: "gear")
+                }
+
+            ReceivablesListView()
+                .tabItem {
+                    Label("Cuentas", systemImage: "dollarsign.circle")
+                }
+
+            ReportsView()
+                .tabItem {
+                    Label("Reportes", systemImage: "chart.pie.fill")
+                }
+
+            GoalsListView()
+                .tabItem {
+                    Label("Metas", systemImage: "target")
+                }
+
+            ChatsListView()
+                .tabItem {
+                    Label("Asistente IA", systemImage: "sparkles")
+                }
+
+            FleetListView()
+                .tabItem {
+                    Label("Flota", systemImage: "car.fill")
                 }
         }
         .toolbar {
