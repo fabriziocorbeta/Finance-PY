@@ -23,42 +23,49 @@ object WalletCaptureHandler {
         }
     }
 
+    // One notification can carry more than one transaction (see
+    // ContinentalSmsExtractor -- bundled SMS notifications). Each extracted
+    // Purchase is captured/posted independently: a dropped or queued one
+    // must not block the others in the same notification.
     private fun handleBlocking(context: Context, packageName: String, title: String, text: String) {
         val extractor = BankNotificationExtractors.forPackage(packageName) ?: return
-        val purchase = extractor.extract(title, text) ?: return
-        val accountId = AccountMapping.accountIdFor(purchase.cardText)
+        val purchases = extractor.extract(title, text)
+        if (purchases.isEmpty()) return
+
         val capturedAt = Instant.now().toString()
-
-        if (accountId == null) {
-            onResult?.invoke("unrecognized_card", purchase.cardText)
-            return
-        }
-
-        val capture = PendingCapture(
-            id = UUID.randomUUID().toString(),
-            capturedAt = capturedAt,
-            accountId = accountId,
-            amount = purchase.amount,
-            merchant = purchase.merchant,
-            item = purchase.cardText
-        )
-
         val store = PendingCaptureStore(context)
         val token = runBlocking { AndroidTokenStorage(context).accessToken() }
-        if (token.isNullOrBlank()) {
-            store.add(capture)
-            onResult?.invoke("token_missing", purchase.cardText)
-            return
-        }
-        val result = WebhookClient(token).post(capture, rawText = text)
 
-        when (result) {
-            is WebhookResult.Success -> {
-                onResult?.invoke(if (result.duplicate) "duplicate" else "created", purchase.cardText)
+        purchases.forEach { purchase ->
+            val accountId = AccountMapping.accountIdFor(purchase.cardText)
+            if (accountId == null) {
+                onResult?.invoke("unrecognized_card", purchase.cardText)
+                return@forEach
             }
-            is WebhookResult.Failure -> {
+
+            val capture = PendingCapture(
+                id = UUID.randomUUID().toString(),
+                capturedAt = capturedAt,
+                accountId = accountId,
+                amount = purchase.amount,
+                merchant = purchase.merchant,
+                item = purchase.cardText
+            )
+
+            if (token.isNullOrBlank()) {
                 store.add(capture)
-                onResult?.invoke("queued", result.error)
+                onResult?.invoke("token_missing", purchase.cardText)
+                return@forEach
+            }
+
+            when (val result = WebhookClient(token).post(capture, rawText = text)) {
+                is WebhookResult.Success -> {
+                    onResult?.invoke(if (result.duplicate) "duplicate" else "created", purchase.cardText)
+                }
+                is WebhookResult.Failure -> {
+                    store.add(capture)
+                    onResult?.invoke("queued", result.error)
+                }
             }
         }
     }

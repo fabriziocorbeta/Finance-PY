@@ -1,6 +1,12 @@
 class AndroidPurchase::WebhookProcessor
   Error = Class.new(StandardError)
 
+  # Best-effort merchant match for fuel-station purchases captured from a
+  # bank notification (see ContinentalSmsExtractor on the Android side).
+  # Not exhaustive -- only brands confirmed against real captured
+  # notifications so far; extend as more are seen in the wild.
+  FUEL_MERCHANT_KEYWORDS = %w[PETROBRAS COPETROL PUMA ENERGY BARCOS].freeze
+
   def initialize(params, family: nil, user: nil)
     @account_id = params[:account_id].to_s
     @amount = params[:amount]
@@ -43,7 +49,10 @@ class AndroidPurchase::WebhookProcessor
       currency: account.currency,
       source: "google_play",
       external_id: external_id,
-      entryable: Transaction.new(extra: { "raw_text" => @raw_text, "source" => "google_play", "item" => @item })
+      entryable: Transaction.new(
+        category: fuel_category_for(account.family),
+        extra: { "raw_text" => @raw_text, "source" => "google_play", "item" => @item }
+      )
     )
 
     entry.save!
@@ -86,6 +95,36 @@ class AndroidPurchase::WebhookProcessor
       end
     rescue => e
       Rails.logger.error("AndroidPurchase::WebhookProcessor rule application error: #{e.message}")
+    end
+
+    # Auto-categorizes fuel-station purchases into the same "Combustible"
+    # category Flota's own FuelLog uses (app/models/fuel_log.rb) -- not a
+    # FuelLog itself. A FuelLog requires a fleet_vehicle_id and liters,
+    # neither of which a bank notification can supply (it only has an
+    # amount and a merchant name, no odometer/liters/vehicle), so fabricating
+    # one would mean guessing data that corrupts real fleet records. This is
+    # the honest subset of "relate it to Flota" that's actually derivable:
+    # correct category, same color/icon, so it shows up grouped with the
+    # fleet's own fuel spend -- the vehicle still has to be picked manually
+    # if the transaction needs attaching to a specific FuelLog.
+    #
+    # Only applied for families that actually use Flota (have at least one
+    # FleetVehicle) -- a personal (non-fleet) family buying fuel for their
+    # own car shouldn't have it silently recategorized out of whatever
+    # category/rule they'd normally expect.
+    def fuel_category_for(family)
+      return nil unless fuel_merchant?
+      return nil unless family.fleet_vehicles.exists?
+
+      family.categories.find_or_create_by!(name: "Combustible") do |category|
+        category.color = "#f59e0b"
+        category.lucide_icon = "fuel"
+      end
+    end
+
+    def fuel_merchant?
+      merchant_upcase = @merchant.upcase
+      FUEL_MERCHANT_KEYWORDS.any? { |keyword| merchant_upcase.include?(keyword) }
     end
 
     def numeric_amount
