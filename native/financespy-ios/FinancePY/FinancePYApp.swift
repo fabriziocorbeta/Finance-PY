@@ -82,6 +82,11 @@ BudgetDashboardView()
                     Label("Transacciones", systemImage: "list.bullet.rectangle")
                 }
 
+            GoalsListView()
+                .tabItem {
+                    Label("Metas", systemImage: "target")
+                }
+
             ChatsListView()
                 .tabItem {
                     Label("Asistente IA", systemImage: "sparkles")

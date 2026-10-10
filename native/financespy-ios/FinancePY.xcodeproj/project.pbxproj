@@ -20,6 +20,10 @@
 		30000000000000000000000B /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B /* LoginView.swift */; };
 		30000000000000000000000C /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000C /* DashboardView.swift */; };
 		30000000000000000000000D /* TransactionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* TransactionsView.swift */; };
+		700000000000000000000010 /* GoalsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000010 /* GoalsListView.swift */; };
+		700000000000000000000011 /* GoalDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000011 /* GoalDetailView.swift */; };
+		700000000000000000000012 /* GoalFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000012 /* GoalFormView.swift */; };
+		700000000000000000000013 /* FinancePyApi+Goals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000013 /* FinancePyApi+Goals.swift */; };
 		300000000000000000000021 /* FinancePyApi+Chat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000021 /* FinancePyApi+Chat.swift */; };
 		300000000000000000000022 /* ChatsListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000022 /* ChatsListViewModel.swift */; };
 		300000000000000000000023 /* ChatsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000023 /* ChatsListView.swift */; };
@@ -50,6 +54,10 @@
 		20000000000000000000000C /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		20000000000000000000000D /* TransactionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionsView.swift; sourceTree = "<group>"; };
 		20000000000000000000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		200000000000000000000010 /* GoalsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalsListView.swift; sourceTree = "<group>"; };
+		200000000000000000000011 /* GoalDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalDetailView.swift; sourceTree = "<group>"; };
+		200000000000000000000012 /* GoalFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalFormView.swift; sourceTree = "<group>"; };
+		200000000000000000000013 /* FinancePyApi+Goals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Goals.swift"; sourceTree = "<group>"; };
 		200000000000000000000021 /* FinancePyApi+Chat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Chat.swift"; sourceTree = "<group>"; };
 		200000000000000000000022 /* ChatsListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatsListViewModel.swift; sourceTree = "<group>"; };
 		200000000000000000000023 /* ChatsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatsListView.swift; sourceTree = "<group>"; };
@@ -120,6 +128,8 @@
 			children = (
 				200000000000000000000005 /* ApiClient.swift */,
 				200000000000000000000006 /* FinancePyApi.swift */,
+				200000000000000000000013 /* FinancePyApi+Goals.swift */,
+
 				200000000000000000000021 /* FinancePyApi+Chat.swift */,
 				30000000000000000000000F /* FinancePyApi+Fleet.swift */,
 				30000000000000000000000E /* FleetDto.swift */,
@@ -152,6 +162,9 @@
 				20000000000000000000000B /* LoginView.swift */,
 				20000000000000000000000C /* DashboardView.swift */,
 				20000000000000000000000D /* TransactionsView.swift */,
+				200000000000000000000010 /* GoalsListView.swift */,
+				200000000000000000000011 /* GoalDetailView.swift */,
+				200000000000000000000012 /* GoalFormView.swift */,
 				200000000000000000000022 /* ChatsListViewModel.swift */,
 				200000000000000000000023 /* ChatsListView.swift */,
 				200000000000000000000024 /* ChatViewModel.swift */,
@@ -261,6 +274,13 @@
 				30000000000000000000000B /* LoginView.swift in Sources */,
 				30000000000000000000000C /* DashboardView.swift in Sources */,
 				30000000000000000000000D /* TransactionsView.swift in Sources */,
+				700000000000000000000013 /* FinancePyApi+Goals.swift in Sources */,
+
+				700000000000000000000012 /* GoalFormView.swift in Sources */,
+
+				700000000000000000000011 /* GoalDetailView.swift in Sources */,
+
+				700000000000000000000010 /* GoalsListView.swift in Sources */,
 				300000000000000000000021 /* FinancePyApi+Chat.swift in Sources */,
 				300000000000000000000022 /* ChatsListViewModel.swift in Sources */,
 				300000000000000000000023 /* ChatsListView.swift in Sources */,
