@@ -383,4 +383,62 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
 
     assert_equal :created, result
   end
+
+  test "auto-categorizes a fuel-station purchase as Combustible for a family with a fleet vehicle" do
+    FleetVehicle.create!(family: @family, plate: "ABC123", brand: "Toyota", model: "Hilux")
+
+    result = AndroidPurchase::WebhookProcessor.new(
+      {
+        account_id: @account.id,
+        amount: "200.014",
+        merchant: "PETROBRAS AEROPUERTO",
+        item: "DINELCO CLASICA 2744",
+        timestamp: "2026-10-09T21:25:00-04:00",
+        raw_text: "x"
+      },
+      family: @family
+    ).process
+
+    assert_equal :created, result
+    entry = @account.entries.order(created_at: :desc).first
+    assert_equal "Combustible", entry.transaction.category.name
+  end
+
+  test "does not categorize a fuel-station purchase for a family with no fleet vehicles" do
+    assert_not @family.fleet_vehicles.exists?
+
+    AndroidPurchase::WebhookProcessor.new(
+      {
+        account_id: @account.id,
+        amount: "200.014",
+        merchant: "PETROBRAS AEROPUERTO",
+        item: "DINELCO CLASICA 2744",
+        timestamp: "2026-10-09T21:25:00-04:00",
+        raw_text: "x"
+      },
+      family: @family
+    ).process
+
+    entry = @account.entries.order(created_at: :desc).first
+    assert_nil entry.transaction.category_id
+  end
+
+  test "does not categorize a non-fuel merchant even for a family with a fleet vehicle" do
+    FleetVehicle.create!(family: @family, plate: "XYZ789", brand: "Ford", model: "Ranger")
+
+    AndroidPurchase::WebhookProcessor.new(
+      {
+        account_id: @account.id,
+        amount: "50.000",
+        merchant: "CONTIMARKET CHECKOUT",
+        item: "DINELCO CLASICA 2744",
+        timestamp: "2026-10-09T21:25:00-04:00",
+        raw_text: "x"
+      },
+      family: @family
+    ).process
+
+    entry = @account.entries.order(created_at: :desc).first
+    assert_nil entry.transaction.category_id
+  end
 end
