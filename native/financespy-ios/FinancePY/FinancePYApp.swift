@@ -87,6 +87,26 @@ BudgetDashboardView()
                 .tabItem {
                     Label("Cuentas", systemImage: "dollarsign.circle")
                 }
+
+            ReportsView()
+                .tabItem {
+                    Label("Reportes", systemImage: "chart.pie.fill")
+                }
+
+            GoalsListView()
+                .tabItem {
+                    Label("Metas", systemImage: "target")
+                }
+
+            ChatsListView()
+                .tabItem {
+                    Label("Asistente IA", systemImage: "sparkles")
+                }
+
+            FleetListView()
+                .tabItem {
+                    Label("Flota", systemImage: "car.fill")
+                }
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
