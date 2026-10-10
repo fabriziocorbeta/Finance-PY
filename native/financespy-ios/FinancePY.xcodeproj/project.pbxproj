@@ -20,6 +20,12 @@
 		30000000000000000000000B /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B /* LoginView.swift */; };
 		30000000000000000000000C /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000C /* DashboardView.swift */; };
 		30000000000000000000000D /* TransactionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* TransactionsView.swift */; };
+		30000000000000000000000F /* FinancePyApi+AccountsWrite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000F /* FinancePyApi+AccountsWrite.swift */; };
+		300000000000000000000010 /* FinancePyApi+Transactions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000010 /* FinancePyApi+Transactions.swift */; };
+		300000000000000000000011 /* AccountDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000011 /* AccountDetailView.swift */; };
+		300000000000000000000012 /* AccountFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000012 /* AccountFormView.swift */; };
+		300000000000000000000013 /* DebtsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000013 /* DebtsListView.swift */; };
+		300000000000000000000014 /* TransactionFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000014 /* TransactionFormView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +44,12 @@
 		20000000000000000000000C /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		20000000000000000000000D /* TransactionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionsView.swift; sourceTree = "<group>"; };
 		20000000000000000000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		20000000000000000000000F /* FinancePyApi+AccountsWrite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+AccountsWrite.swift"; sourceTree = "<group>"; };
+		200000000000000000000010 /* FinancePyApi+Transactions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Transactions.swift"; sourceTree = "<group>"; };
+		200000000000000000000011 /* AccountDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountDetailView.swift; sourceTree = "<group>"; };
+		200000000000000000000012 /* AccountFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountFormView.swift; sourceTree = "<group>"; };
+		200000000000000000000013 /* DebtsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebtsListView.swift; sourceTree = "<group>"; };
+		200000000000000000000014 /* TransactionFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionFormView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -96,6 +108,8 @@
 			children = (
 				200000000000000000000005 /* ApiClient.swift */,
 				200000000000000000000006 /* FinancePyApi.swift */,
+				20000000000000000000000F /* FinancePyApi+AccountsWrite.swift */,
+				200000000000000000000010 /* FinancePyApi+Transactions.swift */,
 			);
 			path = Network;
 			sourceTree = "<group>";
@@ -124,6 +138,10 @@
 				20000000000000000000000B /* LoginView.swift */,
 				20000000000000000000000C /* DashboardView.swift */,
 				20000000000000000000000D /* TransactionsView.swift */,
+				200000000000000000000011 /* AccountDetailView.swift */,
+				200000000000000000000012 /* AccountFormView.swift */,
+				200000000000000000000013 /* DebtsListView.swift */,
+				200000000000000000000014 /* TransactionFormView.swift */,
 			);
 			path = Screens;
 			sourceTree = "<group>";
@@ -208,6 +226,12 @@
 				30000000000000000000000B /* LoginView.swift in Sources */,
 				30000000000000000000000C /* DashboardView.swift in Sources */,
 				30000000000000000000000D /* TransactionsView.swift in Sources */,
+				30000000000000000000000F /* FinancePyApi+AccountsWrite.swift in Sources */,
+				300000000000000000000010 /* FinancePyApi+Transactions.swift in Sources */,
+				300000000000000000000011 /* AccountDetailView.swift in Sources */,
+				300000000000000000000012 /* AccountFormView.swift in Sources */,
+				300000000000000000000013 /* DebtsListView.swift in Sources */,
+				300000000000000000000014 /* TransactionFormView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
