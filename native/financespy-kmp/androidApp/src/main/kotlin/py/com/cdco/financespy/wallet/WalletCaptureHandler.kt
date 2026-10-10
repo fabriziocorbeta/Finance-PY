@@ -17,14 +17,15 @@ object WalletCaptureHandler {
     // Optional native listener callback if UI or logger wants to observe capture events.
     var onResult: ((status: String, details: String) -> Unit)? = null
 
-    fun handle(context: Context, title: String, text: String) {
+    fun handle(context: Context, packageName: String, title: String, text: String) {
         executor.execute {
-            handleBlocking(context, title, text)
+            handleBlocking(context, packageName, title, text)
         }
     }
 
-    private fun handleBlocking(context: Context, title: String, text: String) {
-        val purchase = PurchaseExtractor.extract(text) ?: return
+    private fun handleBlocking(context: Context, packageName: String, title: String, text: String) {
+        val extractor = BankNotificationExtractors.forPackage(packageName) ?: return
+        val purchase = extractor.extract(title, text) ?: return
         val accountId = AccountMapping.accountIdFor(purchase.cardText)
         val capturedAt = Instant.now().toString()
 
@@ -38,7 +39,7 @@ object WalletCaptureHandler {
             capturedAt = capturedAt,
             accountId = accountId,
             amount = purchase.amount,
-            merchant = title,
+            merchant = purchase.merchant,
             item = purchase.cardText
         )
 
