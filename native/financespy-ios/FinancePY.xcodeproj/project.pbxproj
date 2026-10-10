@@ -25,6 +25,9 @@
 		50000000000000000000B3 /* ReceivablesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60000000000000000000B3 /* ReceivablesListView.swift */; };
 		50000000000000000000B4 /* ReceivableDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60000000000000000000B4 /* ReceivableDetailView.swift */; };
 		50000000000000000000B5 /* ReceivableFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60000000000000000000B5 /* ReceivableFormView.swift */; };
+		39467CF1DD72A4AD63395F6C /* FinancePyApi+Budgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288E07487EB64788205A5808 /* FinancePyApi+Budgets.swift */; };
+		8EA6AC3B378C049981434F15 /* BudgetDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40ACC679E52F92898B1F1087 /* BudgetDashboardView.swift */; };
+		C548B3D9EA1624EE47329FFF /* BudgetAllocationEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD564449563CBFDC1D2CB77F /* BudgetAllocationEditorView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -48,6 +51,9 @@
 		60000000000000000000B3 /* ReceivablesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceivablesListView.swift; sourceTree = "<group>"; };
 		60000000000000000000B4 /* ReceivableDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceivableDetailView.swift; sourceTree = "<group>"; };
 		60000000000000000000B5 /* ReceivableFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceivableFormView.swift; sourceTree = "<group>"; };
+		288E07487EB64788205A5808 /* FinancePyApi+Budgets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Budgets.swift"; sourceTree = "<group>"; };
+		40ACC679E52F92898B1F1087 /* BudgetDashboardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BudgetDashboardView.swift; sourceTree = "<group>"; };
+		CD564449563CBFDC1D2CB77F /* BudgetAllocationEditorView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BudgetAllocationEditorView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -107,6 +113,7 @@
 				200000000000000000000005 /* ApiClient.swift */,
 				200000000000000000000006 /* FinancePyApi.swift */,
 				60000000000000000000B1 /* FinancePyApi+Receivables.swift */,
+				288E07487EB64788205A5808 /* FinancePyApi+Budgets.swift */,
 			);
 			path = Network;
 			sourceTree = "<group>";
@@ -139,8 +146,19 @@
 				60000000000000000000B3 /* ReceivablesListView.swift */,
 				60000000000000000000B4 /* ReceivableDetailView.swift */,
 				60000000000000000000B5 /* ReceivableFormView.swift */,
+				CB550928C18E4FDFD633FFA1 /* Budgets */,
 			);
 			path = Screens;
+			sourceTree = "<group>";
+		};
+		CB550928C18E4FDFD633FFA1 /* Budgets */ = {
+			isa = PBXGroup;
+			children = (
+				40ACC679E52F92898B1F1087 /* BudgetDashboardView.swift */,
+				CD564449563CBFDC1D2CB77F /* BudgetAllocationEditorView.swift */,
+			);
+			name = Budgets;
+			path = Budgets;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -228,6 +246,9 @@
 				50000000000000000000B3 /* ReceivablesListView.swift in Sources */,
 				50000000000000000000B4 /* ReceivableDetailView.swift in Sources */,
 				50000000000000000000B5 /* ReceivableFormView.swift in Sources */,
+				8EA6AC3B378C049981434F15 /* BudgetDashboardView.swift in Sources */,
+				C548B3D9EA1624EE47329FFF /* BudgetAllocationEditorView.swift in Sources */,
+				39467CF1DD72A4AD63395F6C /* FinancePyApi+Budgets.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
