@@ -22,6 +22,7 @@ final class SyncEngine: ObservableObject {
             try await syncAccounts()
             try await syncBalanceSheet()
             try await syncTransactions()
+            try await syncReceivables()
             try modelContext.save()
             isSyncing = false
             return .success(())
@@ -182,6 +183,73 @@ final class SyncEngine: ObservableObject {
                 if let tx = local.transaction {
                     modelContext.delete(tx)
                 }
+                modelContext.delete(local)
+            }
+        }
+    }
+
+    private func syncReceivables() async throws {
+        let remoteReceivables = try await api.fetchReceivables()
+        let remoteIds = Set(remoteReceivables.map { $0.id })
+
+        let descriptor = FetchDescriptor<ReceivableEntity>()
+        let localReceivables = try modelContext.fetch(descriptor)
+        let localDict = Dictionary(uniqueKeysWithValues: localReceivables.map { ($0.id, $0) })
+
+        for dto in remoteReceivables {
+            let installmentScheduleData: Data? = {
+                if let schedule = dto.installmentSchedule {
+                    let encoder = JSONEncoder()
+                    encoder.keyEncodingStrategy = .convertToSnakeCase
+                    return try? encoder.encode(schedule)
+                }
+                return nil
+            }()
+
+            if let existing = localDict[dto.id] {
+                existing.accountId = dto.accountId
+                existing.name = dto.name ?? "(sin nombre)"
+                existing.totalAmount = dto.totalAmount ?? 0.0
+                existing.balance = dto.balance ?? 0.0
+                existing.balanceCents = dto.balanceCents ?? 0
+                existing.originalBalance = dto.originalBalance ?? 0.0
+                existing.originalBalanceCents = dto.originalBalanceCents ?? 0
+                existing.paidAmount = dto.paidAmount ?? 0.0
+                existing.paidAmountCents = dto.paidAmountCents ?? 0
+                existing.percentPaid = dto.percentPaid ?? 0.0
+                existing.installmentCount = dto.installmentCount
+                existing.dueDay = dto.dueDay
+                existing.currency = dto.currency ?? "PYG"
+                existing.notes = dto.notes
+                existing.updatedAt = dto.updatedAt ?? ""
+                existing.installmentScheduleData = installmentScheduleData
+            } else {
+                let newEntity = ReceivableEntity(
+                    id: dto.id,
+                    accountId: dto.accountId,
+                    name: dto.name ?? "(sin nombre)",
+                    totalAmount: dto.totalAmount ?? 0.0,
+                    balance: dto.balance ?? 0.0,
+                    balanceCents: dto.balanceCents ?? 0,
+                    originalBalance: dto.originalBalance ?? 0.0,
+                    originalBalanceCents: dto.originalBalanceCents ?? 0,
+                    paidAmount: dto.paidAmount ?? 0.0,
+                    paidAmountCents: dto.paidAmountCents ?? 0,
+                    percentPaid: dto.percentPaid ?? 0.0,
+                    installmentCount: dto.installmentCount,
+                    dueDay: dto.dueDay,
+                    currency: dto.currency ?? "PYG",
+                    notes: dto.notes,
+                    updatedAt: dto.updatedAt ?? "",
+                    installmentScheduleData: installmentScheduleData
+                )
+                modelContext.insert(newEntity)
+            }
+        }
+
+        // Delete receivables no longer present remotely
+        for local in localReceivables {
+            if !remoteIds.contains(local.id) {
                 modelContext.delete(local)
             }
         }
