@@ -76,6 +76,16 @@ struct MainTabView: View {
                 .tabItem {
                     Label("Transacciones", systemImage: "list.bullet.rectangle")
                 }
+
+            ProductsListView()
+                .tabItem {
+                    Label("Productos", systemImage: "cart.fill")
+                }
+
+            RulesListView()
+                .tabItem {
+                    Label("Reglas", systemImage: "gear")
+                }
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
