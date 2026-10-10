@@ -94,7 +94,7 @@ struct FleetVehicleCard: View {
                 StatusBadge(status: vehicle.status)
             }
 
-            Text("\(vehicle.brand) \(vehicle.model)\(vehicle.year != null ? " (\(vehicle.year!))" : "")")
+            Text("\(vehicle.brand) \(vehicle.model)\(vehicle.year != nil ? " (\(vehicle.year!))" : "")")
                 .font(.body)
                 .foregroundColor(.secondary)
 
