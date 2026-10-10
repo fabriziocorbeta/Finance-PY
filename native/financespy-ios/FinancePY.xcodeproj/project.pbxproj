@@ -28,6 +28,9 @@
 		7CCD4E5CAD727F5BAF1E0E9D /* FinancePyApi+Sales.swift in Sources */ = {isa = PBXBuildFile; fileRef = 491942CEAD8FA1AB390CA4DC /* FinancePyApi+Sales.swift */; };
 		829344C3A5E64AB4FC2B10AA /* PurchaseOrdersListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44946178AA3EC018BDA1C5F /* PurchaseOrdersListView.swift */; };
 		904E4787990C0D465D65D28F /* PurchaseOrderFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7274F3786366D993D87B002 /* PurchaseOrderFormView.swift */; };
+		39467CF1DD72A4AD63395F6C /* FinancePyApi+Budgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288E07487EB64788205A5808 /* FinancePyApi+Budgets.swift */; };
+		8EA6AC3B378C049981434F15 /* BudgetDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40ACC679E52F92898B1F1087 /* BudgetDashboardView.swift */; };
+		C548B3D9EA1624EE47329FFF /* BudgetAllocationEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD564449563CBFDC1D2CB77F /* BudgetAllocationEditorView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,6 +57,9 @@
 		B7274F3786366D993D87B002 /* PurchaseOrderFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PurchaseOrderFormView.swift; path = PurchaseOrders/PurchaseOrderFormView.swift; sourceTree = "<group>"; };
 		BB0949F48FE18E0D6498F0B2 /* PurchaseOrderDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PurchaseOrderDetailView.swift; path = PurchaseOrders/PurchaseOrderDetailView.swift; sourceTree = "<group>"; };
 		F44946178AA3EC018BDA1C5F /* PurchaseOrdersListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PurchaseOrdersListView.swift; path = PurchaseOrders/PurchaseOrdersListView.swift; sourceTree = "<group>"; };
+		288E07487EB64788205A5808 /* FinancePyApi+Budgets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Budgets.swift"; sourceTree = "<group>"; };
+		40ACC679E52F92898B1F1087 /* BudgetDashboardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BudgetDashboardView.swift; sourceTree = "<group>"; };
+		CD564449563CBFDC1D2CB77F /* BudgetAllocationEditorView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BudgetAllocationEditorView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -114,6 +120,7 @@
 				200000000000000000000006 /* FinancePyApi.swift */,
 				491942CEAD8FA1AB390CA4DC /* FinancePyApi+Sales.swift */,
 				05D34C3CA1215DFFA58CA0D0 /* FinancePyApi+PurchaseOrders.swift */,
+				288E07487EB64788205A5808 /* FinancePyApi+Budgets.swift */,
 			);
 			path = Network;
 			sourceTree = "<group>";
@@ -148,8 +155,19 @@
 				F44946178AA3EC018BDA1C5F /* PurchaseOrdersListView.swift */,
 				BB0949F48FE18E0D6498F0B2 /* PurchaseOrderDetailView.swift */,
 				B7274F3786366D993D87B002 /* PurchaseOrderFormView.swift */,
+				CB550928C18E4FDFD633FFA1 /* Budgets */,
 			);
 			path = Screens;
+			sourceTree = "<group>";
+		};
+		CB550928C18E4FDFD633FFA1 /* Budgets */ = {
+			isa = PBXGroup;
+			children = (
+				40ACC679E52F92898B1F1087 /* BudgetDashboardView.swift */,
+				CD564449563CBFDC1D2CB77F /* BudgetAllocationEditorView.swift */,
+			);
+			name = Budgets;
+			path = Budgets;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -240,6 +258,9 @@
 				829344C3A5E64AB4FC2B10AA /* PurchaseOrdersListView.swift in Sources */,
 				1EF443B298EBC1FBCBCDF01A /* PurchaseOrderDetailView.swift in Sources */,
 				904E4787990C0D465D65D28F /* PurchaseOrderFormView.swift in Sources */,
+				8EA6AC3B378C049981434F15 /* BudgetDashboardView.swift in Sources */,
+				C548B3D9EA1624EE47329FFF /* BudgetAllocationEditorView.swift in Sources */,
+				39467CF1DD72A4AD63395F6C /* FinancePyApi+Budgets.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
