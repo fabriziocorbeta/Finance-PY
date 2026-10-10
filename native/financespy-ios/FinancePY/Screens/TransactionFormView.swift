@@ -180,9 +180,10 @@ struct TransactionFormView: View {
 
         let txEntity = TransactionEntity(
             id: updated.id,
+            entryId: updated.id,
+            signedAmountCents: updated.signedAmountCents,
             categoryName: updated.category?.name,
-            merchantName: updated.merchant?.name,
-            signedAmountCents: updated.signedAmountCents
+            merchantName: updated.merchant?.name
         )
 
         let entry = EntryEntity(
