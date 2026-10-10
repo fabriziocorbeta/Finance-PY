@@ -83,6 +83,16 @@ BudgetDashboardView()
                     Label("Transacciones", systemImage: "list.bullet.rectangle")
                 }
 
+            ProductsListView()
+                .tabItem {
+                    Label("Productos", systemImage: "cart.fill")
+                }
+
+            RulesListView()
+                .tabItem {
+                    Label("Reglas", systemImage: "gear")
+                }
+
             ReceivablesListView()
                 .tabItem {
                     Label("Cuentas", systemImage: "dollarsign.circle")
