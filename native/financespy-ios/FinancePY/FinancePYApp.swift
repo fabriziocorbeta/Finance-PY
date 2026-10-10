@@ -14,7 +14,8 @@ struct FinancePYApp: App {
             let schema = Schema([
                 AccountEntity.self,
                 EntryEntity.self,
-                TransactionEntity.self
+                TransactionEntity.self,
+                ReceivableEntity.self
             ])
             let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
             self.container = try ModelContainer(for: schema, configurations: [config])
@@ -75,6 +76,11 @@ struct MainTabView: View {
             TransactionsView()
                 .tabItem {
                     Label("Transacciones", systemImage: "list.bullet.rectangle")
+                }
+
+            ReceivablesListView()
+                .tabItem {
+                    Label("Cuentas", systemImage: "dollarsign.circle")
                 }
         }
         .toolbar {
