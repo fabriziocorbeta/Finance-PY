@@ -86,6 +86,11 @@ BudgetDashboardView()
                 .tabItem {
                     Label("Asistente IA", systemImage: "sparkles")
                 }
+
+            FleetListView()
+                .tabItem {
+                    Label("Flota", systemImage: "car.fill")
+                }
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
