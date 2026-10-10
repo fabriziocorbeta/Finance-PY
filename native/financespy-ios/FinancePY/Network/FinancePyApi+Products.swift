@@ -68,23 +68,23 @@ extension FinancePyApi {
             URLQueryItem(name: "per_page", value: String(perPage))
         ]
 
-        let response: [ProductDto] = try await client.request(path: "/api/v1/products", queryItems: queryItems)
+        let response: [ProductDto] = try await ApiClient.shared.request(path: "/api/v1/products", queryItems: queryItems)
         return response
     }
 
     func getProduct(id: String) async throws -> ProductDto {
-        return try await client.request(path: "/api/v1/products/\(id)")
+        return try await ApiClient.shared.request(path: "/api/v1/products/\(id)")
     }
 
     func createProduct(request: CreateProductRequest) async throws -> ProductDto {
-        return try await client.request(method: "POST", path: "/api/v1/products", body: request)
+        return try await ApiClient.shared.request(method: "POST", path: "/api/v1/products", body: request)
     }
 
     func updateProduct(id: String, request: UpdateProductRequest) async throws -> ProductDto {
-        return try await client.request(method: "PATCH", path: "/api/v1/products/\(id)", body: request)
+        return try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/products/\(id)", body: request)
     }
 
     func deleteProduct(id: String) async throws {
-        let _: EmptyResponse = try await client.request(method: "DELETE", path: "/api/v1/products/\(id)")
+        let _: EmptyResponse = try await ApiClient.shared.request(method: "DELETE", path: "/api/v1/products/\(id)")
     }
 }

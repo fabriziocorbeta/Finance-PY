@@ -129,7 +129,7 @@ struct UpdateRuleBody: Codable {
 extension FinancePyApi {
     func getRuleRegistry(resourceType: String = "transaction") async throws -> RuleRegistryDto {
         let queryItems = [URLQueryItem(name: "resource_type", value: resourceType)]
-        return try await client.request(path: "/api/v1/rules/registry", queryItems: queryItems)
+        return try await ApiClient.shared.request(path: "/api/v1/rules/registry", queryItems: queryItems)
     }
 
     func getRules(resourceType: String = "transaction", page: Int = 1, perPage: Int = 100) async throws -> [RuleDto] {
@@ -138,23 +138,23 @@ extension FinancePyApi {
             URLQueryItem(name: "page", value: String(page)),
             URLQueryItem(name: "per_page", value: String(perPage))
         ]
-        let response: RulesResponseDto = try await client.request(path: "/api/v1/rules", queryItems: queryItems)
+        let response: RulesResponseDto = try await ApiClient.shared.request(path: "/api/v1/rules", queryItems: queryItems)
         return response.data
     }
 
     func getRule(id: String) async throws -> RuleDto {
-        return try await client.request(path: "/api/v1/rules/\(id)")
+        return try await ApiClient.shared.request(path: "/api/v1/rules/\(id)")
     }
 
     func createRule(request: CreateRuleRequest) async throws -> RuleDto {
-        return try await client.request(method: "POST", path: "/api/v1/rules", body: request)
+        return try await ApiClient.shared.request(method: "POST", path: "/api/v1/rules", body: request)
     }
 
     func updateRule(id: String, request: UpdateRuleRequest) async throws -> RuleDto {
-        return try await client.request(method: "PATCH", path: "/api/v1/rules/\(id)", body: request)
+        return try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/rules/\(id)", body: request)
     }
 
     func deleteRule(id: String) async throws {
-        let _: EmptyResponse = try await client.request(method: "DELETE", path: "/api/v1/rules/\(id)")
+        let _: EmptyResponse = try await ApiClient.shared.request(method: "DELETE", path: "/api/v1/rules/\(id)")
     }
 }
