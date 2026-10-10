@@ -67,38 +67,38 @@ extension FinancePyApi {
             URLQueryItem(name: "page", value: "1"),
             URLQueryItem(name: "per_page", value: "100")
         ]
-        let response: SalesResponseDto = try await client.request(path: "/api/v1/sales", queryItems: queryItems)
+        let response: SalesResponseDto = try await ApiClient.shared.request(path: "/api/v1/sales", queryItems: queryItems)
         return response.data
     }
 
     func fetchSale(id: String) async throws -> SaleDto {
-        let response: SaleDto = try await client.request(path: "/api/v1/sales/\(id)")
+        let response: SaleDto = try await ApiClient.shared.request(path: "/api/v1/sales/\(id)")
         return response
     }
 
     func createSale(payload: SaleDataPayload) async throws -> SaleDto {
         let body = SalePayload(sale: payload)
-        let response: SaleDto = try await client.request(method: "POST", path: "/api/v1/sales", body: body)
+        let response: SaleDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/sales", body: body)
         return response
     }
 
     func updateSale(id: String, payload: SaleDataPayload) async throws -> SaleDto {
         let body = SalePayload(sale: payload)
-        let response: SaleDto = try await client.request(method: "PATCH", path: "/api/v1/sales/\(id)", body: body)
+        let response: SaleDto = try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/sales/\(id)", body: body)
         return response
     }
 
     func deleteSale(id: String) async throws {
-        try await client.request(method: "DELETE", path: "/api/v1/sales/\(id)")
+        let _: EmptyResponse = try await ApiClient.shared.request(method: "DELETE", path: "/api/v1/sales/\(id)")
     }
 
     func completeSale(id: String) async throws -> SaleDto {
-        let response: SaleDto = try await client.request(method: "POST", path: "/api/v1/sales/\(id)/complete")
+        let response: SaleDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/sales/\(id)/complete")
         return response
     }
 
     func cancelSale(id: String) async throws -> SaleDto {
-        let response: SaleDto = try await client.request(method: "POST", path: "/api/v1/sales/\(id)/cancel")
+        let response: SaleDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/sales/\(id)/cancel")
         return response
     }
 }

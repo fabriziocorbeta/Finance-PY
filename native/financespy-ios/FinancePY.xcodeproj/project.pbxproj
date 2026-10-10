@@ -31,7 +31,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		05D34C3CA1215DFFA58CA0D0 /* FinancePyApi+PurchaseOrders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+PurchaseOrders.swift"; path = "FinancePY/Network/FinancePyApi+PurchaseOrders.swift"; sourceTree = "<group>"; };
+		05D34C3CA1215DFFA58CA0D0 /* FinancePyApi+PurchaseOrders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+PurchaseOrders.swift"; path = "FinancePyApi+PurchaseOrders.swift"; sourceTree = "<group>"; };
 		111111112222222233333308 /* FinancePY.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FinancePY.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		200000000000000000000001 /* FinancePYApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinancePYApp.swift; sourceTree = "<group>"; };
 		200000000000000000000002 /* PkceGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PkceGenerator.swift; sourceTree = "<group>"; };
@@ -47,13 +47,13 @@
 		20000000000000000000000C /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		20000000000000000000000D /* TransactionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionsView.swift; sourceTree = "<group>"; };
 		20000000000000000000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		2C414E32943F601F7B6DBD41 /* SaleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SaleDetailView.swift; path = FinancePY/Screens/Sales/SaleDetailView.swift; sourceTree = "<group>"; };
-		491942CEAD8FA1AB390CA4DC /* FinancePyApi+Sales.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+Sales.swift"; path = "FinancePY/Network/FinancePyApi+Sales.swift"; sourceTree = "<group>"; };
-		83374850B9DCB321B500F133 /* SalesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SalesListView.swift; path = FinancePY/Screens/Sales/SalesListView.swift; sourceTree = "<group>"; };
-		8DA046F380B69D07FBBFE793 /* SaleFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SaleFormView.swift; path = FinancePY/Screens/Sales/SaleFormView.swift; sourceTree = "<group>"; };
-		B7274F3786366D993D87B002 /* PurchaseOrderFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PurchaseOrderFormView.swift; path = FinancePY/Screens/PurchaseOrders/PurchaseOrderFormView.swift; sourceTree = "<group>"; };
-		BB0949F48FE18E0D6498F0B2 /* PurchaseOrderDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PurchaseOrderDetailView.swift; path = FinancePY/Screens/PurchaseOrders/PurchaseOrderDetailView.swift; sourceTree = "<group>"; };
-		F44946178AA3EC018BDA1C5F /* PurchaseOrdersListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PurchaseOrdersListView.swift; path = FinancePY/Screens/PurchaseOrders/PurchaseOrdersListView.swift; sourceTree = "<group>"; };
+		2C414E32943F601F7B6DBD41 /* SaleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SaleDetailView.swift; path = Sales/SaleDetailView.swift; sourceTree = "<group>"; };
+		491942CEAD8FA1AB390CA4DC /* FinancePyApi+Sales.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+Sales.swift"; path = "FinancePyApi+Sales.swift"; sourceTree = "<group>"; };
+		83374850B9DCB321B500F133 /* SalesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SalesListView.swift; path = Sales/SalesListView.swift; sourceTree = "<group>"; };
+		8DA046F380B69D07FBBFE793 /* SaleFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SaleFormView.swift; path = Sales/SaleFormView.swift; sourceTree = "<group>"; };
+		B7274F3786366D993D87B002 /* PurchaseOrderFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PurchaseOrderFormView.swift; path = PurchaseOrders/PurchaseOrderFormView.swift; sourceTree = "<group>"; };
+		BB0949F48FE18E0D6498F0B2 /* PurchaseOrderDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PurchaseOrderDetailView.swift; path = PurchaseOrders/PurchaseOrderDetailView.swift; sourceTree = "<group>"; };
+		F44946178AA3EC018BDA1C5F /* PurchaseOrdersListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PurchaseOrdersListView.swift; path = PurchaseOrders/PurchaseOrdersListView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
