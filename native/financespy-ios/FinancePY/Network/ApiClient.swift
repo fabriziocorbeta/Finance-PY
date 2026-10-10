@@ -38,6 +38,22 @@ final class ApiClient {
     }
 
     func request<T: Decodable>(path: String, queryItems: [URLQueryItem]? = nil) async throws -> T {
+        try await request(method: "GET", path: path, queryItems: queryItems, body: Optional<EmptyBody>.none)
+    }
+
+    // Generic mutation entry point for every domain screen's create/update
+    // (goals, budgets, receivables, products, sales, purchase_orders,
+    // fleet_vehicles/fuel_logs, rules, tags, transactions, ...): one place
+    // that encodes the body with the same snake_case convention the decoder
+    // already expects back, and shares the 401/error handling with GET
+    // instead of every call site reimplementing it slightly differently.
+    @discardableResult
+    func request<T: Decodable, Body: Encodable>(
+        method: String,
+        path: String,
+        queryItems: [URLQueryItem]? = nil,
+        body: Body?
+    ) async throws -> T {
         guard var components = URLComponents(string: "\(baseUrl)\(path)") else {
             throw NetworkError.invalidUrl
         }
@@ -50,11 +66,18 @@ final class ApiClient {
         }
 
         var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = "GET"
+        urlRequest.httpMethod = method
         urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
 
         if let token = tokenStorage.accessToken(), !token.isEmpty {
             urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        if let body = body {
+            let encoder = JSONEncoder()
+            encoder.keyEncodingStrategy = .convertToSnakeCase
+            urlRequest.httpBody = try encoder.encode(body)
+            urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
 
         let (data, response) = try await session.data(for: urlRequest)
@@ -73,6 +96,13 @@ final class ApiClient {
             throw NetworkError.httpError(httpResponse.statusCode, errorBody)
         }
 
+        // DELETE and some action endpoints (e.g. sales#cancel) return 204/an
+        // empty body -- decoding EmptyResponse for those call sites skips
+        // JSONDecoder entirely instead of failing on zero bytes.
+        if T.self == EmptyResponse.self {
+            return EmptyResponse() as! T
+        }
+
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
 
@@ -82,4 +112,19 @@ final class ApiClient {
             throw NetworkError.decodingError(error)
         }
     }
+
+    // Convenience for mutations with no request body (POST .../complete,
+    // .../cancel, .../receive, DELETE, etc.) -- avoids every call site
+    // writing `body: Optional<EmptyBody>.none` by hand.
+    @discardableResult
+    func request<T: Decodable>(method: String, path: String, queryItems: [URLQueryItem]? = nil) async throws -> T {
+        try await request(method: method, path: path, queryItems: queryItems, body: Optional<EmptyBody>.none)
+    }
 }
+
+private struct EmptyBody: Encodable {}
+
+// Decode target for endpoints whose success response has no meaningful body
+// (204 No Content, or a body callers don't need) -- see the T.self ==
+// EmptyResponse.self short-circuit above.
+struct EmptyResponse: Decodable {}
