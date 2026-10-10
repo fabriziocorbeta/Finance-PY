@@ -76,6 +76,11 @@ struct MainTabView: View {
                 .tabItem {
                     Label("Transacciones", systemImage: "list.bullet.rectangle")
                 }
+
+            ReportsView()
+                .tabItem {
+                    Label("Reportes", systemImage: "chart.pie.fill")
+                }
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
