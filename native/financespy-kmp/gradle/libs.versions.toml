@@ -6,7 +6,7 @@ appcompat = "1.7.0"
 # had pinned, not up. Verified via WebSearch, no local Maven access to confirm
 # further -- re-check when CI runs.
 biometric = "1.1.0"
-kotlin = "2.1.0"
+kotlin = "2.4.20"
 agp = "8.7.3"
 compose-multiplatform = "1.7.3"
 ktor = "3.0.3"
