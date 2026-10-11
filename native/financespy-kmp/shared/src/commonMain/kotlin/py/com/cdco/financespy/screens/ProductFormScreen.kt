@@ -229,6 +229,7 @@ fun ProductFormScreen(
 
     if (showDeleteConfirm) {
         AlertDialog(
+            containerColor = py.com.cdco.financespy.theme.FinancePyColors.container().copy(alpha = 0.75f),
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Eliminar producto") },
             text = { Text("¿Estás seguro de que deseas eliminar este producto?") },

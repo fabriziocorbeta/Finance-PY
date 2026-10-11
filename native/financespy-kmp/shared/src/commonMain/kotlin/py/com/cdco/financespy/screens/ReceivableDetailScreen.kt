@@ -256,6 +256,7 @@ private fun PaymentDialog(
     val selectedAccount = accounts.find { it.id == selectedAccountId }
 
     AlertDialog(
+        containerColor = py.com.cdco.financespy.theme.FinancePyColors.container().copy(alpha = 0.75f),
         onDismissRequest = onDismiss,
         title = { Text("Registrar pago", color = FinancePyColors.textPrimary()) },
         text = {

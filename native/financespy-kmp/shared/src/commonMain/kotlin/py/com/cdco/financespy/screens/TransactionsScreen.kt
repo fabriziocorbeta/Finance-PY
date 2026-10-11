@@ -196,6 +196,7 @@ fun TransactionsScreen(
     if (showFilterSheet) {
         val sheetState = rememberModalBottomSheetState()
         ModalBottomSheet(
+            containerColor = py.com.cdco.financespy.theme.FinancePyColors.container().copy(alpha = 0.75f),
             onDismissRequest = { showFilterSheet = false },
             sheetState = sheetState
         ) {
@@ -215,6 +216,7 @@ fun TransactionsScreen(
 
     transactionPendingDelete?.let { entry ->
         AlertDialog(
+            containerColor = py.com.cdco.financespy.theme.FinancePyColors.container().copy(alpha = 0.75f),
             onDismissRequest = { transactionPendingDelete = null },
             title = { Text("Eliminar transacción") },
             text = {

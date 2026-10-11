@@ -236,6 +236,7 @@ fun SaleDetailScreen(
 
     if (showCompleteDialog) {
         AlertDialog(
+            containerColor = py.com.cdco.financespy.theme.FinancePyColors.container().copy(alpha = 0.75f),
             onDismissRequest = { showCompleteDialog = false },
             title = { Text("Completar Venta") },
             text = { Text("¿Deseas completar esta venta? Se descontará el stock de los productos.") },
@@ -259,6 +260,7 @@ fun SaleDetailScreen(
 
     if (showCancelDialog) {
         AlertDialog(
+            containerColor = py.com.cdco.financespy.theme.FinancePyColors.container().copy(alpha = 0.75f),
             onDismissRequest = { showCancelDialog = false },
             title = { Text("Cancelar Venta") },
             text = {
