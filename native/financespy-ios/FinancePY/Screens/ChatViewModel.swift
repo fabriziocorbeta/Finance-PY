@@ -40,7 +40,7 @@ final class ChatViewModel: ObservableObject {
         do {
             let chat = try await FinancePyApi.shared.fetchChat(id: id, page: 1)
             self.title = chat.title ?? ""
-            self.messages = chat.messages ?? []
+            self.messages = Array((chat.messages ?? []).reversed())
             self.isLoading = false
             checkAndPoll(messages: self.messages)
         } catch {
@@ -67,7 +67,7 @@ final class ChatViewModel: ObservableObject {
                     let newChat = try await FinancePyApi.shared.createChat(title: nil, message: trimmedContent)
                     self.actualChatId = newChat.id
                     self.title = newChat.title ?? ""
-                    self.messages = newChat.messages ?? []
+                    self.messages = Array((newChat.messages ?? []).reversed())
                     self.isSending = false
                     self.isNewChat = false
                     checkAndPoll(messages: self.messages)
@@ -110,7 +110,7 @@ final class ChatViewModel: ObservableObject {
 
             do {
                 let chat = try await FinancePyApi.shared.fetchChat(id: id, page: 1)
-                let newMessages = chat.messages ?? []
+                let newMessages = Array((chat.messages ?? []).reversed())
 
                 self.title = chat.title ?? ""
                 self.messages = newMessages
