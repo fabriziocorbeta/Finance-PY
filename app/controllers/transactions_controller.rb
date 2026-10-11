@@ -449,7 +449,7 @@ class TransactionsController < ApplicationController
 
     def entry_params
       entry_params = params.require(:entry).permit(
-        :name, :date, :amount, :currency, :excluded, :notes, :nature, :entryable_type,
+        :name, :date, :amount, :currency, :excluded, :notes, :nature, :entryable_type, :account_id,
         entryable_attributes: [ :id, :category_id, :merchant_id, :kind, :investment_activity_label, :exchange_rate, { tag_ids: [] } ]
       )
 
@@ -471,7 +471,14 @@ class TransactionsController < ApplicationController
     def permitted_entry_params
       case entry_permission
       when :owner, :full_control
-        entry_params
+        ep = entry_params
+        # account_id comes straight from a <select>; guard against a crafted
+        # request reassigning the entry to an account outside the user's
+        # family/permission scope.
+        if ep[:account_id].present? && !Current.user.accessible_accounts.exists?(id: ep[:account_id])
+          ep = ep.except(:account_id)
+        end
+        ep
       when :read_write
         # Annotate only: category, tags, merchant, notes
         ep = entry_params.slice(:notes)
