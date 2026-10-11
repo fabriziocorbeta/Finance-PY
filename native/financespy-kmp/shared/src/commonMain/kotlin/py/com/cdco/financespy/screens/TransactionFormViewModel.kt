@@ -80,7 +80,14 @@ class TransactionFormViewModel(
                             isLoading = false,
                             accountId = detail.account.id,
                             date = detail.date,
-                            amountText = detail.amount,
+                            // detail.amount is a locale-formatted display string from the
+                            // backend (Money#format, e.g. "288.000" for PYG with "." as a
+                            // thousands separator) -- feeding it straight into amountText
+                            // meant String.toDouble() read "288.000" as 288.0, silently
+                            // mangling the value (or failing the >0 check entirely for
+                            // amounts with more than one grouping separator). amount_cents
+                            // is the parse-safe field the API exposes for exactly this.
+                            amountText = centsToAmountText(detail.amount_cents, detail.currency),
                             nature = if (detail.classification == "income") "income" else "expense",
                             name = detail.name,
                             notes = detail.notes.orEmpty(),
