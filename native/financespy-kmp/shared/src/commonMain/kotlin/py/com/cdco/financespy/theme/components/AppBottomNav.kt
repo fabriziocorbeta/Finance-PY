@@ -21,7 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,6 +30,11 @@ import py.com.cdco.financespy.theme.FinancePyColors
 // Replica el diseño real de la barra inferior de la web (mobile, `_nav_item.html.erb`):
 // ícono en box redondeado 32dp, activo = fondo container + texto/ícono primario,
 // inactivo = sin fondo + texto/ícono secundario. Label 11sp debajo.
+//
+// Flota separada de los 3 bordes (como el dock/tab bar de iOS 26 Liquid Glass)
+// en vez de ser una barra sólida pegada de punta a punta -- navigationBarsPadding
+// primero para despejar los botones de navegación del sistema, el margen de
+// 16dp/12dp después para que quede despegada de los bordes de la pantalla.
 @Composable
 fun AppBottomNav(
     items: List<NavItem>,
@@ -39,15 +43,17 @@ fun AppBottomNav(
     onMoreClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val shape = RoundedCornerShape(28.dp)
     Column(
         modifier = modifier
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
             .fillMaxWidth()
-            .liquidGlass(RectangleShape)
+            .liquidGlass(shape)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
                 .padding(vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceAround
         ) {
