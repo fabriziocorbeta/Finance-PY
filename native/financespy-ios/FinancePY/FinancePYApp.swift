@@ -118,6 +118,12 @@ BudgetDashboardView()
                     Label("Flota", systemImage: "car.fill")
                 }
 
+
+            SettingsView()
+                .tabItem {
+                    Label("Ajustes", systemImage: "gearshape.fill")
+                }
+
             ImportsView()
                 .tabItem {
                     Label("Importaciones", systemImage: "square.and.arrow.down.on.square")

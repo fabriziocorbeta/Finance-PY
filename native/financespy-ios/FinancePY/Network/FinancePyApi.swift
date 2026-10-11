@@ -96,7 +96,7 @@ final class FinancePyApi {
                 URLQueryItem(name: "page", value: String(page)),
                 URLQueryItem(name: "per_page", value: "100")
             ]
-            let response: AccountsResponse = try await client.request(path: "/api/v1/accounts", queryItems: queryItems)
+            let response: AccountsResponse = try await ApiClient.shared.request(path: "/api/v1/accounts", queryItems: queryItems)
             allAccounts.append(contentsOf: response.accounts)
             totalPages = response.pagination.totalPages
             page += 1
@@ -106,7 +106,7 @@ final class FinancePyApi {
     }
 
     func fetchBalanceSheet() async throws -> BalanceSheetResponse {
-        return try await client.request(path: "/api/v1/balance_sheet")
+        return try await ApiClient.shared.request(path: "/api/v1/balance_sheet")
     }
 
     func fetchRecentTransactions(startDate: String) async throws -> [TransactionListItemDto] {
@@ -120,7 +120,7 @@ final class FinancePyApi {
                 URLQueryItem(name: "per_page", value: "100"),
                 URLQueryItem(name: "start_date", value: startDate)
             ]
-            let response: TransactionsResponse = try await client.request(path: "/api/v1/transactions", queryItems: queryItems)
+            let response: TransactionsResponse = try await ApiClient.shared.request(path: "/api/v1/transactions", queryItems: queryItems)
             allTransactions.append(contentsOf: response.transactions)
             totalPages = response.pagination.totalPages
             page += 1

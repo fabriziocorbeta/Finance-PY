@@ -59,6 +59,10 @@ struct SaleItemAttributes: Codable, Identifiable {
     var quantity: Int
     var unitPrice: Double
     var _destroy: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case id, productId = "product_id", quantity, unitPrice = "unit_price", _destroy
+    }
 }
 
 extension FinancePyApi {
