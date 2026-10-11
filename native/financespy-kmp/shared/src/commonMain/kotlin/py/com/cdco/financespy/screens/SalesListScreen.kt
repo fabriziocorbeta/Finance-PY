@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.api.dto.SaleDto
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.utils.formatMoney
+import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +47,7 @@ fun SalesListScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onCreateClick,
+                modifier = Modifier.padding(bottom = AppBottomNavOverlayClearance),
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
