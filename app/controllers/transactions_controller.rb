@@ -449,7 +449,7 @@ class TransactionsController < ApplicationController
 
     def entry_params
       entry_params = params.require(:entry).permit(
-        :name, :date, :amount, :currency, :excluded, :notes, :nature, :entryable_type, :account_id,
+        :name, :date, :amount, :currency, :excluded, :notes, :nature, :entryable_type,
         entryable_attributes: [ :id, :category_id, :merchant_id, :kind, :investment_activity_label, :exchange_rate, { tag_ids: [] } ]
       )
 
@@ -472,11 +472,15 @@ class TransactionsController < ApplicationController
       case entry_permission
       when :owner, :full_control
         ep = entry_params
-        # account_id comes straight from a <select>; guard against a crafted
-        # request reassigning the entry to an account outside the user's
-        # family/permission scope.
-        if ep[:account_id].present? && !Current.user.accessible_accounts.exists?(id: ep[:account_id])
-          ep = ep.except(:account_id)
+        # account_id is handled separately from the plain entry_params.permit
+        # list (rather than permitted there directly) so the only path a
+        # client-supplied account id can take is through this explicit
+        # accessible_accounts lookup -- never assigned to the entry unless it
+        # resolves to an account in the user's own family/permission scope.
+        requested_account_id = params.dig(:entry, :account_id)
+        if requested_account_id.present?
+          account = Current.user.accessible_accounts.find_by(id: requested_account_id)
+          ep[:account_id] = account.id if account
         end
         ep
       when :read_write
