@@ -1,6 +1,11 @@
 import SwiftUI
 
 struct SettingsView: View {
+    // Clears the local SwiftData cache and flips the app back to LoginView --
+    // AuthRepository.logout() only clears the Keychain token, so without this
+    // the caller has to do both after either destructive action below.
+    var onLoggedOut: () -> Void = {}
+
     @State private var settings: FamilySettingsDto?
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -117,6 +122,7 @@ struct SettingsView: View {
                 Button("Confirmar", role: .destructive) {
                     Task {
                         await AuthRepository.shared.logout()
+                        onLoggedOut()
                     }
                 }
             } message: {
@@ -128,6 +134,7 @@ struct SettingsView: View {
                     Task {
                         _ = try? await FinancePyApi.shared.deleteAccount()
                         await AuthRepository.shared.logout()
+                        onLoggedOut()
                     }
                 }
             } message: {

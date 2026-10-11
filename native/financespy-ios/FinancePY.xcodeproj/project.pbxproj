@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		20C607094FA34150A51CBD93 /* NavCustomizationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A0B47365084988AFA46B63 /* NavCustomizationView.swift */; };
+		DB3D0F3ACE894B2DBA6C91E8 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB81773F6DBE4B4ABD9D2C49 /* OnboardingView.swift */; };
+		74A4C5948B2747EDA9F9AA53 /* FinancePyApi+Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4380D20DB42743A78E6B08FA /* FinancePyApi+Settings.swift */; };
+		F935F8039EC44F13BD0B6D1A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3034C0895F0452BA9D389E5 /* SettingsView.swift */; };
 		73456153FD76419B92265BF3 /* FinancePyApi+Imports.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E142FA614C4A96A2B7C403 /* FinancePyApi+Imports.swift */; };
 		C770730918DB46E39247C3D6 /* ImportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20786A095E874684BBB5216C /* ImportsView.swift */; };
 		03F55B74FAAA7C3CCF2FACE6 /* RulesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9663AA6245B37971F33B64B5 /* RulesListView.swift */; };
@@ -71,6 +75,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		D9A0B47365084988AFA46B63 /* NavCustomizationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NavCustomization/NavCustomizationView.swift"; sourceTree = "<group>"; };
+		DB81773F6DBE4B4ABD9D2C49 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Onboarding/OnboardingView.swift"; sourceTree = "<group>"; };
+		4380D20DB42743A78E6B08FA /* FinancePyApi+Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Settings.swift"; sourceTree = "<group>"; };
+		A3034C0895F0452BA9D389E5 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Settings/SettingsView.swift"; sourceTree = "<group>"; };
 		E6E142FA614C4A96A2B7C403 /* FinancePyApi+Imports.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Imports.swift"; sourceTree = "<group>"; };
 		20786A095E874684BBB5216C /* ImportsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Imports/ImportsView.swift"; sourceTree = "<group>"; };
 		107CE41D6AEDFA883264A39C /* RuleDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RuleDetailView.swift; sourceTree = "<group>"; };
@@ -192,6 +200,7 @@
 			children = (
 				200000000000000000000005 /* ApiClient.swift */,
 				200000000000000000000006 /* FinancePyApi.swift */,
+				4380D20DB42743A78E6B08FA /* FinancePyApi+Settings.swift */,
 				E6E142FA614C4A96A2B7C403 /* FinancePyApi+Imports.swift */,
 				62D1091125867FAB53C55766 /* FinancePyApi+Products.swift */,
 				CDF0C6E6BAC3A5B36FDEED4A /* FinancePyApi+Rules.swift */,
@@ -263,6 +272,9 @@
 				200000000000000000000025 /* ChatView.swift */,
 				400000000000000000000006 /* Fleet */,
 				CB550928C18E4FDFD633FFA1 /* Budgets */,
+				D9A0B47365084988AFA46B63 /* NavCustomizationView.swift */,
+				DB81773F6DBE4B4ABD9D2C49 /* OnboardingView.swift */,
+				A3034C0895F0452BA9D389E5 /* SettingsView.swift */,
 				20786A095E874684BBB5216C /* ImportsView.swift */,
 			);
 			path = Screens;
@@ -381,6 +393,10 @@
 				300000000000000000000004 /* AuthRepository.swift in Sources */,
 				300000000000000000000005 /* ApiClient.swift in Sources */,
 				300000000000000000000006 /* FinancePyApi.swift in Sources */,
+				20C607094FA34150A51CBD93 /* NavCustomizationView.swift in Sources */,
+				DB3D0F3ACE894B2DBA6C91E8 /* OnboardingView.swift in Sources */,
+				74A4C5948B2747EDA9F9AA53 /* FinancePyApi+Settings.swift in Sources */,
+				F935F8039EC44F13BD0B6D1A /* SettingsView.swift in Sources */,
 				73456153FD76419B92265BF3 /* FinancePyApi+Imports.swift in Sources */,
 				C770730918DB46E39247C3D6 /* ImportsView.swift in Sources */,
 				300000000000000000000007 /* AccountEntity.swift in Sources */,

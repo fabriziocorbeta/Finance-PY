@@ -128,21 +128,14 @@ BudgetDashboardView()
                 .tabItem {
                     Label("Importaciones", systemImage: "square.and.arrow.down.on.square")
                 }
-        }
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Button(action: performLogout) {
-                    Image(systemName: "rectangle.portrait.and.arrow.right")
-                }
-            }
-        }
-    }
 
-    private func performLogout() {
-        Task {
-            await AuthRepository.shared.logout()
-            clearLocalCache()
-            isLoggedIn = false
+            SettingsView(onLoggedOut: {
+                clearLocalCache()
+                isLoggedIn = false
+            })
+            .tabItem {
+                Label("Ajustes", systemImage: "gearshape.fill")
+            }
         }
     }
 
