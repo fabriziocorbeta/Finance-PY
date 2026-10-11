@@ -2,6 +2,7 @@ package py.com.cdco.financespy
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -227,26 +228,20 @@ fun App(
                                         .padding(horizontal = 16.dp, vertical = 6.dp)
                                 )
                             }
-                        },
-                        bottomBar = {
-                            if (isTopLevelRoute) {
-                                AppBottomNav(
-                                    items = barItems,
-                                    currentRoute = currentRoute,
-                                    onNavigate = { item -> navigateToItem(item) },
-                                    onMoreClick = if (overflowItems.isNotEmpty()) {
-                                        { showHamburgerMenu = true }
-                                    } else null
-                                )
-                            }
                         }
+                        // No bottomBar slot here on purpose -- Scaffold reserves exactly
+                        // its height as bottom innerPadding, which clips the NavHost
+                        // content above it, leaving nothing behind the bar for its
+                        // liquidGlass translucency to show. AppBottomNav is instead
+                        // overlaid on top of the content below, in the outer Box, so
+                        // screens scroll underneath it like iOS's floating tab bar.
                     ) { innerPadding ->
                     val startDestination = if (needsOnboarding) Routes.ONBOARDING else Routes.DASHBOARD
 
                     NavHost(
                         navController = navController,
                         startDestination = startDestination,
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding(top = innerPadding.calculateTopPadding())
                     ) {
                         composable(Routes.ONBOARDING) {
                             OnboardingScreen(
@@ -549,6 +544,18 @@ fun App(
                         )
                     }
                 }
+
+                    if (isTopLevelRoute) {
+                        AppBottomNav(
+                            items = barItems,
+                            currentRoute = currentRoute,
+                            onNavigate = { item -> navigateToItem(item) },
+                            onMoreClick = if (overflowItems.isNotEmpty()) {
+                                { showHamburgerMenu = true }
+                            } else null,
+                            modifier = Modifier.align(Alignment.BottomCenter)
+                        )
+                    }
             }
         }
     }
