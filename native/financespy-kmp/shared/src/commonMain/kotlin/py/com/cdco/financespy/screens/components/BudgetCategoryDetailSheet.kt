@@ -57,7 +57,7 @@ fun BudgetCategoryDetailSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = FinancePyColors.container(),
+        containerColor = FinancePyColors.container().copy(alpha = 0.75f),
         modifier = modifier
     ) {
         Column(

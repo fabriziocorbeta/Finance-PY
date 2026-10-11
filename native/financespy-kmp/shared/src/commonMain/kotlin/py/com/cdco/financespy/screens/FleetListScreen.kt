@@ -289,6 +289,6 @@ private fun AddVehicleDialog(
                 Text("Cancelar", color = FinancePyColors.textSecondary())
             }
         },
-        containerColor = FinancePyColors.container()
+        containerColor = FinancePyColors.container().copy(alpha = 0.75f)
     )
 }

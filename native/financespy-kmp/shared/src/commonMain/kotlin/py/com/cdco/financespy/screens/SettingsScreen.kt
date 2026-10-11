@@ -116,7 +116,7 @@ fun SettingsScreen(
                     )
                 }
             },
-            containerColor = FinancePyColors.container(),
+            containerColor = FinancePyColors.container().copy(alpha = 0.75f),
             titleContentColor = FinancePyColors.textPrimary(),
             textContentColor = FinancePyColors.textSecondary()
         )
@@ -161,7 +161,7 @@ fun SettingsScreen(
                     )
                 }
             },
-            containerColor = FinancePyColors.container(),
+            containerColor = FinancePyColors.container().copy(alpha = 0.75f),
             titleContentColor = FinancePyColors.textPrimary(),
             textContentColor = FinancePyColors.textSecondary()
         )

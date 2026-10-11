@@ -236,6 +236,7 @@ fun PurchaseOrderDetailScreen(
 
     if (showReceiveDialog) {
         AlertDialog(
+            containerColor = py.com.cdco.financespy.theme.FinancePyColors.container().copy(alpha = 0.75f),
             onDismissRequest = { showReceiveDialog = false },
             title = { Text("Recibir Orden de Compra") },
             text = { Text("¿Deseas marcar como recibida esta orden? Se incrementará el stock de los productos.") },
@@ -259,6 +260,7 @@ fun PurchaseOrderDetailScreen(
 
     if (showCancelDialog) {
         AlertDialog(
+            containerColor = py.com.cdco.financespy.theme.FinancePyColors.container().copy(alpha = 0.75f),
             onDismissRequest = { showCancelDialog = false },
             title = { Text("Cancelar Orden de Compra") },
             text = {
