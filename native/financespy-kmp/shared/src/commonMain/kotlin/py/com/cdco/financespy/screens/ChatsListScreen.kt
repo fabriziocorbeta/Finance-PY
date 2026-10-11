@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.theme.FinancePyColors
+import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,6 +40,7 @@ fun ChatsListScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onNewChatClick,
+                modifier = Modifier.padding(bottom = AppBottomNavOverlayClearance),
                 containerColor = primary,
                 contentColor = surface
             ) {

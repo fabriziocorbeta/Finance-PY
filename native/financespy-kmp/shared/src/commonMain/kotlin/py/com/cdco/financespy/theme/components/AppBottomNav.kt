@@ -27,6 +27,17 @@ import androidx.compose.ui.unit.sp
 import py.com.cdco.financespy.navigation.NavItem
 import py.com.cdco.financespy.theme.FinancePyColors
 
+// AppBottomNav now floats as an overlay on top of screen content (see App.kt)
+// instead of reserving space via Scaffold's bottomBar slot, so screens' own
+// FloatingActionButtons -- previously sitting safely above the old solid,
+// space-reserving bar -- need this much extra bottom padding to clear the
+// pill's visible content + its own vertical margin, or they render directly
+// underneath it: visually hidden and untappable (the pill's rectangular
+// layout bounds intercept touches there even where its clipped shape looks
+// transparent). Scaffold already applies system nav-bar insets to FABs on
+// its own, so this is on top of that, not instead of it.
+val AppBottomNavOverlayClearance = 96.dp
+
 // Replica el diseño real de la barra inferior de la web (mobile, `_nav_item.html.erb`):
 // ícono en box redondeado 32dp, activo = fondo container + texto/ícono primario,
 // inactivo = sin fondo + texto/ícono secundario. Label 11sp debajo.

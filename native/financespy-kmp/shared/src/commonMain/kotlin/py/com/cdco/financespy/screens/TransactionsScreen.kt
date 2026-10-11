@@ -56,6 +56,7 @@ import py.com.cdco.financespy.api.dto.TransactionListItemDto
 import py.com.cdco.financespy.screens.components.parseHexColor
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
+import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.theme.components.ButtonVariant
 import py.com.cdco.financespy.utils.formatMoney
@@ -184,7 +185,7 @@ fun TransactionsScreen(
                 onClick = onCreateClick,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp),
+                    .padding(bottom = AppBottomNavOverlayClearance, end = 16.dp, top = 16.dp, start = 16.dp),
                 containerColor = FinancePyColors.buttonBgPrimary(),
                 contentColor = if (isDark) FinancePyColors.Black else FinancePyColors.White
             ) {
