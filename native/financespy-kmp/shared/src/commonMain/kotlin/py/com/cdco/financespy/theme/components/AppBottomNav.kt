@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -15,12 +17,14 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -218,14 +222,26 @@ private fun AppBottomNavMoreItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Touch target stays the full item (selectable on the Column), but the
+    // ripple itself is scoped to the 32dp icon circle via a shared
+    // interactionSource -- otherwise Compose's default indication fills the
+    // whole clickable bounds as an off-center rectangle instead of a ripple
+    // centered on what visually looks like the tappable element.
+    val interactionSource = remember { MutableInteractionSource() }
     Column(
-        modifier = modifier.selectable(selected = false, onClick = onClick),
+        modifier = modifier.selectable(
+            selected = false,
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = onClick
+        ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             modifier = Modifier
                 .size(32.dp)
-                .clip(RoundedCornerShape(8.dp)),
+                .clip(RoundedCornerShape(8.dp))
+                .indication(interactionSource, ripple(bounded = true)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -249,13 +265,17 @@ private fun AppBottomNavMoreItem(
 @Composable
 private fun AppBottomNavItemIcon(
     item: NavItem,
-    active: Boolean
+    active: Boolean,
+    interactionSource: MutableInteractionSource
 ) {
     val iconColorOnBadge = FinancePyColors.surface()
     val inactiveColor = FinancePyColors.textSecondary()
 
     Box(
-        modifier = Modifier.size(32.dp),
+        modifier = Modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .indication(interactionSource, ripple(bounded = true)),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -275,12 +295,20 @@ private fun AppBottomNavItem(
     modifier: Modifier = Modifier
 ) {
     val contentColor = if (active) FinancePyColors.textPrimary() else FinancePyColors.textSecondary()
+    // See AppBottomNavMoreItem: touch target is the full item, ripple is
+    // scoped to the icon circle via this shared interactionSource.
+    val interactionSource = remember { MutableInteractionSource() }
 
     Column(
-        modifier = modifier.selectable(selected = active, onClick = onClick),
+        modifier = modifier.selectable(
+            selected = active,
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = onClick
+        ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AppBottomNavItemIcon(item = item, active = active)
+        AppBottomNavItemIcon(item = item, active = active, interactionSource = interactionSource)
         Text(
             text = item.label,
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
