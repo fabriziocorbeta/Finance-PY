@@ -8,7 +8,7 @@ struct TagRefDto: Codable {
 
 struct TransferInfoDto: Codable {
     let id: String
-    let amount: String?
+    @AnyStringAmount var amount: String?
     let currency: String?
     let otherAccount: AccountRefDto?
 }
@@ -16,7 +16,7 @@ struct TransferInfoDto: Codable {
 struct TransactionDetailDto: Codable {
     let id: String
     let date: String
-    let amount: String
+    @AnyStringAmount var amount: String?
     let amountCents: Int64
     let signedAmountCents: Int64
     let currency: String
@@ -39,7 +39,7 @@ struct CreateTransactionRequest: Encodable {
 struct CreateTransactionBody: Encodable {
     let accountId: String
     let date: String
-    let amount: String
+    @AnyStringAmount var amount: String?
     let nature: String
     let name: String
     let notes: String?
@@ -56,7 +56,7 @@ struct UpdateTransactionRequest: Encodable {
 struct UpdateTransactionBody: Encodable {
     let accountId: String?
     let date: String?
-    let amount: String?
+    @AnyStringAmount var amount: String?
     let nature: String?
     let name: String?
     let notes: String?

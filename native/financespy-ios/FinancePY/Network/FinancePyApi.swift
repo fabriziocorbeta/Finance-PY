@@ -36,7 +36,7 @@ struct BalanceSheetResponse: Codable {
 
 struct MoneyDto: Codable {
     let cents: Int64?
-    let amount: String?
+    @AnyStringAmount var amount: String?
     let currency: String?
 }
 

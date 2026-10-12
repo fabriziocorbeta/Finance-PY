@@ -22,6 +22,8 @@
 		300000000000000000000003 /* KeychainTokenStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* KeychainTokenStorage.swift */; };
 		300000000000000000000004 /* AuthRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000004 /* AuthRepository.swift */; };
 		300000000000000000000005 /* ApiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000005 /* ApiClient.swift */; };
+		DCCD81E394B306365D078B64 /* CodableExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FA63FF364652665BF7432C6 /* CodableExtensions.swift */; };
+		FFF0448925AB1588576B6893 /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 619C7B2E3C92AD31ACCFA8CD /* Formatters.swift */; };
 		300000000000000000000006 /* FinancePyApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000006 /* FinancePyApi.swift */; };
 		300000000000000000000007 /* AccountEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000007 /* AccountEntity.swift */; };
 		300000000000000000000008 /* EntryEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000008 /* EntryEntity.swift */; };
@@ -108,6 +110,8 @@
 		200000000000000000000003 /* KeychainTokenStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainTokenStorage.swift; sourceTree = "<group>"; };
 		200000000000000000000004 /* AuthRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthRepository.swift; sourceTree = "<group>"; };
 		200000000000000000000005 /* ApiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApiClient.swift; sourceTree = "<group>"; };
+		5FA63FF364652665BF7432C6 /* CodableExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodableExtensions.swift; sourceTree = "<group>"; };
+		619C7B2E3C92AD31ACCFA8CD /* Formatters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Formatters.swift; sourceTree = "<group>"; };
 		200000000000000000000006 /* FinancePyApi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinancePyApi.swift; sourceTree = "<group>"; };
 		200000000000000000000007 /* AccountEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountEntity.swift; sourceTree = "<group>"; };
 		200000000000000000000008 /* EntryEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryEntity.swift; sourceTree = "<group>"; };
@@ -238,9 +242,19 @@
 				400000000000000000000003 /* Persistence */,
 				400000000000000000000004 /* Sync */,
 				400000000000000000000005 /* Screens */,
+				BB2BDA175DC315FA1C6C5DA9 /* Utils */,
 				20000000000000000000000E /* Info.plist */,
 			);
 			path = FinancePY;
+			sourceTree = "<group>";
+		};
+		BB2BDA175DC315FA1C6C5DA9 /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				5FA63FF364652665BF7432C6 /* CodableExtensions.swift */,
+				619C7B2E3C92AD31ACCFA8CD /* Formatters.swift */,
+			);
+			path = Utils;
 			sourceTree = "<group>";
 		};
 		400000000000000000000001 /* Auth */ = {
@@ -519,6 +533,8 @@
 				300000000000000000000003 /* KeychainTokenStorage.swift in Sources */,
 				300000000000000000000004 /* AuthRepository.swift in Sources */,
 				300000000000000000000005 /* ApiClient.swift in Sources */,
+				DCCD81E394B306365D078B64 /* CodableExtensions.swift in Sources */,
+				FFF0448925AB1588576B6893 /* Formatters.swift in Sources */,
 				300000000000000000000006 /* FinancePyApi.swift in Sources */,
 				20C607094FA34150A51CBD93 /* NavCustomization/NavCustomizationView.swift in Sources */,
 				DB3D0F3ACE894B2DBA6C91E8 /* Onboarding/OnboardingView.swift in Sources */,

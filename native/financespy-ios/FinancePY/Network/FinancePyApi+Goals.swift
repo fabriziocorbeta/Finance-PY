@@ -43,7 +43,7 @@ struct GoalDto: Codable, Identifiable {
 
 struct GoalPledgeDto: Codable, Identifiable {
     let id: String
-    let amount: String?
+    @AnyStringAmount var amount: String?
     let amountCents: Int64?
     let currency: String?
     let state: String?
