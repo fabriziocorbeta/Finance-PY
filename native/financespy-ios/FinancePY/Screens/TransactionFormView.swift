@@ -28,7 +28,7 @@ struct TransactionFormView: View {
             _accountId = State(initialValue: tx.accountId)
             _name = State(initialValue: tx.name)
 
-            let amount = Double(tx.transaction?.signedAmountCents ?? tx.amountCents) / 100.0
+            let amount = Formatters.centsToDouble(tx.transaction?.signedAmountCents ?? tx.amountCents, currency: tx.currency)
             _amountText = State(initialValue: String(abs(amount)))
             _nature = State(initialValue: amount < 0 ? "income" : "expense")
 

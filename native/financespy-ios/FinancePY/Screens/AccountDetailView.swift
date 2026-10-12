@@ -99,10 +99,6 @@ struct AccountDetailView: View {
     }
 
     private func formatCents(_ cents: Int64, currency: String) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = currency
-        let amount = Double(cents) / 100.0
-        return formatter.string(from: NSNumber(value: amount)) ?? "\(currency) \(amount)"
+        return Formatters.formatCents(cents, currency: currency)
     }
 }

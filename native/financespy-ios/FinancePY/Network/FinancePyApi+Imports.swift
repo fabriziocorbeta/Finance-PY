@@ -35,7 +35,7 @@ struct ImportResultEnvelope: Codable {
 
 struct PdfImportRowFieldsDto: Codable {
     let date: String?
-    let amount: String?
+    @AnyStringAmount var amount: String?
     let currency: String?
     let name: String?
     let category: String?
