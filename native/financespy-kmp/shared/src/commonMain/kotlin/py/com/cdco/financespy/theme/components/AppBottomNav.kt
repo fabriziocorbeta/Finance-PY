@@ -1,5 +1,6 @@
 package py.com.cdco.financespy.theme.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,34 +60,47 @@ fun AppBottomNav(
     onMoreClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(28.dp)
-    Column(
+    // Plays the glass's materialize-in once on first composition, instead of
+    // the bar just popping in fully formed -- matches the Apple reference's
+    // "surface forming" feel described in GlassEffectTransition.materialize.
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = GlassTransitions.materializeEnter,
+        exit = GlassTransitions.materializeExit,
         modifier = modifier
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .fillMaxWidth()
-            .liquidGlass(shape)
     ) {
-        Row(
+        val shape = RoundedCornerShape(28.dp)
+        Column(
             modifier = Modifier
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
                 .fillMaxWidth()
-                .padding(vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceAround
+                .liquidGlass(shape)
         ) {
-            items.forEach { item ->
-                val active = currentRoute == item.route
-                AppBottomNavItem(
-                    item = item,
-                    active = active,
-                    onClick = { onNavigate(item) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            if (onMoreClick != null) {
-                AppBottomNavMoreItem(
-                    onClick = onMoreClick,
-                    modifier = Modifier.weight(1f)
-                )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                items.forEach { item ->
+                    val active = currentRoute == item.route
+                    AppBottomNavItem(
+                        item = item,
+                        active = active,
+                        onClick = { onNavigate(item) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                if (onMoreClick != null) {
+                    AppBottomNavMoreItem(
+                        onClick = onMoreClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
@@ -121,6 +140,37 @@ private fun AppBottomNavMoreItem(
 }
 
 @Composable
+private fun AppBottomNavItemIcon(
+    item: NavItem,
+    active: Boolean,
+    contentColor: Color
+) {
+    Box(
+        modifier = Modifier.size(32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        AnimatedVisibility(
+            visible = active,
+            enter = GlassTransitions.materializeEnter,
+            exit = GlassTransitions.materializeExit
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(FinancePyColors.container())
+            )
+        }
+        Icon(
+            imageVector = item.icon,
+            contentDescription = item.label,
+            tint = contentColor,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+@Composable
 private fun AppBottomNavItem(
     item: NavItem,
     active: Boolean,
@@ -133,20 +183,7 @@ private fun AppBottomNavItem(
         modifier = modifier.selectable(selected = active, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(if (active) FinancePyColors.container() else Color.Transparent),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = item.icon,
-                contentDescription = item.label,
-                tint = contentColor,
-                modifier = Modifier.size(18.dp)
-            )
-        }
+        AppBottomNavItemIcon(item = item, active = active, contentColor = contentColor)
         Text(
             text = item.label,
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
