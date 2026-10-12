@@ -240,7 +240,7 @@ private fun AccountGroupExpandableItem(
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
                     imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = null,
+                    contentDescription = if (expanded) "Colapsar" else "Expandir",
                     tint = FinancePyColors.textSecondary(),
                     modifier = Modifier.size(20.dp)
                 )

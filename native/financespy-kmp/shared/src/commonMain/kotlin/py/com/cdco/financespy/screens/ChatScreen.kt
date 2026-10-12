@@ -173,7 +173,7 @@ fun MessageBubble(message: MessageDto) {
                     .background(primary),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Filled.SmartToy, contentDescription = null, tint = surface, modifier = Modifier.size(20.dp))
+                Icon(Icons.Filled.SmartToy, contentDescription = "Asistente", tint = surface, modifier = Modifier.size(20.dp))
             }
             Spacer(modifier = Modifier.width(8.dp))
         }
@@ -231,7 +231,7 @@ fun MessageBubble(message: MessageDto) {
                     .background(surfaceHover),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Filled.Person, contentDescription = null, tint = textPrimary, modifier = Modifier.size(20.dp))
+                Icon(Icons.Filled.Person, contentDescription = "Tú", tint = textPrimary, modifier = Modifier.size(20.dp))
             }
         }
     }

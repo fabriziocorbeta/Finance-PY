@@ -235,7 +235,7 @@ private fun DoneStep(viewModel: PdfStatementImportViewModel, onBack: () -> Unit,
     ) {
         Icon(
             Icons.Default.CheckCircle,
-            contentDescription = null,
+            contentDescription = "Éxito",
             tint = FinancePyColors.success(),
             modifier = Modifier.size(48.dp)
         )

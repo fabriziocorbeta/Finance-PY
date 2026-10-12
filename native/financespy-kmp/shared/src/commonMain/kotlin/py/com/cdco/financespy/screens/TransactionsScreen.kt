@@ -107,7 +107,7 @@ fun TransactionsScreen(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
-                        contentDescription = null,
+                        contentDescription = "Buscar",
                         tint = FinancePyColors.textSecondary()
                     )
                 },
