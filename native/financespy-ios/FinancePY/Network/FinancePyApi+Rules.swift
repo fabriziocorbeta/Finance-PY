@@ -17,7 +17,7 @@ struct RuleDto: Codable, Identifiable {
 struct RuleConditionDto: Codable, Identifiable {
     let id: String
     let conditionType: String
-    let operatorStr: String
+    let operatorStr: String?
     let value: String?
     let subConditions: [RuleConditionDto]?
 
@@ -84,7 +84,7 @@ struct CreateRuleBody: Codable {
 
 struct ConditionAttributes: Codable {
     let conditionType: String
-    let operatorStr: String
+    let operatorStr: String?
     let value: String?
     let subConditionsAttributes: [ConditionAttributes]?
     let id: String?
