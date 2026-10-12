@@ -137,7 +137,7 @@ struct RuleFormView: View {
                 active = rule.active
 
                 conditions = rule.conditions.map { c in
-                    FormCondition(conditionType: c.conditionType, operatorStr: c.operatorStr, value: c.value ?? "", originalId: c.id)
+                    FormCondition(conditionType: c.conditionType, operatorStr: c.operatorStr ?? "", value: c.value ?? "", originalId: c.id)
                 }
 
                 actions = rule.actions.map { a in
@@ -157,7 +157,7 @@ struct RuleFormView: View {
         let conditionsAttrs = conditions.map { c in
             ConditionAttributes(
                 conditionType: c.conditionType,
-                operatorStr: c.operatorStr,
+                operatorStr: c.operatorStr.isEmpty ? nil : c.operatorStr,
                 value: c.value.isEmpty ? nil : c.value,
                 subConditionsAttributes: nil,
                 id: c.originalId,

@@ -108,7 +108,7 @@ struct ConditionRowView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(condition.conditionType).font(.subheadline).bold()
             HStack {
-                Text(condition.operatorStr)
+                Text(condition.operatorStr ?? "")
                     .font(.caption)
                     .foregroundColor(.blue)
                 if let value = condition.value {
