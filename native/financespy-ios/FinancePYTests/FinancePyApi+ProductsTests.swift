@@ -10,8 +10,8 @@ final class FinancePyApiProductsTests: XCTestCase {
     }
 
     func testFetchProductsSuccess() async throws {
-        let prod = ProductDto(id: "1", name: "Prod", priceCents: 100, costCents: nil, currency: "USD", sku: nil, inventoryCount: nil, description: nil, categoryId: nil, createdAt: "2023", updatedAt: "2023")
-        let responseDto = ProductsResponseDto(data: [prod])
+        let prod = ProductDto(id: "1", name: "Prod", sku: nil, category: nil, supplier: nil, buyPrice: 80.0, sellPrice: 100.0, currency: "USD", stock: 10, minStock: 5, description: nil, createdAt: "2023", updatedAt: "2023")
+        let responseDto = ProductsResponseDto(data: [prod], meta: nil)
         let data = try JSONEncoder().encode(responseDto)
 
         MockURLProtocol.requestHandler = { request in
@@ -19,7 +19,7 @@ final class FinancePyApiProductsTests: XCTestCase {
             return (response, data)
         }
 
-        let result = try await FinancePyApi.shared.fetchProducts()
+        let result = try await FinancePyApi.shared.getProducts()
         XCTAssertEqual(result.count, 1)
         XCTAssertEqual(result.first?.id, "1")
     }
@@ -30,7 +30,7 @@ final class FinancePyApiProductsTests: XCTestCase {
             return (response, "Bad Request".data(using: .utf8)!)
         }
         do {
-            _ = try await FinancePyApi.shared.fetchProducts()
+            _ = try await FinancePyApi.shared.getProducts()
             XCTFail("Expected error")
         } catch NetworkError.httpError(let code, _) {
             XCTAssertEqual(code, 400)
@@ -45,7 +45,7 @@ final class FinancePyApiProductsTests: XCTestCase {
             return (response, "Server Error".data(using: .utf8)!)
         }
         do {
-            _ = try await FinancePyApi.shared.fetchProducts()
+            _ = try await FinancePyApi.shared.getProducts()
             XCTFail("Expected error")
         } catch NetworkError.httpError(let code, _) {
             XCTAssertEqual(code, 500)
@@ -60,7 +60,7 @@ final class FinancePyApiProductsTests: XCTestCase {
             return (response, "not json".data(using: .utf8)!)
         }
         do {
-            _ = try await FinancePyApi.shared.fetchProducts()
+            _ = try await FinancePyApi.shared.getProducts()
             XCTFail("Expected error")
         } catch NetworkError.decodingError {
             // Expected
