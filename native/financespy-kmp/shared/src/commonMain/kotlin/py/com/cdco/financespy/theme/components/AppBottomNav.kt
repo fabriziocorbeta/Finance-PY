@@ -78,7 +78,7 @@ fun AppBottomNav(
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .fillMaxWidth()
-                .liquidGlass(shape)
+                .liquidGlass(shape, contrastBoost = 0.18f)
         ) {
             Row(
                 modifier = Modifier

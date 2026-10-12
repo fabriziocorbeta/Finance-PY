@@ -44,14 +44,24 @@ object GlassTransitions {
 }
 
 fun Modifier.liquidGlass(
-    shape: Shape = RoundedCornerShape(12.dp)
+    shape: Shape = RoundedCornerShape(12.dp),
+    // Bumps the background's opacity (0f = unchanged). AppCard and dialogs sit
+    // on their own against a single background and read fine at the default
+    // alpha. AppBottomNav instead floats as a permanent overlay on top of
+    // scrolling content -- on screens with several stacked AppCards (Dashboard,
+    // Reportes) a card's own near-white background can end up sitting directly
+    // behind the nav at rest, and at the default alpha the two blend into each
+    // other: the card's numbers/chart visibly bleed into the nav row instead of
+    // being dimmed by it. The nav passes a boost so it stays legible regardless
+    // of what's scrolled behind it, without changing how cards/dialogs look.
+    contrastBoost: Float = 0f
 ): Modifier = composed {
     val isDark = isSystemInDarkTheme()
 
     val glassBg = if (isDark) {
-        FinancePyColors.container().copy(alpha = 0.65f)
+        FinancePyColors.container().copy(alpha = (0.65f + contrastBoost).coerceAtMost(1f))
     } else {
-        FinancePyColors.container().copy(alpha = 0.75f)
+        FinancePyColors.container().copy(alpha = (0.75f + contrastBoost).coerceAtMost(1f))
     }
 
     val borderGradient = Brush.linearGradient(
