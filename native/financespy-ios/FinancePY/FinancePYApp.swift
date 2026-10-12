@@ -59,6 +59,10 @@ struct MainTabView: View {
     let container: ModelContainer
 
     @StateObject private var syncEngine: SyncEngine
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @Query private var accounts: [AccountEntity]
+    @State private var isCheckingAccounts = true
+    @State private var shouldShowOnboarding = false
 
     init(isLoggedIn: Binding<Bool>, container: ModelContainer) {
         self._isLoggedIn = isLoggedIn
@@ -67,6 +71,34 @@ struct MainTabView: View {
     }
 
     var body: some View {
+        Group {
+            if hasCompletedOnboarding {
+                mainTabs
+            } else if isCheckingAccounts {
+                ProgressView("Cargando...")
+                    .task {
+                        await checkOnboardingStatus()
+                    }
+            } else if shouldShowOnboarding {
+                NavigationStack {
+                    OnboardingView(onComplete: {
+                        hasCompletedOnboarding = true
+                    })
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Omitir") {
+                                hasCompletedOnboarding = true
+                            }
+                        }
+                    }
+                }
+            } else {
+                mainTabs
+            }
+        }
+    }
+
+    private var mainTabs: some View {
         TabView {
 BudgetDashboardView()
     .tabItem {
@@ -139,7 +171,35 @@ BudgetDashboardView()
     // device/simulator, until a fresh SyncEngine pass happened to overwrite
     // it. Wipe it here so switching accounts never shows stale data from
     // the previous session, even for a moment.
+    private func checkOnboardingStatus() async {
+        if hasCompletedOnboarding {
+            isCheckingAccounts = false
+            return
+        }
+
+        if !accounts.isEmpty {
+            hasCompletedOnboarding = true
+            isCheckingAccounts = false
+            return
+        }
+
+        do {
+            let remoteAccounts = try await FinancePyApi.shared.fetchAllAccounts()
+            if remoteAccounts.isEmpty {
+                shouldShowOnboarding = true
+            } else {
+                hasCompletedOnboarding = true
+            }
+        } catch {
+            // On error, default to showing onboarding if they have no accounts locally
+            shouldShowOnboarding = true
+        }
+
+        isCheckingAccounts = false
+    }
+
     private func clearLocalCache() {
+        UserDefaults.standard.removeObject(forKey: "hasCompletedOnboarding")
         let context = container.mainContext
         do {
             try context.delete(model: TransactionEntity.self)
