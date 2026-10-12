@@ -194,14 +194,63 @@ struct BudgetDashboardView: View {
         isLoading = true
         error = nil
         do {
-            let fetched = try await FinancePyApi.shared.fetchBudget(id: budgetParam)
-            self.budget = fetched
-            self.budgetId = fetched.id
-            if let categories = fetched.categories {
-                self.expandedGroups = Set(categories.filter { !$0.subcategory }.map { $0.id })
+            var targetId = budgetParam
+            var foundSummary: BudgetDto? = nil
+
+            // If the budgetParam is not a specific ID (like "current" or a "YYYY-MM" prefix),
+            // resolve it by fetching the list of all budgets first, just like the Android app does.
+            if !targetId.contains("-") || targetId.count <= 7 {
+                if targetId == "current" {
+                    let date = Date()
+                    let calendar = Calendar.current
+                    let year = calendar.component(.year, from: date)
+                    let month = calendar.component(.month, from: date)
+                    targetId = String(format: "%04d-%02d", year, month)
+                }
+
+                do {
+                    let allBudgets = try await FinancePyApi.shared.fetchAllBudgets()
+                    if let summary = allBudgets.first(where: {
+                        ($0.startDate?.hasPrefix(targetId) == true) || $0.param == targetId
+                    }) {
+                        foundSummary = summary
+                        targetId = summary.id
+                    }
+                } catch {
+                    // Ignore error, will attempt to fetch by budgetParam and probably fail or succeed fallback
+                }
+            }
+
+            do {
+                let fetched = try await FinancePyApi.shared.fetchBudget(id: targetId)
+                self.budget = fetched
+                self.budgetId = fetched.id
+                if let categories = fetched.categories {
+                    self.expandedGroups = Set(categories.filter { !$0.subcategory }.map { $0.id })
+                }
+            } catch {
+                if let summary = foundSummary {
+                    self.budget = summary
+                    self.budgetId = summary.id
+                    self.error = "Error al cargar los detalles del presupuesto, mostrando resumen."
+                } else {
+                    // If no budget is found, try creating it
+                    if budgetParam == "current" || targetId.count == 7 { // YYYY-MM
+                        let startDate = targetId + "-01"
+                        let created = try await FinancePyApi.shared.createBudget(expectedIncome: 0, startDate: startDate, endDate: nil)
+                        self.budget = created
+                        self.budgetId = created.id
+                        if let categories = created.categories {
+                            self.expandedGroups = Set(categories.filter { !$0.subcategory }.map { $0.id })
+                        }
+                    } else {
+                        throw error
+                    }
+                }
             }
         } catch {
             self.error = "Error al cargar el presupuesto: \(error.localizedDescription)"
+            self.budget = nil
         }
         isLoading = false
     }

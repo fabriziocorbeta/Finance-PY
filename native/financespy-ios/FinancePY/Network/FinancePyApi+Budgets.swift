@@ -116,6 +116,24 @@ struct UpdateBudgetCategoryRequest: Codable {
 // MARK: - API Extension
 
 extension FinancePyApi {
+    func fetchAllBudgets() async throws -> [BudgetDto] {
+        var allBudgets: [BudgetDto] = []
+        var page = 1
+        let perPage = 100
+
+        while true {
+            let response: BudgetListResponse = try await fetchBudgets(page: page, perPage: perPage)
+            allBudgets.append(contentsOf: response.budgets)
+
+            let pagination = response.pagination
+            if page >= pagination.totalPages {
+                break
+            }
+            page += 1
+        }
+        return allBudgets
+    }
+
     func fetchBudgets(page: Int = 1, perPage: Int = 25) async throws -> BudgetListResponse {
         let queryItems = [
             URLQueryItem(name: "page", value: String(page)),
