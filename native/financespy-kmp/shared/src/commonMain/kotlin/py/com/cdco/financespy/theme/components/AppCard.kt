@@ -1,5 +1,12 @@
 package py.com.cdco.financespy.theme.components
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -17,6 +24,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.theme.FinancePyColors
+
+// Enter/exit pair for a glass surface appearing or disappearing, modeled on
+// SwiftUI's GlassEffectTransition.materialize (see Apple's
+// developer.apple.com/documentation/swiftui/glasseffecttransition) -- scale
+// up from slightly condensed + fade in, not a plain fade, so the surface
+// reads as "forming" rather than just appearing. Compose has no native glass
+// transition type to port; this reproduces the feel with scaleIn/fadeIn.
+object GlassTransitions {
+    val materializeEnter: EnterTransition = scaleIn(
+        initialScale = 0.9f,
+        animationSpec = tween(220)
+    ) + fadeIn(animationSpec = tween(180))
+
+    val materializeExit: ExitTransition = scaleOut(
+        targetScale = 0.9f,
+        animationSpec = tween(160)
+    ) + fadeOut(animationSpec = tween(140))
+}
 
 fun Modifier.liquidGlass(
     shape: Shape = RoundedCornerShape(12.dp)
