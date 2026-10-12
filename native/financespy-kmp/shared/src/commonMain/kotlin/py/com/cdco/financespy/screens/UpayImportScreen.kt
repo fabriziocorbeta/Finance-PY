@@ -124,8 +124,8 @@ fun UpayImportScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             when (result.status) {
-                                "complete" -> Icon(Icons.Default.CheckCircle, contentDescription = null, tint = FinancePyColors.success())
-                                "failed" -> Icon(Icons.Default.Error, contentDescription = null, tint = FinancePyColors.destructive())
+                                "complete" -> Icon(Icons.Default.CheckCircle, contentDescription = "Completado", tint = FinancePyColors.success())
+                                "failed" -> Icon(Icons.Default.Error, contentDescription = "Fallido", tint = FinancePyColors.destructive())
                                 else -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                             }
                             Spacer(modifier = Modifier.width(8.dp))

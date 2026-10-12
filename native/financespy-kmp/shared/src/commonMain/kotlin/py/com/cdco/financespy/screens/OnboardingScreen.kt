@@ -385,7 +385,7 @@ private fun StepThreeGoals(
                         Spacer(modifier = Modifier.width(8.dp))
                         Icon(
                             imageVector = Icons.Default.Check,
-                            contentDescription = null,
+                            contentDescription = "Seleccionado",
                             tint = FinancePyColors.buttonBgPrimary()
                         )
                     }

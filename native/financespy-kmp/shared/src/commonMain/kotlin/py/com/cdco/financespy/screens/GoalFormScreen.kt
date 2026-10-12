@@ -125,7 +125,7 @@ fun GoalFormScreen(
                         if (isSelected) {
                             Icon(
                                 imageVector = Icons.Default.Check,
-                                contentDescription = null,
+                                contentDescription = "Seleccionado",
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )
