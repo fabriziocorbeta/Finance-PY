@@ -40,6 +40,12 @@ class Transfer::Creator
       Transaction.new(
         kind: kind,
         category: (investment_contributions_category if kind == "investment_contribution"),
+        # InvestmentFlowStatement#period_totals (the "Contribuciones del Período"
+        # widget on Reportes, web and native) only counts transactions tagged
+        # investment_activity_label: "Contribution" -- without this, a transfer
+        # into an investment account gets the right kind/category but stays
+        # invisible to that report.
+        investment_activity_label: (investment_activity_label_for(kind)),
         entry: source_account.entries.build(
           amount: amount.abs,
           currency: source_account.currency,
@@ -52,6 +58,10 @@ class Transfer::Creator
 
     def investment_contributions_category
       source_account.family.investment_contributions_category
+    end
+
+    def investment_activity_label_for(kind)
+      "Contribution" if kind == "investment_contribution"
     end
 
     def inflow_transaction
