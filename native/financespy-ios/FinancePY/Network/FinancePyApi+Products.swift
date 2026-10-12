@@ -20,6 +20,7 @@ struct ProductDto: Codable, Identifiable {
 
 struct ProductsResponseDto: Codable {
     let data: [ProductDto]
+    let meta: PaginationDto?
 }
 
 struct ProductResponseDto: Codable {
@@ -68,20 +69,23 @@ extension FinancePyApi {
             URLQueryItem(name: "per_page", value: String(perPage))
         ]
 
-        let response: [ProductDto] = try await ApiClient.shared.request(path: "/api/v1/products", queryItems: queryItems)
-        return response
+        let response: ProductsResponseDto = try await ApiClient.shared.request(path: "/api/v1/products", queryItems: queryItems)
+        return response.data
     }
 
     func getProduct(id: String) async throws -> ProductDto {
-        return try await ApiClient.shared.request(path: "/api/v1/products/\(id)")
+        let response: ProductResponseDto = try await ApiClient.shared.request(path: "/api/v1/products/\(id)")
+        return response.data
     }
 
     func createProduct(request: CreateProductRequest) async throws -> ProductDto {
-        return try await ApiClient.shared.request(method: "POST", path: "/api/v1/products", body: request)
+        let response: ProductResponseDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/products", body: request)
+        return response.data
     }
 
     func updateProduct(id: String, request: UpdateProductRequest) async throws -> ProductDto {
-        return try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/products/\(id)", body: request)
+        let response: ProductResponseDto = try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/products/\(id)", body: request)
+        return response.data
     }
 
     func deleteProduct(id: String) async throws {
