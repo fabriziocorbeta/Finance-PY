@@ -26,7 +26,7 @@ class Api::V1::UsageController < Api::V1::BaseController
       # For OAuth, we don't track detailed usage yet, but we can return basic info
       render_json({
         authentication_method: "oauth",
-        message: "Detailed usage tracking is available for API key authentication"
+        message: "El seguimiento detallado de uso está disponible para la autenticación por clave de API"
       })
     else
       render_json({

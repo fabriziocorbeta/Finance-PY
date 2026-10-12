@@ -475,9 +475,10 @@
 			};
 			buildConfigurationList = 111111112222222233333309 /* Build configuration list for PBXProject "FinancePY" */;
 			compatibilityVersion = "Xcode 14.0";
-			developmentRegion = en;
+			developmentRegion = es;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				es,
 				en,
 				Base,
 			);
