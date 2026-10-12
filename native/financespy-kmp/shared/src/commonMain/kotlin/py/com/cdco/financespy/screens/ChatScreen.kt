@@ -10,8 +10,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -48,7 +48,7 @@ fun ChatScreen(
                 title = { Text(if (state.isNewChat) "Nuevo chat" else (state.title.takeIf { it.isNotBlank() } ?: "Chat"), style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás")
                     }
                 }
             )
@@ -142,7 +142,7 @@ fun ChatScreen(
                     enabled = inputText.isNotBlank() && !state.isSending
                 ) {
                     Icon(
-                        Icons.Filled.Send,
+                        Icons.AutoMirrored.Filled.Send,
                         contentDescription = "Enviar",
                         tint = if (inputText.isNotBlank() && !state.isSending) textPrimary else textSecondary
                     )
