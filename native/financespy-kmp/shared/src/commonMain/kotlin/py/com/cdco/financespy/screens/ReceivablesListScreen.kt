@@ -28,6 +28,7 @@ import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.utils.formatMoney
+import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
 
 @Composable
 fun ReceivablesListScreen(
@@ -49,7 +50,7 @@ fun ReceivablesListScreen(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = AppBottomNavOverlayClearance),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {

@@ -95,7 +95,7 @@ fun ProductsListScreen(
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
+                        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = AppBottomNavOverlayClearance),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(products, key = { it.id }) { product ->
