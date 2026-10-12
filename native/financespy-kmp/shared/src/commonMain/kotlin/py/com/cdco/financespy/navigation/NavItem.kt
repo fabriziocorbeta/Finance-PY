@@ -10,8 +10,8 @@ import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MoneyOff
 import androidx.compose.material.icons.filled.PieChart
-import androidx.compose.material.icons.filled.ReceiptLong
-import androidx.compose.material.icons.filled.Rule
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.automirrored.filled.Rule
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -34,9 +34,9 @@ object NavItems {
     val GOALS = NavItem("goals", "Metas", Routes.GOALS, Icons.Filled.TrackChanges)
     val RECEIVABLES = NavItem("receivables", "Cuentas a Cobrar", Routes.RECEIVABLES, Icons.Filled.Handshake)
     val DEBTS = NavItem("debts", "Deudas", Routes.DEBTS, Icons.Filled.MoneyOff)
-    val RULES = NavItem("rules", "Reglas", Routes.RULES, Icons.Filled.Rule)
+    val RULES = NavItem("rules", "Reglas", Routes.RULES, Icons.AutoMirrored.Filled.Rule)
     val PRODUCTS = NavItem("products", "Productos", Routes.PRODUCTS, Icons.Filled.Inventory2)
-    val SALES = NavItem("sales", "Ventas", Routes.SALES, Icons.Filled.ReceiptLong)
+    val SALES = NavItem("sales", "Ventas", Routes.SALES, Icons.AutoMirrored.Filled.ReceiptLong)
     val PURCHASE_ORDERS = NavItem("purchase_orders", "Compras", Routes.PURCHASE_ORDERS, Icons.Filled.LocalShipping)
     val FLEET = NavItem("fleet", "Flota", Routes.FLEET, Icons.Filled.DirectionsCar)
     val CHAT = NavItem("chat", "Asistente", Routes.CHAT, Icons.Filled.SmartToy)

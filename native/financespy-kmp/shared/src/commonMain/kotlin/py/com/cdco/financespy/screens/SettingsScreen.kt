@@ -21,7 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.Rule
+import androidx.compose.material.icons.automirrored.filled.Rule
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.AlertDialog
@@ -313,7 +313,7 @@ fun SettingsScreen(
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 if (onNavigateToRules != null) {
                                     SettingsNavRow(
-                                        icon = Icons.Filled.Rule,
+                                        icon = Icons.AutoMirrored.Filled.Rule,
                                         label = "Reglas",
                                         onClick = onNavigateToRules
                                     )
