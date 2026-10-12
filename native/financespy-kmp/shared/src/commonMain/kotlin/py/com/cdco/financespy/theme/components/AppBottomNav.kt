@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -142,9 +143,17 @@ private fun AppBottomNavMoreItem(
 @Composable
 private fun AppBottomNavItemIcon(
     item: NavItem,
-    active: Boolean,
-    contentColor: Color
+    active: Boolean
 ) {
+    // Solid filled circular badge behind the active icon instead of the old
+    // rounded-square container-color fill -- matches the native iOS Liquid
+    // Glass tab bar's active-tab badge (a solid circle, not a translucent
+    // square). Kept on-brand: the badge uses buttonBgPrimary (black/white),
+    // not iOS's default blue tint, since FinancePY's own palette has no blue.
+    val badgeColor = FinancePyColors.buttonBgPrimary()
+    val iconColorOnBadge = FinancePyColors.surface()
+    val inactiveColor = FinancePyColors.textSecondary()
+
     Box(
         modifier = Modifier.size(32.dp),
         contentAlignment = Alignment.Center
@@ -157,14 +166,14 @@ private fun AppBottomNavItemIcon(
             Box(
                 modifier = Modifier
                     .size(32.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(FinancePyColors.container())
+                    .clip(CircleShape)
+                    .background(badgeColor)
             )
         }
         Icon(
             imageVector = item.icon,
             contentDescription = item.label,
-            tint = contentColor,
+            tint = if (active) iconColorOnBadge else inactiveColor,
             modifier = Modifier.size(18.dp)
         )
     }
@@ -183,7 +192,7 @@ private fun AppBottomNavItem(
         modifier = modifier.selectable(selected = active, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AppBottomNavItemIcon(item = item, active = active, contentColor = contentColor)
+        AppBottomNavItemIcon(item = item, active = active)
         Text(
             text = item.label,
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
