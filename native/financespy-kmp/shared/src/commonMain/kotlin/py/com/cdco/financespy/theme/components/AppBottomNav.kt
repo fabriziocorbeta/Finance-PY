@@ -1,17 +1,20 @@
 package py.com.cdco.financespy.theme.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -21,6 +24,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -28,9 +33,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import py.com.cdco.financespy.navigation.NavItem
 import py.com.cdco.financespy.theme.FinancePyColors
 
@@ -44,6 +54,8 @@ import py.com.cdco.financespy.theme.FinancePyColors
 // transparent). Scaffold already applies system nav-bar insets to FABs on
 // its own, so this is on top of that, not instead of it.
 val AppBottomNavOverlayClearance = 96.dp
+
+private val BadgeSize = 32.dp
 
 // Replica el diseño real de la barra inferior de la web (mobile, `_nav_item.html.erb`):
 // ícono en box redondeado 32dp, activo = fondo container + texto/ícono primario,
@@ -81,30 +93,124 @@ fun AppBottomNav(
                 .fillMaxWidth()
                 .liquidGlass(shape, contrastBoost = 0.18f)
         ) {
-            Row(
+            // Center-x (px, relative to this Box) of each tab item, reported by
+            // its own onGloballyPositioned as the Row lays out. Drives the
+            // single shared badge below instead of each item owning its own.
+            val centers = remember(items) { mutableStateListOf<Float>().apply { repeat(items.size) { add(0f) } } }
+            val activeIndex = items.indexOfFirst { it.route == currentRoute }.let { if (it < 0) null else it }
+
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceAround
+                    .padding(vertical = 6.dp)
             ) {
-                items.forEach { item ->
-                    val active = currentRoute == item.route
-                    AppBottomNavItem(
-                        item = item,
-                        active = active,
-                        onClick = { onNavigate(item) },
-                        modifier = Modifier.weight(1f)
+                if (activeIndex != null && centers.getOrNull(activeIndex)?.let { it > 0f } == true) {
+                    LiquidNavBadge(
+                        targetCenterPx = centers[activeIndex],
+                        color = FinancePyColors.buttonBgPrimary()
                     )
                 }
-                if (onMoreClick != null) {
-                    AppBottomNavMoreItem(
-                        onClick = onMoreClick,
-                        modifier = Modifier.weight(1f)
-                    )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    items.forEachIndexed { index, item ->
+                        val active = currentRoute == item.route
+                        AppBottomNavItem(
+                            item = item,
+                            active = active,
+                            onClick = { onNavigate(item) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .onGloballyPositioned { coords ->
+                                    val centerX = coords.positionInParent().x + coords.size.width / 2f
+                                    if (index < centers.size) centers[index] = centerX
+                                }
+                        )
+                    }
+                    if (onMoreClick != null) {
+                        AppBottomNavMoreItem(
+                            onClick = onMoreClick,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+// A single badge that slides and stretches between tab positions instead of
+// each tab independently fading its own badge in/out. Modeled on the native
+// iOS 26 Liquid Glass tab bar's active-tab indicator (see the reference
+// screen recording of the real transition the user provided): the edge
+// leading the movement reaches its target quickly while the trailing edge
+// follows on a softer spring, so the pill visibly elongates mid-slide --
+// "liquid" stretch -- before both edges catch up and it snaps back to a
+// circle at rest.
+@Composable
+private fun BoxScope.LiquidNavBadge(
+    targetCenterPx: Float,
+    color: Color
+) {
+    val density = LocalDensity.current
+    val badgeSizePx = with(density) { BadgeSize.toPx() }
+
+    val leftAnim = remember { Animatable(targetCenterPx - badgeSizePx / 2f) }
+    val rightAnim = remember { Animatable(targetCenterPx + badgeSizePx / 2f) }
+    var initialized by remember { mutableStateOf(false) }
+    var previousRight by remember { mutableFloatStateOf(targetCenterPx + badgeSizePx / 2f) }
+
+    LaunchedEffect(targetCenterPx) {
+        val targetLeft = targetCenterPx - badgeSizePx / 2f
+        val targetRight = targetCenterPx + badgeSizePx / 2f
+
+        if (!initialized) {
+            leftAnim.snapTo(targetLeft)
+            rightAnim.snapTo(targetRight)
+            initialized = true
+            previousRight = targetRight
+            return@LaunchedEffect
+        }
+
+        val movingRight = targetRight > previousRight
+        previousRight = targetRight
+
+        coroutineScope {
+            launch {
+                rightAnim.animateTo(
+                    targetRight,
+                    spring(
+                        dampingRatio = if (movingRight) 0.55f else 0.9f,
+                        stiffness = if (movingRight) 380f else 260f
+                    )
+                )
+            }
+            launch {
+                leftAnim.animateTo(
+                    targetLeft,
+                    spring(
+                        dampingRatio = if (movingRight) 0.9f else 0.55f,
+                        stiffness = if (movingRight) 260f else 380f
+                    )
+                )
+            }
+        }
+    }
+
+    val leftDp = with(density) { leftAnim.value.toDp() }
+    val widthPx = (rightAnim.value - leftAnim.value).coerceAtLeast(0f)
+    val widthDp = with(density) { widthPx.toDp() }
+
+    Box(
+        modifier = Modifier
+            .align(Alignment.CenterStart)
+            .offset(x = leftDp)
+            .size(width = widthDp, height = BadgeSize)
+            .clip(RoundedCornerShape(percent = 50))
+            .background(color)
+    )
 }
 
 @Composable
@@ -145,12 +251,6 @@ private fun AppBottomNavItemIcon(
     item: NavItem,
     active: Boolean
 ) {
-    // Solid filled circular badge behind the active icon instead of the old
-    // rounded-square container-color fill -- matches the native iOS Liquid
-    // Glass tab bar's active-tab badge (a solid circle, not a translucent
-    // square). Kept on-brand: the badge uses buttonBgPrimary (black/white),
-    // not iOS's default blue tint, since FinancePY's own palette has no blue.
-    val badgeColor = FinancePyColors.buttonBgPrimary()
     val iconColorOnBadge = FinancePyColors.surface()
     val inactiveColor = FinancePyColors.textSecondary()
 
@@ -158,18 +258,6 @@ private fun AppBottomNavItemIcon(
         modifier = Modifier.size(32.dp),
         contentAlignment = Alignment.Center
     ) {
-        AnimatedVisibility(
-            visible = active,
-            enter = GlassTransitions.materializeEnter,
-            exit = GlassTransitions.materializeExit
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(badgeColor)
-            )
-        }
         Icon(
             imageVector = item.icon,
             contentDescription = item.label,
