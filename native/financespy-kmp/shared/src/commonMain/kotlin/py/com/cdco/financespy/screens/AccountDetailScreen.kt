@@ -36,6 +36,7 @@ import py.com.cdco.financespy.screens.components.parseColorString
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.utils.formatMoney
+import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
 
 @Composable
 fun AccountDetailScreen(viewModel: AccountDetailViewModel) {
@@ -45,7 +46,7 @@ fun AccountDetailScreen(viewModel: AccountDetailViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .background(FinancePyColors.surface()),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = AppBottomNavOverlayClearance),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         state.account?.let { account ->

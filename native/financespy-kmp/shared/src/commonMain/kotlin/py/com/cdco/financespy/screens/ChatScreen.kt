@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.api.dto.MessageDto
+import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,7 +76,7 @@ fun ChatScreen(
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
+                        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = AppBottomNavOverlayClearance),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         items(state.messages) { message ->

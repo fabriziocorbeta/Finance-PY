@@ -44,6 +44,7 @@ import py.com.cdco.financespy.screens.components.OutflowsDonutCard
 import py.com.cdco.financespy.screens.components.SankeyFlowChart
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
+import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
 
 @Composable
 fun DashboardScreen(
@@ -78,7 +79,7 @@ fun DashboardScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(FinancePyColors.surface()),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = AppBottomNavOverlayClearance),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
