@@ -1,7 +1,7 @@
 <%# locals: (entry:, categories:) %>
 
 <% account_currencies = Current.family.accounts.map { |a| [a.id, a.currency] }.to_h.to_json %>
-<%= styled_form_with model: entry, url: transactions_path, class: "space-y-4", data: { controller: "transaction-form", transaction_form_exchange_rate_url_value: exchange_rate_path, transaction_form_account_currencies_value: account_currencies } do |f| %>
+<%= styled_form_with model: entry, url: entry.persisted? ? transaction_path(entry) : transactions_path, class: "space-y-4", data: { controller: "transaction-form", transaction_form_exchange_rate_url_value: exchange_rate_path, transaction_form_account_currencies_value: account_currencies } do |f| %>
   <% if entry.errors.any? %>
     <%= render "shared/form_errors", model: entry %>
   <% end %>
