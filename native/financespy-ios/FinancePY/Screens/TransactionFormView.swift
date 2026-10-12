@@ -136,7 +136,7 @@ struct TransactionFormView: View {
                 let body = UpdateTransactionBody(
                     accountId: accountId,
                     date: date,
-                    amount: amountText,
+                    amount: AnyStringAmount(wrappedValue: amountText),
                     nature: nature,
                     name: name,
                     notes: notes.isEmpty ? nil : notes,
@@ -152,7 +152,7 @@ struct TransactionFormView: View {
                 let body = CreateTransactionBody(
                     accountId: accountId,
                     date: date,
-                    amount: amountText,
+                    amount: AnyStringAmount(wrappedValue: amountText),
                     nature: nature,
                     name: name,
                     notes: notes.isEmpty ? nil : notes,
