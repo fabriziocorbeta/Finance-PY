@@ -207,9 +207,14 @@ private fun BoxScope.LiquidNavBadge(
     val widthPx = (rightAnim.value - leftAnim.value).coerceAtLeast(0f)
     val widthDp = with(density) { widthPx.toDp() }
 
+    // TopStart, not CenterStart: the Row's items (icon Box, then label text
+    // below) are top-aligned, so the icon sits flush at the top of this same
+    // Box -- centering the badge in the Box's full height (icon + label)
+    // instead put it lower than the icon, cutting the icon's top edge off
+    // the circle.
     Box(
         modifier = Modifier
-            .align(Alignment.CenterStart)
+            .align(Alignment.TopStart)
             .offset(x = leftDp)
             .size(width = widthDp, height = BadgeSize)
             .clip(RoundedCornerShape(percent = 50))
