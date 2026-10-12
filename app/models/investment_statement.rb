@@ -20,9 +20,17 @@ class InvestmentStatement
 
     result = totals_query(trades_scope: trades_in_period)
 
+    # Trades only cover buying/selling securities -- cash moved into or out of
+    # an investment account via a transfer (Transfer::Creator, kind:
+    # investment_contribution) never becomes a Trade, so it was invisible here
+    # even though it's exactly what users mean by "contributed" or
+    # "withdrew". Fold in InvestmentFlowStatement's transaction-based totals
+    # so a transfer-funded account doesn't show 0 despite real activity.
+    flows = InvestmentFlowStatement.new(family, user: user).period_totals(period: period)
+
     PeriodTotals.new(
-      contributions: Money.new(result[:contributions], family.currency),
-      withdrawals: Money.new(result[:withdrawals], family.currency),
+      contributions: Money.new(result[:contributions], family.currency) + flows.contributions,
+      withdrawals: Money.new(result[:withdrawals], family.currency) + flows.withdrawals,
       dividends: Money.new(result[:dividends], family.currency),
       interest: Money.new(result[:interest], family.currency),
       trades_count: result[:trades_count],
