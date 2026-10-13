@@ -75,11 +75,14 @@ fun DashboardScreen(
     val currentPeriodKey = state.selectedPeriod ?: dashboard?.period?.key ?: "current_month"
     val currentPeriodLabel = periodOptions.find { it.first == currentPeriodKey }?.second ?: "Este mes"
 
+    val currentClearance = AppBottomNavOverlayClearance
+    println("DashboardScreen_DEBUG: Recomposing with clearance=$currentClearance")
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(FinancePyColors.surface()),
-        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = AppBottomNavOverlayClearance),
+        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = currentClearance),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {

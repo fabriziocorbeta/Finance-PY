@@ -91,7 +91,9 @@ fun AppBottomNav(
         exit = GlassTransitions.materializeExit,
         modifier = modifier.onGloballyPositioned { coords ->
             val measuredHeight = with(density) { coords.size.height.toDp() }
+            println("AppBottomNav_DEBUG: onGloballyPositioned triggered. measuredHeight=$measuredHeight, oldClearance=$AppBottomNavOverlayClearance")
             if (measuredHeight > 0.dp && measuredHeight != AppBottomNavOverlayClearance) {
+                println("AppBottomNav_DEBUG: Updating AppBottomNavOverlayClearance to $measuredHeight")
                 AppBottomNavOverlayClearance = measuredHeight
             }
         }
