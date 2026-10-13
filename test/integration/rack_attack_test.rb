@@ -46,8 +46,8 @@ class RackAttackTest < ActionDispatch::IntegrationTest
 
   test "repeated message creation on the same chat is rejected with 429" do
     with_rack_attack do
-      60.times { post "/chats/1/messages", params: { message: { content: "hi" } } }
-      post "/chats/1/messages", params: { message: { content: "hi" } }
+      60.times { post "/chats/c0ffee12-3456-789a-bcde-f0123456789a/messages", params: { message: { content: "hi" } } }
+      post "/chats/c0ffee12-3456-789a-bcde-f0123456789a/messages", params: { message: { content: "hi" } }
 
       assert_response :too_many_requests
     end
@@ -59,18 +59,18 @@ class RackAttackTest < ActionDispatch::IntegrationTest
   # triggers the same real LLM call. Verify the regex now covers it directly
   # (cheap, deterministic) and that repeated hits actually 429 end-to-end.
   test "the message throttle regex matches the API retry path, not the unrelated web retry path" do
-    assert_match Rack::Attack::MESSAGE_CREATE_PATHS, "/api/v1/chats/1/messages/retry"
-    assert_match Rack::Attack::MESSAGE_CREATE_PATHS, "/chats/1/messages"
-    assert_match Rack::Attack::MESSAGE_CREATE_PATHS, "/api/v1/chats/1/messages"
+    assert_match Rack::Attack::MESSAGE_CREATE_PATHS, "/api/v1/chats/c0ffee12-3456-789a-bcde-f0123456789a/messages/retry"
+    assert_match Rack::Attack::MESSAGE_CREATE_PATHS, "/chats/c0ffee12-3456-789a-bcde-f0123456789a/messages"
+    assert_match Rack::Attack::MESSAGE_CREATE_PATHS, "/api/v1/chats/c0ffee12-3456-789a-bcde-f0123456789a/messages"
     # /chats/:id/retry (ChatsController#retry) is a different, unrelated route
     # and must not accidentally start matching this regex.
-    assert_no_match Rack::Attack::MESSAGE_CREATE_PATHS, "/chats/1/retry"
+    assert_no_match Rack::Attack::MESSAGE_CREATE_PATHS, "/chats/c0ffee12-3456-789a-bcde-f0123456789a/retry"
   end
 
   test "repeated API retry requests on the same chat are rejected with 429" do
     with_rack_attack do
-      60.times { post "/api/v1/chats/1/messages/retry" }
-      post "/api/v1/chats/1/messages/retry"
+      60.times { post "/api/v1/chats/c0ffee12-3456-789a-bcde-f0123456789a/messages/retry" }
+      post "/api/v1/chats/c0ffee12-3456-789a-bcde-f0123456789a/messages/retry"
 
       assert_response :too_many_requests
     end
