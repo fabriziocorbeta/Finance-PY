@@ -97,6 +97,7 @@
 		F8AF43A69385961AE460A4F5 /* FinancePyApi+RulesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1B240E6A045807D04236706 /* FinancePyApi+RulesTests.swift */; };
 		F935F8039EC44F13BD0B6D1A /* Settings/SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3034C0895F0452BA9D389E5 /* Settings/SettingsView.swift */; };
 		FB7144BA278D600E4C369A16 /* RuleFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E463FE87897FD7C6E5445CC2 /* RuleFormView.swift */; };
+		DD782D00959044D050FB8352 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = B9E7BAA80FDBBF95F945CF06 /* InfoPlist.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -193,6 +194,8 @@
 		ED6C47B096051C1A7560872E /* FinancePyApi+FleetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+FleetTests.swift"; path = "FinancePYTests/FinancePyApi+FleetTests.swift"; sourceTree = SOURCE_ROOT; };
 		F1B240E6A045807D04236706 /* FinancePyApi+RulesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+RulesTests.swift"; path = "FinancePYTests/FinancePyApi+RulesTests.swift"; sourceTree = SOURCE_ROOT; };
 		F44946178AA3EC018BDA1C5F /* PurchaseOrdersListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PurchaseOrdersListView.swift; path = PurchaseOrders/PurchaseOrdersListView.swift; sourceTree = "<group>"; };
+		98420E68CB4838B02039114E /* es */ = {isa = PBXFileReference; includeInIndex = 1; name = es; path = es.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		D3814AB3DB7B1C6F1B2B685B /* en */ = {isa = PBXFileReference; includeInIndex = 1; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -244,6 +247,7 @@
 				400000000000000000000005 /* Screens */,
 				BB2BDA175DC315FA1C6C5DA9 /* Utils */,
 				20000000000000000000000E /* Info.plist */,
+				B9E7BAA80FDBBF95F945CF06 /* InfoPlist.strings */,
 			);
 			path = FinancePY;
 			sourceTree = "<group>";
@@ -512,6 +516,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DD782D00959044D050FB8352 /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -630,10 +635,23 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+
+/* Begin PBXVariantGroup section */
+		B9E7BAA80FDBBF95F945CF06 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				98420E68CB4838B02039114E /* es */,
+				D3814AB3DB7B1C6F1B2B685B /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 /* Begin XCBuildConfiguration section */
 		11111111222222223333330B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEVELOPMENT_LANGUAGE = es;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -672,6 +690,7 @@
 		11111111222222223333330C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEVELOPMENT_LANGUAGE = es;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -703,6 +722,7 @@
 		11111111222222223333330D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEVELOPMENT_LANGUAGE = es;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
@@ -730,6 +750,7 @@
 		11111111222222223333330E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEVELOPMENT_LANGUAGE = es;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
@@ -757,6 +778,7 @@
 		113ADA765D3CF204FA301F78 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEVELOPMENT_LANGUAGE = es;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				SDKROOT = iphoneos;
@@ -769,6 +791,7 @@
 		2E87B466C92F380C080E2E71 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEVELOPMENT_LANGUAGE = es;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				SDKROOT = iphoneos;
