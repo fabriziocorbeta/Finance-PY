@@ -57,7 +57,7 @@ import py.com.cdco.financespy.theme.FinancePyColors
 // layout bounds intercept touches there even where its clipped shape looks
 // transparent). Scaffold already applies system nav-bar insets to FABs on
 // its own, so this is on top of that, not instead of it.
-val AppBottomNavOverlayClearance = 96.dp
+var AppBottomNavOverlayClearance by mutableStateOf(96.dp)
 
 private val BadgeSize = 32.dp
 
@@ -83,11 +83,18 @@ fun AppBottomNav(
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
 
+    val density = LocalDensity.current
+
     AnimatedVisibility(
         visible = visible,
         enter = GlassTransitions.materializeEnter,
         exit = GlassTransitions.materializeExit,
-        modifier = modifier
+        modifier = modifier.onGloballyPositioned { coords ->
+            val measuredHeight = with(density) { coords.size.height.toDp() }
+            if (measuredHeight > 0.dp && measuredHeight != AppBottomNavOverlayClearance) {
+                AppBottomNavOverlayClearance = measuredHeight
+            }
+        }
     ) {
         val shape = RoundedCornerShape(28.dp)
         Column(
