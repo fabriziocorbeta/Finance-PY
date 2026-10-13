@@ -13,6 +13,8 @@ struct SettingsView: View {
     @State private var usage: UsageDto?
 
     @State private var showDeleteAccountAlert = false
+    @State private var showDeleteAccountErrorAlert = false
+    @State private var deleteAccountError: String? = nil
     @State private var showLogoutAlert = false
 
     // We could add state here for pendingOutboxCount if we implemented a sync engine connection
@@ -128,13 +130,25 @@ struct SettingsView: View {
             } message: {
                 Text("¿Estás seguro de que deseas cerrar sesión? Tendrás que volver a ingresar tus credenciales.")
             }
+            .alert("Error al eliminar", isPresented: $showDeleteAccountErrorAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(deleteAccountError ?? "Ocurrió un error inesperado al eliminar la cuenta.")
+            }
+
             .alert("¿Eliminar cuenta?", isPresented: $showDeleteAccountAlert) {
                 Button("Cancelar", role: .cancel) { }
                 Button("Eliminar", role: .destructive) {
                     Task {
-                        _ = try? await FinancePyApi.shared.deleteAccount()
-                        await AuthRepository.shared.logout()
-                        onLoggedOut()
+                        do {
+                            try await FinancePyApi.shared.deleteAccount()
+                            await AuthRepository.shared.logout()
+                            onLoggedOut()
+                        } catch {
+                            showDeleteAccountAlert = false
+                            deleteAccountError = error.localizedDescription
+                            showDeleteAccountErrorAlert = true
+                        }
                     }
                 }
             } message: {

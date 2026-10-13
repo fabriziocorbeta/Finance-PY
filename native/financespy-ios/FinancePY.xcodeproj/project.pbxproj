@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9F3C6D1A2B5E8F4701234567 /* FinancePyApi+Categories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E2B5A3C7F9D1E4601234567 /* FinancePyApi+Categories.swift */; };
+		1A2B3C4D5E6F7A8B9C0D1E2F /* FinancePyApi+Merchants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6G7H8I9J0K1L2 /* FinancePyApi+Merchants.swift */; };
 		03F55B74FAAA7C3CCF2FACE6 /* RulesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9663AA6245B37971F33B64B5 /* RulesListView.swift */; };
 		04894A2BAD57DD449A8919A1 /* FinancePyApi+GoalsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CEB423AB441949581808740 /* FinancePyApi+GoalsTests.swift */; };
 		08DA427AAB717615A229F95B /* FinancePyApi+PurchaseOrders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05D34C3CA1215DFFA58CA0D0 /* FinancePyApi+PurchaseOrders.swift */; };
@@ -101,6 +103,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		8E2B5A3C7F9D1E4601234567 /* FinancePyApi+Categories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Categories.swift"; sourceTree = "<group>"; };
+		A1B2C3D4E5F6G7H8I9J0K1L2 /* FinancePyApi+Merchants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Merchants.swift"; sourceTree = "<group>"; };
 		05D34C3CA1215DFFA58CA0D0 /* FinancePyApi+PurchaseOrders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+PurchaseOrders.swift"; path = "FinancePyApi+PurchaseOrders.swift"; sourceTree = "<group>"; };
 		07934466B711642D1BB38E29 /* FinancePyApi+BudgetsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+BudgetsTests.swift"; path = "FinancePYTests/FinancePyApi+BudgetsTests.swift"; sourceTree = SOURCE_ROOT; };
 		0DB249C388D84A9077F85BDF /* FinancePyApi+ReportsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+ReportsTests.swift"; path = "FinancePYTests/FinancePyApi+ReportsTests.swift"; sourceTree = SOURCE_ROOT; };
@@ -280,6 +284,8 @@
 				E6E142FA614C4A96A2B7C403 /* FinancePyApi+Imports.swift */,
 				62D1091125867FAB53C55766 /* FinancePyApi+Products.swift */,
 				CDF0C6E6BAC3A5B36FDEED4A /* FinancePyApi+Rules.swift */,
+				8E2B5A3C7F9D1E4601234567 /* FinancePyApi+Categories.swift */,
+				A1B2C3D4E5F6G7H8I9J0K1L2 /* FinancePyApi+Merchants.swift */,
 				491942CEAD8FA1AB390CA4DC /* FinancePyApi+Sales.swift */,
 				05D34C3CA1215DFFA58CA0D0 /* FinancePyApi+PurchaseOrders.swift */,
 				20000000000000000000000F /* FinancePyApi+AccountsWrite.swift */,
@@ -599,6 +605,8 @@
 				300000000000000000000014 /* FleetListView.swift in Sources */,
 				300000000000000000000015 /* FleetVehicleDetailView.swift in Sources */,
 				8EA6AC3B378C049981434F15 /* BudgetDashboardView.swift in Sources */,
+				9F3C6D1A2B5E8F4701234567 /* FinancePyApi+Categories.swift in Sources */,
+				1A2B3C4D5E6F7A8B9C0D1E2F /* FinancePyApi+Merchants.swift in Sources */,
 				C548B3D9EA1624EE47329FFF /* BudgetAllocationEditorView.swift in Sources */,
 				39467CF1DD72A4AD63395F6C /* FinancePyApi+Budgets.swift in Sources */,
 			);
