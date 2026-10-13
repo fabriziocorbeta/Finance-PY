@@ -54,6 +54,25 @@ final class ApiClient {
         queryItems: [URLQueryItem]? = nil,
         body: Body?
     ) async throws -> T {
+        do {
+            return try await performRequest(method: method, path: path, queryItems: queryItems, body: body)
+        } catch NetworkError.unauthorized {
+            do {
+                try await AuthRepository.shared.refreshAccessToken()
+            } catch {
+                tokenStorage.clear()
+                throw NetworkError.unauthorized
+            }
+            return try await performRequest(method: method, path: path, queryItems: queryItems, body: body)
+        }
+    }
+
+    private func performRequest<T: Decodable, Body: Encodable>(
+        method: String,
+        path: String,
+        queryItems: [URLQueryItem]? = nil,
+        body: Body?
+    ) async throws -> T {
         guard var components = URLComponents(string: "\(baseUrl)\(path)") else {
             throw NetworkError.invalidUrl
         }
@@ -87,7 +106,6 @@ final class ApiClient {
         }
 
         if httpResponse.statusCode == 401 {
-            tokenStorage.clear()
             throw NetworkError.unauthorized
         }
 
@@ -133,6 +151,41 @@ final class ApiClient {
         fileName: String,
         mimeType: String
     ) async throws -> T {
+        do {
+            return try await performUploadMultipart(
+                path: path,
+                fields: fields,
+                fileField: fileField,
+                fileData: fileData,
+                fileName: fileName,
+                mimeType: mimeType
+            )
+        } catch NetworkError.unauthorized {
+            do {
+                try await AuthRepository.shared.refreshAccessToken()
+            } catch {
+                tokenStorage.clear()
+                throw NetworkError.unauthorized
+            }
+            return try await performUploadMultipart(
+                path: path,
+                fields: fields,
+                fileField: fileField,
+                fileData: fileData,
+                fileName: fileName,
+                mimeType: mimeType
+            )
+        }
+    }
+
+    private func performUploadMultipart<T: Decodable>(
+        path: String,
+        fields: [String: String],
+        fileField: String,
+        fileData: Data,
+        fileName: String,
+        mimeType: String
+    ) async throws -> T {
         guard let url = URL(string: "\(baseUrl)\(path)") else {
             throw NetworkError.invalidUrl
         }
@@ -167,7 +220,6 @@ final class ApiClient {
         }
 
         if httpResponse.statusCode == 401 {
-            tokenStorage.clear()
             throw NetworkError.unauthorized
         }
 
