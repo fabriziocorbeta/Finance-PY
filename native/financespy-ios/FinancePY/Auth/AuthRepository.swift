@@ -6,6 +6,7 @@ enum AuthError: LocalizedError {
     case sessionFailed(Error)
     case missingAuthorizationCode
     case missingCodeVerifier
+    case missingRefreshToken
     case invalidState
     case tokenExchangeFailed(Int, String?)
     case invalidResponse
@@ -20,6 +21,8 @@ enum AuthError: LocalizedError {
             return "Authorization code missing from callback."
         case .missingCodeVerifier:
             return "PKCE code verifier is missing."
+        case .missingRefreshToken:
+            return "Refresh token is missing."
         case .invalidState:
             return "OAuth state mismatch — possible callback spoofing."
         case .tokenExchangeFailed(let status, let message):
@@ -35,6 +38,29 @@ struct TokenResponse: Decodable {
     let refreshToken: String?
     let tokenType: String
     let expiresIn: Int
+}
+
+actor RefreshCoordinator {
+    private var refreshTask: Task<Void, Error>?
+
+    func refresh(using action: @escaping () async throws -> Void) async throws {
+        if let task = refreshTask {
+            return try await task.value
+        }
+
+        let task = Task {
+            try await action()
+        }
+        refreshTask = task
+
+        do {
+            try await task.value
+            refreshTask = nil
+        } catch {
+            refreshTask = nil
+            throw error
+        }
+    }
 }
 
 @MainActor
@@ -65,6 +91,7 @@ final class AuthRepository: ObservableObject {
     private(set) var currentCodeVerifier: String?
     private var currentState: String?
     private let tokenStorage = KeychainTokenStorage.shared
+    private let refreshCoordinator = RefreshCoordinator()
 
     private init() {}
 
@@ -183,6 +210,57 @@ final class AuthRepository: ObservableObject {
             refreshToken: tokenResponse.refreshToken ?? ""
         )
         self.currentCodeVerifier = nil
+    }
+
+    func refreshAccessToken() async throws {
+        try await refreshCoordinator.refresh { [weak self] in
+            guard let self = self else { return }
+
+            guard let refreshToken = self.tokenStorage.refreshToken(), !refreshToken.isEmpty else {
+                throw AuthError.missingRefreshToken
+            }
+
+            guard let tokenUrl = URL(string: "\(self.baseUrl)/oauth/token") else {
+                throw AuthError.invalidUrl
+            }
+
+            var request = URLRequest(url: tokenUrl)
+            request.httpMethod = "POST"
+            request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+
+            let bodyParams = [
+                "grant_type": "refresh_token",
+                "client_id": self.clientId,
+                "refresh_token": refreshToken
+            ]
+
+            let bodyString = bodyParams
+                .map { "\($0.key)=\($0.value.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? $0.value)" }
+                .joined(separator: "&")
+
+            request.httpBody = bodyString.data(using: .utf8)
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw AuthError.invalidResponse
+            }
+
+            guard (200...299).contains(httpResponse.statusCode) else {
+                self.tokenStorage.clear()
+                let errorBody = String(data: data, encoding: .utf8)
+                throw AuthError.tokenExchangeFailed(httpResponse.statusCode, errorBody)
+            }
+
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            let tokenResponse = try decoder.decode(TokenResponse.self, from: data)
+
+            self.tokenStorage.save(
+                accessToken: tokenResponse.accessToken,
+                refreshToken: tokenResponse.refreshToken ?? ""
+            )
+        }
     }
 
     func isLoggedIn() async -> Bool {
