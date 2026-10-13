@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -114,22 +115,35 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final date = DateTime.parse(transaction.date);
         final dateKey = DateFormat('yyyy-MM-dd').format(date);
 
-        // Parse amount with proper sign handling
-        String trimmedAmount = transaction.amount.trim();
-        trimmedAmount = trimmedAmount.replaceAll('\u2212', '-'); // Normalize minus sign
+        double amount = 0.0;
 
-        // Detect if the amount has a negative sign
-        bool hasNegativeSign = trimmedAmount.startsWith('-') || trimmedAmount.endsWith('-');
+        if (transaction.signedAmountCents != null) {
+          int fractionDigits = NumberFormat.simpleCurrency(name: transaction.currency).decimalDigits ?? 2;
+          amount = transaction.signedAmountCents! / pow(10, fractionDigits);
+        } else {
+          // Parse amount with proper sign handling
+          String trimmedAmount = transaction.amount.trim();
+          trimmedAmount = trimmedAmount.replaceAll('\u2212', '-'); // Normalize minus sign
 
-        // Remove all non-numeric characters except decimal point and minus sign
-        String numericString = trimmedAmount.replaceAll(RegExp(r'[^\d.\-]'), '');
+          // Detect if the amount has a negative sign
+          bool hasNegativeSign = trimmedAmount.startsWith('-') || trimmedAmount.endsWith('-');
 
-        // Parse the numeric value
-        double amount = double.tryParse(numericString.replaceAll('-', '')) ?? 0.0;
+          if (transaction.currency.toUpperCase() == 'PYG') {
+            // PYG has no decimals and uses dot as thousands separator
+            String numericString = trimmedAmount.replaceAll(RegExp(r'[^\d]'), '');
+            amount = double.tryParse(numericString) ?? 0.0;
+          } else {
+            // Remove all non-numeric characters except decimal point and minus sign
+            String numericString = trimmedAmount.replaceAll(RegExp(r'[^\d.\-]'), '');
 
-        // Apply the sign from the string
-        if (hasNegativeSign) {
-          amount = -amount;
+            // Parse the numeric value
+            amount = double.tryParse(numericString.replaceAll('-', '')) ?? 0.0;
+          }
+
+          // Apply the sign from the string
+          if (hasNegativeSign) {
+            amount = -amount;
+          }
         }
 
         // For asset accounts, flip the sign to match accounting conventions
