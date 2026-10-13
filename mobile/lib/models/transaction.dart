@@ -9,6 +9,8 @@ class Transaction {
   final String? notes;
   final String? categoryId;
   final String? categoryName;
+  final int? amountCents;
+  final int? signedAmountCents;
 
   Transaction({
     this.id,
@@ -21,6 +23,8 @@ class Transaction {
     this.notes,
     this.categoryId,
     this.categoryName,
+    this.amountCents,
+    this.signedAmountCents,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
@@ -65,6 +69,8 @@ class Transaction {
       notes: json['notes']?.toString(),
       categoryId: categoryId,
       categoryName: categoryName,
+      amountCents: json['amount_cents'] as int?,
+      signedAmountCents: json['signed_amount_cents'] as int?,
     );
   }
 
@@ -80,6 +86,8 @@ class Transaction {
       if (notes != null) 'notes': notes,
       if (categoryId != null) 'category_id': categoryId,
       if (categoryName != null) 'category_name': categoryName,
+      if (amountCents != null) 'amount_cents': amountCents,
+      if (signedAmountCents != null) 'signed_amount_cents': signedAmountCents,
     };
   }
 
