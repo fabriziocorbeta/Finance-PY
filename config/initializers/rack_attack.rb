@@ -116,7 +116,7 @@ class Rack::Attack
   # POST /chats/:id/retry (ChatsController, not cost-sensitive on its own --
   # see UsageQuota on that path instead); only the API route nests retry
   # under .../messages, which this regex now matches.
-  MESSAGE_CREATE_PATHS = %r{\A/(?:api/v1/)?chats/\d+/messages(?:/retry)?\z}
+  MESSAGE_CREATE_PATHS = %r{\A/(?:api/v1/)?chats/[0-9a-fA-F\-]+/messages(?:/retry)?\z}
 
   # New chat creation (starts a chat + first LLM call)
   throttle("chats/create", limit: 20, period: 1.hour) do |request|
