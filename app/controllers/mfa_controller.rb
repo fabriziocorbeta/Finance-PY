@@ -14,7 +14,6 @@ class MfaController < ApplicationController
       @backup_codes = Current.user.enable_mfa!
       render :backup_codes
     else
-      Current.user.disable_mfa!
       redirect_to new_mfa_path, alert: t(".invalid_code")
     end
   end

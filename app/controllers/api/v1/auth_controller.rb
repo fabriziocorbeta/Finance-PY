@@ -302,7 +302,8 @@ module Api
 
           # Update device last seen
           user = User.auth_find_by_id(access_token.resource_owner_id)
-          device = user.mobile_devices.find_by(device_id: params[:device][:device_id])
+          device_id = params.dig(:device, :device_id)
+          device = user.mobile_devices.find_by(device_id: device_id) if device_id.present?
           device&.update_last_seen!
 
           created
