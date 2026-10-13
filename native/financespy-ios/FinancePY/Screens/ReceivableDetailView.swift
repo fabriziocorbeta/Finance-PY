@@ -232,9 +232,12 @@ struct InstallmentRowView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 4) {
+                let amountDouble = Double(installment.amount ?? "0") ?? 0.0
+                let paidAmountDouble = Double(installment.paidAmount ?? "0") ?? 0.0
+
                 let amountText = installment.status == "partial"
-                    ? "\(formatMoney(amount: installment.paidAmount, currency: currency)) / \(formatMoney(amount: installment.amount, currency: currency))"
-                    : formatMoney(amount: installment.amount, currency: currency)
+                    ? "\(formatMoney(amount: paidAmountDouble, currency: currency)) / \(formatMoney(amount: amountDouble, currency: currency))"
+                    : formatMoney(amount: amountDouble, currency: currency)
 
                 Text(amountText)
                     .font(.body)
