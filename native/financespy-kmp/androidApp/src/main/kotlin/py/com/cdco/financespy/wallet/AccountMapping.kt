@@ -1,17 +1,22 @@
 package py.com.cdco.financespy.wallet
 
-object AccountMapping {
-    // TODO: Confirm/update these account_id UUIDs against current production family database accounts.
-    private val CARD_TO_ACCOUNT_ID = mapOf(
-        "Ueno" to "74fa6687-bbf7-45d2-aa71-f06bca3b2013",
-        "Amex" to "d47f5223-a988-46f5-9bc5-beefc4c7fefd",
-        "CLASICA" to "952d06b3-f915-4cf1-b4c2-952fb131f2be",
-        "GNB" to "43d84b14-b3be-44a9-be37-7ec1ae4661f2"
-    )
+import android.content.Context
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.runBlocking
+import py.com.cdco.financespy.db.buildDatabase
+import py.com.cdco.financespy.db.initDatabaseBuilder
 
-    fun accountIdFor(cardText: String): String? {
-        return CARD_TO_ACCOUNT_ID.entries
-            .firstOrNull { (substring, _) -> cardText.contains(substring, ignoreCase = true) }
-            ?.value
+object AccountMapping {
+    fun accountIdFor(context: Context, cardText: String): String? {
+        initDatabaseBuilder(context)
+        val db = buildDatabase()
+
+        val accounts = runBlocking {
+            db.accountDao().observeAll().firstOrNull()
+        } ?: return null
+
+        return accounts.firstOrNull { account ->
+            cardText.contains(account.name, ignoreCase = true) || account.name.contains(cardText, ignoreCase = true)
+        }?.id
     }
 }

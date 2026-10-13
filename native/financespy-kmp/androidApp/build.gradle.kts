@@ -85,3 +85,7 @@ dependencies {
     // the same reason. Keep in sync with shared/build.gradle.kts.
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }
+
+dependencies {
+    testImplementation("junit:junit:4.13.2")
+}

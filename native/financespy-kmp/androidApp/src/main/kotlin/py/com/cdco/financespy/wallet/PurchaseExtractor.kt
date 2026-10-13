@@ -14,12 +14,12 @@ interface BankNotificationExtractor {
 // <card>". Amount comes comma-grouped ("150,000") -- WebhookClient already
 // strips commas before posting, so left as-is.
 object WalletTapExtractor : BankNotificationExtractor {
-    private val PATTERN = Regex("""PYG([\d,]+) con (.+)""")
+    private val PATTERN = Regex("""PYG\s*([\d,.]+) con (.+)""")
 
     override fun extract(title: String, text: String): List<Purchase> {
         val match = PATTERN.find(text) ?: return emptyList()
         val (amount, cardText) = match.destructured
-        return listOf(Purchase(amount, cardText.trim(), merchant = title))
+        return listOf(Purchase(amount.replace(",", "").replace(".", ""), cardText.trim(), merchant = title))
     }
 }
 
