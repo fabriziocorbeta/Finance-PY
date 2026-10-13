@@ -47,6 +47,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.navigation.NavItem
 import py.com.cdco.financespy.theme.FinancePyColors
+import py.com.cdco.financespy.utils.debugLog
 
 // AppBottomNav now floats as an overlay on top of screen content (see App.kt)
 // instead of reserving space via Scaffold's bottomBar slot, so screens' own
@@ -91,9 +92,9 @@ fun AppBottomNav(
         exit = GlassTransitions.materializeExit,
         modifier = modifier.onGloballyPositioned { coords ->
             val measuredHeight = with(density) { coords.size.height.toDp() }
-            println("AppBottomNav_DEBUG: onGloballyPositioned triggered. measuredHeight=$measuredHeight, oldClearance=$AppBottomNavOverlayClearance")
+            debugLog("AppBottomNav_DEBUG", "onGloballyPositioned triggered. measuredHeight=$measuredHeight, oldClearance=$AppBottomNavOverlayClearance")
             if (measuredHeight > 0.dp && measuredHeight != AppBottomNavOverlayClearance) {
-                println("AppBottomNav_DEBUG: Updating AppBottomNavOverlayClearance to $measuredHeight")
+                debugLog("AppBottomNav_DEBUG", "Updating AppBottomNavOverlayClearance to $measuredHeight")
                 AppBottomNavOverlayClearance = measuredHeight
             }
         }

@@ -45,6 +45,7 @@ import py.com.cdco.financespy.screens.components.SankeyFlowChart
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
+import py.com.cdco.financespy.utils.debugLog
 
 @Composable
 fun DashboardScreen(
@@ -76,7 +77,7 @@ fun DashboardScreen(
     val currentPeriodLabel = periodOptions.find { it.first == currentPeriodKey }?.second ?: "Este mes"
 
     val currentClearance = AppBottomNavOverlayClearance
-    println("DashboardScreen_DEBUG: Recomposing with clearance=$currentClearance")
+    debugLog("DashboardScreen_DEBUG", "Recomposing with clearance=$currentClearance")
 
     LazyColumn(
         modifier = Modifier
