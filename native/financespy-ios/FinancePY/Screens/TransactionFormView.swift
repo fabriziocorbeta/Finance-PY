@@ -14,10 +14,13 @@ struct TransactionFormView: View {
     @State private var name: String = ""
     @State private var amountText: String = ""
     @State private var nature: String = "expense"
-    @State private var date: String = ""
+    @State private var date: Date = Date()
     @State private var categoryId: String = "" // Placeholder for now, categories fetched elsewhere normally
     @State private var merchantId: String = "" // Placeholder
     @State private var notes: String = ""
+
+    @State private var categories: [CategoryRefDto] = []
+    @State private var merchants: [MerchantRefDto] = []
 
     @State private var isSaving = false
     @State private var error: String? = nil
@@ -32,15 +35,15 @@ struct TransactionFormView: View {
             _amountText = State(initialValue: String(abs(amount)))
             _nature = State(initialValue: amount < 0 ? "income" : "expense")
 
-            _date = State(initialValue: tx.date)
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            _date = State(initialValue: formatter.date(from: tx.date) ?? Date())
 
             // In a full implementation, categoryId/merchantId/notes would be populated from transaction details,
             // but EntryEntity/TransactionEntity only has categoryName/merchantName, so we skip IDs for edit mode here
             // unless fetched from API.
         } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd"
-            _date = State(initialValue: formatter.string(from: Date()))
+            _date = State(initialValue: Date())
         }
     }
 
@@ -68,14 +71,23 @@ struct TransactionFormView: View {
                         .pickerStyle(.segmented)
                     }
 
-                    TextField("Fecha (AAAA-MM-DD)", text: $date)
-                        .keyboardType(.numbersAndPunctuation)
+                    DatePicker("Fecha", selection: $date, displayedComponents: .date)
                 }
 
                 Section(header: Text("Clasificación")) {
                     // In a real app, these would be pickers populated from API/SwiftData
-                    TextField("ID de Categoría (opcional)", text: $categoryId)
-                    TextField("ID de Comerciante (opcional)", text: $merchantId)
+                    Picker("Categoría (opcional)", selection: $categoryId) {
+                        Text("Ninguna").tag("")
+                        ForEach(categories, id: \.id) { cat in
+                            Text(cat.name).tag(cat.id)
+                        }
+                    }
+                    Picker("Comerciante (opcional)", selection: $merchantId) {
+                        Text("Ninguno").tag("")
+                        ForEach(merchants, id: \.id) { merch in
+                            Text(merch.name).tag(merch.id)
+                        }
+                    }
                 }
 
                 Section(header: Text("Notas")) {
@@ -107,6 +119,18 @@ struct TransactionFormView: View {
                     accountId = first.id
                 }
             }
+            .task {
+                do {
+                    categories = try await FinancePyApi.shared.fetchCategories()
+                } catch {
+                    print("Error fetching categories: \(error)")
+                }
+                do {
+                    merchants = try await FinancePyApi.shared.fetchMerchants()
+                } catch {
+                    print("Error fetching merchants: \(error)")
+                }
+            }
         }
     }
 
@@ -123,10 +147,11 @@ struct TransactionFormView: View {
             error = "Introduce un importe válido"
             return
         }
-        guard !date.isEmpty else { // Ideally validate AAAA-MM-DD format
-            error = "Introduce una fecha"
-            return
-        }
+
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let formattedDate = dateFormatter.string(from: date)
 
         isSaving = true
         error = nil
@@ -135,7 +160,7 @@ struct TransactionFormView: View {
             if let tx = transactionToEdit, let transactionId = tx.transaction?.id {
                 let body = UpdateTransactionBody(
                     accountId: accountId,
-                    date: date,
+                    date: formattedDate,
                     amount: AnyStringAmount(wrappedValue: amountText),
                     nature: nature,
                     name: name,
@@ -151,7 +176,7 @@ struct TransactionFormView: View {
             } else {
                 let body = CreateTransactionBody(
                     accountId: accountId,
-                    date: date,
+                    date: formattedDate,
                     amount: AnyStringAmount(wrappedValue: amountText),
                     nature: nature,
                     name: name,
