@@ -214,12 +214,20 @@ class MoneyTest < ActiveSupport::TestCase
   end
 
   test "raises error when custom rate is invalid" do
-  assert_raises(Money::ConversionError) do
-    Money.new(1000).exchange_to(:jpy, custom_rate: 0)
+    assert_raises(Money::ConversionError) do
+      Money.new(1000).exchange_to(:jpy, custom_rate: 0)
+    end
+
+    assert_raises(Money::ConversionError) do
+      Money.new(1000).exchange_to(:jpy, custom_rate: -1)
+    end
   end
 
-  assert_raises(Money::ConversionError) do
-    Money.new(1000).exchange_to(:jpy, custom_rate: -1)
+  test "as_json rounds amount based on currency default precision" do
+    pyg_money = Money.new(BigDecimal("150.123456789"), :pyg)
+    assert_equal 150, pyg_money.as_json["amount"]
+
+    usd_money = Money.new(BigDecimal("150.123456789"), :usd)
+    assert_equal 150.12, usd_money.as_json["amount"]
   end
-end
 end
