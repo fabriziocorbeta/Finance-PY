@@ -37,7 +37,7 @@ object WalletCaptureHandler {
         val token = runBlocking { AndroidTokenStorage(context).accessToken() }
 
         purchases.forEach { purchase ->
-            val accountId = AccountMapping.accountIdFor(purchase.cardText)
+            val accountId = AccountMapping.accountIdFor(context, purchase.cardText)
             if (accountId == null) {
                 onResult?.invoke("unrecognized_card", purchase.cardText)
                 return@forEach
