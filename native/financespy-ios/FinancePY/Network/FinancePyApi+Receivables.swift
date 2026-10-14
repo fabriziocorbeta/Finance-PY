@@ -34,12 +34,12 @@ struct ReceivableDto: Codable {
     let id: String
     let accountId: String?
     let name: String?
-    let totalAmount: Double?
-    let balance: Double?
+    @AnyStringAmount var totalAmount: String?
+    @AnyStringAmount var balance: String?
     let balanceCents: Int64?
-    let originalBalance: Double?
+    @AnyStringAmount var originalBalance: String?
     let originalBalanceCents: Int64?
-    let paidAmount: Double?
+    @AnyStringAmount var paidAmount: String?
     let paidAmountCents: Int64?
     let percentPaid: Double?
     let installmentCount: Int?
