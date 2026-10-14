@@ -24,8 +24,8 @@ struct InstallmentDto: Codable, Identifiable {
     var id: String { String(number) }
     let number: Int
     let dueDate: String
-    let amount: Double
-    let paidAmount: Double
+    @AnyStringAmount var amount: String?
+    @AnyStringAmount var paidAmount: String?
     let status: String
     let paidAt: String?
 }
