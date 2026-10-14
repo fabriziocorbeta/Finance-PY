@@ -176,17 +176,17 @@ struct FuelLogCard: View {
                     .font(.subheadline)
                     .fontWeight(.semibold)
                 Spacer()
-                Text(formatMoney(cost: fuelLog.cost))
+                Text(formatMoney(cost: Double(fuelLog.cost ?? "0") ?? 0.0))
                     .font(.subheadline)
                     .fontWeight(.bold)
             }
 
             let linesSummary = (fuelLog.fuelLogLines ?? []).map { line in
                 let brandStr = line.brand?.isEmpty == false ? " (\(line.brand!))" : ""
-                return "\(formatDouble(line.liters)) L \(fuelTypeLabel(line.fuelType))\(brandStr)"
+                return "\(formatDouble(Double(line.liters ?? "0") ?? 0.0)) L \(fuelTypeLabel(line.fuelType))\(brandStr)"
             }.joined(separator: ", ")
 
-            Text(linesSummary.isEmpty ? "\(formatDouble(fuelLog.liters)) L" : linesSummary)
+            Text(linesSummary.isEmpty ? "\(formatDouble(Double(fuelLog.liters ?? "0") ?? 0.0)) L" : linesSummary)
                 .font(.caption)
                 .foregroundColor(.secondary)
 
