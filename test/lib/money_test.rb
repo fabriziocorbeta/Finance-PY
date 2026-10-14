@@ -228,6 +228,6 @@ class MoneyTest < ActiveSupport::TestCase
     assert_equal 150, pyg_money.as_json["amount"]
 
     usd_money = Money.new(BigDecimal("150.123456789"), :usd)
-    assert_equal 150.12, usd_money.as_json["amount"]
+    assert_equal "150.12", usd_money.as_json["amount"]
   end
 end
