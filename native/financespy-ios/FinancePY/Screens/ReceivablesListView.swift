@@ -94,12 +94,12 @@ struct ReceivablesListView: View {
                 if let existing = localDict[dto.id] {
                     existing.accountId = dto.accountId
                     existing.name = dto.name ?? "(sin nombre)"
-                    existing.totalAmount = dto.totalAmount ?? 0.0
-                    existing.balance = dto.balance ?? 0.0
+                    existing.totalAmount = Double(dto.totalAmount ?? "") ?? 0.0
+                    existing.balance = Double(dto.balance ?? "") ?? 0.0
                     existing.balanceCents = dto.balanceCents ?? 0
-                    existing.originalBalance = dto.originalBalance ?? 0.0
+                    existing.originalBalance = Double(dto.originalBalance ?? "") ?? 0.0
                     existing.originalBalanceCents = dto.originalBalanceCents ?? 0
-                    existing.paidAmount = dto.paidAmount ?? 0.0
+                    existing.paidAmount = Double(dto.paidAmount ?? "") ?? 0.0
                     existing.paidAmountCents = dto.paidAmountCents ?? 0
                     existing.percentPaid = dto.percentPaid ?? 0.0
                     existing.installmentCount = dto.installmentCount
@@ -113,12 +113,12 @@ struct ReceivablesListView: View {
                         id: dto.id,
                         accountId: dto.accountId,
                         name: dto.name ?? "(sin nombre)",
-                        totalAmount: dto.totalAmount ?? 0.0,
-                        balance: dto.balance ?? 0.0,
+                        totalAmount: Double(dto.totalAmount ?? "") ?? 0.0,
+                        balance: Double(dto.balance ?? "") ?? 0.0,
                         balanceCents: dto.balanceCents ?? 0,
-                        originalBalance: dto.originalBalance ?? 0.0,
+                        originalBalance: Double(dto.originalBalance ?? "") ?? 0.0,
                         originalBalanceCents: dto.originalBalanceCents ?? 0,
-                        paidAmount: dto.paidAmount ?? 0.0,
+                        paidAmount: Double(dto.paidAmount ?? "") ?? 0.0,
                         paidAmountCents: dto.paidAmountCents ?? 0,
                         percentPaid: dto.percentPaid ?? 0.0,
                         installmentCount: dto.installmentCount,
