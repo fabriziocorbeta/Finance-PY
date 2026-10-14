@@ -43,8 +43,8 @@ struct FuelLogDto: Codable, Identifiable {
     let accountId: String
     let loggedAt: String
     let odometer: Double?
-    let liters: Double
-    let cost: Double
+    @AnyStringAmount var liters: String?
+    @AnyStringAmount var cost: String?
     let notes: String?
     let entryId: String?
     let createdAt: String?
@@ -56,8 +56,8 @@ struct FuelLogLineDto: Codable, Identifiable {
     let id: String?
     let fuelType: String
     let brand: String?
-    let liters: Double
-    let cost: Double
+    @AnyStringAmount var liters: String?
+    @AnyStringAmount var cost: String?
 }
 
 struct CreateFleetVehicleRequest: Codable {

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C5ABCD012345678900000002 /* FuelLogDtoDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5ABCD012345678900000001 /* FuelLogDtoDecodingTests.swift */; };
 		9F3C6D1A2B5E8F4701234567 /* FinancePyApi+Categories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E2B5A3C7F9D1E4601234567 /* FinancePyApi+Categories.swift */; };
 		1A2B3C4D5E6F7A8B9C0D1E2F /* FinancePyApi+Merchants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6G7H8I9J0K1L2 /* FinancePyApi+Merchants.swift */; };
 		03F55B74FAAA7C3CCF2FACE6 /* RulesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9663AA6245B37971F33B64B5 /* RulesListView.swift */; };
@@ -104,6 +105,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		C5ABCD012345678900000001 /* FuelLogDtoDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelLogDtoDecodingTests.swift; sourceTree = "<group>"; };
 		8E2B5A3C7F9D1E4601234567 /* FinancePyApi+Categories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Categories.swift"; sourceTree = "<group>"; };
 		A1B2C3D4E5F6G7H8I9J0K1L2 /* FinancePyApi+Merchants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Merchants.swift"; sourceTree = "<group>"; };
 		05D34C3CA1215DFFA58CA0D0 /* FinancePyApi+PurchaseOrders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+PurchaseOrders.swift"; path = "FinancePyApi+PurchaseOrders.swift"; sourceTree = "<group>"; };
@@ -386,6 +388,7 @@
 			isa = PBXGroup;
 			children = (
 				2A0987D5A3E944C9A53077F7 /* InstallmentDtoDecodingTests.swift */,
+				C5ABCD012345678900000001 /* FuelLogDtoDecodingTests.swift */,
 				E0BF8438BE6410F5711D5A22 /* Swizzling.swift */,
 				903EBC0AE54EDFF5086E51FF /* MockURLProtocol.swift */,
 				480179980F80028F5B6B4EAF /* ChatViewModelTests.swift */,
@@ -628,6 +631,7 @@
 				96B240D981E5C89BA2E2D4A1 /* AuthRepositoryTests.swift in Sources */,
 				5E16448C9AE9BF42DA0EEB85 /* FinancePyApiTests.swift in Sources */,
 				BB898899692444F69917060C /* InstallmentDtoDecodingTests.swift in Sources */,
+				C5ABCD012345678900000002 /* FuelLogDtoDecodingTests.swift in Sources */,
 				D2CF4B95BB4079BC480EE872 /* FinancePyApi+AccountsWriteTests.swift in Sources */,
 				7F8F454898B43866F94EC871 /* FinancePyApi+BudgetsTests.swift in Sources */,
 				08EB48CF8BA8B76BD1E59704 /* FinancePyApi+ChatTests.swift in Sources */,
