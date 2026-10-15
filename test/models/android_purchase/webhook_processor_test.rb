@@ -441,4 +441,62 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
     entry = @account.entries.order(created_at: :desc).first
     assert_nil entry.transaction.category_id
   end
+  test "treats purchase as expense when nature is not provided (backward compatibility)" do
+    result = AndroidPurchase::WebhookProcessor.new(
+      {
+        account_id: @account.id,
+        amount: "150000",
+        merchant: "FERIA ASUNCION S.A.",
+        item: "Tarjeta GNB ••1234",
+        timestamp: "2026-10-14T19:05:55-04:00",
+        raw_text: "x"
+      },
+      family: @family
+    ).process
+
+    assert_equal :created, result
+    entry = @account.entries.order(created_at: :desc).first
+    assert_equal 150000.0, entry.amount.to_f
+    assert_equal "expense", entry.classification
+  end
+
+  test "treats purchase as expense when nature is expense" do
+    result = AndroidPurchase::WebhookProcessor.new(
+      {
+        account_id: @account.id,
+        amount: "150000",
+        merchant: "FERIA ASUNCION S.A.",
+        item: "Tarjeta GNB ••1234",
+        timestamp: "2026-10-14T19:05:55-04:00",
+        raw_text: "x",
+        nature: "expense"
+      },
+      family: @family
+    ).process
+
+    assert_equal :created, result
+    entry = @account.entries.order(created_at: :desc).first
+    assert_equal 150000.0, entry.amount.to_f
+    assert_equal "expense", entry.classification
+  end
+
+  test "treats purchase as income when nature is income" do
+    result = AndroidPurchase::WebhookProcessor.new(
+      {
+        account_id: @account.id,
+        amount: "930000",
+        merchant: "Pagos",
+        item: "Cuenta Nro.***  -001",
+        timestamp: "2026-10-14T19:05:55-04:00",
+        raw_text: "x",
+        nature: "income"
+      },
+      family: @family
+    ).process
+
+    assert_equal :created, result
+    entry = @account.entries.order(created_at: :desc).first
+    assert_equal -930000.0, entry.amount.to_f
+    assert_equal "income", entry.classification
+  end
 end

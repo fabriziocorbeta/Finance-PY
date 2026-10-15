@@ -39,6 +39,6 @@ class Api::V1::AndroidPurchasesController < Api::V1::BaseController
     end
 
     def android_purchase_params
-      params.permit(:amount, :merchant, :item, :timestamp, :raw_text)
+      params.permit(:amount, :merchant, :item, :timestamp, :raw_text, :nature)
     end
 end

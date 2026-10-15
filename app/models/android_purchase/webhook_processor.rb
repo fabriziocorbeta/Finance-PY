@@ -14,6 +14,7 @@ class AndroidPurchase::WebhookProcessor
     @item = params[:item].to_s
     @timestamp = params[:timestamp].to_s
     @raw_text = params[:raw_text].to_s
+    @nature = params[:nature].to_s
     @family = family
     @user = user
   end
@@ -45,7 +46,7 @@ class AndroidPurchase::WebhookProcessor
       account: account,
       date: parsed_date,
       name: description,
-      amount: numeric_amount.abs, # positivo = egreso (Entry#classification), toda compra Wallet es un gasto
+      amount: final_amount,
       currency: account.currency,
       source: "google_play",
       external_id: external_id,
@@ -70,7 +71,11 @@ class AndroidPurchase::WebhookProcessor
     :duplicate
   end
 
-  private
+    private
+
+    def final_amount
+      @nature == "income" ? -numeric_amount.abs : numeric_amount.abs
+    end
 
     # A restricted family member's writable_by scope is empty of any account
     # they haven't been given write access to -- falls back to a bare

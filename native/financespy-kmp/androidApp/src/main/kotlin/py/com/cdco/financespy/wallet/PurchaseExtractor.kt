@@ -1,6 +1,8 @@
 package py.com.cdco.financespy.wallet
 
-data class Purchase(val amount: String, val cardText: String, val merchant: String)
+enum class TransactionNature { INCOME, EXPENSE }
+
+data class Purchase(val amount: String, val cardText: String, val merchant: String, val nature: TransactionNature = TransactionNature.EXPENSE)
 
 interface BankNotificationExtractor {
     // Returns every purchase found in one notification, not just the first.
@@ -81,14 +83,36 @@ object ContinentalSmsExtractor : BankNotificationExtractor {
     }
 }
 
-object BankNotificationExtractors {
-    private val BY_PACKAGE: Map<String, BankNotificationExtractor> = mapOf(
-        "com.google.android.apps.walletnfcrel" to WalletTapExtractor,
-        "py.com.elcomercio.retailbanking" to UenoBankExtractor,
-        "com.google.android.apps.messaging" to ContinentalSmsExtractor
+
+// Banco GNB sends real transaction alerts as plain SMS, delivered
+// through the phone's default messaging app. Real text for income:
+//   "Banco GNB le informa que se registro un Credito en su Cuenta Nro.***  -001: Gs. 930.000 en concepto de Pagos 14/10/2026 19:05:55"
+object GnbSmsExtractor : BankNotificationExtractor {
+    private val CREDITO_PATTERN = Regex(
+        """Credito en su (Cuenta Nro\..*?):\s*[Gg]s\.\s*([\d.]+)\s*en concepto de\s+(.+?)\s+\d{2}/\d{2}/\d{4}"""
     )
 
-    fun forPackage(packageName: String): BankNotificationExtractor? = BY_PACKAGE[packageName]
+    override fun extract(title: String, text: String): List<Purchase> {
+        return CREDITO_PATTERN.findAll(text).map { match ->
+            val (cardText, rawAmount, merchant) = match.destructured
+            Purchase(
+                amount = rawAmount.replace(".", ""),
+                cardText = cardText.trim(),
+                merchant = merchant.trim(),
+                nature = TransactionNature.INCOME
+            )
+        }.toList()
+    }
+}
+
+object BankNotificationExtractors {
+    private val BY_PACKAGE: Map<String, List<BankNotificationExtractor>> = mapOf(
+        "com.google.android.apps.walletnfcrel" to listOf(WalletTapExtractor),
+        "py.com.elcomercio.retailbanking" to listOf(UenoBankExtractor),
+        "com.google.android.apps.messaging" to listOf(ContinentalSmsExtractor, GnbSmsExtractor)
+    )
+
+    fun forPackage(packageName: String): List<BankNotificationExtractor> = BY_PACKAGE[packageName] ?: emptyList()
 
     val watchedPackages: Set<String> get() = BY_PACKAGE.keys
 }

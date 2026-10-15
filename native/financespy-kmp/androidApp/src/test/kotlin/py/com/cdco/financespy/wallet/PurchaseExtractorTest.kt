@@ -27,4 +27,23 @@ class PurchaseExtractorTest {
         assertEquals(1, purchases.size)
         assertEquals("150000", purchases[0].amount)
     }
+
+    @Test
+    fun testGnbSmsExtractor() {
+        val extractor = GnbSmsExtractor
+
+        // Income case
+        val text = "Banco GNB le informa que se registro un Credito en su Cuenta Nro.***  -001: Gs. 930.000 en concepto de Pagos 14/10/2026 19:05:55"
+        val purchases = extractor.extract("Banco GNB", text)
+        assertEquals(1, purchases.size)
+        assertEquals("930000", purchases[0].amount)
+        assertEquals("Cuenta Nro.***  -001", purchases[0].cardText)
+        assertEquals("Pagos", purchases[0].merchant)
+        assertEquals(TransactionNature.INCOME, purchases[0].nature)
+
+        // Invalid case (not matching Credito)
+        val nonMatchText = "Banco GNB le informa que se registro un Debito en su Cuenta Nro.***  -001: Gs. 930.000 en concepto de Pagos 14/10/2026 19:05:55"
+        val emptyPurchases = extractor.extract("Banco GNB", nonMatchText)
+        assertEquals(0, emptyPurchases.size)
+    }
 }

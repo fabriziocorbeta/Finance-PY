@@ -19,7 +19,8 @@ data class PendingCapture(
     val accountId: String,
     val amount: String,
     val merchant: String,
-    val item: String
+    val item: String,
+    val nature: TransactionNature = TransactionNature.EXPENSE
 )
 
 class PendingCaptureStore(
@@ -74,7 +75,8 @@ class PendingCaptureStore(
                         accountId = obj.getString("accountId"),
                         amount = obj.getString("amount"),
                         merchant = obj.getString("merchant"),
-                        item = obj.getString("item")
+                        item = obj.getString("item"),
+                        nature = if (obj.has("nature")) TransactionNature.valueOf(obj.getString("nature")) else TransactionNature.EXPENSE
                     )
                 )
             }
@@ -94,6 +96,7 @@ class PendingCaptureStore(
                 put("amount", c.amount)
                 put("merchant", c.merchant)
                 put("item", c.item)
+                put("nature", c.nature.name)
             })
         }
         prefs.edit().putString(KEY, arr.toString()).apply()
