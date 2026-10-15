@@ -18,7 +18,7 @@ struct RuleConditionDto: Codable, Identifiable {
     let id: String
     let conditionType: String
     let operatorStr: String?
-    let value: String?
+    @OptionalFlexibleString var value: String?
     let subConditions: [RuleConditionDto]?
 
     enum CodingKeys: String, CodingKey {
@@ -32,7 +32,7 @@ struct RuleConditionDto: Codable, Identifiable {
 struct RuleActionDto: Codable, Identifiable {
     let id: String
     let actionType: String
-    let value: String?
+    @OptionalFlexibleString var value: String?
 
     enum CodingKeys: String, CodingKey {
         case id, value
