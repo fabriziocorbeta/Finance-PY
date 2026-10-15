@@ -6,6 +6,7 @@ struct BudgetDashboardView: View {
     @State private var budget: BudgetDto? = nil
     @State private var isLoading = true
     @State private var error: String? = nil
+    @State private var loadTask: Task<Void, Never>? = nil
 
     // Summary Tab State
     @State private var summaryTab: SummaryTab = .overview
@@ -191,68 +192,103 @@ struct BudgetDashboardView: View {
     }
 
     private func loadBudget() async {
-        isLoading = true
-        error = nil
-        do {
-            var targetId = budgetParam
-            var foundSummary: BudgetDto? = nil
+        loadTask?.cancel()
 
-            // If the budgetParam is not a specific ID (like "current" or a "YYYY-MM" prefix),
-            // resolve it by fetching the list of all budgets first, just like the Android app does.
-            if !targetId.contains("-") || targetId.count <= 7 {
-                if targetId == "current" {
-                    let date = Date()
-                    let calendar = Calendar.current
-                    let year = calendar.component(.year, from: date)
-                    let month = calendar.component(.month, from: date)
-                    targetId = String(format: "%04d-%02d", year, month)
+        let task = Task { @MainActor in
+            guard !Task.isCancelled else { return }
+            isLoading = true
+            error = nil
+            do {
+                var targetId = budgetParam
+                var foundSummary: BudgetDto? = nil
+
+                // If the budgetParam is not a specific ID (like "current" or a "YYYY-MM" prefix),
+                // resolve it by fetching the list of all budgets first, just like the Android app does.
+                if !targetId.contains("-") || targetId.count <= 7 {
+                    if targetId == "current" {
+                        let date = Date()
+                        let calendar = Calendar.current
+                        let year = calendar.component(.year, from: date)
+                        let month = calendar.component(.month, from: date)
+                        targetId = String(format: "%04d-%02d", year, month)
+                    }
+
+                    do {
+                        let allBudgets = try await FinancePyApi.shared.fetchAllBudgets()
+                        guard !Task.isCancelled else { return }
+                        if let summary = allBudgets.first(where: {
+                            ($0.startDate?.hasPrefix(targetId) == true) || $0.param == targetId
+                        }) {
+                            foundSummary = summary
+                            targetId = summary.id
+                        }
+                    } catch {
+                        // Ignore error, will attempt to fetch by budgetParam and probably fail or succeed fallback
+                    }
                 }
+
+                guard !Task.isCancelled else { return }
 
                 do {
-                    let allBudgets = try await FinancePyApi.shared.fetchAllBudgets()
-                    if let summary = allBudgets.first(where: {
-                        ($0.startDate?.hasPrefix(targetId) == true) || $0.param == targetId
-                    }) {
-                        foundSummary = summary
-                        targetId = summary.id
+                    let fetched = try await FinancePyApi.shared.fetchBudget(id: targetId)
+                    guard !Task.isCancelled else { return }
+                    self.budget = fetched
+                    self.budgetId = fetched.id
+                    if let categories = fetched.categories {
+                        self.expandedGroups = Set(categories.filter { !$0.subcategory }.map { $0.id })
                     }
                 } catch {
-                    // Ignore error, will attempt to fetch by budgetParam and probably fail or succeed fallback
-                }
-            }
-
-            do {
-                let fetched = try await FinancePyApi.shared.fetchBudget(id: targetId)
-                self.budget = fetched
-                self.budgetId = fetched.id
-                if let categories = fetched.categories {
-                    self.expandedGroups = Set(categories.filter { !$0.subcategory }.map { $0.id })
-                }
-            } catch {
-                if let summary = foundSummary {
-                    self.budget = summary
-                    self.budgetId = summary.id
-                    self.error = "Error al cargar los detalles del presupuesto, mostrando resumen."
-                } else {
-                    // If no budget is found, try creating it
-                    if budgetParam == "current" || targetId.count == 7 { // YYYY-MM
-                        let startDate = targetId + "-01"
-                        let created = try await FinancePyApi.shared.createBudget(expectedIncome: 0, startDate: startDate, endDate: nil)
-                        self.budget = created
-                        self.budgetId = created.id
-                        if let categories = created.categories {
-                            self.expandedGroups = Set(categories.filter { !$0.subcategory }.map { $0.id })
-                        }
+                    guard !Task.isCancelled else { return }
+                    if let summary = foundSummary {
+                        self.budget = summary
+                        self.budgetId = summary.id
+                        self.error = "Error al cargar los detalles del presupuesto, mostrando resumen."
                     } else {
-                        throw error
+                        // If no budget is found, try creating it
+                        if budgetParam == "current" || targetId.count == 7 { // YYYY-MM
+                            let startDate = targetId + "-01"
+                            do {
+                                let created = try await FinancePyApi.shared.createBudget(expectedIncome: 0, startDate: startDate, endDate: nil)
+                                guard !Task.isCancelled else { return }
+                                self.budget = created
+                                self.budgetId = created.id
+                                if let categories = created.categories {
+                                    self.expandedGroups = Set(categories.filter { !$0.subcategory }.map { $0.id })
+                                }
+                            } catch NetworkError.httpError(let code, let message) where code == 422 && message?.contains("ya esta en uso") == true {
+                                // If we hit a race condition across devices/sessions where the budget was just created
+                                // and the DB correctly rejects the duplicate dates, gracefully fetch the now-existing budget.
+                                let allBudgets = try await FinancePyApi.shared.fetchAllBudgets()
+                                guard !Task.isCancelled else { return }
+                                if let summary = allBudgets.first(where: {
+                                    ($0.startDate?.hasPrefix(targetId) == true) || $0.param == targetId
+                                }) {
+                                    let fallbackFetched = try await FinancePyApi.shared.fetchBudget(id: summary.id)
+                                    guard !Task.isCancelled else { return }
+                                    self.budget = fallbackFetched
+                                    self.budgetId = fallbackFetched.id
+                                    if let categories = fallbackFetched.categories {
+                                        self.expandedGroups = Set(categories.filter { !$0.subcategory }.map { $0.id })
+                                    }
+                                } else {
+                                    throw NetworkError.httpError(code, message)
+                                }
+                            }
+                        } else {
+                            throw error
+                        }
                     }
                 }
+            } catch {
+                guard !Task.isCancelled else { return }
+                self.error = "Error al cargar el presupuesto: \(error.localizedDescription)"
+                self.budget = nil
             }
-        } catch {
-            self.error = "Error al cargar el presupuesto: \(error.localizedDescription)"
-            self.budget = nil
+            guard !Task.isCancelled else { return }
+            isLoading = false
         }
-        isLoading = false
+        self.loadTask = task
+        await task.value
     }
 
     private func navigateToBudget(_ param: String?) {
