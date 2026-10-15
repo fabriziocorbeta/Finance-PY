@@ -41,7 +41,7 @@ struct ReceivableDto: Codable {
     let originalBalanceCents: Int64?
     @AnyStringAmount var paidAmount: String?
     let paidAmountCents: Int64?
-    let percentPaid: Double?
+    @OptionalFlexibleDouble var percentPaid: Double?
     let installmentCount: Int?
     let dueDay: Int?
     let currency: String?

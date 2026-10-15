@@ -3,7 +3,7 @@ import Foundation
 // MARK: - DTOs
 
 struct BudgetDto: Codable {
-    let id: String
+    @NullableID var id: String
     let startDate: String?
     let endDate: String?
     let currency: String?
@@ -50,7 +50,7 @@ struct SourceBudgetDto: Codable {
 }
 
 struct BudgetCategoryDto: Codable, Identifiable {
-    let id: String
+    @NullableID var id: String
     let budgetId: String?
     let categoryId: String?
     let categoryName: String?
