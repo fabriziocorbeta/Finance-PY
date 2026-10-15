@@ -176,7 +176,7 @@ fun BudgetDonutChart(
                 }
 
                 else -> {
-                    val totalAmount = segments.sumOf { it.amount }
+                    val totalAmount = segments.sumOf { it.amount ?: 0.0 }
 
                     Box(
                         modifier = Modifier.size(220.dp),
@@ -195,7 +195,8 @@ fun BudgetDonutChart(
                             } else {
                                 var startAngle = -90f
                                 segments.forEach { segment ->
-                                    val sweepAngle = ((segment.amount / totalAmount) * 360f).toFloat()
+                                    val amt = segment.amount ?: 0.0
+                                    val sweepAngle = ((amt / totalAmount) * 360f).toFloat()
                                     val color = parseHexColor(segment.color)
                                     drawArc(
                                         color = color,
