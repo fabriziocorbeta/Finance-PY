@@ -94,10 +94,15 @@ object GnbSmsExtractor : BankNotificationExtractor {
 
     override fun extract(title: String, text: String): List<Purchase> {
         return CREDITO_PATTERN.findAll(text).map { match ->
-            val (cardText, rawAmount, merchant) = match.destructured
+            val (accountFragment, rawAmount, merchant) = match.destructured
+            // GNB's own SMS text never says "GNB" near the account identifier
+            // (it's just "Cuenta Nro.*** -001") -- but AccountMapping keys off
+            // brand substrings ("GNB", "Ueno", "CLASICA", ...), same reasoning
+            // as UenoBankExtractor above, so prefix it here or this would
+            // always be dropped as "unrecognized_card".
             Purchase(
                 amount = rawAmount.replace(".", ""),
-                cardText = cardText.trim(),
+                cardText = "GNB ${accountFragment.trim()}",
                 merchant = merchant.trim(),
                 nature = TransactionNature.INCOME
             )

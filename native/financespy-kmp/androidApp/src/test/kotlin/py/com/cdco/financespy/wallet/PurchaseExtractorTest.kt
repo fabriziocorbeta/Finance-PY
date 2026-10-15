@@ -37,7 +37,7 @@ class PurchaseExtractorTest {
         val purchases = extractor.extract("Banco GNB", text)
         assertEquals(1, purchases.size)
         assertEquals("930000", purchases[0].amount)
-        assertEquals("Cuenta Nro.***  -001", purchases[0].cardText)
+        assertEquals("GNB Cuenta Nro.***  -001", purchases[0].cardText)
         assertEquals("Pagos", purchases[0].merchant)
         assertEquals(TransactionNature.INCOME, purchases[0].nature)
 
