@@ -45,6 +45,13 @@ class Api::V1::FleetVehiclesControllerTest < ActionDispatch::IntegrationTest
     assert json_response["data"].any? { |v| v["id"] == @vehicle.id }
   end
 
+  test "should forbid access if family does not have business mode enabled" do
+    @family.update!(business_mode_enabled: false)
+
+    get api_v1_fleet_vehicles_url, headers: api_headers(@api_key)
+    assert_response :forbidden
+  end
+
   test "should not list another family's fleet vehicles" do
     other_family = Family.create!(name: "Other Family", currency: "USD", locale: "en")
     other_vehicle = FleetVehicle.create!(

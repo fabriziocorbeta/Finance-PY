@@ -37,6 +37,26 @@ class Api::V1::FuelLogsControllerTest < ActionDispatch::IntegrationTest
     )
   end
 
+  test "should forbid access if family does not have business mode enabled" do
+    @family.update!(business_mode_enabled: false)
+
+    post api_v1_fleet_vehicle_fuel_logs_url(@vehicle),
+         params: {
+           fuel_log: {
+             account_id: @account.id,
+             logged_at: Date.current.iso8601,
+             odometer: 15000,
+             notes: "Carga completa",
+             fuel_log_lines_attributes: [
+               { fuel_type: "nafta", brand: "Podium", liters: 45.0, cost: 350000.0 }
+             ]
+           }
+         },
+         headers: api_headers(@write_api_key)
+
+    assert_response :forbidden
+  end
+
   test "should create fuel log and associated account entry" do
     assert_difference -> { FuelLog.count } => 1, -> { Entry.count } => 1 do
       post api_v1_fleet_vehicle_fuel_logs_url(@vehicle),

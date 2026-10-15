@@ -6,6 +6,7 @@ class Api::V1::FleetVehiclesController < Api::V1::BaseController
   before_action :ensure_read_scope, only: %i[index show]
   before_action :ensure_write_scope, only: %i[create update destroy]
   before_action :set_fleet_vehicle, only: %i[show update destroy]
+  before_action :require_business_mode!
 
   def index
     @per_page = safe_per_page_param

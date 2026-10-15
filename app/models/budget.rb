@@ -232,11 +232,11 @@ class Budget < ApplicationRecord
     return [ { color: "var(--budget-unallocated-fill)", amount: 1, id: unused_segment_id } ] unless allocations_valid?
 
     segments = budget_categories.reject(&:subcategory?).map do |bc|
-      { color: bc.category.color, amount: bc.actual_spending, id: bc.id }
+      { color: bc.category.color, amount: bc.actual_spending.to_f, id: bc.id }
     end
 
     if available_to_spend.positive?
-      segments.push({ color: "var(--budget-unallocated-fill)", amount: available_to_spend, id: unused_segment_id })
+      segments.push({ color: "var(--budget-unallocated-fill)", amount: available_to_spend.to_f, id: unused_segment_id })
     end
 
     segments
