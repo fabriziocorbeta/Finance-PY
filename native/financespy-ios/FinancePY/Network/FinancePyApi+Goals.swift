@@ -5,7 +5,7 @@ import Foundation
 struct GoalDto: Codable, Identifiable {
     let id: String
     let name: String
-    let targetAmount: String?
+    @AnyStringAmount var targetAmount: String?
     let currency: String?
     let targetDate: String?
     let color: String?
@@ -13,47 +13,48 @@ struct GoalDto: Codable, Identifiable {
     let notes: String?
     let state: String?
     let progressBasis: String?
-    let currentBalance: String?
+    @AnyStringAmount var currentBalance: String?
     let currentBalanceCents: Int64?
-    let remainingAmount: String?
+    @AnyStringAmount var remainingAmount: String?
     let remainingAmountCents: Int64?
     let progressPercent: Int?
     let pace: String?
     let status: String?
     let monthsRemaining: Int?
-    let catchUpDelta: String?
+    @AnyStringAmount var catchUpDelta: String?
     let accountIds: [String]?
     let allocations: [String: String?]?
-
-    enum CodingKeys: String, CodingKey {
-        case id, name, currency, color, icon, notes, state, pace, status, allocations
-        case targetAmount = "target_amount"
-        case targetDate = "target_date"
-        case progressBasis = "progress_basis"
-        case currentBalance = "current_balance"
-        case currentBalanceCents = "current_balance_cents"
-        case remainingAmount = "remaining_amount"
-        case remainingAmountCents = "remaining_amount_cents"
-        case progressPercent = "progress_percent"
-        case monthsRemaining = "months_remaining"
-        case catchUpDelta = "catch_up_delta"
-        case accountIds = "account_ids"
-    }
 }
 
 struct GoalPledgeDto: Codable, Identifiable {
     let id: String
+    let goalId: String?
+    let accountId: String?
     @AnyStringAmount var amount: String?
-    let amountCents: Int64?
     let currency: String?
-    let state: String?
-    let createdAt: String?
+    let kind: String?
+    let status: String?
+    let expiresAt: String?
+    let daysLeft: Int?
+    let accountName: String?
+}
 
-    enum CodingKeys: String, CodingKey {
-        case id, amount, currency, state
-        case amountCents = "amount_cents"
-        case createdAt = "created_at"
-    }
+struct GoalsResponse: Codable {
+    let data: [GoalDto]
+    let meta: PaginationDto?
+}
+
+struct GoalSingleResponse: Codable {
+    let data: GoalDto
+}
+
+struct GoalPledgesResponse: Codable {
+    let data: [GoalPledgeDto]
+    let meta: PaginationDto?
+}
+
+struct GoalPledgeSingleResponse: Codable {
+    let data: GoalPledgeDto
 }
 
 struct GoalAccountAttributeDto: Codable {
@@ -123,19 +124,23 @@ struct CreateGoalPledgeBody: Codable {
 
 extension FinancePyApi {
     func fetchGoals() async throws -> [GoalDto] {
-        return try await ApiClient.shared.request(path: "/api/v1/goals")
+        let response: GoalsResponse = try await ApiClient.shared.request(path: "/api/v1/goals")
+        return response.data
     }
 
     func fetchGoal(id: String) async throws -> GoalDto {
-        return try await ApiClient.shared.request(path: "/api/v1/goals/\(id)")
+        let response: GoalSingleResponse = try await ApiClient.shared.request(path: "/api/v1/goals/\(id)")
+        return response.data
     }
 
     func createGoal(body: CreateGoalBody) async throws -> GoalDto {
-        return try await ApiClient.shared.request(method: "POST", path: "/api/v1/goals", body: body)
+        let response: GoalSingleResponse = try await ApiClient.shared.request(method: "POST", path: "/api/v1/goals", body: body)
+        return response.data
     }
 
     func updateGoal(id: String, body: UpdateGoalBody) async throws -> GoalDto {
-        return try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/goals/\(id)", body: body)
+        let response: GoalSingleResponse = try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/goals/\(id)", body: body)
+        return response.data
     }
 
     func deleteGoal(id: String) async throws {
@@ -143,11 +148,13 @@ extension FinancePyApi {
     }
 
     func fetchGoalPledges(goalId: String) async throws -> [GoalPledgeDto] {
-        return try await ApiClient.shared.request(path: "/api/v1/goals/\(goalId)/pledges")
+        let response: GoalPledgesResponse = try await ApiClient.shared.request(path: "/api/v1/goals/\(goalId)/pledges")
+        return response.data
     }
 
     func createGoalPledge(goalId: String, body: CreateGoalPledgeBody) async throws -> GoalPledgeDto {
-        return try await ApiClient.shared.request(method: "POST", path: "/api/v1/goals/\(goalId)/pledges", body: body)
+        let response: GoalPledgeSingleResponse = try await ApiClient.shared.request(method: "POST", path: "/api/v1/goals/\(goalId)/pledges", body: body)
+        return response.data
     }
 
     func cancelGoalPledge(goalId: String, pledgeId: String) async throws {
@@ -155,6 +162,7 @@ extension FinancePyApi {
     }
 
     func renewGoalPledge(goalId: String, pledgeId: String) async throws -> GoalPledgeDto {
-        return try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/goals/\(goalId)/pledges/\(pledgeId)/renew")
+        let response: GoalPledgeSingleResponse = try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/goals/\(goalId)/pledges/\(pledgeId)/renew")
+        return response.data
     }
 }
