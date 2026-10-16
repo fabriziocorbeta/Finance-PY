@@ -2,9 +2,9 @@
 
 class Api::V1::FuelLogsController < Api::V1::BaseController
   before_action :ensure_write_scope
+  before_action :require_business_mode!
   before_action :set_fleet_vehicle
   before_action :set_fuel_log, only: %i[update destroy]
-  before_action :require_business_mode!
 
   def create
     @fuel_log = @fleet_vehicle.fuel_logs.build(fuel_log_attributes)
