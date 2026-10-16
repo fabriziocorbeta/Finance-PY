@@ -44,6 +44,9 @@ class ReceivableTest < ActiveSupport::TestCase
   end
 
   test "calculates installment_schedule correctly with partial and full payments" do
+    # Frozen mid-month: Account#start_date is Date.current - 1, so on the day
+    # after due_day the first installment would already be :overdue.
+    travel_to Date.new(2026, 1, 5)
     family = families(:dylan_family)
     account = Account.create!(
       family: family,
