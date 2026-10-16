@@ -64,6 +64,9 @@ struct MainTabView: View {
     @State private var isCheckingAccounts = true
     @State private var shouldShowOnboarding = false
 
+    @State private var navItemOrder: [String] = ["dashboard", "transactions", "reports", "budgets", "goals", "receivables", "chat"]
+    @State private var businessModeEnabled = false
+
     init(isLoggedIn: Binding<Bool>, container: ModelContainer) {
         self._isLoggedIn = isLoggedIn
         self.container = container
@@ -99,69 +102,73 @@ struct MainTabView: View {
     }
 
     private var mainTabs: some View {
-        TabView {
-BudgetDashboardView()
-    .tabItem {
-        Label("Presupuesto", systemImage: "chart.pie.fill")
+        let pool = businessModeEnabled ? DEFAULT_NAV_POOL + BUSINESS_NAV_POOL : DEFAULT_NAV_POOL
+
+        // Take at most 5 for the main tabs. Usually TabView in iOS allows up to 5 icons in the bar,
+        // and automatically puts the rest in a "More" tab, but we'll manage it explicitly to match the requirement.
+        let mainTabIds = Array(navItemOrder.prefix(4)) // Reserve 1 for More/Settings
+
+        return TabView {
+            ForEach(mainTabIds, id: \.self) { id in
+                if let item = pool.first(where: { $0.id == id }) {
+                    viewForId(id)
+                        .tabItem {
+                            Label(item.label, systemImage: item.icon)
+                        }
+                }
+            }
+
+            NavigationStack {
+                List {
+                    Section {
+                        let moreIds = pool.map { $0.id }.filter { !mainTabIds.contains($0) }
+                        ForEach(moreIds, id: \.self) { id in
+                            if let item = pool.first(where: { $0.id == id }) {
+                                NavigationLink(destination: viewForId(id)) {
+                                    Label(item.label, systemImage: item.icon)
+                                }
+                            }
+                        }
+                    }
+
+                    Section {
+                        NavigationLink(destination: ImportsView()) {
+                            Label("Importaciones", systemImage: "square.and.arrow.down.on.square")
+                        }
+
+                        NavigationLink(destination: SettingsView(onLoggedOut: {
+                            clearLocalCache()
+                            isLoggedIn = false
+                        })) {
+                            Label("Ajustes", systemImage: "gearshape.fill")
+                        }
+                    }
+                }
+                .navigationTitle("Más")
+            }
+            .tabItem {
+                Label("Más", systemImage: "ellipsis")
+            }
+        }
     }
 
-            DashboardView(syncEngine: syncEngine)
-                .tabItem {
-                    Label("Inicio", systemImage: "house.fill")
-                }
-
-            TransactionsView()
-                .tabItem {
-                    Label("Transacciones", systemImage: "list.bullet.rectangle")
-                }
-
-            ProductsListView()
-                .tabItem {
-                    Label("Productos", systemImage: "cart.fill")
-                }
-
-            RulesListView()
-                .tabItem {
-                    Label("Reglas", systemImage: "gear")
-                }
-
-            ReceivablesListView()
-                .tabItem {
-                    Label("Cuentas", systemImage: "dollarsign.circle")
-                }
-
-            ReportsView()
-                .tabItem {
-                    Label("Reportes", systemImage: "chart.pie.fill")
-                }
-
-            GoalsListView()
-                .tabItem {
-                    Label("Metas", systemImage: "target")
-                }
-
-            ChatsListView()
-                .tabItem {
-                    Label("Asistente IA", systemImage: "sparkles")
-                }
-
-            FleetListView()
-                .tabItem {
-                    Label("Flota", systemImage: "car.fill")
-                }
-
-            ImportsView()
-                .tabItem {
-                    Label("Importaciones", systemImage: "square.and.arrow.down.on.square")
-                }
-
-            SettingsView(onLoggedOut: {
-                clearLocalCache()
-                isLoggedIn = false
-            })
-            .tabItem {
-                Label("Ajustes", systemImage: "gearshape.fill")
-            }
+    @ViewBuilder
+    private func viewForId(_ id: String) -> some View {
+        switch id {
+        case "dashboard": DashboardView(syncEngine: syncEngine)
+        case "transactions": TransactionsView()
+        case "reports": ReportsView()
+        case "budgets": BudgetDashboardView()
+        case "goals": GoalsListView()
+        case "receivables": ReceivablesListView()
+        case "debts": DebtsListView()
+        case "rules": RulesListView()
+        case "chat": ChatsListView()
+        case "products": ProductsListView()
+        case "sales": SalesListView()
+        case "purchase_orders": PurchaseOrdersListView()
+        case "fleet": FleetListView()
+        default: Text("Vista no encontrada")
         }
     }
 
@@ -193,6 +200,22 @@ BudgetDashboardView()
         } catch {
             // On error, default to showing onboarding if they have no accounts locally
             shouldShowOnboarding = true
+        }
+
+        do {
+            let prefs = try await FinancePyApi.shared.fetchNavPreferences()
+            if let order = prefs.navItemOrder, !order.isEmpty {
+                self.navItemOrder = order
+            }
+        } catch {
+            print("Failed to fetch nav preferences: \(error)")
+        }
+
+        do {
+            let settings = try await FinancePyApi.shared.fetchFamilySettings()
+            self.businessModeEnabled = settings.businessModeEnabled
+        } catch {
+            print("Failed to fetch family settings: \(error)")
         }
 
         isCheckingAccounts = false
