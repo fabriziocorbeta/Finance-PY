@@ -287,7 +287,7 @@ struct InvestmentMetricsCard: View {
                             Text(formatMoney(holding.amount, currency: currency))
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
-                            Text(String(format: "%.1f%% del portafolio", holding.weight * 100))
+                            Text(String(format: "%.1f%% del portafolio", holding.weight))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }

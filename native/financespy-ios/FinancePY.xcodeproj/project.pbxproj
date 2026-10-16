@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		ABCDEF0123456789ABCDEF02 /* ReceivableDetailViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCDEF0123456789ABCDEF01 /* ReceivableDetailViewTests.swift */; };
 		DDDDDDDDDDDDDDDDDDDDDDD2 /* DecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDDDDDDDDDDDDDDDDDDDDDD1 /* DecodingTests.swift */; };
 		C5ABCD012345678900000002 /* FuelLogDtoDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5ABCD012345678900000001 /* FuelLogDtoDecodingTests.swift */; };
 		9F3C6D1A2B5E8F4701234567 /* FinancePyApi+Categories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E2B5A3C7F9D1E4601234567 /* FinancePyApi+Categories.swift */; };
@@ -107,6 +108,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		ABCDEF0123456789ABCDEF01 /* ReceivableDetailViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceivableDetailViewTests.swift; sourceTree = "<group>"; };
 		DDDDDDDDDDDDDDDDDDDDDDD1 /* DecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecodingTests.swift; sourceTree = "<group>"; };
 		C5ABCD012345678900000001 /* FuelLogDtoDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelLogDtoDecodingTests.swift; sourceTree = "<group>"; };
 		8E2B5A3C7F9D1E4601234567 /* FinancePyApi+Categories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Categories.swift"; sourceTree = "<group>"; };
@@ -391,6 +393,7 @@
 		94B43E0BB67049554386E3E1 /* FinancePYTests */ = {
 			isa = PBXGroup;
 			children = (
+				ABCDEF0123456789ABCDEF01 /* ReceivableDetailViewTests.swift */,
 				DDDDDDDDDDDDDDDDDDDDDDD1 /* DecodingTests.swift */,
 				2A0987D5A3E944C9A53077F7 /* InstallmentDtoDecodingTests.swift */,
 				C5ABCD012345678900000001 /* FuelLogDtoDecodingTests.swift */,
@@ -653,6 +656,7 @@
 				D5514754969128BBF11D2D89 /* FinancePyApi+SalesTests.swift in Sources */,
 				C6234F9A9B8B64EF04A2AE0A /* FinancePyApi+SettingsTests.swift in Sources */,
 				F05F4008A833055903D92772 /* FinancePyApi+TransactionsTests.swift in Sources */,
+				ABCDEF0123456789ABCDEF02 /* ReceivableDetailViewTests.swift in Sources */,
 				4148B809EEB946EA93233D27 /* GoalsDecodingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
