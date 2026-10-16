@@ -28,8 +28,8 @@ object WalletCaptureHandler {
     // Purchase is captured/posted independently: a dropped or queued one
     // must not block the others in the same notification.
     private fun handleBlocking(context: Context, packageName: String, title: String, text: String) {
-        val extractor = BankNotificationExtractors.forPackage(packageName) ?: return
-        val purchases = extractor.extract(title, text)
+        val extractors = BankNotificationExtractors.forPackage(packageName)
+        val purchases = extractors.flatMap { it.extract(title, text) }
         if (purchases.isEmpty()) return
 
         val capturedAt = Instant.now().toString()
