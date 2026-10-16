@@ -6,6 +6,7 @@ class Api::V1::FleetVehiclesControllerTest < ActionDispatch::IntegrationTest
   setup do
     @user = users(:family_admin)
     @family = @user.family
+    @family.update!(business_mode_enabled: true)
 
     @user.api_keys.active.destroy_all
     @api_key = ApiKey.create!(
