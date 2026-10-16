@@ -197,3 +197,99 @@ enum DecodingDiagnostics {
         #endif
     }
 }
+
+// MARK: - Any JSON as String wrapper
+enum AnyJSON: Codable {
+    case string(String)
+    case integer(Int)
+    case double(Double)
+    case boolean(Bool)
+    case array([AnyJSON])
+    case object([String: AnyJSON])
+    case null
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() {
+            self = .null
+        } else if let b = try? container.decode(Bool.self) {
+            self = .boolean(b)
+        } else if let i = try? container.decode(Int.self) {
+            self = .integer(i)
+        } else if let d = try? container.decode(Double.self) {
+            self = .double(d)
+        } else if let s = try? container.decode(String.self) {
+            self = .string(s)
+        } else if let a = try? container.decode([AnyJSON].self) {
+            self = .array(a)
+        } else if let o = try? container.decode([String: AnyJSON].self) {
+            self = .object(o)
+        } else {
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "AnyJSON value cannot be decoded")
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .string(let s): try container.encode(s)
+        case .integer(let i): try container.encode(i)
+        case .double(let d): try container.encode(d)
+        case .boolean(let b): try container.encode(b)
+        case .array(let a): try container.encode(a)
+        case .object(let o): try container.encode(o)
+        case .null: try container.encodeNil()
+        }
+    }
+}
+
+@propertyWrapper
+struct AnyJSONAsString: Codable, Hashable {
+    var wrappedValue: String?
+
+    init(wrappedValue: String? = nil) {
+        self.wrappedValue = wrappedValue
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() {
+            self.wrappedValue = nil
+        } else if let stringValue = try? container.decode(String.self) {
+            self.wrappedValue = stringValue
+        } else if let jsonValue = try? container.decode(AnyJSON.self) {
+            let encoder = JSONEncoder()
+            // To make the output deterministic for testing, uncomment below:
+            // encoder.outputFormatting = .sortedKeys
+            if let data = try? encoder.encode(jsonValue),
+               let stringified = String(data: data, encoding: .utf8) {
+                self.wrappedValue = stringified
+            } else {
+                self.wrappedValue = nil
+            }
+        } else {
+            self.wrappedValue = nil
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if let stringValue = wrappedValue {
+            // Attempt to re-encode valid JSON string back to JSON
+            if let data = stringValue.data(using: .utf8),
+               let jsonValue = try? JSONDecoder().decode(AnyJSON.self, from: data) {
+                try container.encode(jsonValue)
+            } else {
+                try container.encode(stringValue)
+            }
+        } else {
+            try container.encodeNil()
+        }
+    }
+}
+
+extension KeyedDecodingContainer {
+    func decode(_ type: AnyJSONAsString.Type, forKey key: Key) throws -> AnyJSONAsString {
+        (try? decodeIfPresent(type, forKey: key)) ?? AnyJSONAsString()
+    }
+}
