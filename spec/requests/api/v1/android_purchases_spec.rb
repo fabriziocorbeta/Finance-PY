@@ -59,7 +59,7 @@ RSpec.describe 'API V1 Android Purchases', type: :request do
           item: { type: :string },
           timestamp: { type: :string, format: :'date-time' },
           raw_text: { type: :string, nullable: true },
-          nature: { type: :string, enum: ['income', 'expense'], nullable: true, description: 'Defaults to expense if omitted' }
+          nature: { type: :string, enum: [ 'income', 'expense' ], nullable: true, description: 'Defaults to expense if omitted' }
         },
         required: %w[amount merchant]
       }
