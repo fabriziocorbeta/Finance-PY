@@ -81,14 +81,28 @@ object ContinentalSmsExtractor : BankNotificationExtractor {
     }
 }
 
-object BankNotificationExtractors {
-    private val BY_PACKAGE: Map<String, BankNotificationExtractor> = mapOf(
-        "com.google.android.apps.walletnfcrel" to WalletTapExtractor,
-        "py.com.elcomercio.retailbanking" to UenoBankExtractor,
-        "com.google.android.apps.messaging" to ContinentalSmsExtractor
+object ItauSmsExtractor : BankNotificationExtractor {
+    private val PATTERN = Regex(
+        """Registramos un debito en tu Cuenta\s+\*+(\d+)\s+de\s+Gs\.\*+([\d.]+)\s+por\s+(.+?)\s+al\s+\d{2}/\d{2}/\d{4}"""
     )
 
-    fun forPackage(packageName: String): BankNotificationExtractor? = BY_PACKAGE[packageName]
+    override fun extract(title: String, text: String): List<Purchase> {
+        return PATTERN.findAll(text).map { match ->
+            val (_, rawAmount, merchant) = match.destructured
+            // Use "Itau" as the cardText since we match "Banco ITAU" with substring.
+            Purchase(rawAmount.replace(".", ""), "Itau", merchant.trim())
+        }.toList()
+    }
+}
+
+object BankNotificationExtractors {
+    private val BY_PACKAGE: Map<String, List<BankNotificationExtractor>> = mapOf(
+        "com.google.android.apps.walletnfcrel" to listOf(WalletTapExtractor),
+        "py.com.elcomercio.retailbanking" to listOf(UenoBankExtractor),
+        "com.google.android.apps.messaging" to listOf(ContinentalSmsExtractor, ItauSmsExtractor)
+    )
+
+    fun forPackage(packageName: String): List<BankNotificationExtractor> = BY_PACKAGE[packageName] ?: emptyList()
 
     val watchedPackages: Set<String> get() = BY_PACKAGE.keys
 }

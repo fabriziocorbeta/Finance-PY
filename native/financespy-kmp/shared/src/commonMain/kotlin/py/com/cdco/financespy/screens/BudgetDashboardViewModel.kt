@@ -383,7 +383,7 @@ class BudgetDashboardViewModel(
                             id = d.id,
                             label = d.id,
                             color = d.color,
-                            amount = d.amount
+                            amount = d.amount ?: 0.0
                         )
                     } ?: buildFallbackDonutSegments(budgeted, actual, categoryList)
 

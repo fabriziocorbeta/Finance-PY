@@ -348,6 +348,96 @@ struct AddFuelLogView: View {
         }
     }
 
+    private func parseDecimal(_ text: String) -> Double? {
+        Double(text.replacingOccurrences(of: ",", with: "."))
+    }
+
+    private var isFormValid: Bool {
+        if selectedAccountId.isEmpty { return false }
+        for line in lines {
+            if parseDecimal(line.litersText) == nil || parseDecimal(line.costText) == nil {
+                return false
+            }
+        }
+        return true
+    }
+
+    private func save() {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        let dateString = formatter.string(from: date)
+
+        var mappedLines: [CreateFuelLogLineBody] = []
+        for line in lines {
+            guard let liters = parseDecimal(line.litersText),
+                  let cost = parseDecimal(line.costText) else { continue }
+            mappedLines.append(CreateFuelLogLineBody(
+                fuelType: line.fuelType,
+                brand: line.brand.isEmpty ? nil : line.brand,
+                liters: liters,
+                cost: cost
+            ))
+        }
+
+        onConfirm(
+            selectedAccountId,
+            dateString,
+            parseDecimal(odometerText),
+            mappedLines,
+            notes.isEmpty ? nil : notes
+        )
+    }
+
+    @ViewBuilder
+    private func lineHeader(_ index: Int) -> some View {
+        HStack {
+            Text("Combustible \(index + 1)")
+            Spacer()
+            if lines.count > 1 {
+                Button(role: .destructive, action: { lines.remove(at: index) }) {
+                    Image(systemName: "trash")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func lineSection(_ index: Int) -> some View {
+        Section(header: lineHeader(index)) {
+            Picker("Tipo de Combustible", selection: $lines[index].fuelType) {
+                ForEach(fuelTypes, id: \.self) { type in
+                    Text(type.capitalized).tag(type)
+                }
+            }
+            .onChange(of: lines[index].fuelType) { newValue in
+                let defaultBrand: String
+                switch newValue {
+                case "nafta": defaultBrand = "Podium"
+                case "diesel": defaultBrand = "Euro 6"
+                default: defaultBrand = ""
+                }
+                lines[index].brand = defaultBrand
+            }
+
+            let suggestions = brandSuggestions(for: lines[index].fuelType)
+            if !suggestions.isEmpty {
+                Picker("Marca / Grado", selection: $lines[index].brand) {
+                    ForEach(suggestions, id: \.self) { suggestion in
+                        Text(suggestion).tag(suggestion)
+                    }
+                }
+            } else {
+                TextField("Marca / Grado", text: $lines[index].brand)
+            }
+
+            TextField("Litros", text: $lines[index].litersText)
+                .keyboardType(.decimalPad)
+
+            TextField("Costo", text: $lines[index].costText)
+                .keyboardType(.decimalPad)
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -366,43 +456,7 @@ struct AddFuelLogView: View {
                 }
 
                 ForEach($lines.indices, id: \.self) { index in
-                    Section(header: HStack {
-                        Text("Combustible \(index + 1)")
-                        Spacer()
-                        if lines.count > 1 {
-                            Button(role: .destructive, action: {
-                                lines.remove(at: index)
-                            }) {
-                                Image(systemName: "trash")
-                            }
-                        }
-                    }) {
-                        Picker("Tipo de Combustible", selection: $lines[index].fuelType) {
-                            ForEach(fuelTypes, id: \.self) { type in
-                                Text(type.capitalized).tag(type)
-                            }
-                        }
-                        .onChange(of: lines[index].fuelType) { newValue in
-                            lines[index].brand = newValue == "nafta" ? "Podium" : (newValue == "diesel" ? "Euro 6" : "")
-                        }
-
-                        let suggestions = brandSuggestions(for: lines[index].fuelType)
-                        if !suggestions.isEmpty {
-                            Picker("Marca / Grado", selection: $lines[index].brand) {
-                                ForEach(suggestions, id: \.self) { suggestion in
-                                    Text(suggestion).tag(suggestion)
-                                }
-                            }
-                        } else {
-                            TextField("Marca / Grado", text: $lines[index].brand)
-                        }
-
-                        TextField("Litros", text: $lines[index].litersText)
-                            .keyboardType(.decimalPad)
-
-                        TextField("Costo", text: $lines[index].costText)
-                            .keyboardType(.decimalPad)
-                    }
+                    lineSection(index)
                 }
 
                 Section {
@@ -427,39 +481,8 @@ struct AddFuelLogView: View {
                     Button("Cancelar") { dismiss() }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Guardar") {
-                        let formatter = ISO8601DateFormatter()
-                        formatter.formatOptions = [.withFullDate]
-                        let dateString = formatter.string(from: date)
-
-                        let mappedLines = lines.compactMap { line -> CreateFuelLogLineBody? in
-                            guard let liters = Double(line.litersText.replacingOccurrences(of: ",", with: ".")),
-                                  let cost = Double(line.costText.replacingOccurrences(of: ",", with: ".")) else {
-                                return nil
-                            }
-                            return CreateFuelLogLineBody(
-                                fuelType: line.fuelType,
-                                brand: line.brand.isEmpty ? nil : line.brand,
-                                liters: liters,
-                                cost: cost
-                            )
-                        }
-
-                        onConfirm(
-                            selectedAccountId,
-                            dateString,
-                            Double(odometerText.replacingOccurrences(of: ",", with: ".")),
-                            mappedLines,
-                            notes.isEmpty ? nil : notes
-                        )
-                    }
-                    .disabled(
-                        selectedAccountId.isEmpty ||
-                        lines.contains { line in
-                            Double(line.litersText.replacingOccurrences(of: ",", with: ".")) == nil ||
-                            Double(line.costText.replacingOccurrences(of: ",", with: ".")) == nil
-                        }
-                    )
+                    Button("Guardar") { save() }
+                        .disabled(!isFormValid)
                 }
             }
             .onAppear {

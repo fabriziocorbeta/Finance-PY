@@ -86,6 +86,9 @@ class RackAttackTest < ActionDispatch::IntegrationTest
   end
 
   test "repeated MCP requests from the same token are rejected with 429" do
+    # 1-minute fixed window: without freezing, 121 requests can straddle a
+    # window boundary and never trip the limit.
+    freeze_time
     with_rack_attack do
       headers = { "HTTP_AUTHORIZATION" => "Bearer some-token", "CONTENT_TYPE" => "application/json" }
       120.times { post "/mcp", params: '{"jsonrpc":"2.0","id":1,"method":"ping"}', headers: headers }
