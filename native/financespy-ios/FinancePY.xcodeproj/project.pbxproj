@@ -102,6 +102,7 @@
 		FB7144BA278D600E4C369A16 /* RuleFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E463FE87897FD7C6E5445CC2 /* RuleFormView.swift */; };
 		DD782D00959044D050FB8352 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = B9E7BAA80FDBBF95F945CF06 /* InfoPlist.strings */; };
 		BB898899692444F69917060C /* InstallmentDtoDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0987D5A3E944C9A53077F7 /* InstallmentDtoDecodingTests.swift */; };
+		4148B809EEB946EA93233D27 /* GoalsDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09C2E72E91514E98B7575371 /* GoalsDecodingTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -204,6 +205,7 @@
 		98420E68CB4838B02039114E /* es */ = {isa = PBXFileReference; includeInIndex = 1; name = es; path = es.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		D3814AB3DB7B1C6F1B2B685B /* en */ = {isa = PBXFileReference; includeInIndex = 1; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		2A0987D5A3E944C9A53077F7 /* InstallmentDtoDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallmentDtoDecodingTests.swift; sourceTree = "<group>"; };
+		09C2E72E91514E98B7575371 /* GoalsDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GoalsDecodingTests.swift; path = FinancePYTests/GoalsDecodingTests.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -411,6 +413,7 @@
 				5BA447BD971BB6CEFAD4C9BD /* FinancePyApi+SalesTests.swift */,
 				8FCC454FA6B8614ECB2AA0A6 /* FinancePyApi+SettingsTests.swift */,
 				745A4B9EBD35EA04D4E36C33 /* FinancePyApi+TransactionsTests.swift */,
+				09C2E72E91514E98B7575371 /* GoalsDecodingTests.swift */,
 			);
 			name = FinancePYTests;
 			sourceTree = "<group>";
@@ -646,6 +649,7 @@
 				D5514754969128BBF11D2D89 /* FinancePyApi+SalesTests.swift in Sources */,
 				C6234F9A9B8B64EF04A2AE0A /* FinancePyApi+SettingsTests.swift in Sources */,
 				F05F4008A833055903D92772 /* FinancePyApi+TransactionsTests.swift in Sources */,
+				4148B809EEB946EA93233D27 /* GoalsDecodingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
