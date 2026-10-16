@@ -29,6 +29,7 @@ import py.com.cdco.financespy.screens.components.BudgetCategoryProgressItem
 import py.com.cdco.financespy.screens.components.BudgetDonutChart
 import py.com.cdco.financespy.screens.components.BudgetMonthNavigator
 import py.com.cdco.financespy.screens.components.BudgetSummaryCard
+import py.com.cdco.financespy.sync.endOfMonthDate
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
@@ -289,7 +290,7 @@ fun BudgetDashboardScreen(
             val cat = uiState.selectedCategory!!
             val monthStr = if (uiState.month < 10) "0${uiState.month}" else "${uiState.month}"
             val startDate = "${uiState.year}-$monthStr-01"
-            val endDate = "${uiState.year}-$monthStr-31"
+            val endDate = endOfMonthDate(uiState.year, uiState.month)
 
             BudgetCategoryDetailSheet(
                 category = cat,

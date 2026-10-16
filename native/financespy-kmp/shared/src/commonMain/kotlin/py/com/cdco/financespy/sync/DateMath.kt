@@ -22,3 +22,6 @@ private fun daysInMonth(year: Int, month: Int): Int = when (month) {
     2 -> if (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) 29 else 28
     else -> 30
 }
+
+fun endOfMonthDate(year: Int, month: Int): String =
+    "%04d-%02d-%02d".format(year, month, daysInMonth(year, month))

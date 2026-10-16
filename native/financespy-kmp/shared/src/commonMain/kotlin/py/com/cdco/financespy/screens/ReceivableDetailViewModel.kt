@@ -73,7 +73,7 @@ class ReceivableDetailViewModel(
         scope.launch {
             runCatching {
                 val receivable = api.fetchReceivable(receivableId)
-                val accounts = api.fetchAllAccounts().filter { it.account_type == "Depository" && it.status == "active" }
+                val accounts = api.fetchAllAccounts().filter { it.account_type.equals("Depository", ignoreCase = true) && it.status == "active" }
                 Pair(receivable.account_id, accounts)
             }.onSuccess { (accountId, accounts) ->
                 _state.update {

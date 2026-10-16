@@ -1,5 +1,6 @@
 package py.com.cdco.financespy.screens
 
+import py.com.cdco.financespy.sync.endOfMonthDate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -272,7 +273,7 @@ class BudgetDashboardViewModel(
             try {
                 val targetMonthStr = if (_uiState.value.month < 10) "0${_uiState.value.month}" else "${_uiState.value.month}"
                 val startDate = "${_uiState.value.year}-$targetMonthStr-01"
-                val endDate = "${_uiState.value.year}-$targetMonthStr-31"
+                val endDate = endOfMonthDate(_uiState.value.year, _uiState.value.month)
 
                 val txs = api.fetchTransactions(
                     startDate = startDate,

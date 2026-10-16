@@ -128,7 +128,11 @@ object BankNotificationExtractors {
     private val BY_PACKAGE: Map<String, List<BankNotificationExtractor>> = mapOf(
         "com.google.android.apps.walletnfcrel" to listOf(WalletTapExtractor),
         "py.com.elcomercio.retailbanking" to listOf(UenoBankExtractor),
-        "com.google.android.apps.messaging" to listOf(ContinentalSmsExtractor, GnbSmsExtractor, ItauSmsExtractor)
+        "com.google.android.apps.messaging" to listOf(ContinentalSmsExtractor, GnbSmsExtractor, ItauSmsExtractor),
+        // Samsung Messages is the default SMS app on Samsung phones (Google
+        // Messages isn't installed/used there) -- same SMS text, same
+        // extractors, just a different package posting the notification.
+        "com.samsung.android.messaging" to listOf(ContinentalSmsExtractor, GnbSmsExtractor, ItauSmsExtractor)
     )
 
     fun forPackage(packageName: String): List<BankNotificationExtractor> = BY_PACKAGE[packageName] ?: emptyList()
