@@ -23,9 +23,9 @@ struct RuleConditionDto: Codable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id, value
-        case conditionType = "condition_type"
+        case conditionType
         case operatorStr = "operator"
-        case subConditions = "sub_conditions"
+        case subConditions
     }
 }
 
@@ -36,7 +36,7 @@ struct RuleActionDto: Codable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id, value
-        case actionType = "action_type"
+        case actionType
     }
 }
 
@@ -67,6 +67,10 @@ struct RuleRegistryDto: Codable {
 
 struct RulesResponseDto: Codable {
     let data: [RuleDto]
+}
+
+struct RuleResponseDto: Codable {
+    let data: RuleDto
 }
 
 struct CreateRuleRequest: Codable {
@@ -143,15 +147,18 @@ extension FinancePyApi {
     }
 
     func getRule(id: String) async throws -> RuleDto {
-        return try await ApiClient.shared.request(path: "/api/v1/rules/\(id)")
+        let response: RuleResponseDto = try await ApiClient.shared.request(path: "/api/v1/rules/\(id)")
+        return response.data
     }
 
     func createRule(request: CreateRuleRequest) async throws -> RuleDto {
-        return try await ApiClient.shared.request(method: "POST", path: "/api/v1/rules", body: request)
+        let response: RuleResponseDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/rules", body: request)
+        return response.data
     }
 
     func updateRule(id: String, request: UpdateRuleRequest) async throws -> RuleDto {
-        return try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/rules/\(id)", body: request)
+        let response: RuleResponseDto = try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/rules/\(id)", body: request)
+        return response.data
     }
 
     func deleteRule(id: String) async throws {
