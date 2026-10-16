@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DDDDDDDDDDDDDDDDDDDDDDD2 /* DecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDDDDDDDDDDDDDDDDDDDDDD1 /* DecodingTests.swift */; };
 		C5ABCD012345678900000002 /* FuelLogDtoDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5ABCD012345678900000001 /* FuelLogDtoDecodingTests.swift */; };
 		9F3C6D1A2B5E8F4701234567 /* FinancePyApi+Categories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E2B5A3C7F9D1E4601234567 /* FinancePyApi+Categories.swift */; };
 		1A2B3C4D5E6F7A8B9C0D1E2F /* FinancePyApi+Merchants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6G7H8I9J0K1L2 /* FinancePyApi+Merchants.swift */; };
@@ -106,6 +107,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		DDDDDDDDDDDDDDDDDDDDDDD1 /* DecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecodingTests.swift; sourceTree = "<group>"; };
 		C5ABCD012345678900000001 /* FuelLogDtoDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelLogDtoDecodingTests.swift; sourceTree = "<group>"; };
 		8E2B5A3C7F9D1E4601234567 /* FinancePyApi+Categories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Categories.swift"; sourceTree = "<group>"; };
 		A1B2C3D4E5F6G7H8I9J0K1L2 /* FinancePyApi+Merchants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Merchants.swift"; sourceTree = "<group>"; };
@@ -389,6 +391,7 @@
 		94B43E0BB67049554386E3E1 /* FinancePYTests */ = {
 			isa = PBXGroup;
 			children = (
+				DDDDDDDDDDDDDDDDDDDDDDD1 /* DecodingTests.swift */,
 				2A0987D5A3E944C9A53077F7 /* InstallmentDtoDecodingTests.swift */,
 				C5ABCD012345678900000001 /* FuelLogDtoDecodingTests.swift */,
 				E0BF8438BE6410F5711D5A22 /* Swizzling.swift */,
@@ -549,7 +552,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				300000000000000000000001 /* FinancePYApp.swift in Sources */,
+						300000000000000000000001 /* FinancePYApp.swift in Sources */,
 				300000000000000000000002 /* PkceGenerator.swift in Sources */,
 				300000000000000000000003 /* KeychainTokenStorage.swift in Sources */,
 				300000000000000000000004 /* AuthRepository.swift in Sources */,
@@ -625,7 +628,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D4C38A787BCF8B1970D05024 /* Swizzling.swift in Sources */,
+						D4C38A787BCF8B1970D05024 /* Swizzling.swift in Sources */,
 				4744DD4B972C819CCD8B5CB1 /* MockURLProtocol.swift in Sources */,
 				121F09A9603A661D7EF57505 /* ChatViewModelTests.swift in Sources */,
 				12820DA191D76F1872D259BC /* ChatsListViewModelTests.swift in Sources */,
@@ -637,6 +640,7 @@
 				C5ABCD012345678900000002 /* FuelLogDtoDecodingTests.swift in Sources */,
 				D2CF4B95BB4079BC480EE872 /* FinancePyApi+AccountsWriteTests.swift in Sources */,
 				7F8F454898B43866F94EC871 /* FinancePyApi+BudgetsTests.swift in Sources */,
+				DDDDDDDDDDDDDDDDDDDDDDD2 /* DecodingTests.swift in Sources */,
 				08EB48CF8BA8B76BD1E59704 /* FinancePyApi+ChatTests.swift in Sources */,
 				49364FD8BFC24889B54FBC37 /* FinancePyApi+FleetTests.swift in Sources */,
 				04894A2BAD57DD449A8919A1 /* FinancePyApi+GoalsTests.swift in Sources */,
