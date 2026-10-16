@@ -49,7 +49,8 @@ object WalletCaptureHandler {
                 accountId = accountId,
                 amount = purchase.amount,
                 merchant = purchase.merchant,
-                item = purchase.cardText
+                item = purchase.cardText,
+                nature = purchase.nature
             )
 
             if (token.isNullOrBlank()) {

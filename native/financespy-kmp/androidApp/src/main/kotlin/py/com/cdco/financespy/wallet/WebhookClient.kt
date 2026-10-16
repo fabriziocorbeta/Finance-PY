@@ -40,6 +40,7 @@ class WebhookClient(private val token: String) {
                 put("amount", capture.amount.replace(",", ""))
                 put("merchant", capture.merchant)
                 put("item", capture.item)
+                put("nature", capture.nature.name.lowercase())
                 if (rawText != null) put("raw_text", rawText)
                 put("timestamp", capture.capturedAt)
             }

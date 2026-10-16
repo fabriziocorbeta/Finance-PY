@@ -89,6 +89,31 @@ class Api::V1::AndroidPurchasesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Unknown account_id: #{other_account.id}", response_data["error"]
   end
 
+  test "creates android purchase with income nature" do
+    params = {
+      account_id: @account.id,
+      amount: 930000,
+      merchant: "Pagos",
+      item: "Cuenta Nro.***  -001",
+      timestamp: Time.current.iso8601,
+      raw_text: "Credito...",
+      nature: "income"
+    }
+
+    assert_difference("@account.entries.count", 1) do
+      post api_v1_android_purchases_url, params: params, headers: api_headers(@api_key)
+    end
+
+    assert_response :ok
+    response_data = JSON.parse(response.body)
+    assert_equal true, response_data["received"]
+
+    entry = @account.entries.order(created_at: :desc).first
+    assert_equal "Pagos - Cuenta Nro.***  -001", entry.name
+    assert_equal -930000.0, entry.amount.to_f
+    assert_equal "income", entry.classification
+  end
+
   private
 
     def api_headers(api_key)
