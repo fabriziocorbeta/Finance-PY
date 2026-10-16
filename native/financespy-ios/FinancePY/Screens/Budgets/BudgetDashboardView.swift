@@ -255,9 +255,10 @@ struct BudgetDashboardView: View {
                                 if let categories = created.categories {
                                     self.expandedGroups = Set(categories.filter { !$0.subcategory }.map { $0.id })
                                 }
-                            } catch NetworkError.httpError(let code, let message) where code == 422 && message?.contains("ya esta en uso") == true {
+                            } catch NetworkError.httpError(let code, let message) where code == 422 {
                                 // If we hit a race condition across devices/sessions where the budget was just created
                                 // and the DB correctly rejects the duplicate dates, gracefully fetch the now-existing budget.
+                                // Don't match on the message: it's localized ("ya está en uso" / "has already been taken").
                                 let allBudgets = try await FinancePyApi.shared.fetchAllBudgets()
                                 guard !Task.isCancelled else { return }
                                 if let summary = allBudgets.first(where: {
