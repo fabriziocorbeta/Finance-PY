@@ -106,7 +106,7 @@ data class BudgetCategoryDto(
 data class BudgetDonutSegmentDto(
     val id: String,
     val color: String,
-    val amount: Double
+    @Serializable(with = FlexibleDoubleSerializer::class) val amount: Double? = null
 )
 
 @Serializable

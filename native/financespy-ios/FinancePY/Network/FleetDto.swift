@@ -31,9 +31,9 @@ struct FleetVehicleDto: Codable, Identifiable {
     let notes: String?
     let createdAt: String?
     let updatedAt: String?
-    let averageFuelEfficiency: [String: Double]?
-    let monthlyFuelConsumed: [String: Double]?
-    let monthlyDistance: [String: Double]?
+    @OptionalFlexibleDoubleDictionary var averageFuelEfficiency: [String: Double]?
+    @OptionalFlexibleDoubleDictionary var monthlyFuelConsumed: [String: Double]?
+    @OptionalFlexibleDoubleDictionary var monthlyDistance: [String: Double]?
     let fuelLogs: [FuelLogDto]?
 }
 
@@ -42,7 +42,7 @@ struct FuelLogDto: Codable, Identifiable {
     let fleetVehicleId: String
     let accountId: String
     let loggedAt: String
-    let odometer: Double?
+    @OptionalFlexibleDouble var odometer: Double?
     @AnyStringAmount var liters: String?
     @AnyStringAmount var cost: String?
     let notes: String?

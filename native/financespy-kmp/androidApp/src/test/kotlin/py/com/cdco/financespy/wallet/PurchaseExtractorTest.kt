@@ -46,4 +46,27 @@ class PurchaseExtractorTest {
         val emptyPurchases = extractor.extract("Banco GNB", nonMatchText)
         assertEquals(0, emptyPurchases.size)
     }
+
+    @Test
+    fun testItauSmsExtractor() {
+        val extractor = ItauSmsExtractor
+
+        // Debit
+        var purchases = extractor.extract(
+            title = "Itau informa",
+            text = "Itau informa: Registramos un debito en tu Cuenta ****2858 de Gs.*****49.300 por FCIA PUNTO FARMA P 737 al 15/10/2026 14:50:17"
+        )
+
+        assertEquals(1, purchases.size)
+        assertEquals("49300", purchases[0].amount)
+        assertEquals("Itau", purchases[0].cardText)
+        assertEquals("FCIA PUNTO FARMA P 737", purchases[0].merchant)
+
+        // Balance (should be ignored)
+        purchases = extractor.extract(
+            title = "Itau informa",
+            text = "Itau informa: El saldo de su Cta.de Ahorro 520412858 es de *****145.000 Gs. al 15/10/2026 15:00:00"
+        )
+        assertEquals(0, purchases.size)
+    }
 }

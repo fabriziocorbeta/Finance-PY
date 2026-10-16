@@ -127,6 +127,7 @@ final class ApiClient {
         do {
             return try decoder.decode(T.self, from: data)
         } catch {
+            DecodingDiagnostics.log(error, type: T.self, path: path)
             throw NetworkError.decodingError(error)
         }
     }
@@ -234,6 +235,7 @@ final class ApiClient {
         do {
             return try decoder.decode(T.self, from: data)
         } catch {
+            DecodingDiagnostics.log(error, type: T.self, path: path)
             throw NetworkError.decodingError(error)
         }
     }

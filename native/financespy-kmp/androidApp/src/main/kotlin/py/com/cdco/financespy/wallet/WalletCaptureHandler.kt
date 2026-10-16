@@ -29,7 +29,6 @@ object WalletCaptureHandler {
     // must not block the others in the same notification.
     private fun handleBlocking(context: Context, packageName: String, title: String, text: String) {
         val extractors = BankNotificationExtractors.forPackage(packageName)
-        if (extractors.isEmpty()) return
         val purchases = extractors.flatMap { it.extract(title, text) }
         if (purchases.isEmpty()) return
 

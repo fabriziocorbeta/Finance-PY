@@ -62,8 +62,8 @@ data class ReceivablesMetaDto(
 data class InstallmentDto(
     val number: Int,
     val due_date: String,
-    val amount: Double,
-    val paid_amount: Double,
+    @Serializable(with = FlexibleDoubleSerializer::class) val amount: Double? = null,
+    @Serializable(with = FlexibleDoubleSerializer::class) val paid_amount: Double? = null,
     val status: String,
     val paid_at: String? = null
 )

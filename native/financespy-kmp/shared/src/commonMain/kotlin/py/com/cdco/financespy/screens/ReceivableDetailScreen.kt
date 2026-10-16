@@ -220,9 +220,9 @@ private fun InstallmentRow(installment: InstallmentDto, currency: String) {
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             val amountText = if (installment.status == "partial") {
-                "${formatMoney(installment.paid_amount, currency)} / ${formatMoney(installment.amount, currency)}"
+                "${formatMoney(installment.paid_amount ?: 0.0, currency)} / ${formatMoney(installment.amount ?: 0.0, currency)}"
             } else {
-                formatMoney(installment.amount, currency)
+                formatMoney(installment.amount ?: 0.0, currency)
             }
 
             Text(

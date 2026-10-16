@@ -51,8 +51,8 @@ data class FuelLogDto(
     val account_id: String,
     val logged_at: String,
     val odometer: Double? = null,
-    val liters: Double,
-    val cost: Double,
+    @Serializable(with = FlexibleDoubleSerializer::class) val liters: Double? = null,
+    @Serializable(with = FlexibleDoubleSerializer::class) val cost: Double? = null,
     val notes: String? = null,
     val entry_id: String? = null,
     val created_at: String? = null,
@@ -65,8 +65,8 @@ data class FuelLogLineDto(
     val id: String? = null,
     val fuel_type: String,
     val brand: String? = null,
-    val liters: Double,
-    val cost: Double
+    @Serializable(with = FlexibleDoubleSerializer::class) val liters: Double? = null,
+    @Serializable(with = FlexibleDoubleSerializer::class) val cost: Double? = null
 )
 
 @Serializable
