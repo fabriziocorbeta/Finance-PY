@@ -42,3 +42,27 @@ data class PurchaseOrdersResponseDto(
 data class PurchaseOrderResponseDto(
     val data: PurchaseOrderDto
 )
+
+@Serializable
+data class PurchaseOrderItemRequestDto(
+    val id: String? = null,
+    val product_id: String,
+    val quantity: Int,
+    val unit_cost: Double,
+    val _destroy: Boolean? = null
+)
+
+@Serializable
+data class PurchaseOrderPayloadDto(
+    val supplier_name: String? = null,
+    val currency: String,
+    val notes: String? = null,
+    val account_id: String? = null,
+    val purchase_order_items_attributes: List<PurchaseOrderItemRequestDto>
+)
+
+
+@Serializable
+data class PurchaseOrderRequestDto(
+    val purchase_order: PurchaseOrderPayloadDto
+)

@@ -123,7 +123,14 @@ class ChatViewModel(
             _state.value = _state.value.copy(isSending = true, error = null)
             try {
                 val response = api.retryMessage(id)
-                val updatedMessages = _state.value.messages + response
+                val dummyMessage = MessageDto(
+                    id = response.message_id,
+                    type = "assistant_message",
+                    role = "assistant",
+                    content = null,
+                    ai_response_status = "pending"
+                )
+                val updatedMessages = _state.value.messages + dummyMessage
                 _state.value = _state.value.copy(
                     messages = updatedMessages,
                     isSending = false

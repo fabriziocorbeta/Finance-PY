@@ -47,3 +47,32 @@ data class SalesResponseDto(
 data class SaleResponseDto(
     val data: SaleDto
 )
+
+@Serializable
+data class SaleItemRequestDto(
+    val id: String? = null,
+    val product_id: String,
+    val quantity: Int,
+    val unit_price: Double,
+    val _destroy: Boolean? = null
+)
+
+@Serializable
+data class SalePayloadDto(
+    val client_name: String? = null,
+    val currency: String,
+    val payment_method: String? = null,
+    val invoice_number: String? = null,
+    val condition: String? = null,
+    val notes: String? = null,
+    val delivery_address: String? = null,
+    val delivery_date: String? = null,
+    val carrier: String? = null,
+    val account_id: String? = null,
+    val sale_items_attributes: List<SaleItemRequestDto>
+)
+
+@Serializable
+data class SaleRequestDto(
+    val sale: SalePayloadDto
+)
