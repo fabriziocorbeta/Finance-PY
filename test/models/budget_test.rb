@@ -280,6 +280,10 @@ class BudgetTest < ActiveSupport::TestCase
     assert_equal 63.11, segments_by_id[parent_budget_category.id][:amount]
     assert_equal 25, segments_by_id[standalone_budget_category.id][:amount]
     assert_equal 200, segments_by_id["unused"][:amount]
+
+    assert_instance_of Float, segments_by_id[parent_budget_category.id][:amount]
+    assert_instance_of Float, segments_by_id[standalone_budget_category.id][:amount]
+    assert_instance_of Float, segments_by_id["unused"][:amount]
   end
 
   test "actual_spending subtracts uncategorized refunds" do
