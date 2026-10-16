@@ -294,7 +294,7 @@ private fun FuelLogCard(
                         color = FinancePyColors.textPrimary()
                     )
                     Text(
-                        text = formatMoney(fuelLog.cost, "PYG"),
+                        text = formatMoney(fuelLog.cost ?: 0.0, "PYG"),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                         color = FinancePyColors.textPrimary()
@@ -305,11 +305,11 @@ private fun FuelLogCard(
 
                 val linesSummary = fuelLog.fuel_log_lines.joinToString(", ") {
                     val brandStr = if (!it.brand.isNull_or_blank()) " (${it.brand})" else ""
-                    "${formatDouble(it.liters)} L ${fuelTypeLabel(it.fuel_type)}$brandStr"
+                    "${formatDouble(it.liters ?: 0.0)} L ${fuelTypeLabel(it.fuel_type)}$brandStr"
                 }
 
                 Text(
-                    text = if (linesSummary.isNotBlank()) linesSummary else "${formatDouble(fuelLog.liters)} L",
+                    text = if (linesSummary.isNotBlank()) linesSummary else "${formatDouble(fuelLog.liters ?: 0.0)} L",
                     style = MaterialTheme.typography.bodySmall,
                     color = FinancePyColors.textSecondary()
                 )
