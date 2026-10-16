@@ -68,4 +68,24 @@ final class FinancePyApiBudgetsTests: XCTestCase {
             XCTFail("Unexpected error: \(error)")
         }
     }
+
+    func testCreateBudgetDuplicate422Error() async {
+        // This test simulates the concurrent error that the view model now specifically catches.
+        let jsonError = """
+        {"error":"validation_failed","message":"Budget could not be created","errors":["Start date ya esta en uso","End date ya esta en uso"]}
+        """
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 422, httpVersion: nil, headerFields: nil)!
+            return (response, jsonError.data(using: .utf8)!)
+        }
+        do {
+            _ = try await FinancePyApi.shared.createBudget(expectedIncome: 0, startDate: "2026-10-01", endDate: nil)
+            XCTFail("Expected 422 error")
+        } catch NetworkError.httpError(let code, let message) {
+            XCTAssertEqual(code, 422)
+            XCTAssertTrue(message?.contains("ya esta en uso") == true)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
 }
