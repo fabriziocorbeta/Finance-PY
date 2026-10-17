@@ -24,12 +24,15 @@ class RackAttackTest < ActionDispatch::IntegrationTest
   test "repeated api requests from the same token are rejected with 429 after 300 requests" do
     freeze_time
     with_rack_attack do
-      headers = { "HTTP_AUTHORIZATION" => "Bearer some-token", "CONTENT_TYPE" => "application/json" }
+      token = "some-token"
+      headers = { "HTTP_AUTHORIZATION" => "Bearer #{token}", "CONTENT_TYPE" => "application/json" }
 
-      # Should allow 300 requests
-      300.times { get "/api/v1/some_endpoint", headers: headers }
+      # Fast-forward the throttle counter directly instead of firing 300 real
+      # requests through the full Rails stack -- the literal loop timed out CI.
+      discriminator = "api_token:#{Digest::SHA256.hexdigest(token)}"
+      299.times { Rack::Attack.cache.count("api/requests:#{discriminator}", 1.hour) }
 
-      # 301st request should be throttled
+      # 300th request should be throttled
       get "/api/v1/some_endpoint", headers: headers
       assert_response :too_many_requests
     end
@@ -38,21 +41,18 @@ class RackAttackTest < ActionDispatch::IntegrationTest
   test "repeated api requests from the same IP are rejected with 429 after 1500 requests" do
     freeze_time
     with_rack_attack do
-      # Note: we use different tokens to avoid hitting the api/requests token limit,
-      # but they all come from the same IP to hit the api/ip limit.
-      1500.times do |i|
-        headers = {
-          "HTTP_AUTHORIZATION" => "Bearer some-token-#{i}",
-          "CONTENT_TYPE" => "application/json",
-          "REMOTE_ADDR" => "10.3.0.1"
-        }
-        get "/api/v1/some_endpoint", headers: headers
-      end
+      ip = "10.3.0.1"
+
+      # Fast-forward the api/ip throttle counter directly instead of firing
+      # 1500 real requests through the full Rails stack (same reasoning as
+      # the token-based test above). A distinct token here keeps us under
+      # the api/requests (token) limit so only api/ip trips.
+      1499.times { Rack::Attack.cache.count("api/ip:#{ip}", 1.hour) }
 
       headers = {
         "HTTP_AUTHORIZATION" => "Bearer some-token-last",
         "CONTENT_TYPE" => "application/json",
-        "REMOTE_ADDR" => "10.3.0.1"
+        "REMOTE_ADDR" => ip
       }
       get "/api/v1/some_endpoint", headers: headers
       assert_response :too_many_requests
