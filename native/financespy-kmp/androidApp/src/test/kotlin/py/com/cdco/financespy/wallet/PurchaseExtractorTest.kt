@@ -69,4 +69,13 @@ class PurchaseExtractorTest {
         )
         assertEquals(0, purchases.size)
     }
+
+    @Test
+    fun testSamsungMessagingMatchesGoogleMessagingExtractors() {
+        val googleExtractors = BankNotificationExtractors.forPackage("com.google.android.apps.messaging")
+        val samsungExtractors = BankNotificationExtractors.forPackage("com.samsung.android.messaging")
+
+        assertEquals(googleExtractors, samsungExtractors)
+        assertEquals(3, samsungExtractors.size)
+    }
 }

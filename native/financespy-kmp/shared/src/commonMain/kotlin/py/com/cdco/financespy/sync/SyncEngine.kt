@@ -2,6 +2,7 @@ package py.com.cdco.financespy.sync
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.supervisorScope
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.GoalDto
@@ -43,18 +44,28 @@ class SyncEngine(
     // so only added up their latencies -- a dashboard refresh waited for the
     // slowest possible sum of 5 sequential requests (plus one more per rule
     // inside syncRules) before the screen could show anything current.
-    suspend fun syncAll(): Result<Unit> = runCatching {
-        coroutineScope {
-            val accounts = async { syncAccounts() }
-            val transactions = async { syncTransactions() }
-            val rules = async { syncRules() }
-            val goals = async { syncGoals() }
-            val receivables = async { syncReceivables() }
-            accounts.await()
-            transactions.await()
-            rules.await()
-            goals.await()
-            receivables.await()
+    // supervisorScope (not coroutineScope) + runCatching per sync: a failure in
+    // one sync (e.g. receivables returning a 500) must not cancel the other 4
+    // in-flight syncs. With plain coroutineScope, one child throwing cancels
+    // every sibling, so a single flaky endpoint would silently wipe out local
+    // data that *did* sync successfully this round.
+    suspend fun syncAll(): Result<Unit> = supervisorScope {
+        val accounts = async { runCatching { syncAccounts() } }
+        val transactions = async { runCatching { syncTransactions() } }
+        val rules = async { runCatching { syncRules() } }
+        val goals = async { runCatching { syncGoals() } }
+        val receivables = async { runCatching { syncReceivables() } }
+
+        val failures = listOf(accounts, transactions, rules, goals, receivables)
+            .map { it.await() }
+            .mapNotNull { it.exceptionOrNull() }
+
+        if (failures.isEmpty()) {
+            Result.success(Unit)
+        } else {
+            val primary = failures.first()
+            failures.drop(1).forEach { primary.addSuppressed(it) }
+            Result.failure(primary)
         }
     }
 
