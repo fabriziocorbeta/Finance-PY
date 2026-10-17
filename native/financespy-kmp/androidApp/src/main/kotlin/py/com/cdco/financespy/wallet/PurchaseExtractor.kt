@@ -138,6 +138,40 @@ object ItauSmsExtractor : BankNotificationExtractor {
     }
 }
 
+// Unlike real Continental transaction alerts (SMS, see ContinentalSmsExtractor's
+// own comment on why), the Contiapp itself (py.com.bancontinental.contiapp) was
+// confirmed in a prior session to push ONLY marketing/cashback notifications --
+// no real transaction data -- which is why that package was never added to
+// BY_PACKAGE. That was too broad a conclusion: the specific "reintegro"
+// confirmation push ("Ahorraste Gs. 155.275 en CONTIMARKET CHECKOUT. Seguí
+// sumando reintegros con tu tarjeta Continental.") DOES carry a real amount --
+// it's Continental crediting cashback back to the user, a real income event,
+// not an ad. Every other Contiapp push seen in the wild (maintenance notices,
+// security tips, "pedí tu tarjeta internacional", card-pickup reminders) has
+// no Gs. amount at all, so this pattern can't accidentally match them.
+object ContinentalCashbackExtractor : BankNotificationExtractor {
+    private val PATTERN = Regex(
+        """Ahorraste\s+Gs\.\s*([\d.]+)\s+en\s+(.+?)\.\s*Segu[ií]"""
+    )
+
+    override fun extract(title: String, text: String): List<Purchase> {
+        return PATTERN.findAll(text).map { match ->
+            val (rawAmount, merchant) = match.destructured
+            // "Banco Continental" is the only real account this can
+            // unambiguously match (AccountMapping does a bidirectional
+            // substring check against AccountDao.observeAll()) -- there's
+            // no account-number fragment in this notification to append,
+            // unlike GnbSmsExtractor, so the plain account name is enough.
+            Purchase(
+                amount = rawAmount.replace(".", ""),
+                cardText = "Banco Continental",
+                merchant = merchant.trim(),
+                nature = TransactionNature.INCOME
+            )
+        }.toList()
+    }
+}
+
 object BankNotificationExtractors {
     private val BY_PACKAGE: Map<String, List<BankNotificationExtractor>> = mapOf(
         "com.google.android.apps.walletnfcrel" to listOf(WalletTapExtractor),
@@ -146,7 +180,8 @@ object BankNotificationExtractors {
         // Samsung Messages is the default SMS app on Samsung phones (Google
         // Messages isn't installed/used there) -- same SMS text, same
         // extractors, just a different package posting the notification.
-        "com.samsung.android.messaging" to listOf(ContinentalSmsExtractor, GnbSmsExtractor, ItauSmsExtractor)
+        "com.samsung.android.messaging" to listOf(ContinentalSmsExtractor, GnbSmsExtractor, ItauSmsExtractor),
+        "py.com.bancontinental.contiapp" to listOf(ContinentalCashbackExtractor)
     )
 
     fun forPackage(packageName: String): List<BankNotificationExtractor> = BY_PACKAGE[packageName] ?: emptyList()

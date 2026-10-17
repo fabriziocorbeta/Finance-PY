@@ -71,6 +71,42 @@ class PurchaseExtractorTest {
     }
 
     @Test
+    fun testContinentalCashbackExtractor() {
+        val extractor = ContinentalCashbackExtractor
+
+        // Real cashback confirmation push (not an SMS -- from the Contiapp itself)
+        var purchases = extractor.extract(
+            title = "Banco Continental",
+            text = "Ahorraste Gs. 155.275 en CONTIMARKET CHECKOUT. Seguí sumando reintegros con tu tarjeta Continental."
+        )
+        assertEquals(1, purchases.size)
+        assertEquals("155275", purchases[0].amount)
+        assertEquals("Banco Continental", purchases[0].cardText)
+        assertEquals("CONTIMARKET CHECKOUT", purchases[0].merchant)
+        assertEquals(TransactionNature.INCOME, purchases[0].nature)
+
+        // Other real Contiapp pushes seen in the wild -- none carry a Gs.
+        // amount, must not match.
+        val nonMatches = listOf(
+            "Informamos que hoy, 16/10, de 22:00h a 01:00h, se podrían presentar intermitencias en los pagos de servicios a través de la app Contimóvil y web debido a trabajos de mantenimiento programados. Agradecemos su comprensión.",
+            "La seguridad empieza contigo. Protegé tus datos y nunca compartas información de tarjetas, pines o códigos. Ante dudas, llamanos al 021 419 3000.",
+            "¡Retirá tu tarjeta al instante en Nissei España! Te esperamos hoy, 15 de octubre, hasta las 19h.",
+            "Pide tu tarjeta internacional. Haz tus compras en todo el mundo al mejor tipo de cambio"
+        )
+        nonMatches.forEach { text ->
+            assertEquals(0, extractor.extract("Banco Continental", text).size)
+        }
+    }
+
+    @Test
+    fun testBankNotificationExtractorsWatchesContiapp() {
+        assertEquals(
+            listOf(ContinentalCashbackExtractor),
+            BankNotificationExtractors.forPackage("py.com.bancontinental.contiapp")
+        )
+    }
+
+    @Test
     fun testSamsungMessagingMatchesGoogleMessagingExtractors() {
         val googleExtractors = BankNotificationExtractors.forPackage("com.google.android.apps.messaging")
         val samsungExtractors = BankNotificationExtractors.forPackage("com.samsung.android.messaging")
