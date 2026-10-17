@@ -80,6 +80,7 @@
 		800000000000000000000004 /* AccountFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800000000000000000000014 /* AccountFormView.swift */; };
 		800000000000000000000005 /* DebtsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800000000000000000000015 /* DebtsListView.swift */; };
 		800000000000000000000006 /* TransactionFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800000000000000000000016 /* TransactionFormView.swift */; };
+		FCAD69D370B6ADF2B739478C /* TransactionLocationMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FC2A9DBF8473F032A10DBF /* TransactionLocationMapView.swift */; };
 		829344C3A5E64AB4FC2B10AA /* PurchaseOrdersListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44946178AA3EC018BDA1C5F /* PurchaseOrdersListView.swift */; };
 		8EA6AC3B378C049981434F15 /* BudgetDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40ACC679E52F92898B1F1087 /* BudgetDashboardView.swift */; };
 		904E4787990C0D465D65D28F /* PurchaseOrderFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7274F3786366D993D87B002 /* PurchaseOrderFormView.swift */; };
@@ -180,6 +181,7 @@
 		800000000000000000000014 /* AccountFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountFormView.swift; sourceTree = "<group>"; };
 		800000000000000000000015 /* DebtsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebtsListView.swift; sourceTree = "<group>"; };
 		800000000000000000000016 /* TransactionFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionFormView.swift; sourceTree = "<group>"; };
+		55FC2A9DBF8473F032A10DBF /* TransactionLocationMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionLocationMapView.swift; sourceTree = "<group>"; };
 		8071475B9A7D9545E423C32D /* FinancePyApi+ImportsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+ImportsTests.swift"; path = "FinancePYTests/FinancePyApi+ImportsTests.swift"; sourceTree = SOURCE_ROOT; };
 		83374850B9DCB321B500F133 /* SalesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SalesListView.swift; path = Sales/SalesListView.swift; sourceTree = "<group>"; };
 		8C4BC1E7108C9827007CD72A /* ProductsListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProductsListView.swift; sourceTree = "<group>"; };
@@ -349,6 +351,7 @@
 				800000000000000000000014 /* AccountFormView.swift */,
 				800000000000000000000015 /* DebtsListView.swift */,
 				800000000000000000000016 /* TransactionFormView.swift */,
+				55FC2A9DBF8473F032A10DBF /* TransactionLocationMapView.swift */,
 				60000000000000000000B3,
 				60000000000000000000B4,
 				60000000000000000000B5,
@@ -597,6 +600,7 @@
 				800000000000000000000004 /* AccountFormView.swift in Sources */,
 				800000000000000000000005 /* DebtsListView.swift in Sources */,
 				800000000000000000000006 /* TransactionFormView.swift in Sources */,
+				FCAD69D370B6ADF2B739478C /* TransactionLocationMapView.swift in Sources */,
 				50000000000000000000B1,
 				50000000000000000000B2,
 				50000000000000000000B3,

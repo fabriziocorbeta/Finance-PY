@@ -20,8 +20,41 @@ data class PendingCapture(
     val amount: String,
     val merchant: String,
     val item: String,
-    val nature: TransactionNature = TransactionNature.EXPENSE
+    val nature: TransactionNature = TransactionNature.EXPENSE,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val device: String? = null
 )
+
+// Pure, Context-free (de)serialization for one PendingCapture -- split out
+// from the class above so this can be unit tested directly (JSON format
+// compatibility with items already queued on disk) without needing a real
+// or Robolectric-shadowed EncryptedSharedPreferences/AndroidKeyStore.
+internal fun parseCaptureJson(obj: JSONObject): PendingCapture = PendingCapture(
+    id = obj.getString("id"),
+    capturedAt = obj.getString("capturedAt"),
+    accountId = obj.getString("accountId"),
+    amount = obj.getString("amount"),
+    merchant = obj.getString("merchant"),
+    item = obj.getString("item"),
+    nature = if (obj.has("nature")) TransactionNature.valueOf(obj.getString("nature")) else TransactionNature.EXPENSE,
+    latitude = if (obj.has("latitude")) obj.getDouble("latitude") else null,
+    longitude = if (obj.has("longitude")) obj.getDouble("longitude") else null,
+    device = if (obj.has("device")) obj.getString("device") else null
+)
+
+internal fun captureToJson(c: PendingCapture): JSONObject = JSONObject().apply {
+    put("id", c.id)
+    put("capturedAt", c.capturedAt)
+    put("accountId", c.accountId)
+    put("amount", c.amount)
+    put("merchant", c.merchant)
+    put("item", c.item)
+    put("nature", c.nature.name)
+    c.latitude?.let { put("latitude", it) }
+    c.longitude?.let { put("longitude", it) }
+    c.device?.let { put("device", it) }
+}
 
 class PendingCaptureStore(
     context: Context,
@@ -67,18 +100,7 @@ class PendingCaptureStore(
             val arr = JSONArray(jsonString)
             val result = mutableListOf<PendingCapture>()
             for (i in 0 until arr.length()) {
-                val obj = arr.getJSONObject(i)
-                result.add(
-                    PendingCapture(
-                        id = obj.getString("id"),
-                        capturedAt = obj.getString("capturedAt"),
-                        accountId = obj.getString("accountId"),
-                        amount = obj.getString("amount"),
-                        merchant = obj.getString("merchant"),
-                        item = obj.getString("item"),
-                        nature = if (obj.has("nature")) TransactionNature.valueOf(obj.getString("nature")) else TransactionNature.EXPENSE
-                    )
-                )
+                result.add(parseCaptureJson(arr.getJSONObject(i)))
             }
             result
         } catch (e: Exception) {
@@ -88,17 +110,7 @@ class PendingCaptureStore(
 
     private fun writeAll(captures: List<PendingCapture>) {
         val arr = JSONArray()
-        captures.forEach { c ->
-            arr.put(JSONObject().apply {
-                put("id", c.id)
-                put("capturedAt", c.capturedAt)
-                put("accountId", c.accountId)
-                put("amount", c.amount)
-                put("merchant", c.merchant)
-                put("item", c.item)
-                put("nature", c.nature.name)
-            })
-        }
+        captures.forEach { arr.put(captureToJson(it)) }
         prefs.edit().putString(KEY, arr.toString()).apply()
     }
 

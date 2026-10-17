@@ -114,6 +114,45 @@ class Api::V1::AndroidPurchasesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "income", entry.classification
   end
 
+  test "stores device-reported latitude/longitude/device when present" do
+    params = {
+      account_id: @account.id,
+      amount: 150000,
+      merchant: "FERIA ASUNCION S.A.",
+      item: "Tarjeta GNB ••1234",
+      timestamp: Time.current.iso8601,
+      raw_text: "x",
+      latitude: "-25.2968",
+      longitude: "-57.5947",
+      device: "SM-S928B"
+    }
+
+    post api_v1_android_purchases_url, params: params, headers: api_headers(@api_key)
+
+    assert_response :ok
+    entry = @account.entries.order(created_at: :desc).first
+    assert_equal(-25.2968, entry.transaction.extra["latitude"])
+    assert_equal(-57.5947, entry.transaction.extra["longitude"])
+    assert_equal "SM-S928B", entry.transaction.extra["device"]
+  end
+
+  test "creates the purchase normally when latitude/longitude/device are absent" do
+    params = {
+      account_id: @account.id,
+      amount: 150000,
+      merchant: "FERIA ASUNCION S.A.",
+      item: "Tarjeta GNB ••1234",
+      timestamp: Time.current.iso8601,
+      raw_text: "x"
+    }
+
+    post api_v1_android_purchases_url, params: params, headers: api_headers(@api_key)
+
+    assert_response :ok
+    entry = @account.entries.order(created_at: :desc).first
+    assert_not entry.transaction.extra.key?("latitude")
+  end
+
   private
 
     def api_headers(api_key)

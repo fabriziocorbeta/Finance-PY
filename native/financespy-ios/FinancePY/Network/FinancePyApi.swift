@@ -58,8 +58,20 @@ struct TransactionListItemDto: Codable {
     let account: AccountRefDto
     let category: CategoryRefDto?
     let merchant: MerchantRefDto?
+    let location: TransactionLocationDto?
     let createdAt: String
     let updatedAt: String
+}
+
+// Approximate DEVICE location at the moment a bank notification was
+// captured by the Android Wallet pipeline -- never the real merchant
+// location, the notification itself never carries coordinates. iOS never
+// captures this itself (no notification-listener API on the platform);
+// this is read-only display of what Android already sent.
+struct TransactionLocationDto: Codable {
+    let latitude: Double
+    let longitude: Double
+    let device: String?
 }
 
 struct AccountRefDto: Codable {

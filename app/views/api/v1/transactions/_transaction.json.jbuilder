@@ -95,6 +95,21 @@ else
   json.transfer nil
 end
 
+# Approximate device location at the moment a bank notification was
+# captured (Wallet capture pipeline, see AndroidPurchase::WebhookProcessor) --
+# a proxy for where the transaction happened, never the real merchant
+# location, since the bank notification itself never carries coordinates.
+# Only present for transactions captured that way; nil for everything else.
+if transaction.extra&.dig("latitude").present?
+  json.location do
+    json.latitude transaction.extra["latitude"]
+    json.longitude transaction.extra["longitude"]
+    json.device transaction.extra["device"]
+  end
+else
+  json.location nil
+end
+
 # Additional metadata
 json.created_at transaction.created_at.iso8601
 json.updated_at transaction.updated_at.iso8601

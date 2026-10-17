@@ -15,6 +15,9 @@ class AndroidPurchase::WebhookProcessor
     @timestamp = params[:timestamp].to_s
     @raw_text = params[:raw_text].to_s
     @nature = params[:nature].to_s
+    @latitude = params[:latitude]
+    @longitude = params[:longitude]
+    @device = params[:device].presence
     @family = family
     @user = user
   end
@@ -52,7 +55,7 @@ class AndroidPurchase::WebhookProcessor
       external_id: external_id,
       entryable: Transaction.new(
         category: fuel_category_for(account.family),
-        extra: { "raw_text" => @raw_text, "source" => "google_play", "item" => @item }
+        extra: { "raw_text" => @raw_text, "source" => "google_play", "item" => @item }.merge(location_extra)
       )
     )
 
@@ -130,6 +133,34 @@ class AndroidPurchase::WebhookProcessor
       def fuel_merchant?
         merchant_upcase = @merchant.upcase
         FUEL_MERCHANT_KEYWORDS.any? { |keyword| merchant_upcase.include?(keyword) }
+      end
+
+      # Device-reported location at the moment the bank notification was
+      # captured (a proxy for where the transaction happened, not the real
+      # merchant location -- the SMS/push itself never carries coordinates).
+      # Both lat/lng must parse as finite floats together or neither is kept;
+      # a malformed optional field must never fail the whole webhook, the
+      # transaction itself always has to save. Device name has no such
+      # pairing requirement.
+      def location_extra
+        extra = {}
+        lat = parsed_coordinate(@latitude)
+        lng = parsed_coordinate(@longitude)
+        if lat && lng
+          extra["latitude"] = lat
+          extra["longitude"] = lng
+        end
+        extra["device"] = @device if @device.present?
+        extra
+      end
+
+      def parsed_coordinate(value)
+        return nil if value.blank?
+
+        parsed = Float(value)
+        parsed.finite? ? parsed : nil
+      rescue ArgumentError, TypeError
+        nil
       end
 
       def numeric_amount

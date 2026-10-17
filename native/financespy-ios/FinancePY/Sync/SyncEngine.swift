@@ -165,6 +165,9 @@ final class SyncEngine: ObservableObject {
                     existingTx.categoryIcon = categoryIcon
                     existingTx.merchantId = dto.merchant?.id
                     existingTx.merchantName = merchantName
+                    existingTx.latitude = dto.location?.latitude
+                    existingTx.longitude = dto.location?.longitude
+                    existingTx.device = dto.location?.device
                 } else {
                     let txEntity = TransactionEntity(
                         id: dto.id,
@@ -176,6 +179,9 @@ final class SyncEngine: ObservableObject {
                         categoryIcon: categoryIcon,
                         merchantId: dto.merchant?.id,
                         merchantName: merchantName,
+                        latitude: dto.location?.latitude,
+                        longitude: dto.location?.longitude,
+                        device: dto.location?.device,
                         entry: existingEntry
                     )
                     existingEntry.transaction = txEntity
@@ -191,7 +197,10 @@ final class SyncEngine: ObservableObject {
                     categoryColor: categoryColor,
                     categoryIcon: categoryIcon,
                     merchantId: dto.merchant?.id,
-                    merchantName: merchantName
+                    merchantName: merchantName,
+                    latitude: dto.location?.latitude,
+                    longitude: dto.location?.longitude,
+                    device: dto.location?.device
                 )
 
                 let entryEntity = EntryEntity(
