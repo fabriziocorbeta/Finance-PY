@@ -42,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.api.dto.FamilyExportDto
@@ -50,6 +51,7 @@ import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.theme.components.ButtonVariant
 import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
+import py.com.cdco.financespy.theme.components.liquidGlass
 
 @Composable
 fun SettingsScreen(
@@ -74,6 +76,7 @@ fun SettingsScreen(
 
     if (showLogoutDialog) {
         AlertDialog(
+            modifier = Modifier.liquidGlass(RoundedCornerShape(28.dp)),
             onDismissRequest = { showLogoutDialog = false },
             title = {
                 Text(
@@ -117,7 +120,7 @@ fun SettingsScreen(
                     )
                 }
             },
-            containerColor = FinancePyColors.container().copy(alpha = 0.75f),
+            containerColor = Color.Transparent,
             titleContentColor = FinancePyColors.textPrimary(),
             textContentColor = FinancePyColors.textSecondary()
         )
@@ -125,6 +128,7 @@ fun SettingsScreen(
 
     if (showPendingOutboxWarning) {
         AlertDialog(
+            modifier = Modifier.liquidGlass(RoundedCornerShape(28.dp)),
             onDismissRequest = { showPendingOutboxWarning = false },
             title = {
                 Text(
@@ -162,7 +166,7 @@ fun SettingsScreen(
                     )
                 }
             },
-            containerColor = FinancePyColors.container().copy(alpha = 0.75f),
+            containerColor = Color.Transparent,
             titleContentColor = FinancePyColors.textPrimary(),
             textContentColor = FinancePyColors.textSecondary()
         )
