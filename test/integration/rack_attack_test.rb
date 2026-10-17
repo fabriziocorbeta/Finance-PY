@@ -21,6 +21,44 @@ class RackAttackTest < ActionDispatch::IntegrationTest
     assert_includes throttles, "api/requests", "API requests should have rate limiting"
   end
 
+  test "repeated api requests from the same token are rejected with 429 after 300 requests" do
+    freeze_time
+    with_rack_attack do
+      headers = { "HTTP_AUTHORIZATION" => "Bearer some-token", "CONTENT_TYPE" => "application/json" }
+
+      # Should allow 300 requests
+      300.times { get "/api/v1/some_endpoint", headers: headers }
+
+      # 301st request should be throttled
+      get "/api/v1/some_endpoint", headers: headers
+      assert_response :too_many_requests
+    end
+  end
+
+  test "repeated api requests from the same IP are rejected with 429 after 1500 requests" do
+    freeze_time
+    with_rack_attack do
+      # Note: we use different tokens to avoid hitting the api/requests token limit,
+      # but they all come from the same IP to hit the api/ip limit.
+      1500.times do |i|
+        headers = {
+          "HTTP_AUTHORIZATION" => "Bearer some-token-#{i}",
+          "CONTENT_TYPE" => "application/json",
+          "REMOTE_ADDR" => "10.3.0.1"
+        }
+        get "/api/v1/some_endpoint", headers: headers
+      end
+
+      headers = {
+        "HTTP_AUTHORIZATION" => "Bearer some-token-last",
+        "CONTENT_TYPE" => "application/json",
+        "REMOTE_ADDR" => "10.3.0.1"
+      }
+      get "/api/v1/some_endpoint", headers: headers
+      assert_response :too_many_requests
+    end
+  end
+
   test "authentication entry points are throttled" do
     names = Rack::Attack.throttles.keys
     %w[mfa/verify_code login/email password_reset/ip password_reset/email signup/ip api_auth/ip].each do |name|
