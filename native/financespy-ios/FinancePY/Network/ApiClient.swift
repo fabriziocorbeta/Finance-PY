@@ -120,6 +120,79 @@ final class ApiClient {
     func request<T: Decodable>(method: String, path: String, queryItems: [URLQueryItem]? = nil) async throws -> T {
         try await request(method: method, path: path, queryItems: queryItems, body: Optional<EmptyBody>.none)
     }
+
+// Upload multipart form data, specifically for file uploads along with other string fields.
+func uploadMultipart<T: Decodable>(
+    path: String,
+    fileData: Data,
+    fileName: String,
+    mimeType: String,
+    fields: [String: String] = [:]
+) async throws -> T {
+    guard let url = URL(string: "\(baseUrl)\(path)") else {
+        throw NetworkError.invalidUrl
+    }
+
+    var urlRequest = URLRequest(url: url)
+    urlRequest.httpMethod = "POST"
+    urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+
+    if let token = tokenStorage.accessToken(), !token.isEmpty {
+        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    }
+
+    let boundary = "Boundary-\(UUID().uuidString)"
+    urlRequest.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+    var body = Data()
+
+    // Append text fields
+    for (key, value) in fields {
+        body.append(Data("--\(boundary)\r\n".utf8))
+        body.append(Data("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".utf8))
+        body.append(Data("\(value)\r\n".utf8))
+    }
+
+    // Append file data
+    body.append(Data("--\(boundary)\r\n".utf8))
+    body.append(Data("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".utf8))
+    body.append(Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
+    body.append(fileData)
+    body.append(Data("\r\n".utf8))
+
+    body.append(Data("--\(boundary)--\r\n".utf8))
+
+    urlRequest.httpBody = body
+
+    let (data, response) = try await session.data(for: urlRequest)
+
+    guard let httpResponse = response as? HTTPURLResponse else {
+        throw NetworkError.invalidResponse
+    }
+
+    if httpResponse.statusCode == 401 {
+        tokenStorage.clear()
+        throw NetworkError.unauthorized
+    }
+
+    guard (200...299).contains(httpResponse.statusCode) else {
+        let errorBody = String(data: data, encoding: .utf8)
+        throw NetworkError.httpError(httpResponse.statusCode, errorBody)
+    }
+
+    if T.self == EmptyResponse.self {
+        return EmptyResponse() as! T
+    }
+
+    let decoder = JSONDecoder()
+    decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+    do {
+        return try decoder.decode(T.self, from: data)
+    } catch {
+        throw NetworkError.decodingError(error)
+    }
+}
 }
 
 private struct EmptyBody: Encodable {}

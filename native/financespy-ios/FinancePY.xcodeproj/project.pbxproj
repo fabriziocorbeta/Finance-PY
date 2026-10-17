@@ -20,6 +20,11 @@
 		30000000000000000000000B /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B /* LoginView.swift */; };
 		30000000000000000000000C /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000C /* DashboardView.swift */; };
 		30000000000000000000000D /* TransactionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* TransactionsView.swift */; };
+\t\t0A84E593B9F4F3F8381EBBC7 /* PdfStatementImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48F01DD01F50E6896EF5DB44 /* PdfStatementImportView.swift */; };
+\t\tED2BC1D0E50A4475EF55EF69 /* PdfStatementImportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E55C549A02E3CEA7630610B5 /* PdfStatementImportViewModel.swift */; };
+\t\tE2525807AB81CAAF713593A2 /* UpayImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BA30FC1D0C015DE5920A314 /* UpayImportView.swift */; };
+\t\tCB722646CC5F8700924AB993 /* UpayImportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DF7AB35F221FF74642533FF /* UpayImportViewModel.swift */; };
+\t\t01F3AA40050F3003D3F1CEB6 /* FinancePyApi+Imports.swift in Sources */ = {isa = PBXBuildFile; fileRef = C97E95F19CEB82B7E7023A56 /* FinancePyApi+Imports.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +43,11 @@
 		20000000000000000000000C /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		20000000000000000000000D /* TransactionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionsView.swift; sourceTree = "<group>"; };
 		20000000000000000000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+\t\t48F01DD01F50E6896EF5DB44 /* PdfStatementImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PdfStatementImportView.swift; sourceTree = "<group>"; };
+\t\tE55C549A02E3CEA7630610B5 /* PdfStatementImportViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PdfStatementImportViewModel.swift; sourceTree = "<group>"; };
+\t\t6BA30FC1D0C015DE5920A314 /* UpayImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpayImportView.swift; sourceTree = "<group>"; };
+\t\t0DF7AB35F221FF74642533FF /* UpayImportViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpayImportViewModel.swift; sourceTree = "<group>"; };
+\t\tC97E95F19CEB82B7E7023A56 /* FinancePyApi+Imports.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinancePyApi+Imports.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,6 +94,7 @@
 		400000000000000000000001 /* Auth */ = {
 			isa = PBXGroup;
 			children = (
+\t\t\t\tCFC48E4F01F895625E1AB57A /* Imports */,
 				200000000000000000000002 /* PkceGenerator.swift */,
 				200000000000000000000003 /* KeychainTokenStorage.swift */,
 				200000000000000000000004 /* AuthRepository.swift */,
@@ -128,6 +139,18 @@
 			path = Screens;
 			sourceTree = "<group>";
 		};
+\t\tCFC48E4F01F895625E1AB57A /* Imports */ = {
+\t\t\tisa = PBXGroup;
+\t\t\tchildren = (
+\t\t\t\t48F01DD01F50E6896EF5DB44 /* PdfStatementImportView.swift */,
+\t\t\t\tE55C549A02E3CEA7630610B5 /* PdfStatementImportViewModel.swift */,
+\t\t\t\t6BA30FC1D0C015DE5920A314 /* UpayImportView.swift */,
+\t\t\t\t0DF7AB35F221FF74642533FF /* UpayImportViewModel.swift */,
+\t\t\t);
+\t\t\tname = Imports; path = Features/Imports;
+\t\t\tsourceTree = "<group>";
+\t\t};
+
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -195,6 +218,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+\t\t\t\t0A84E593B9F4F3F8381EBBC7 /* PdfStatementImportView.swift in Sources */,
+\t\t\t\tED2BC1D0E50A4475EF55EF69 /* PdfStatementImportViewModel.swift in Sources */,
+\t\t\t\tE2525807AB81CAAF713593A2 /* UpayImportView.swift in Sources */,
+\t\t\t\tCB722646CC5F8700924AB993 /* UpayImportViewModel.swift in Sources */,
+\t\t\t\t01F3AA40050F3003D3F1CEB6 /* FinancePyApi+Imports.swift in Sources */,
 				300000000000000000000001 /* FinancePYApp.swift in Sources */,
 				300000000000000000000002 /* PkceGenerator.swift in Sources */,
 				300000000000000000000003 /* KeychainTokenStorage.swift in Sources */,
