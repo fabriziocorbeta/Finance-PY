@@ -4309,6 +4309,13 @@ CREATE INDEX index_entries_on_entryable_type ON public.entries USING btree (entr
 
 
 --
+-- Name: index_entries_on_entryable_type_and_entryable_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entries_on_entryable_type_and_entryable_id ON public.entries USING btree (entryable_type, entryable_id);
+
+
+--
 -- Name: index_entries_on_import_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8297,6 +8304,7 @@ CREATE POLICY webauthn_credentials_family_isolation_policy ON public.webauthn_cr
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261016000000'),
 ('20261007160000'),
 ('20261007150000'),
 ('20261007140000'),
