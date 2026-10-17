@@ -2,6 +2,7 @@ package py.com.cdco.financespy.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -11,9 +12,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.theme.FinancePyColors
+import py.com.cdco.financespy.theme.components.liquidGlass
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -229,7 +232,8 @@ fun ProductFormScreen(
 
     if (showDeleteConfirm) {
         AlertDialog(
-            containerColor = py.com.cdco.financespy.theme.FinancePyColors.container().copy(alpha = 0.75f),
+            modifier = Modifier.liquidGlass(RoundedCornerShape(28.dp)),
+            containerColor = Color.Transparent,
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Eliminar producto") },
             text = { Text("¿Estás seguro de que deseas eliminar este producto?") },

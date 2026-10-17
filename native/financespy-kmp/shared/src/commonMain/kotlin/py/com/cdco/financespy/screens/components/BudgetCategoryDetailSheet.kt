@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.api.dto.TransactionListItemDto
@@ -38,6 +39,7 @@ import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.theme.components.ButtonVariant
+import py.com.cdco.financespy.theme.components.liquidGlass
 import py.com.cdco.financespy.utils.formatMoney
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,8 +59,8 @@ fun BudgetCategoryDetailSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = FinancePyColors.container().copy(alpha = 0.75f),
-        modifier = modifier
+        containerColor = Color.Transparent,
+        modifier = modifier.liquidGlass(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
     ) {
         Column(
             modifier = Modifier
