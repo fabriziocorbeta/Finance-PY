@@ -42,8 +42,8 @@ class ChatDtoTest {
                 {
                   "id": "tool_1",
                   "function_name": "fetch_balance",
-                  "function_arguments": "{}",
-                  "function_result": "100.0",
+                  "function_arguments": {},
+                  "function_result": {"value": 100.0},
                   "created_at": "2024-03-24T10:00:02Z"
                 }
               ]
@@ -80,9 +80,58 @@ class ChatDtoTest {
         assertNotNull(toolCalls)
         assertEquals(1, toolCalls.size)
         assertEquals("fetch_balance", toolCalls[0].function_name)
+        assertEquals("{}", toolCalls[0].function_arguments.toString())
+        assertTrue(toolCalls[0].function_result.toString().contains("100.0"))
 
         assertNotNull(parsed.pagination)
         assertEquals(1, parsed.pagination?.page)
         assertEquals(2, parsed.pagination?.total_count)
+    }
+
+    @Test
+    fun testMessageDtoWithToolCallsObject() {
+        // Tool arguments and results are jsonb objects/arrays
+        val jsonString = """
+            {
+                "id": "msg1",
+                "type": "assistant_message",
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "tool1",
+                        "function_name": "get_weather",
+                        "function_arguments": {"location": "Asuncion"},
+                        "function_result": {"temp": 30, "unit": "C"},
+                        "created_at": "2024-01-01T12:00:00Z"
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val message = jsonParser.decodeFromString(MessageDto.serializer(), jsonString)
+        assertEquals("msg1", message.id)
+        assertNotNull(message.tool_calls)
+        assertEquals(1, message.tool_calls?.size)
+        val toolCall = message.tool_calls!![0]
+        assertEquals("get_weather", toolCall.function_name)
+        assertNotNull(toolCall.function_arguments)
+        assertTrue(toolCall.function_arguments.toString().contains("Asuncion"))
+        assertNotNull(toolCall.function_result)
+        assertTrue(toolCall.function_result.toString().contains("30"))
+    }
+
+    @Test
+    fun testMessageRetryResponseDtoDeserialization() {
+        val jsonString = """
+            {
+                "message": "Retry initiated",
+                "message_id": "msg_retry_123"
+            }
+        """.trimIndent()
+
+        val response = jsonParser.decodeFromString(MessageRetryResponseDto.serializer(), jsonString)
+        assertEquals("Retry initiated", response.message)
+        assertEquals("msg_retry_123", response.message_id)
     }
 }

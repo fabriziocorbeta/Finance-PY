@@ -1,13 +1,14 @@
 package py.com.cdco.financespy.api.dto
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 @Serializable
 data class ToolCallDto(
     val id: String,
     val function_name: String?,
-    val function_arguments: String?,
-    val function_result: String?,
+    val function_arguments: JsonElement? = null,
+    val function_result: JsonElement? = null,
     val created_at: String?
 )
 
@@ -52,4 +53,10 @@ data class ChatResponseDto(
 data class ChatsListResponseDto(
     val chats: List<ChatDto>,
     val pagination: PaginationDto
+)
+
+@Serializable
+data class MessageRetryResponseDto(
+    val message: String,
+    val message_id: String
 )

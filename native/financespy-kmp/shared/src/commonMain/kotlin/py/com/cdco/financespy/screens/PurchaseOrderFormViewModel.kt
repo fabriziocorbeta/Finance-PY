@@ -9,6 +9,9 @@ import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.ProductDto
 import py.com.cdco.financespy.api.dto.PurchaseOrderDto
+import py.com.cdco.financespy.api.dto.PurchaseOrderRequestDto
+import py.com.cdco.financespy.api.dto.PurchaseOrderPayloadDto
+import py.com.cdco.financespy.api.dto.PurchaseOrderItemRequestDto
 import py.com.cdco.financespy.db.AccountDao
 import py.com.cdco.financespy.db.AccountEntity
 
@@ -100,19 +103,21 @@ class PurchaseOrderFormViewModel(
             _error.value = null
             try {
                 val itemsAttributes = items.map { item ->
-                    mapOf(
-                        "product_id" to item.productId,
-                        "quantity" to item.quantity,
-                        "unit_cost" to item.unitCost
+                    PurchaseOrderItemRequestDto(
+                        product_id = item.productId,
+                        quantity = item.quantity,
+                        unit_cost = item.unitCost
                     )
                 }
 
-                val payload = mapOf(
-                    "supplier_name" to supplierName.takeIf { !it.isNullOrBlank() },
-                    "currency" to currency.lowercase(),
-                    "notes" to notes.takeIf { !it.isNullOrBlank() },
-                    "account_id" to accountId,
-                    "purchase_order_items_attributes" to itemsAttributes
+                val payload = PurchaseOrderRequestDto(
+                    purchase_order = PurchaseOrderPayloadDto(
+                        supplier_name = supplierName.takeIf { !it.isNullOrBlank() },
+                        currency = currency.lowercase(),
+                        notes = notes.takeIf { !it.isNullOrBlank() },
+                        account_id = accountId,
+                        purchase_order_items_attributes = itemsAttributes
+                    )
                 )
 
                 if (purchaseOrderId == null) {

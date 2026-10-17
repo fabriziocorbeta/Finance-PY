@@ -31,6 +31,7 @@ import py.com.cdco.financespy.api.dto.PdfImportRowDto
 import py.com.cdco.financespy.api.dto.ChatResponseDto
 import py.com.cdco.financespy.api.dto.ChatsListResponseDto
 import py.com.cdco.financespy.api.dto.MessageDto
+import py.com.cdco.financespy.api.dto.MessageRetryResponseDto
 import py.com.cdco.financespy.api.dto.ChatDto
 import py.com.cdco.financespy.api.dto.PdfImportRowsResponseDto
 import py.com.cdco.financespy.api.dto.BalanceSeriesDto
@@ -78,6 +79,8 @@ import py.com.cdco.financespy.api.dto.PurchaseOrderDto
 import py.com.cdco.financespy.api.dto.PurchaseOrderResponseDto
 import py.com.cdco.financespy.api.dto.PurchaseOrdersResponseDto
 import py.com.cdco.financespy.api.dto.SaleDto
+import py.com.cdco.financespy.api.dto.SaleRequestDto
+import py.com.cdco.financespy.api.dto.PurchaseOrderRequestDto
 import py.com.cdco.financespy.api.dto.SaleResponseDto
 import py.com.cdco.financespy.api.dto.SalesResponseDto
 import py.com.cdco.financespy.api.dto.ReceivableDto
@@ -565,18 +568,18 @@ open class FinancePyApi(private val http: HttpClient) {
         return response.data
     }
 
-    open suspend fun createSale(salePayload: Map<String, Any?>): SaleDto {
+    open suspend fun createSale(salePayload: SaleRequestDto): SaleDto {
         val response: SaleResponseDto = http.post("/api/v1/sales") {
             contentType(ContentType.Application.Json)
-            setBody(mapOf("sale" to salePayload))
+            setBody(salePayload)
         }.body()
         return response.data
     }
 
-    open suspend fun updateSale(id: String, salePayload: Map<String, Any?>): SaleDto {
+    open suspend fun updateSale(id: String, salePayload: SaleRequestDto): SaleDto {
         val response: SaleResponseDto = http.patch("/api/v1/sales/$id") {
             contentType(ContentType.Application.Json)
-            setBody(mapOf("sale" to salePayload))
+            setBody(salePayload)
         }.body()
         return response.data
     }
@@ -608,18 +611,18 @@ open class FinancePyApi(private val http: HttpClient) {
         return response.data
     }
 
-    open suspend fun createPurchaseOrder(poPayload: Map<String, Any?>): PurchaseOrderDto {
+    open suspend fun createPurchaseOrder(poPayload: PurchaseOrderRequestDto): PurchaseOrderDto {
         val response: PurchaseOrderResponseDto = http.post("/api/v1/purchase_orders") {
             contentType(ContentType.Application.Json)
-            setBody(mapOf("purchase_order" to poPayload))
+            setBody(poPayload)
         }.body()
         return response.data
     }
 
-    open suspend fun updatePurchaseOrder(id: String, poPayload: Map<String, Any?>): PurchaseOrderDto {
+    open suspend fun updatePurchaseOrder(id: String, poPayload: PurchaseOrderRequestDto): PurchaseOrderDto {
         val response: PurchaseOrderResponseDto = http.patch("/api/v1/purchase_orders/$id") {
             contentType(ContentType.Application.Json)
-            setBody(mapOf("purchase_order" to poPayload))
+            setBody(poPayload)
         }.body()
         return response.data
     }
@@ -751,7 +754,7 @@ open class FinancePyApi(private val http: HttpClient) {
         }.body()
     }
 
-    open suspend fun retryMessage(chatId: String): MessageDto {
+    open suspend fun retryMessage(chatId: String): MessageRetryResponseDto {
         return http.post("/api/v1/chats/$chatId/messages/retry").body()
     }
 }

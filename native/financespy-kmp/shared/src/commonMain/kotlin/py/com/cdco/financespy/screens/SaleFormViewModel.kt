@@ -9,6 +9,9 @@ import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.ProductDto
 import py.com.cdco.financespy.api.dto.SaleDto
+import py.com.cdco.financespy.api.dto.SaleRequestDto
+import py.com.cdco.financespy.api.dto.SalePayloadDto
+import py.com.cdco.financespy.api.dto.SaleItemRequestDto
 import py.com.cdco.financespy.db.AccountDao
 import py.com.cdco.financespy.db.AccountEntity
 
@@ -100,19 +103,21 @@ class SaleFormViewModel(
             _error.value = null
             try {
                 val itemsAttributes = items.map { item ->
-                    mapOf(
-                        "product_id" to item.productId,
-                        "quantity" to item.quantity,
-                        "unit_price" to item.unitPrice
+                    SaleItemRequestDto(
+                        product_id = item.productId,
+                        quantity = item.quantity,
+                        unit_price = item.unitPrice
                     )
                 }
 
-                val payload = mapOf(
-                    "client_name" to clientName.takeIf { !it.isNullOrBlank() },
-                    "currency" to currency.lowercase(),
-                    "notes" to notes.takeIf { !it.isNullOrBlank() },
-                    "account_id" to accountId,
-                    "sale_items_attributes" to itemsAttributes
+                val payload = SaleRequestDto(
+                    sale = SalePayloadDto(
+                        client_name = clientName.takeIf { !it.isNullOrBlank() },
+                        currency = currency.lowercase(),
+                        notes = notes.takeIf { !it.isNullOrBlank() },
+                        account_id = accountId,
+                        sale_items_attributes = itemsAttributes
+                    )
                 )
 
                 if (saleId == null) {
