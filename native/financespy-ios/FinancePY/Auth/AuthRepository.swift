@@ -271,7 +271,41 @@ final class AuthRepository: ObservableObject {
     }
 
     func logout() async {
+        let access = tokenStorage.accessToken()
+        let refresh = tokenStorage.refreshToken()
+
+        await revokeToken(access, tokenTypeHint: "access_token")
+        await revokeToken(refresh, tokenTypeHint: "refresh_token")
+
         tokenStorage.clear()
         self.currentCodeVerifier = nil
+    }
+
+    private func revokeToken(_ token: String?, tokenTypeHint: String) async {
+        guard let token = token, !token.isEmpty else { return }
+        guard let url = URL(string: "\(baseUrl)/oauth/revoke") else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+
+        let bodyParams = [
+            "token": token,
+            "token_type_hint": tokenTypeHint,
+            "client_id": clientId
+        ]
+
+        let bodyString = bodyParams
+            .map { "\($0.key)=\($0.value.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? $0.value)" }
+            .joined(separator: "&")
+
+        request.httpBody = bodyString.data(using: .utf8)
+
+        // Best effort: ignore network failures so local logout still completes
+        do {
+            _ = try await URLSession.shared.data(for: request)
+        } catch {
+            print("Failed to revoke token (\(tokenTypeHint)): \(error.localizedDescription)")
+        }
     }
 }
