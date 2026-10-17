@@ -258,8 +258,8 @@ struct GoalDetailView: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             } else {
-                let openPledges = pledges.filter { $0.state == "open" }
-                let closedPledges = pledges.filter { $0.state != "open" }
+                let openPledges = pledges.filter { $0.status == "open" }
+                let closedPledges = pledges.filter { $0.status != "open" }
 
                 if !openPledges.isEmpty {
                     Text("Abiertos")
@@ -296,15 +296,18 @@ struct GoalDetailView: View {
                     .font(.subheadline)
                     .fontWeight(.bold)
 
-                // Note: We don't have account name in GoalPledgeDto currently in our Swift struct,
-                // so we just show the status and date.
+                if let accountName = pledge.accountName {
+                    Text(accountName)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
 
                 HStack {
-                    Text(formatPledgeState(pledge.state))
+                    Text(formatPledgeState(pledge.status))
                         .font(.caption)
-                        .foregroundColor(pledge.state == "open" ? .green : .secondary)
+                        .foregroundColor(pledge.status == "open" ? .green : .secondary)
 
-                    if let date = pledge.createdAt {
+                    if let date = pledge.expiresAt {
                         Text("• \(String(date.prefix(10)))")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -314,7 +317,7 @@ struct GoalDetailView: View {
 
             Spacer()
 
-            if pledge.state == "open" {
+            if pledge.status == "open" {
                 HStack(spacing: 12) {
                     Button(action: {
                         renewPledge(pledgeId: pledge.id)

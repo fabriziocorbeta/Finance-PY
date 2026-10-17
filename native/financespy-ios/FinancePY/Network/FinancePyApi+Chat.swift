@@ -27,8 +27,8 @@ struct MessageDto: Codable, Identifiable {
 struct ToolCallDto: Codable, Identifiable {
     let id: String
     let functionName: String?
-    let functionArguments: String?
-    let functionResult: String?
+    @AnyJSONAsString var functionArguments: String?
+    @AnyJSONAsString var functionResult: String?
     let createdAt: String
 }
 
@@ -45,8 +45,13 @@ struct CreateChatRequest: Codable {
 }
 
 struct SendMessageRequest: Codable {
-    let message: String
+    let content: String
     let model: String?
+}
+
+struct RetryMessageResponseDto: Codable {
+    let message: String
+    let messageId: String
 }
 
 
@@ -75,11 +80,11 @@ extension FinancePyApi {
     }
 
     func sendMessage(chatId: String, content: String, model: String? = nil) async throws -> MessageDto {
-        let requestBody = SendMessageRequest(message: content, model: model)
+        let requestBody = SendMessageRequest(content: content, model: model)
         return try await ApiClient.shared.request(method: "POST", path: "/api/v1/chats/\(chatId)/messages", body: requestBody)
     }
 
-    func retryMessage(chatId: String) async throws -> MessageDto {
+    func retryMessage(chatId: String) async throws -> RetryMessageResponseDto {
         return try await ApiClient.shared.request(method: "POST", path: "/api/v1/chats/\(chatId)/messages/retry")
     }
 }

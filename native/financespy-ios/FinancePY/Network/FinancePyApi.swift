@@ -21,10 +21,12 @@ struct AccountDto: Codable {
 }
 
 struct PaginationDto: Codable {
-    let page: Int
-    let perPage: Int
-    let totalCount: Int
+    let currentPage: Int
+    let nextPage: Int?
+    let prevPage: Int?
     let totalPages: Int
+    let totalCount: Int
+    let perPage: Int
 }
 
 struct BalanceSheetResponse: Codable {

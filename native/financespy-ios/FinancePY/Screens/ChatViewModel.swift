@@ -130,6 +130,25 @@ final class ChatViewModel: ObservableObject {
         isPolling = false
     }
 
+    func retryMessage() {
+        guard let id = actualChatId else { return }
+
+        isSending = true
+        error = nil
+
+        Task {
+            do {
+                _ = try await FinancePyApi.shared.retryMessage(chatId: id)
+                // Reload the chat after initiating a retry
+                await refresh()
+                self.isSending = false
+            } catch {
+                self.isSending = false
+                self.error = "Error al reintentar: \(error.localizedDescription)"
+            }
+        }
+    }
+
     private func hasPendingReply(messages: [MessageDto]) -> Bool {
         return messages.last?.type == "user_message"
     }

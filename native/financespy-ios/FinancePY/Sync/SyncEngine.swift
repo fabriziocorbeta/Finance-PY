@@ -17,19 +17,55 @@ final class SyncEngine: ObservableObject {
     func syncAll() async -> Result<Void, Error> {
         isSyncing = true
         lastSyncError = nil
+        var hadError = false
+        var accumulatedErrors: [String] = []
 
         do {
             try await syncAccounts()
-            try await syncBalanceSheet()
-            try await syncTransactions()
-            try await syncReceivables()
-            try modelContext.save()
-            isSyncing = false
-            return .success(())
         } catch {
-            isSyncing = false
-            lastSyncError = error.localizedDescription
-            return .failure(error)
+            hadError = true
+            accumulatedErrors.append("Accounts: \(error.localizedDescription)")
+        }
+
+        do {
+            try await syncBalanceSheet()
+        } catch {
+            hadError = true
+            accumulatedErrors.append("BalanceSheet: \(error.localizedDescription)")
+        }
+
+        do {
+            try await syncTransactions()
+        } catch {
+            hadError = true
+            accumulatedErrors.append("Transactions: \(error.localizedDescription)")
+        }
+
+        do {
+            try await syncReceivables()
+        } catch {
+            hadError = true
+            accumulatedErrors.append("Receivables: \(error.localizedDescription)")
+        }
+
+        do {
+            try modelContext.save()
+        } catch {
+            hadError = true
+            accumulatedErrors.append("Save: \(error.localizedDescription)")
+        }
+
+        isSyncing = false
+
+        if hadError {
+            lastSyncError = accumulatedErrors.joined(separator: "\n")
+            // Since error return signature requires an Error, we return a generic one with the accumulated string,
+            // or just the first encountered error if we were to reconstruct it.
+            // Using NSError for simplicity to bundle the message:
+            let err = NSError(domain: "SyncEngine", code: 1, userInfo: [NSLocalizedDescriptionKey: lastSyncError!])
+            return .failure(err)
+        } else {
+            return .success(())
         }
     }
 

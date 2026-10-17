@@ -97,12 +97,26 @@ object GnbSmsExtractor : BankNotificationExtractor {
             val (accountFragment, rawAmount, merchant) = match.destructured
             // GNB's own SMS text never says "GNB" near the account identifier
             // (it's just "Cuenta Nro.*** -001") -- but AccountMapping keys off
-            // brand substrings ("GNB", "Ueno", "CLASICA", ...), same reasoning
-            // as UenoBankExtractor above, so prefix it here or this would
-            // always be dropped as "unrecognized_card".
+            // brand substrings, same reasoning as UenoBankExtractor above, so
+            // prefix it here or this would always be dropped as
+            // "unrecognized_card".
+            //
+            // The prefix must be the FULL real account name ("Banco GNB"),
+            // not a bare "GNB": this family has three GNB-ish accounts
+            // ("Banco GNB", a stale unused "GNB", and "MasterCard - GNB"),
+            // and AccountMapping.accountIdFor does a bidirectional substring
+            // match against AccountDao.observeAll() (ORDER BY name ASC),
+            // picking the first account whose name is contained in cardText
+            // or vice versa. A bare "GNB" prefix matches the stale "GNB"
+            // account (alphabetically after "Banco GNB") instead of the
+            // real one -- confirmed against prod: "Banco GNB" has 31 real
+            // entries through 2026-10, the bare "GNB" account has exactly
+            // 1 entry from 2024. "Banco GNB " is still a substring-safe
+            // prefix match for "Banco GNB" itself and sorts first
+            // alphabetically, so it wins over both other candidates.
             Purchase(
                 amount = rawAmount.replace(".", ""),
-                cardText = "GNB ${accountFragment.trim()}",
+                cardText = "Banco GNB ${accountFragment.trim()}",
                 merchant = merchant.trim(),
                 nature = TransactionNature.INCOME
             )
@@ -124,11 +138,50 @@ object ItauSmsExtractor : BankNotificationExtractor {
     }
 }
 
+// Unlike real Continental transaction alerts (SMS, see ContinentalSmsExtractor's
+// own comment on why), the Contiapp itself (py.com.bancontinental.contiapp) was
+// confirmed in a prior session to push ONLY marketing/cashback notifications --
+// no real transaction data -- which is why that package was never added to
+// BY_PACKAGE. That was too broad a conclusion: the specific "reintegro"
+// confirmation push ("Ahorraste Gs. 155.275 en CONTIMARKET CHECKOUT. Seguí
+// sumando reintegros con tu tarjeta Continental.") DOES carry a real amount --
+// it's Continental crediting cashback back to the user, a real income event,
+// not an ad. Every other Contiapp push seen in the wild (maintenance notices,
+// security tips, "pedí tu tarjeta internacional", card-pickup reminders) has
+// no Gs. amount at all, so this pattern can't accidentally match them.
+object ContinentalCashbackExtractor : BankNotificationExtractor {
+    private val PATTERN = Regex(
+        """Ahorraste\s+Gs\.\s*([\d.]+)\s+en\s+(.+?)\.\s*Segu[ií]"""
+    )
+
+    override fun extract(title: String, text: String): List<Purchase> {
+        return PATTERN.findAll(text).map { match ->
+            val (rawAmount, merchant) = match.destructured
+            // "Banco Continental" is the only real account this can
+            // unambiguously match (AccountMapping does a bidirectional
+            // substring check against AccountDao.observeAll()) -- there's
+            // no account-number fragment in this notification to append,
+            // unlike GnbSmsExtractor, so the plain account name is enough.
+            Purchase(
+                amount = rawAmount.replace(".", ""),
+                cardText = "Banco Continental",
+                merchant = merchant.trim(),
+                nature = TransactionNature.INCOME
+            )
+        }.toList()
+    }
+}
+
 object BankNotificationExtractors {
     private val BY_PACKAGE: Map<String, List<BankNotificationExtractor>> = mapOf(
         "com.google.android.apps.walletnfcrel" to listOf(WalletTapExtractor),
         "py.com.elcomercio.retailbanking" to listOf(UenoBankExtractor),
-        "com.google.android.apps.messaging" to listOf(ContinentalSmsExtractor, GnbSmsExtractor, ItauSmsExtractor)
+        "com.google.android.apps.messaging" to listOf(ContinentalSmsExtractor, GnbSmsExtractor, ItauSmsExtractor),
+        // Samsung Messages is the default SMS app on Samsung phones (Google
+        // Messages isn't installed/used there) -- same SMS text, same
+        // extractors, just a different package posting the notification.
+        "com.samsung.android.messaging" to listOf(ContinentalSmsExtractor, GnbSmsExtractor, ItauSmsExtractor),
+        "py.com.bancontinental.contiapp" to listOf(ContinentalCashbackExtractor)
     )
 
     fun forPackage(packageName: String): List<BankNotificationExtractor> = BY_PACKAGE[packageName] ?: emptyList()

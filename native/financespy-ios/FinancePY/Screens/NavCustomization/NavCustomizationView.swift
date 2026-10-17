@@ -9,20 +9,33 @@ struct NavItem: Identifiable, Equatable {
 let DEFAULT_NAV_POOL = [
     NavItem(id: "dashboard", label: "Inicio", icon: "house.fill"),
     NavItem(id: "transactions", label: "Transacciones", icon: "list.bullet.rectangle"),
-    NavItem(id: "accounts", label: "Cuentas", icon: "building.columns.fill"),
-    NavItem(id: "budgets", label: "Presupuestos", icon: "chart.pie.fill"),
-    NavItem(id: "goals", label: "Objetivos", icon: "target"),
     NavItem(id: "reports", label: "Reportes", icon: "chart.bar.fill"),
-    NavItem(id: "receivables", label: "Cuentas por cobrar", icon: "arrow.down.forward.circle.fill")
+    NavItem(id: "budgets", label: "Presupuestos", icon: "chart.pie.fill"),
+    NavItem(id: "goals", label: "Metas", icon: "target"),
+    NavItem(id: "receivables", label: "Cuentas a Cobrar", icon: "arrow.down.forward.circle.fill"),
+    NavItem(id: "debts", label: "Deudas", icon: "minus.circle.fill"),
+    NavItem(id: "rules", label: "Reglas", icon: "gear"),
+    NavItem(id: "chat", label: "Asistente", icon: "sparkles")
+]
+
+let BUSINESS_NAV_POOL = [
+    NavItem(id: "products", label: "Productos", icon: "cart.fill"),
+    NavItem(id: "sales", label: "Ventas", icon: "doc.text.fill"),
+    NavItem(id: "purchase_orders", label: "Compras", icon: "shippingbox.fill"),
+    NavItem(id: "fleet", label: "Flota", icon: "car.fill")
 ]
 
 struct NavCustomizationView: View {
     @State private var selectedIds: [String] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var businessModeEnabled = false
 
     let maxSelectable = 5
-    let pool = DEFAULT_NAV_POOL
+
+    var pool: [NavItem] {
+        businessModeEnabled ? DEFAULT_NAV_POOL + BUSINESS_NAV_POOL : DEFAULT_NAV_POOL
+    }
 
     var body: some View {
         Group {
@@ -88,11 +101,19 @@ struct NavCustomizationView: View {
             if let order = prefs.navItemOrder, !order.isEmpty {
                 self.selectedIds = order
             } else {
-                self.selectedIds = ["dashboard", "transactions"]
+                self.selectedIds = ["dashboard", "transactions", "reports", "budgets", "goals", "receivables", "chat"]
             }
         } catch {
             errorMessage = error.localizedDescription
         }
+
+        do {
+            let familySettings = try await FinancePyApi.shared.fetchFamilySettings()
+            self.businessModeEnabled = familySettings.businessModeEnabled
+        } catch {
+            print("Failed to fetch family settings: \(error)")
+        }
+
         isLoading = false
     }
 
