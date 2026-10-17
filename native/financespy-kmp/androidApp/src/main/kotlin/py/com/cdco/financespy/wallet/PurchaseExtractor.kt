@@ -97,12 +97,26 @@ object GnbSmsExtractor : BankNotificationExtractor {
             val (accountFragment, rawAmount, merchant) = match.destructured
             // GNB's own SMS text never says "GNB" near the account identifier
             // (it's just "Cuenta Nro.*** -001") -- but AccountMapping keys off
-            // brand substrings ("GNB", "Ueno", "CLASICA", ...), same reasoning
-            // as UenoBankExtractor above, so prefix it here or this would
-            // always be dropped as "unrecognized_card".
+            // brand substrings, same reasoning as UenoBankExtractor above, so
+            // prefix it here or this would always be dropped as
+            // "unrecognized_card".
+            //
+            // The prefix must be the FULL real account name ("Banco GNB"),
+            // not a bare "GNB": this family has three GNB-ish accounts
+            // ("Banco GNB", a stale unused "GNB", and "MasterCard - GNB"),
+            // and AccountMapping.accountIdFor does a bidirectional substring
+            // match against AccountDao.observeAll() (ORDER BY name ASC),
+            // picking the first account whose name is contained in cardText
+            // or vice versa. A bare "GNB" prefix matches the stale "GNB"
+            // account (alphabetically after "Banco GNB") instead of the
+            // real one -- confirmed against prod: "Banco GNB" has 31 real
+            // entries through 2026-10, the bare "GNB" account has exactly
+            // 1 entry from 2024. "Banco GNB " is still a substring-safe
+            // prefix match for "Banco GNB" itself and sorts first
+            // alphabetically, so it wins over both other candidates.
             Purchase(
                 amount = rawAmount.replace(".", ""),
-                cardText = "GNB ${accountFragment.trim()}",
+                cardText = "Banco GNB ${accountFragment.trim()}",
                 merchant = merchant.trim(),
                 nature = TransactionNature.INCOME
             )
