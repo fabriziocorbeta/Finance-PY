@@ -39,7 +39,13 @@ Rails.application.configure do
   config.active_storage.service = ENV.fetch("ACTIVE_STORAGE_SERVICE", "local").to_sym
 
   # Set Active Storage URL expiration time to 7 days
-  config.active_storage.urls_expire_in = 7.days
+  # Every blob URL in the app is minted at click time by a controller redirect
+  # (see TransactionAttachmentsController, ArchivedExportsController,
+  # Api::V1::FamilyExportsController) and none are embedded in email, so a long
+  # window buys nothing and only widens the period in which a URL that leaked
+  # through history, logs or a referrer still resolves. An hour stays comfortably
+  # longer than a page sits open rendering account logos.
+  config.active_storage.urls_expire_in = 1.hour
 
   # Mount Action Cable outside main process or domain.
   # config.action_cable.mount_path = nil
