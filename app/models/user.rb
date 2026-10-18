@@ -213,7 +213,7 @@ class User < ApplicationRecord
 
   def deactivate
     revoke_all_oauth_tokens!
-    sessions.destroy_all
+    revoke_all_sessions!
     update active: false, email: deactivated_email
   end
 
@@ -224,6 +224,17 @@ class User < ApplicationRecord
   def revoke_all_oauth_tokens!
     RlsContext.with_auth_bypass(reason: "user_revoke_all_oauth_tokens") do
       Doorkeeper::AccessToken.where(resource_owner_id: id, revoked_at: nil).update_all(revoked_at: Time.current)
+    end
+  end
+
+  # Ends web sessions for this user. sessions is FORCE RLS'd; called from
+  # password-reset/change/deactivate flows that can run without a family
+  # context (e.g. unauthenticated password reset), scoped by this exact user id.
+  def revoke_all_sessions!(except: nil)
+    RlsContext.with_auth_bypass(reason: "user_revoke_all_sessions") do
+      scope = sessions
+      scope = scope.where.not(id: except) if except.present?
+      scope.destroy_all
     end
   end
 

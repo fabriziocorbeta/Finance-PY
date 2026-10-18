@@ -151,7 +151,7 @@ class Api::V1::BaseController < ApplicationController
       response.headers["X-RateLimit-Reset"] = usage_info[:reset_time].to_s
       response.headers["Retry-After"] = usage_info[:reset_time].to_s
 
-      Rails.logger.warn "API Rate Limit Exceeded: API Key #{@api_key.name} (User: #{@current_user.email}) - #{usage_info[:current_count]}/#{usage_info[:rate_limit]} requests"
+      Rails.logger.warn "API Rate Limit Exceeded: API Key #{@api_key.name} (User: #{@current_user.id}) - #{usage_info[:current_count]}/#{usage_info[:rate_limit]} requests"
 
       render_json({
         error: "rate_limit_exceeded",
@@ -223,7 +223,7 @@ class Api::V1::BaseController < ApplicationController
       end
 
       unless has_access
-        Rails.logger.warn "API Insufficient Scope: User #{current_resource_owner&.email} attempted to access #{required_scope} but only has #{scopes}"
+        Rails.logger.warn "API Insufficient Scope: User #{current_resource_owner&.id} attempted to access #{required_scope} but only has #{scopes}"
         render_json({ error: "insufficient_scope", message: "This action requires the '#{required_scope}' scope" }, status: :forbidden)
         return false
       end
@@ -294,7 +294,7 @@ class Api::V1::BaseController < ApplicationController
         "Unknown"
       end
 
-      Rails.logger.info "API Request: #{request.method} #{request.path} - User: #{current_resource_owner.email} (Family: #{current_resource_owner.family_id}) - Auth: #{auth_info}"
+      Rails.logger.info "API Request: #{request.method} #{request.path} - User: #{current_resource_owner.id} (Family: #{current_resource_owner.family_id}) - Auth: #{auth_info}"
     end
 
     # Family-based access control helper (to be used by subcontrollers)
@@ -302,7 +302,7 @@ class Api::V1::BaseController < ApplicationController
       return unless resource.respond_to?(:family_id)
 
       unless resource.family_id == current_resource_owner.family_id
-        Rails.logger.warn "API Forbidden: User #{current_resource_owner.email} attempted to access resource from family #{resource.family_id}"
+        Rails.logger.warn "API Forbidden: User #{current_resource_owner.id} attempted to access resource from family #{resource.family_id}"
         render_json({ error: "forbidden", message: "Access denied to this resource" }, status: :forbidden)
         return false
       end

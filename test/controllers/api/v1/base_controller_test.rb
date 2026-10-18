@@ -226,7 +226,7 @@ class Api::V1::BaseControllerTest < ActionDispatch::IntegrationTest
     assert_equal "insufficient_scope", response_body["error"]
   end
 
-  test "should log API access with API key information" do
+  test "should log API access with API key information without leaking email" do
     logs = capture_log do
       get "/api/v1/test", params: {}, headers: {
         "X-Api-Key" => @plain_api_key
@@ -235,7 +235,8 @@ class Api::V1::BaseControllerTest < ActionDispatch::IntegrationTest
 
     assert_includes logs, "API Request"
     assert_includes logs, "GET /api/v1/test"
-    assert_includes logs, @user.email
+    assert_includes logs, @user.id
+    assert_not_includes logs, @user.email
   end
 
   test "should provide current_resource_owner method" do
@@ -260,7 +261,7 @@ class Api::V1::BaseControllerTest < ActionDispatch::IntegrationTest
     assert_equal "record_not_found", response_body["error"]
   end
 
-  test "should log API access" do
+  test "should log API access without leaking email" do
     access_token = Doorkeeper::AccessToken.create!(
       application: @oauth_app,
       resource_owner_id: @user.id,
@@ -276,7 +277,8 @@ class Api::V1::BaseControllerTest < ActionDispatch::IntegrationTest
 
     assert_includes logs, "API Request"
     assert_includes logs, "GET /api/v1/test"
-    assert_includes logs, @user.email
+    assert_includes logs, @user.id
+    assert_not_includes logs, @user.email
   end
 
   test "should enforce family-based access control" do
@@ -462,6 +464,54 @@ class Api::V1::BaseControllerTest < ActionDispatch::IntegrationTest
 
     assert_empty offending_lines,
       "Found risky current_resource_owner.family AR association calls (use current_family instead): #{offending_lines.join(', ')}"
+  end
+
+  test "insufficient scope, forbidden, and rate limit logs include user id and never email" do
+    @api_key.revoke!
+    read_only_key = ApiKey.create!(
+      user: @user,
+      name: "Read Only Key",
+      display_key: "ro_key_#{SecureRandom.hex(8)}",
+      scopes: [ "read" ]
+    )
+
+    scope_logs = capture_log do
+      get "/api/v1/test_scope_required", headers: { "X-Api-Key" => read_only_key.display_key }
+    end
+    assert_includes scope_logs, "API Insufficient Scope: User #{@user.id}"
+    assert_not_includes scope_logs, @user.email
+
+    other_user = users(:family_member)
+    other_user.update!(family: families(:dylan_family))
+    other_token = Doorkeeper::AccessToken.create!(
+      application: @oauth_app,
+      resource_owner_id: other_user.id,
+      scopes: "read"
+    )
+    forbidden_logs = capture_log do
+      get "/api/v1/test_family_access", headers: { "Authorization" => "Bearer #{other_token.token}" }
+    end
+    assert_includes forbidden_logs, "API Forbidden: User #{other_user.id}"
+    assert_not_includes forbidden_logs, other_user.email
+  ensure
+    read_only_key&.destroy
+  end
+
+  test "Sentry.set_user only receives user id and no PII" do
+    captured_payload = nil
+    sentry_stub = Module.new do
+      define_singleton_method(:set_user) { |payload| captured_payload = payload }
+    end
+
+    Object.const_set(:Sentry, sentry_stub) unless defined?(Sentry)
+    Sentry.stubs(:set_user).with { |payload| captured_payload = payload; true }
+
+    with_env_overrides("SENTRY_DSN" => "https://examplePublicKey@o0.ingest.sentry.io/0") do
+      sign_in @user
+      get root_url
+    end
+
+    assert_equal({ id: @user.id }, captured_payload)
   end
 
 private
