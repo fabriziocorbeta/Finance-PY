@@ -182,7 +182,11 @@ class SnaptradeItemsController < ApplicationController
 
   # Link selected accounts to Sure
   def complete_account_setup
-    Rails.logger.info "SnapTrade complete_account_setup - params: #{params.to_unsafe_h.inspect}"
+    # Dropped a `params.to_unsafe_h.inspect` dump here: `.inspect` on the raw
+    # hash sidesteps config.filter_parameters (which does cover :name, :email,
+    # :amount and friends), so the whole payload reached the log drain in
+    # cleartext. The line below already logs the only two values this action
+    # consumes.
     account_ids = params[:account_ids] || []
     sync_start_dates = params[:sync_start_dates] || {}
     Rails.logger.info "SnapTrade complete_account_setup - account_ids: #{account_ids.inspect}, sync_start_dates: #{sync_start_dates.inspect}"

@@ -95,7 +95,7 @@ class Account::ProviderImportAdapter
         if pending_transaction_id.present?
           pending_match = account.entries.find_by(external_id: pending_transaction_id, source: source)
           if pending_match
-            Rails.logger.info("Reconciling pending→posted via Plaid pending_transaction_id: claiming entry #{pending_match.id} (#{pending_match.name}) with new external_id #{external_id}")
+            Rails.logger.info("Reconciling pending→posted via Plaid pending_transaction_id: claiming entry #{pending_match.id} with new external_id #{external_id}")
           end
         end
 
@@ -104,7 +104,7 @@ class Account::ProviderImportAdapter
         if pending_match.nil?
           pending_match = find_pending_transaction(date: date, amount: amount, currency: currency, source: source)
           if pending_match
-            Rails.logger.info("Reconciling pending→posted via exact amount match: claiming entry #{pending_match.id} (#{pending_match.name}) with new external_id #{external_id}")
+            Rails.logger.info("Reconciling pending→posted via exact amount match: claiming entry #{pending_match.id} with new external_id #{external_id}")
           end
         end
 
@@ -207,7 +207,7 @@ class Account::ProviderImportAdapter
               posted_amount: amount,
               confidence: "medium"
             )
-            Rails.logger.info("Suggested potential duplicate (medium confidence): pending entry #{fuzzy_suggestion.id} (#{fuzzy_suggestion.name}, #{fuzzy_suggestion.amount}) may match posted #{entry.name} (#{amount})")
+            Rails.logger.info("Suggested potential duplicate (medium confidence): pending entry #{fuzzy_suggestion.id} may match posted entry #{entry.id}")
           rescue ActiveRecord::RecordInvalid => e
             Rails.logger.warn("Failed to store duplicate suggestion for entry #{fuzzy_suggestion.id}: #{e.message}")
           end
@@ -230,7 +230,7 @@ class Account::ProviderImportAdapter
                 posted_amount: amount,
                 confidence: "low"
               )
-              Rails.logger.info("Suggested potential duplicate (low confidence): pending entry #{low_confidence_suggestion.id} (#{low_confidence_suggestion.name}, #{low_confidence_suggestion.amount}) may match posted #{entry.name} (#{amount})")
+              Rails.logger.info("Suggested potential duplicate (low confidence): pending entry #{low_confidence_suggestion.id} may match posted entry #{entry.id}")
             rescue ActiveRecord::RecordInvalid => e
               Rails.logger.warn("Failed to store duplicate suggestion for entry #{low_confidence_suggestion.id}: #{e.message}")
             end
