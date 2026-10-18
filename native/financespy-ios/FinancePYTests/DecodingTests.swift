@@ -31,6 +31,80 @@ final class DecodingTests: XCTestCase {
         XCTAssertEqual(response.meta?.totalCount, 0)
     }
 
+    // Contract test for PR #542: API v1 has two list envelope conventions:
+    // 1) `meta` envelopes (budgets, products, goals) send `current_page`
+    // 2) `pagination` envelopes (accounts, transactions, chats) send `page`
+    // Both use non-1 page numbers (3 and 2) so that if someone removes either key
+    // from PaginationDto.init(from:), the `?? 1` fallback cannot mask the regression.
+    func testPaginationDtoDecodesMetaEnvelopeWithCurrentPage() throws {
+        let metaEnvelopeJson = """
+        {
+          "data": [],
+          "meta": {
+            "current_page": 3,
+            "next_page": 4,
+            "prev_page": 2,
+            "total_pages": 5,
+            "total_count": 120,
+            "per_page": 25
+          }
+        }
+        """.data(using: .utf8)!
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+        let productsResponse = try decoder.decode(ProductsResponseDto.self, from: metaEnvelopeJson)
+        let meta = try XCTUnwrap(productsResponse.meta)
+        XCTAssertEqual(meta.currentPage, 3)
+        XCTAssertEqual(meta.nextPage, 4)
+        XCTAssertEqual(meta.prevPage, 2)
+        XCTAssertEqual(meta.totalPages, 5)
+        XCTAssertEqual(meta.totalCount, 120)
+        XCTAssertEqual(meta.perPage, 25)
+
+        let budgetsResponse = try decoder.decode(BudgetListResponse.self, from: metaEnvelopeJson)
+        XCTAssertEqual(budgetsResponse.meta?.currentPage, 3)
+
+        let goalsResponse = try decoder.decode(GoalsResponse.self, from: metaEnvelopeJson)
+        XCTAssertEqual(goalsResponse.meta?.currentPage, 3)
+    }
+
+    func testPaginationDtoDecodesPaginationEnvelopeWithPage() throws {
+        let paginationEnvelopeJson = """
+        {
+          "accounts": [],
+          "transactions": [],
+          "chats": [],
+          "pagination": {
+            "page": 2,
+            "next_page": 3,
+            "prev_page": 1,
+            "total_pages": 4,
+            "total_count": 80,
+            "per_page": 20
+          }
+        }
+        """.data(using: .utf8)!
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+        let accountsResponse = try decoder.decode(AccountsResponse.self, from: paginationEnvelopeJson)
+        XCTAssertEqual(accountsResponse.pagination.currentPage, 2)
+        XCTAssertEqual(accountsResponse.pagination.nextPage, 3)
+        XCTAssertEqual(accountsResponse.pagination.prevPage, 1)
+        XCTAssertEqual(accountsResponse.pagination.totalPages, 4)
+        XCTAssertEqual(accountsResponse.pagination.totalCount, 80)
+        XCTAssertEqual(accountsResponse.pagination.perPage, 20)
+
+        let transactionsResponse = try decoder.decode(TransactionsResponse.self, from: paginationEnvelopeJson)
+        XCTAssertEqual(transactionsResponse.pagination.currentPage, 2)
+
+        let chatsResponse = try decoder.decode(ChatsListResponse.self, from: paginationEnvelopeJson)
+        XCTAssertEqual(chatsResponse.pagination.currentPage, 2)
+    }
+
     func testBudgetShowDecode() throws {
         let json = """
         {

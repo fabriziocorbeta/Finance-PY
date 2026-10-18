@@ -109,9 +109,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		ABCDEF0123456789ABCDEF01 /* ReceivableDetailViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceivableDetailViewTests.swift; sourceTree = "<group>"; };
-		DDDDDDDDDDDDDDDDDDDDDDD1 /* DecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecodingTests.swift; sourceTree = "<group>"; };
-		C5ABCD012345678900000001 /* FuelLogDtoDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelLogDtoDecodingTests.swift; sourceTree = "<group>"; };
+		ABCDEF0123456789ABCDEF01 /* ReceivableDetailViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReceivableDetailViewTests.swift; path = FinancePYTests/ReceivableDetailViewTests.swift; sourceTree = SOURCE_ROOT; };
+		DDDDDDDDDDDDDDDDDDDDDDD1 /* DecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DecodingTests.swift; path = FinancePYTests/DecodingTests.swift; sourceTree = SOURCE_ROOT; };
+		C5ABCD012345678900000001 /* FuelLogDtoDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FuelLogDtoDecodingTests.swift; path = FinancePYTests/FuelLogDtoDecodingTests.swift; sourceTree = SOURCE_ROOT; };
 		8E2B5A3C7F9D1E4601234567 /* FinancePyApi+Categories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Categories.swift"; sourceTree = "<group>"; };
 		A1B2C3D4E5F6G7H8I9J0K1L2 /* FinancePyApi+Merchants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Merchants.swift"; sourceTree = "<group>"; };
 		05D34C3CA1215DFFA58CA0D0 /* FinancePyApi+PurchaseOrders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+PurchaseOrders.swift"; path = "FinancePyApi+PurchaseOrders.swift"; sourceTree = "<group>"; };
@@ -153,12 +153,12 @@
 		30000000000000000000000F /* FinancePyApi+Fleet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Fleet.swift"; sourceTree = "<group>"; };
 		300000000000000000000010 /* FleetListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetListView.swift; sourceTree = "<group>"; };
 		300000000000000000000011 /* FleetVehicleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetVehicleDetailView.swift; sourceTree = "<group>"; };
-		328FF2C3629277DC5F99011F /* ReportsViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ReportsViewModelTests.swift; path = ../FinancePYTests/ReportsViewModelTests.swift; sourceTree = "<group>"; };
+		328FF2C3629277DC5F99011F /* ReportsViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ReportsViewModelTests.swift; path = FinancePYTests/ReportsViewModelTests.swift; sourceTree = SOURCE_ROOT; };
 		354A4E6BA9410DDAF1F9F788 /* FinancePyApiTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FinancePyApiTests.swift; path = "FinancePYTests/FinancePyApiTests.swift"; sourceTree = SOURCE_ROOT; };
 		3CEB423AB441949581808740 /* FinancePyApi+GoalsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+GoalsTests.swift"; path = "FinancePYTests/FinancePyApi+GoalsTests.swift"; sourceTree = SOURCE_ROOT; };
 		40ACC679E52F92898B1F1087 /* BudgetDashboardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BudgetDashboardView.swift; sourceTree = "<group>"; };
 		4380D20DB42743A78E6B08FA /* FinancePyApi+Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Settings.swift"; sourceTree = "<group>"; };
-		480179980F80028F5B6B4EAF /* ChatViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChatViewModelTests.swift; path = ../FinancePYTests/ChatViewModelTests.swift; sourceTree = "<group>"; };
+		480179980F80028F5B6B4EAF /* ChatViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChatViewModelTests.swift; path = FinancePYTests/ChatViewModelTests.swift; sourceTree = SOURCE_ROOT; };
 		491942CEAD8FA1AB390CA4DC /* FinancePyApi+Sales.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+Sales.swift"; path = "FinancePyApi+Sales.swift"; sourceTree = "<group>"; };
 		50375225E1131449A1E4694C /* ProductFormView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProductFormView.swift; sourceTree = "<group>"; };
 		5325861D0792D92A7E7C231A /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
@@ -188,7 +188,7 @@
 		8CF840278658CDA71E356087 /* ApiClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ApiClientTests.swift; path = "FinancePYTests/ApiClientTests.swift"; sourceTree = SOURCE_ROOT; };
 		8DA046F380B69D07FBBFE793 /* SaleFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SaleFormView.swift; path = Sales/SaleFormView.swift; sourceTree = "<group>"; };
 		8FCC454FA6B8614ECB2AA0A6 /* FinancePyApi+SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+SettingsTests.swift"; path = "FinancePYTests/FinancePyApi+SettingsTests.swift"; sourceTree = SOURCE_ROOT; };
-		903EBC0AE54EDFF5086E51FF /* MockURLProtocol.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MockURLProtocol.swift; path = ../FinancePYTests/MockURLProtocol.swift; sourceTree = "<group>"; };
+		903EBC0AE54EDFF5086E51FF /* MockURLProtocol.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MockURLProtocol.swift; path = FinancePYTests/MockURLProtocol.swift; sourceTree = SOURCE_ROOT; };
 		9663AA6245B37971F33B64B5 /* RulesListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RulesListView.swift; sourceTree = "<group>"; };
 		99D944FF83F2497FB2911303 /* FinancePyApi+ProductsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+ProductsTests.swift"; path = "FinancePYTests/FinancePyApi+ProductsTests.swift"; sourceTree = SOURCE_ROOT; };
 		A3034C0895F0452BA9D389E5 /* Settings/SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings/SettingsView.swift; sourceTree = "<group>"; };
@@ -200,9 +200,9 @@
 		D9A0B47365084988AFA46B63 /* NavCustomization/NavCustomizationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavCustomization/NavCustomizationView.swift; sourceTree = "<group>"; };
 		DB81773F6DBE4B4ABD9D2C49 /* Onboarding/OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Onboarding/OnboardingView.swift; sourceTree = "<group>"; };
 		DD674AF49205062091AA0D89 /* FinancePyApi+PurchaseOrdersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+PurchaseOrdersTests.swift"; path = "FinancePYTests/FinancePyApi+PurchaseOrdersTests.swift"; sourceTree = SOURCE_ROOT; };
-		E0BF8438BE6410F5711D5A22 /* Swizzling.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Swizzling.swift; path = ../FinancePYTests/Swizzling.swift; sourceTree = "<group>"; };
+		E0BF8438BE6410F5711D5A22 /* Swizzling.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Swizzling.swift; path = FinancePYTests/Swizzling.swift; sourceTree = SOURCE_ROOT; };
 		E463FE87897FD7C6E5445CC2 /* RuleFormView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RuleFormView.swift; sourceTree = "<group>"; };
-		E5D6AABB0E9FF3D77404B290 /* ChatsListViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChatsListViewModelTests.swift; path = ../FinancePYTests/ChatsListViewModelTests.swift; sourceTree = "<group>"; };
+		E5D6AABB0E9FF3D77404B290 /* ChatsListViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChatsListViewModelTests.swift; path = FinancePYTests/ChatsListViewModelTests.swift; sourceTree = SOURCE_ROOT; };
 		E6E142FA614C4A96A2B7C403 /* FinancePyApi+Imports.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Imports.swift"; sourceTree = "<group>"; };
 		EC4043DE84F88648CD81FFF8 /* FinancePyApi+ChatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+ChatTests.swift"; path = "FinancePYTests/FinancePyApi+ChatTests.swift"; sourceTree = SOURCE_ROOT; };
 		ED6C47B096051C1A7560872E /* FinancePyApi+FleetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+FleetTests.swift"; path = "FinancePYTests/FinancePyApi+FleetTests.swift"; sourceTree = SOURCE_ROOT; };
@@ -210,7 +210,7 @@
 		F44946178AA3EC018BDA1C5F /* PurchaseOrdersListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PurchaseOrdersListView.swift; path = PurchaseOrders/PurchaseOrdersListView.swift; sourceTree = "<group>"; };
 		98420E68CB4838B02039114E /* es */ = {isa = PBXFileReference; includeInIndex = 1; name = es; path = es.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		D3814AB3DB7B1C6F1B2B685B /* en */ = {isa = PBXFileReference; includeInIndex = 1; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		2A0987D5A3E944C9A53077F7 /* InstallmentDtoDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallmentDtoDecodingTests.swift; sourceTree = "<group>"; };
+		2A0987D5A3E944C9A53077F7 /* InstallmentDtoDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InstallmentDtoDecodingTests.swift; path = FinancePYTests/InstallmentDtoDecodingTests.swift; sourceTree = SOURCE_ROOT; };
 		09C2E72E91514E98B7575371 /* GoalsDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GoalsDecodingTests.swift; path = FinancePYTests/GoalsDecodingTests.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -466,6 +466,16 @@
 		};
 /* End PBXGroup section */
 
+/* Begin PBXContainerItemProxy section */
+		59E19EE98ADAD3150898FC22 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 111111112222222233333301 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 111111112222222233333302;
+			remoteInfo = FinancePY;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXNativeTarget section */
 		111111112222222233333302 /* FinancePY */ = {
 			isa = PBXNativeTarget;
@@ -495,6 +505,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				59E19EE98ADAD3150898FC23 /* PBXTargetDependency */,
 			);
 			name = FinancePYTests;
 			productName = FinancePYTests;
@@ -502,6 +513,14 @@
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXTargetDependency section */
+		59E19EE98ADAD3150898FC23 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 111111112222222233333302 /* FinancePY */;
+			targetProxy = 59E19EE98ADAD3150898FC22 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		111111112222222233333301 /* Project object */ = {
@@ -512,6 +531,10 @@
 				TargetAttributes = {
 					111111112222222233333302 = {
 						CreatedOnToolsVersion = 15.0;
+					};
+					59E19EE98ADAD3150898FC21 = {
+						CreatedOnToolsVersion = 15.0;
+						TestTargetID = 111111112222222233333302;
 					};
 				};
 			};
@@ -810,10 +833,13 @@
 		113ADA765D3CF204FA301F78 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_LANGUAGE = es;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = py.com.cdco.financespy.ios.dev.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FinancePY.app/FinancePY";
@@ -824,10 +850,13 @@
 		2E87B466C92F380C080E2E71 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_LANGUAGE = es;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = py.com.cdco.financespy.ios.dev.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FinancePY.app/FinancePY";

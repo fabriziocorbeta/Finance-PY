@@ -10,9 +10,33 @@ final class FinancePyApiGoalsTests: XCTestCase {
     }
 
     func testFetchGoalsSuccess() async throws {
-        let goal = GoalDto(id: "1", name: "Goal 1", targetAmountCents: 100, currentAmountCents: 0, currency: "USD", deadline: nil, categoryId: nil, notes: nil, lastUpdatedAt: nil, createdAt: "2023", updatedAt: "2023")
-        let responseDto = GoalsResponseDto(data: [goal])
-        let data = try JSONEncoder().encode(responseDto)
+        let goal = GoalDto(
+            id: "1",
+            name: "Goal 1",
+            targetAmount: AnyStringAmount(wrappedValue: "100"),
+            currency: "USD",
+            targetDate: nil,
+            color: nil,
+            icon: nil,
+            notes: nil,
+            state: "active",
+            progressBasis: nil,
+            currentBalance: AnyStringAmount(wrappedValue: "0"),
+            currentBalanceCents: 0,
+            remainingAmount: AnyStringAmount(wrappedValue: "100"),
+            remainingAmountCents: 10000,
+            progressPercent: 0,
+            pace: nil,
+            status: nil,
+            monthsRemaining: nil,
+            catchUpDelta: AnyStringAmount(wrappedValue: nil),
+            accountIds: nil,
+            allocations: nil
+        )
+        let responseDto = GoalsResponse(data: [goal], meta: nil)
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let data = try encoder.encode(responseDto)
 
         MockURLProtocol.requestHandler = { request in
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!

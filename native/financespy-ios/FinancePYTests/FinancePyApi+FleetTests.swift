@@ -10,16 +10,29 @@ final class FinancePyApiFleetTests: XCTestCase {
     }
 
     func testFetchVehiclesSuccess() async throws {
-        let vehicle = FleetVehicleDto(id: "1", name: "Car", make: nil, model: nil, licensePlate: nil, vin: nil, year: nil, fuelType: nil, customOdometerUnit: nil, customCapacityUnit: nil, status: "active", logs: [])
-        let responseDto = FleetVehiclesResponseDto(data: [vehicle])
-        let data = try JSONEncoder().encode(responseDto)
+        let vehicle = FleetVehicleDto(
+            id: "1",
+            plate: "ABC-123",
+            brand: "Toyota",
+            model: "Hilux",
+            year: 2023,
+            status: "active",
+            notes: nil,
+            createdAt: "2023",
+            updatedAt: "2023",
+            fuelLogs: []
+        )
+        let responseDto = FleetVehiclesEnvelope(data: [vehicle], meta: nil)
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let data = try encoder.encode(responseDto)
 
         MockURLProtocol.requestHandler = { request in
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (response, data)
         }
 
-        let result = try await FinancePyApi.shared.fetchVehicles()
+        let result = try await FinancePyApi.shared.fetchFleetVehicles()
         XCTAssertEqual(result.count, 1)
         XCTAssertEqual(result.first?.id, "1")
     }
@@ -30,7 +43,7 @@ final class FinancePyApiFleetTests: XCTestCase {
             return (response, "Bad Request".data(using: .utf8)!)
         }
         do {
-            _ = try await FinancePyApi.shared.fetchVehicles()
+            _ = try await FinancePyApi.shared.fetchFleetVehicles()
             XCTFail("Expected error")
         } catch NetworkError.httpError(let code, _) {
             XCTAssertEqual(code, 400)
@@ -45,7 +58,7 @@ final class FinancePyApiFleetTests: XCTestCase {
             return (response, "Server Error".data(using: .utf8)!)
         }
         do {
-            _ = try await FinancePyApi.shared.fetchVehicles()
+            _ = try await FinancePyApi.shared.fetchFleetVehicles()
             XCTFail("Expected error")
         } catch NetworkError.httpError(let code, _) {
             XCTAssertEqual(code, 500)
@@ -60,7 +73,7 @@ final class FinancePyApiFleetTests: XCTestCase {
             return (response, "not json".data(using: .utf8)!)
         }
         do {
-            _ = try await FinancePyApi.shared.fetchVehicles()
+            _ = try await FinancePyApi.shared.fetchFleetVehicles()
             XCTFail("Expected error")
         } catch NetworkError.decodingError {
             // Expected

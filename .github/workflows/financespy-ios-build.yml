@@ -1,0 +1,86 @@
+name: FinancePY iOS Build & Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'native/financespy-ios/**'
+      - '.github/workflows/financespy-ios-build.yml'
+  pull_request:
+    paths:
+      - 'native/financespy-ios/**'
+      - '.github/workflows/financespy-ios-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build & test FinancePY (iOS Simulator)
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: native/financespy-ios
+    env:
+      XCODE_VERSION: "26.2"
+      SCHEME: "FinancePY"
+      PROJECT: "FinancePY.xcodeproj"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Select pinned Xcode version
+        run: |
+          XCODE_APP="/Applications/Xcode_${XCODE_VERSION}.app"
+          if [ ! -d "$XCODE_APP" ]; then
+            echo "Xcode ${XCODE_VERSION} not found at ${XCODE_APP}. Installed Xcode versions:"
+            ls -d /Applications/Xcode*.app || true
+            exit 1
+          fi
+          sudo xcode-select -s "${XCODE_APP}/Contents/Developer"
+          xcodebuild -version
+
+      - name: Resolve iOS Simulator destination
+        run: |
+          SIMULATOR_ID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin).get("devices", {})
+          for runtime in sorted(data.keys(), reverse=True):
+              if "iOS" not in runtime:
+                  continue
+              iphones = [d for d in data[runtime] if d.get("isAvailable") and "iPhone" in d.get("name", "")]
+              if iphones:
+                  preferred = [d for d in iphones if d["name"] in ("iPhone 16 Pro", "iPhone 16", "iPhone 15 Pro", "iPhone 15")]
+                  chosen = (preferred or iphones)[0]
+                  name = chosen["name"]
+                  udid = chosen["udid"]
+                  print(udid)
+                  sys.stderr.write(f"Selected simulator: {name} ({udid}) on {runtime}\n")
+                  sys.exit(0)
+          sys.exit("No available iPhone simulator found")
+          ')
+          echo "SIMULATOR_ID=${SIMULATOR_ID}" >> "$GITHUB_ENV"
+
+      - name: Build FinancePY for Simulator
+        run: |
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "platform=iOS Simulator,id=${SIMULATOR_ID}" \
+            -configuration Debug \
+            build
+
+      - name: Run FinancePYTests unit tests
+        run: |
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "platform=iOS Simulator,id=${SIMULATOR_ID}" \
+            -configuration Debug \
+            test

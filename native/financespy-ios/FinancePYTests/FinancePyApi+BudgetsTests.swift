@@ -10,9 +10,44 @@ final class FinancePyApiBudgetsTests: XCTestCase {
     }
 
     func testFetchBudgetsSuccess() async throws {
-        let budget = BudgetDto(id: "1", name: "Budget", currency: "USD", periodType: "monthly", isActive: true, notes: nil, budgetCategories: [], lastUpdatedAt: "2023-01-01", createdAt: "2023-01-01", updatedAt: "2023-01-01")
-        let responseDto = BudgetsResponseDto(data: [budget])
-        let data = try JSONEncoder().encode(responseDto)
+        let budget = BudgetDto(
+            id: NullableID(wrappedValue: "1"),
+            startDate: "2023-01-01",
+            endDate: "2023-01-31",
+            currency: "USD",
+            budgetedSpending: 100.0,
+            expectedIncome: 200.0,
+            name: "Budget",
+            param: "2023-01",
+            initialized: true,
+            current: true,
+            previousBudgetParam: nil,
+            nextBudgetParam: nil,
+            allocationsValid: true,
+            actualSpending: 0.0,
+            actualSpendingCents: 0,
+            availableToSpend: 100.0,
+            availableToSpendCents: 10000,
+            allocatedSpending: 100.0,
+            allocatedSpendingCents: 10000,
+            allocatedPercent: 100.0,
+            availableToAllocate: 0.0,
+            availableToAllocateCents: 0,
+            percentOfBudgetSpent: 0.0,
+            actualIncome: 0.0,
+            actualIncomeCents: 0,
+            actualIncomePercent: 0.0,
+            remainingExpectedIncome: 200.0,
+            remainingExpectedIncomeCents: 20000,
+            surplusPercent: 0.0,
+            donutSegments: [],
+            sourceBudget: nil,
+            categories: []
+        )
+        let responseDto = BudgetListResponse(data: [budget], meta: nil)
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let data = try encoder.encode(responseDto)
 
         MockURLProtocol.requestHandler = { request in
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
@@ -20,8 +55,8 @@ final class FinancePyApiBudgetsTests: XCTestCase {
         }
 
         let result = try await FinancePyApi.shared.fetchBudgets()
-        XCTAssertEqual(result.count, 1)
-        XCTAssertEqual(result.first?.id, "1")
+        XCTAssertEqual(result.data.count, 1)
+        XCTAssertEqual(result.data.first?.id, "1")
     }
 
     func testFetchBudgets4xx() async {

@@ -20,7 +20,7 @@ final class FinancePyApiAccountsWriteTests: XCTestCase {
             return (response, data)
         }
 
-        let body = CreateAccountBody(name: "New Acc", currency: "USD", accountType: "cash", subtype: nil, isShared: false, startBalance: "0")
+        let body = CreateAccountBody(accountableType: "Depository", name: "New Acc", balance: 0, currency: "USD", institutionName: nil, notes: nil, accountableAttributes: nil)
         let result = try await FinancePyApi.shared.createAccount(body: body)
         XCTAssertEqual(result.id, "1")
     }
@@ -32,7 +32,7 @@ final class FinancePyApiAccountsWriteTests: XCTestCase {
         }
 
         do {
-            let body = CreateAccountBody(name: "New Acc", currency: "USD", accountType: "cash", subtype: nil, isShared: false, startBalance: "0")
+            let body = CreateAccountBody(accountableType: "Depository", name: "New Acc", balance: 0, currency: "USD", institutionName: nil, notes: nil, accountableAttributes: nil)
             _ = try await FinancePyApi.shared.createAccount(body: body)
             XCTFail("Expected error")
         } catch NetworkError.httpError(let code, _) {
@@ -49,7 +49,7 @@ final class FinancePyApiAccountsWriteTests: XCTestCase {
         }
 
         do {
-            let body = CreateAccountBody(name: "New Acc", currency: "USD", accountType: "cash", subtype: nil, isShared: false, startBalance: "0")
+            let body = CreateAccountBody(accountableType: "Depository", name: "New Acc", balance: 0, currency: "USD", institutionName: nil, notes: nil, accountableAttributes: nil)
             _ = try await FinancePyApi.shared.createAccount(body: body)
             XCTFail("Expected error")
         } catch NetworkError.httpError(let code, _) {
@@ -66,7 +66,7 @@ final class FinancePyApiAccountsWriteTests: XCTestCase {
         }
 
         do {
-            let body = CreateAccountBody(name: "New Acc", currency: "USD", accountType: "cash", subtype: nil, isShared: false, startBalance: "0")
+            let body = CreateAccountBody(accountableType: "Depository", name: "New Acc", balance: 0, currency: "USD", institutionName: nil, notes: nil, accountableAttributes: nil)
             _ = try await FinancePyApi.shared.createAccount(body: body)
             XCTFail("Expected error")
         } catch NetworkError.decodingError {
