@@ -27,6 +27,42 @@ struct PaginationDto: Codable {
     let totalPages: Int
     let totalCount: Int
     let perPage: Int
+
+    init(page: Int, perPage: Int, totalCount: Int, totalPages: Int, nextPage: Int? = nil, prevPage: Int? = nil) {
+        self.currentPage = page
+        self.perPage = perPage
+        self.totalCount = totalCount
+        self.totalPages = totalPages
+        self.nextPage = nextPage
+        self.prevPage = prevPage
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case currentPage, page, nextPage, prevPage, totalPages, totalCount, perPage
+    }
+
+    // `meta` envelopes (budgets, products, goals) send `current_page`; `pagination`
+    // envelopes (accounts, transactions, chats) send `page`. Accept either.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        currentPage = try container.decodeIfPresent(Int.self, forKey: .currentPage)
+            ?? container.decodeIfPresent(Int.self, forKey: .page) ?? 1
+        nextPage = try container.decodeIfPresent(Int.self, forKey: .nextPage)
+        prevPage = try container.decodeIfPresent(Int.self, forKey: .prevPage)
+        totalPages = try container.decodeIfPresent(Int.self, forKey: .totalPages) ?? 1
+        totalCount = try container.decodeIfPresent(Int.self, forKey: .totalCount) ?? 0
+        perPage = try container.decodeIfPresent(Int.self, forKey: .perPage) ?? 25
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(currentPage, forKey: .currentPage)
+        try container.encodeIfPresent(nextPage, forKey: .nextPage)
+        try container.encodeIfPresent(prevPage, forKey: .prevPage)
+        try container.encode(totalPages, forKey: .totalPages)
+        try container.encode(totalCount, forKey: .totalCount)
+        try container.encode(perPage, forKey: .perPage)
+    }
 }
 
 struct BalanceSheetResponse: Codable {
