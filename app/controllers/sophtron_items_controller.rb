@@ -730,28 +730,7 @@ class SophtronItemsController < ApplicationController
       params.require(:sophtron_item).permit(:name, :user_id, :access_key, :base_url, :sync_start_date)
     end
 
-    # Sanitize return_to parameter to prevent XSS attacks
-    # Only allow internal paths, reject external URLs and javascript: URIs
-    def safe_return_to_path
-      return nil if params[:return_to].blank?
-
-      return_to = params[:return_to].to_s
-
-      # Parse the URL to check if it's external
-      begin
-        uri = URI.parse(return_to)
-
-        # Reject absolute URLs with schemes (http:, https:, javascript:, etc.)
-        # Only allow relative paths
-        return nil if uri.scheme.present? || uri.host.present?
-        return nil if return_to.start_with?("//")
-        # Ensure the path starts with / (is a relative path)
-        return nil unless return_to.start_with?("/")
-
-        return_to
-      rescue URI::InvalidURIError
-        # If the URI is invalid, reject it
-        nil
-      end
-    end
+  # safe_return_to_path now lives in StoreLocation (included in
+  # ApplicationController), shared with the lunchflow and mercury
+  # controllers, which carried weaker copies of this same check.
 end

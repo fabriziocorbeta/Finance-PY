@@ -807,28 +807,7 @@ class MercuryItemsController < ApplicationController
       credentialed_items.count > 1 && params[:mercury_item_id].blank?
     end
 
-    # Sanitize return_to parameter to prevent XSS attacks
-    # Only allow internal paths, reject external URLs and javascript: URIs
-    def safe_return_to_path
-      return nil if params[:return_to].blank?
-
-      return_to = params[:return_to].to_s
-
-      # Parse the URL to check if it's external
-      begin
-        uri = URI.parse(return_to)
-
-        # Reject absolute URLs with schemes (http:, https:, javascript:, etc.)
-        # Only allow relative paths
-        return nil if uri.scheme.present?
-
-        # Ensure the path starts with / (is a relative path)
-        return nil unless return_to.start_with?("/")
-
-        return_to
-      rescue URI::InvalidURIError
-        # If the URI is invalid, reject it
-        nil
-      end
-    end
+  # safe_return_to_path now lives in StoreLocation (included in
+  # ApplicationController). The copy that used to be here checked only
+  # `uri.scheme`, so it accepted "//evil.com".
 end
