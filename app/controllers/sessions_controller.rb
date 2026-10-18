@@ -75,7 +75,7 @@ class SessionsController < ApplicationController
         # consumer of /oauth/authorize) dead-ends here with no error and the
         # app never gets a token. consumed once: never leave it in session for
         # a later, unrelated login to pick up.
-        redirect_to(session.delete(:return_to).presence || root_path)
+        redirect_to(consume_return_to || root_path)
       end
     else
       flash.now[:alert] = t(".invalid_credentials")
