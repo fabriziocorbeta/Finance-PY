@@ -2,6 +2,12 @@ require "test_helper"
 
 class ParameterFilteringTest < ActionDispatch::IntegrationTest
   setup do
+    # The header-filter test below renders the full application layout, which
+    # references the compiled tailwind asset. Same pattern as
+    # categories_controller_test and friends -- without it a fresh checkout
+    # fails with "The asset 'tailwind.css' was not found in the load path".
+    ensure_tailwind_build
+
     sign_in @user = users(:family_admin)
     @entry = entries(:transaction)
   end
@@ -53,6 +59,32 @@ class ParameterFilteringTest < ActionDispatch::IntegrationTest
       "the override path must still be reached, otherwise this test proves nothing")
     assert_match(/user_id=#{admin.id}/, log_output)
     assert_no_match(/#{Regexp.escape(admin.email)}/, log_output)
+  end
+
+  # logtail-rails logs every request as a structured event with ALL request and
+  # response headers in `headers_json`. `filter_parameters` does not reach
+  # headers, and the gem's `http_header_filters` has no default, so without the
+  # config in filter_parameter_logging.rb the session cookie, the bearer token
+  # and the API key all shipped in cleartext.
+  test "credential-bearing request headers are filtered out of the structured log" do
+    bearer = "super-secret-bearer-value"
+    api_key = "sk-not-a-real-api-key-value"
+
+    log_output = capture_log do
+      get root_path, headers: {
+        "Authorization" => "Bearer #{bearer}",
+        "X-Api-Key" => api_key
+      }
+    end
+
+    assert_match(/http_request_received/, log_output,
+      "the structured request event must still be emitted, or this test proves nothing")
+    assert_match(/\[FILTERED\]/, log_output)
+
+    assert_no_match(/#{Regexp.escape(bearer)}/, log_output)
+    assert_no_match(/#{Regexp.escape(api_key)}/, log_output)
+    # setup signs in, so the request carries a real session cookie
+    assert_no_match(/session_token=/, log_output)
   end
 
   private
