@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -39,6 +40,7 @@ import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.FuelLogDto
 import py.com.cdco.financespy.sync.currentIsoDate
 import py.com.cdco.financespy.theme.FinancePyColors
+import py.com.cdco.financespy.theme.components.liquidGlass
 import py.com.cdco.financespy.utils.formatMoney
 
 @Composable
@@ -386,6 +388,8 @@ private fun FuelLogDialog(
     }
 
     AlertDialog(
+        modifier = Modifier.liquidGlass(RoundedCornerShape(28.dp)),
+        containerColor = Color.Transparent,
         onDismissRequest = onDismiss,
         title = { Text("Registro de Combustible", color = FinancePyColors.textPrimary()) },
         text = {
@@ -528,7 +532,6 @@ private fun FuelLogDialog(
             TextButton(onClick = onDismiss) {
                 Text("Cancelar", color = FinancePyColors.textSecondary())
             }
-        },
-        containerColor = FinancePyColors.container().copy(alpha = 0.75f)
+        }
     )
 }

@@ -1925,6 +1925,7 @@ CREATE TABLE public.receivables (
     total_amount numeric(19,4),
     installment_count integer,
     due_day integer,
+    first_due_date date,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     locked_attributes jsonb DEFAULT '{}'::jsonb,
@@ -4306,6 +4307,13 @@ CREATE INDEX index_entries_on_date ON public.entries USING btree (date);
 --
 
 CREATE INDEX index_entries_on_entryable_type ON public.entries USING btree (entryable_type);
+
+
+--
+-- Name: index_entries_on_entryable_type_and_entryable_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_entries_on_entryable_type_and_entryable_id ON public.entries USING btree (entryable_type, entryable_id);
 
 
 --
@@ -8297,6 +8305,7 @@ CREATE POLICY webauthn_credentials_family_isolation_policy ON public.webauthn_cr
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261016000000'),
 ('20261007160000'),
 ('20261007150000'),
 ('20261007140000'),

@@ -42,6 +42,11 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.androidx.activity.compose)
             implementation("androidx.security:security-crypto:1.1.0-alpha06")
+            // Map snippet for transactions with a captured device location
+            // (see TransactionFormScreen) -- Android-only, KMP in this repo
+            // only compiles for Android anyway, so no expect/actual needed.
+            implementation(libs.play.services.maps)
+            implementation(libs.maps.compose)
         }
         commonTest.dependencies {
             implementation(libs.ktor.client.mock)

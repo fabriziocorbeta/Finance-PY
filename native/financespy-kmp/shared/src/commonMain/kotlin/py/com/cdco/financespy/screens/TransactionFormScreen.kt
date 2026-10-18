@@ -47,6 +47,7 @@ import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.CategoryDto
 import py.com.cdco.financespy.api.dto.MerchantDto
 import py.com.cdco.financespy.api.dto.TagDto
+import py.com.cdco.financespy.screens.components.TransactionLocationMap
 import py.com.cdco.financespy.screens.components.parseHexColor
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
@@ -187,6 +188,13 @@ fun TransactionFormScreen(
                     label = "Introduce una nota",
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // Only present for transactions the Wallet notification
+                // pipeline captured with the device-location toggle on; null
+                // for everything else, nothing renders here then.
+                state.location?.let { location ->
+                    TransactionLocationMap(location = location)
+                }
 
                 AppButton(
                     text = when {

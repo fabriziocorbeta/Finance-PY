@@ -12,6 +12,12 @@ final class TransactionEntity {
     var categoryIcon: String?
     var merchantId: String?
     var merchantName: String?
+    // Approximate DEVICE location at Wallet-capture time (Android-only
+    // capture, see TransactionLocationDto) -- never the real merchant
+    // location. nil for any transaction not captured that way.
+    var latitude: Double?
+    var longitude: Double?
+    var device: String?
 
     var entry: EntryEntity?
 
@@ -25,6 +31,9 @@ final class TransactionEntity {
         categoryIcon: String? = nil,
         merchantId: String? = nil,
         merchantName: String? = nil,
+        latitude: Double? = nil,
+        longitude: Double? = nil,
+        device: String? = nil,
         entry: EntryEntity? = nil
     ) {
         self.id = id
@@ -36,6 +45,9 @@ final class TransactionEntity {
         self.categoryIcon = categoryIcon
         self.merchantId = merchantId
         self.merchantName = merchantName
+        self.latitude = latitude
+        self.longitude = longitude
+        self.device = device
         self.entry = entry
     }
 }

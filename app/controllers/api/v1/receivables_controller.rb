@@ -56,7 +56,9 @@ class Api::V1::ReceivablesController < Api::V1::BaseController
           accountable_attributes: {
             total_amount: total_amt,
             installment_count: attrs[:installment_count],
-            due_day: attrs[:due_day]
+            due_day: attrs[:due_day],
+            first_due_date: attrs[:first_due_date],
+            initial_balance: total_amt # Sets opening anchor directly
           }.compact
         }
       )
@@ -97,6 +99,19 @@ class Api::V1::ReceivablesController < Api::V1::BaseController
     Account.transaction do
       account = @receivable.account
 
+      if attrs[:total_amount].present? && account
+        result = Account::OpeningBalanceManager.new(account).set_opening_balance(balance: attrs[:total_amount].to_d)
+        unless result.success?
+          render json: {
+            error: "validation_failed",
+            message: "Receivable could not be updated",
+            errors: [ result.error ]
+          }, status: :unprocessable_entity
+          raise ActiveRecord::Rollback
+        end
+        account.sync_later if result.changes_made?
+      end
+
       if attrs[:balance].present? && account && attrs[:balance].to_d != account.balance
         result = account.set_current_balance(attrs[:balance].to_d)
         unless result.success?
@@ -124,6 +139,7 @@ class Api::V1::ReceivablesController < Api::V1::BaseController
       receivable_updates[:total_amount] = attrs[:total_amount] if attrs.key?(:total_amount)
       receivable_updates[:installment_count] = attrs[:installment_count] if attrs.key?(:installment_count)
       receivable_updates[:due_day] = attrs[:due_day] if attrs.key?(:due_day)
+      receivable_updates[:first_due_date] = attrs[:first_due_date] if attrs.key?(:first_due_date)
 
       if receivable_updates.any?
         @receivable.update!(receivable_updates)
@@ -221,8 +237,12 @@ class Api::V1::ReceivablesController < Api::V1::BaseController
         notes: raw[:notes],
         total_amount: raw[:total_amount] || receivable_attrs[:total_amount],
         installment_count: raw[:installment_count] || receivable_attrs[:installment_count],
-        due_day: raw[:due_day] || receivable_attrs[:due_day]
+        due_day: raw[:due_day] || receivable_attrs[:due_day],
+        first_due_date: raw[:first_due_date] || receivable_attrs[:first_due_date]
       }
+
+      result[:first_due_date] = raw[:first_due_date] if raw.key?(:first_due_date)
+      result
     end
 
     def safe_page_param

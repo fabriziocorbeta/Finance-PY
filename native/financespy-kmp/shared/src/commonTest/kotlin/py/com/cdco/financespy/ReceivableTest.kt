@@ -60,6 +60,7 @@ class ReceivableTest {
             percentPaid = dto.percent_paid ?: 0.0,
             installmentCount = dto.installment_count,
             dueDay = dto.due_day,
+            firstDueDate = dto.first_due_date,
             currency = dto.currency ?: "PYG",
             notes = dto.notes,
             updatedAt = dto.updated_at ?: "",

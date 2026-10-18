@@ -10,6 +10,7 @@ import py.com.cdco.financespy.api.dto.CategoryDto
 import py.com.cdco.financespy.api.dto.CreateTransactionBody
 import py.com.cdco.financespy.api.dto.MerchantDto
 import py.com.cdco.financespy.api.dto.TagDto
+import py.com.cdco.financespy.api.dto.TransactionLocationDto
 import py.com.cdco.financespy.api.dto.UpdateTransactionBody
 import py.com.cdco.financespy.db.EntryDao
 import py.com.cdco.financespy.db.TransactionDao
@@ -34,7 +35,8 @@ data class TransactionFormState(
     val accounts: List<AccountDto> = emptyList(),
     val categories: List<CategoryDto> = emptyList(),
     val merchants: List<MerchantDto> = emptyList(),
-    val tags: List<TagDto> = emptyList()
+    val tags: List<TagDto> = emptyList(),
+    val location: TransactionLocationDto? = null
 )
 
 class TransactionFormViewModel(
@@ -93,7 +95,8 @@ class TransactionFormViewModel(
                             notes = detail.notes.orEmpty(),
                             categoryId = detail.category?.id,
                             merchantId = detail.merchant?.id,
-                            selectedTagIds = detail.tags.map { it.id }.toSet()
+                            selectedTagIds = detail.tags.map { it.id }.toSet(),
+                            location = detail.location
                         )
                     }
                     .onFailure { e ->

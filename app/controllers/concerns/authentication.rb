@@ -87,10 +87,7 @@ module Authentication
 
       if Current.user
         Sentry.set_user(
-          id: Current.user.id,
-          email: Current.user.email,
-          username: Current.user.display_name,
-          ip_address: Current.ip_address
+          id: Current.user.id
         )
       end
     end

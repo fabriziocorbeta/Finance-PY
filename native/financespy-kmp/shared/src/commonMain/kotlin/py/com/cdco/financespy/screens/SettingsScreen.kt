@@ -42,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.api.dto.FamilyExportDto
@@ -50,6 +51,7 @@ import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.theme.components.ButtonVariant
 import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
+import py.com.cdco.financespy.theme.components.liquidGlass
 
 @Composable
 fun SettingsScreen(
@@ -61,6 +63,8 @@ fun SettingsScreen(
     onToggleBiometricLock: ((Boolean) -> Unit)? = null,
     isScreenCaptureBlockEnabled: Boolean = true,
     onToggleScreenCaptureBlock: ((Boolean) -> Unit)? = null,
+    isWalletLocationCaptureEnabled: Boolean = false,
+    onToggleWalletLocationCapture: ((Boolean) -> Unit)? = null,
     onShareFile: ((ByteArray, String, String) -> Unit)? = null,
     onNavigateToRules: (() -> Unit)? = null,
     onNavigateToNavCustomization: (() -> Unit)? = null,
@@ -74,6 +78,7 @@ fun SettingsScreen(
 
     if (showLogoutDialog) {
         AlertDialog(
+            modifier = Modifier.liquidGlass(RoundedCornerShape(28.dp)),
             onDismissRequest = { showLogoutDialog = false },
             title = {
                 Text(
@@ -117,7 +122,7 @@ fun SettingsScreen(
                     )
                 }
             },
-            containerColor = FinancePyColors.container().copy(alpha = 0.75f),
+            containerColor = Color.Transparent,
             titleContentColor = FinancePyColors.textPrimary(),
             textContentColor = FinancePyColors.textSecondary()
         )
@@ -125,6 +130,7 @@ fun SettingsScreen(
 
     if (showPendingOutboxWarning) {
         AlertDialog(
+            modifier = Modifier.liquidGlass(RoundedCornerShape(28.dp)),
             onDismissRequest = { showPendingOutboxWarning = false },
             title = {
                 Text(
@@ -162,7 +168,7 @@ fun SettingsScreen(
                     )
                 }
             },
-            containerColor = FinancePyColors.container().copy(alpha = 0.75f),
+            containerColor = Color.Transparent,
             titleContentColor = FinancePyColors.textPrimary(),
             textContentColor = FinancePyColors.textSecondary()
         )
@@ -394,7 +400,7 @@ fun SettingsScreen(
                     }
                 }
 
-                if (onToggleBiometricLock != null || onToggleScreenCaptureBlock != null) {
+                if (onToggleBiometricLock != null || onToggleScreenCaptureBlock != null || onToggleWalletLocationCapture != null) {
                     item {
                         Text(
                             text = "Seguridad",
@@ -466,6 +472,37 @@ fun SettingsScreen(
                                         }
                                         Text(
                                             text = "Impide screenshots y grabación de pantalla, y oculta el contenido en la vista de apps recientes. Activado por defecto.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = FinancePyColors.textSecondary()
+                                        )
+                                    }
+                                }
+                                if (onToggleWalletLocationCapture != null) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Ubicación aproximada en transacciones capturadas",
+                                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                color = FinancePyColors.textPrimary(),
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Switch(
+                                                checked = isWalletLocationCaptureEnabled,
+                                                onCheckedChange = onToggleWalletLocationCapture,
+                                                colors = SwitchDefaults.colors(
+                                                    checkedThumbColor = FinancePyColors.surface(),
+                                                    checkedTrackColor = FinancePyColors.buttonBgPrimary(),
+                                                    uncheckedThumbColor = FinancePyColors.surface(),
+                                                    uncheckedTrackColor = FinancePyColors.borderSecondary()
+                                                )
+                                            )
+                                        }
+                                        Text(
+                                            text = "Guarda la ubicación aproximada del dispositivo (no la del comercio) al detectar una notificación bancaria. Desactivado por defecto; pedirá permiso de ubicación la primera vez.",
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = FinancePyColors.textSecondary()
                                         )

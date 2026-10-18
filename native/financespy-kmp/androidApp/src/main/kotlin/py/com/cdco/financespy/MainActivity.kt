@@ -1,6 +1,8 @@
 package py.com.cdco.financespy
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.util.Log
 import android.net.Uri
 import android.os.Bundle
@@ -76,6 +78,7 @@ import py.com.cdco.financespy.screens.TransactionsViewModel
 import py.com.cdco.financespy.sync.SyncEngine
 import py.com.cdco.financespy.sync.currentIsoDate
 import py.com.cdco.financespy.wallet.WalletCaptureHandler
+import py.com.cdco.financespy.wallet.WalletLocationPreferences
 import android.view.MotionEvent
 
 class MainActivity : FragmentActivity() {
@@ -94,6 +97,8 @@ class MainActivity : FragmentActivity() {
     private val securityPreferences by lazy { AndroidSecurityPreferences(applicationContext) }
     private val biometricLockEnabled = mutableStateOf(false)
     private val screenCaptureBlockEnabled = mutableStateOf(true)
+    private val walletLocationPreferences by lazy { WalletLocationPreferences(applicationContext) }
+    private val walletLocationCaptureEnabled = mutableStateOf(false)
 
     // App-level (not Activity-level) observer: fires only when the whole app
     // truly leaves the foreground, not on rotation/config-change recreation
@@ -116,6 +121,18 @@ class MainActivity : FragmentActivity() {
     private var pdfFilePickedCallback: ((ByteArray, String) -> Unit)? = null
     private val pdfFilePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { handlePdfFilePicked(it) }
+    }
+
+    // User turning the Settings toggle on is the trigger for the runtime
+    // permission request (not app startup) -- the capture itself is
+    // best-effort either way, so there's no reason to prompt before the
+    // user has actually opted in. If denied, the toggle preference is left
+    // as-is (true): Wallet capture then simply never finds the permission
+    // granted at capture time and silently skips location, same as if the
+    // user had left the toggle off -- no separate "denied" state to track.
+    private val locationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
+        // No-op: WalletCaptureHandler re-checks the permission itself on
+        // every capture, so there's nothing to react to here.
     }
 
     private val tokenStorage by lazy { AndroidTokenStorage(applicationContext) }
@@ -296,6 +313,7 @@ class MainActivity : FragmentActivity() {
         applyScreenCaptureBlock(screenCaptureBlockEnabled.value)
         ProcessLifecycleOwner.get().lifecycle.addObserver(processLifecycleObserver)
         biometricLockEnabled.value = securityPreferences.isBiometricLockEnabled()
+        walletLocationCaptureEnabled.value = walletLocationPreferences.isLocationCaptureEnabled()
 
         initDatabaseBuilder(applicationContext)
 
@@ -488,6 +506,18 @@ class MainActivity : FragmentActivity() {
                     securityPreferences.setScreenCaptureBlockEnabled(enabled)
                     screenCaptureBlockEnabled.value = enabled
                     applyScreenCaptureBlock(enabled)
+                },
+                isWalletLocationCaptureEnabled = walletLocationCaptureEnabled.value,
+                onToggleWalletLocationCapture = { enabled ->
+                    walletLocationPreferences.setLocationCaptureEnabled(enabled)
+                    walletLocationCaptureEnabled.value = enabled
+                    if (enabled && ContextCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    }
                 },
                 reportsViewModelFactory = { reportsViewModel },
                 upayImportViewModelFactory = {

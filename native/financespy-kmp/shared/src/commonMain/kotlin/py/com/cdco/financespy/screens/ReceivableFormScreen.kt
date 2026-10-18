@@ -61,6 +61,12 @@ fun ReceivableFormScreen(
         )
 
         AppTextField(
+            value = state.firstDueDate,
+            onValueChange = viewModel::updateFirstDueDate,
+            label = "Fecha de primer vencimiento (opcional)"
+        )
+
+        AppTextField(
             value = state.installmentCount,
             onValueChange = viewModel::updateInstallmentCount,
             label = "Cantidad de cuotas (opcional)"

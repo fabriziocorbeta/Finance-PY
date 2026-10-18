@@ -35,6 +35,17 @@ data class MerchantRefDto(val id: String, val name: String)
 @Serializable
 data class TagRefDto(val id: String, val name: String, val color: String)
 
+// Approximate DEVICE location at the moment a bank notification was
+// captured (Wallet capture pipeline) -- never the real merchant location,
+// the notification itself never carries coordinates. Only present for
+// transactions captured that way.
+@Serializable
+data class TransactionLocationDto(
+    val latitude: Double,
+    val longitude: Double,
+    val device: String? = null
+)
+
 @Serializable
 data class TransferInfoDto(
     val id: String,
@@ -59,6 +70,7 @@ data class TransactionDetailDto(
     val merchant: MerchantRefDto? = null,
     val tags: List<TagRefDto> = emptyList(),
     val transfer: TransferInfoDto? = null,
+    val location: TransactionLocationDto? = null,
     val created_at: String,
     val updated_at: String
 )

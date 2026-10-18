@@ -36,7 +36,9 @@ class Receivable < ApplicationRecord
       amount = base_amount
       amount += remainder if i == installment_count
 
-      if due_day
+      if first_due_date && i == 1
+        current_due_date = first_due_date
+      elsif due_day
         if i == 1
           candidate = Date.new(start_date.year, start_date.month, [ due_day, Date.new(start_date.year, start_date.month, -1).day ].min)
           current_due_date = candidate < start_date ? Date.new(start_date.next_month.year, start_date.next_month.month, [ due_day, Date.new(start_date.next_month.year, start_date.next_month.month, -1).day ].min) : candidate

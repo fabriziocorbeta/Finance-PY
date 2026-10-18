@@ -222,7 +222,8 @@ class Api::V1::ReceivablesControllerTest < ActionDispatch::IntegrationTest
             receivable: {
               name: "Updated Receivable Name",
               total_amount: 750,
-              due_day: 20
+              due_day: 20,
+              first_due_date: "2026-12-01"
             }
           },
           headers: api_headers(@write_api_key)
@@ -231,11 +232,16 @@ class Api::V1::ReceivablesControllerTest < ActionDispatch::IntegrationTest
     json_response = JSON.parse(response.body)["data"]
     assert_equal "750.0", json_response["total_amount"]
     assert_equal 20, json_response["due_day"]
+    assert_equal "2026-12-01", json_response["first_due_date"]
 
     @receivable.reload
     assert_equal 750, @receivable.total_amount
     assert_equal 20, @receivable.due_day
+    assert_equal Date.new(2026, 12, 1), @receivable.first_due_date
     assert_equal "Updated Receivable Name", @receivable.account.name
+
+    # Verify opening balance was also updated
+    assert_equal 750, @receivable.account.first_valuation_amount
   end
 
   test "should require write scope when updating a receivable" do
