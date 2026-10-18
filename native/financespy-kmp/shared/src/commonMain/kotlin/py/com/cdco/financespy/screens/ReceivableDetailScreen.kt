@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -40,6 +41,7 @@ import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.theme.components.AppTextField
 import py.com.cdco.financespy.theme.components.ButtonVariant
+import py.com.cdco.financespy.theme.components.liquidGlass
 import py.com.cdco.financespy.utils.formatMoney
 import py.com.cdco.financespy.api.dto.InstallmentDto
 import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
@@ -257,7 +259,8 @@ private fun PaymentDialog(
     val selectedAccount = accounts.find { it.id == selectedAccountId }
 
     AlertDialog(
-        containerColor = py.com.cdco.financespy.theme.FinancePyColors.container().copy(alpha = 0.75f),
+        modifier = Modifier.liquidGlass(RoundedCornerShape(28.dp)),
+        containerColor = Color.Transparent,
         onDismissRequest = onDismiss,
         title = { Text("Registrar pago", color = FinancePyColors.textPrimary()) },
         text = {

@@ -11,11 +11,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.api.dto.PurchaseOrderDto
 import py.com.cdco.financespy.theme.FinancePyColors
+import py.com.cdco.financespy.theme.components.liquidGlass
 import py.com.cdco.financespy.utils.formatMoney
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -236,7 +238,8 @@ fun PurchaseOrderDetailScreen(
 
     if (showReceiveDialog) {
         AlertDialog(
-            containerColor = py.com.cdco.financespy.theme.FinancePyColors.container().copy(alpha = 0.75f),
+            modifier = Modifier.liquidGlass(RoundedCornerShape(28.dp)),
+            containerColor = Color.Transparent,
             onDismissRequest = { showReceiveDialog = false },
             title = { Text("Recibir Orden de Compra") },
             text = { Text("¿Deseas marcar como recibida esta orden? Se incrementará el stock de los productos.") },
@@ -260,7 +263,8 @@ fun PurchaseOrderDetailScreen(
 
     if (showCancelDialog) {
         AlertDialog(
-            containerColor = py.com.cdco.financespy.theme.FinancePyColors.container().copy(alpha = 0.75f),
+            modifier = Modifier.liquidGlass(RoundedCornerShape(28.dp)),
+            containerColor = Color.Transparent,
             onDismissRequest = { showCancelDialog = false },
             title = { Text("Cancelar Orden de Compra") },
             text = {

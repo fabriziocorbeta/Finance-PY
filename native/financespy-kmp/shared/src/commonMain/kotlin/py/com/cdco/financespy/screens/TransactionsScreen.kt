@@ -48,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.api.dto.AccountDto
@@ -59,6 +60,7 @@ import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.theme.components.ButtonVariant
+import py.com.cdco.financespy.theme.components.liquidGlass
 import py.com.cdco.financespy.utils.formatMoney
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -197,7 +199,8 @@ fun TransactionsScreen(
     if (showFilterSheet) {
         val sheetState = rememberModalBottomSheetState()
         ModalBottomSheet(
-            containerColor = py.com.cdco.financespy.theme.FinancePyColors.container().copy(alpha = 0.75f),
+            containerColor = Color.Transparent,
+            modifier = Modifier.liquidGlass(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
             onDismissRequest = { showFilterSheet = false },
             sheetState = sheetState
         ) {
@@ -217,7 +220,8 @@ fun TransactionsScreen(
 
     transactionPendingDelete?.let { entry ->
         AlertDialog(
-            containerColor = py.com.cdco.financespy.theme.FinancePyColors.container().copy(alpha = 0.75f),
+            modifier = Modifier.liquidGlass(RoundedCornerShape(28.dp)),
+            containerColor = Color.Transparent,
             onDismissRequest = { transactionPendingDelete = null },
             title = { Text("Eliminar transacción") },
             text = {
