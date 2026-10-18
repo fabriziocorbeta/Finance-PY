@@ -182,6 +182,11 @@ class Rack::Attack
     request.ip if request.path.start_with?("/api/")
   end
 
+  # Throttle Sidekiq Web UI basic auth to prevent brute force attacks
+  throttle("sidekiq_web/ip", limit: 10, period: 1.minute) do |request|
+    request.ip if request.path.start_with?("/sidekiq")
+  end
+
   # Block requests that appear to be malicious
   blocklist("block malicious requests") do |request|
     # Block requests with suspicious user agents
