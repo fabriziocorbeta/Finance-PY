@@ -108,11 +108,47 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to new_session_url
 
+    # The action's PRIMARY effect, not just the session cleanup: `users` is also
+    # FORCE RLS'd, so an unbypassed `@user.update` matches zero rows and still
+    # returns true. Without this assertion the test passes while the password
+    # never changes and every session is destroyed anyway.
+    reloaded = RlsContext.with_auth_bypass(reason: "test_verify") { User.find(@user.id) }
+    assert reloaded.authenticate("NewSecure1!"),
+      "Expected password reset to actually change the password under FORCE RLS without family context"
+
     remaining = RlsContext.with_auth_bypass(reason: "test_verify") { Session.where(id: existing_session.id).count }
     assert_equal 0, remaining, "Expected password reset to destroy existing web sessions even under FORCE RLS without family context"
 
     other_remaining = RlsContext.with_auth_bypass(reason: "test_verify") { Session.where(id: other_user_session.id).count }
     assert_equal 1, other_remaining, "Expected other user's sessions to remain untouched"
+  ensure
+    ActiveRecord::Base.connection.execute("RESET app.current_family_id") rescue nil
+    ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
+  end
+
+  # Guards the dangerous half of the bypass above: `sso_only?` reads
+  # `oidc_identities`, which is also FORCE RLS'd. Bypassing only the UPDATE
+  # would leave this guard reading zero rows, letting an SSO-only user set a
+  # local password with a reset token.
+  test "update still blocks SSO-only user under FORCE RLS without family context" do
+    require_relative "../integration/row_level_security_test"
+
+    sso_user = users(:sso_only)
+    token = sso_user.generate_token_for(:password_reset)
+
+    RowLevelSecurityTest.ensure_non_superuser_role
+    ActiveRecord::Base.connection.execute("SET ROLE app_user")
+    ActiveRecord::Base.connection.execute("RESET app.current_family_id")
+
+    patch password_reset_path(token: token),
+      params: { user: { password: "NewSecure1!", password_confirmation: "NewSecure1!" } }
+
+    assert_redirected_to new_session_path
+    assert_equal "Your account uses SSO for authentication. Please contact your administrator to manage your credentials.", flash[:alert]
+
+    reloaded = RlsContext.with_auth_bypass(reason: "test_verify") { User.find(sso_user.id) }
+    assert_nil reloaded.password_digest,
+      "SSO-only user must not get a local password, even now that the reset flow bypasses RLS"
   ensure
     ActiveRecord::Base.connection.execute("RESET app.current_family_id") rescue nil
     ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
