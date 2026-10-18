@@ -332,7 +332,9 @@ class SessionsController < ApplicationController
       return unless AuthConfig.local_admin_override_enabled?
       return unless user&.super_admin?
 
-      Rails.logger.info("[AUTH] Super admin override login: user_id=#{user.id} email=#{user.email}")
+      # user_id only: the email is encrypted at rest but logs ship to an
+      # external drain in cleartext. The id is enough to identify the account.
+      Rails.logger.info("[AUTH] Super admin override login: user_id=#{user.id}")
     end
 
     def demo_host_match?(demo)

@@ -34,6 +34,27 @@ class ParameterFilteringTest < ActionDispatch::IntegrationTest
     assert_no_match(/#{Regexp.escape(sensitive_notes)}/, log_output)
   end
 
+  # config.filter_parameters covers params Rails logs for us, but a log line
+  # the app writes by hand is not filtered. The emergency super-admin override
+  # is the one login path that logs an identifier of its own, and it used to
+  # interpolate user.email in cleartext.
+  test "super admin override login logs the user id and not the email" do
+    AuthConfig.stubs(:local_login_enabled?).returns(false)
+    AuthConfig.stubs(:local_admin_override_enabled?).returns(true)
+
+    admin = users(:sure_support_staff)
+    assert admin.super_admin?, "fixture must be a super admin or this code path never runs"
+
+    log_output = capture_log do
+      post sessions_url, params: { email: admin.email, password: user_password_test }
+    end
+
+    assert_match(/\[AUTH\] Super admin override login/, log_output,
+      "the override path must still be reached, otherwise this test proves nothing")
+    assert_match(/user_id=#{admin.id}/, log_output)
+    assert_no_match(/#{Regexp.escape(admin.email)}/, log_output)
+  end
+
   private
 
     # Rails logs "Parameters: {...}" via ActionController::LogSubscriber,

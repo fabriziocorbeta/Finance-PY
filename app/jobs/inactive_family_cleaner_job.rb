@@ -67,7 +67,10 @@ class InactiveFamilyCleanerJob < ApplicationJob
 
         raise ActiveRecord::Rollback, "File attach failed" unless archive.export_file.attached?
 
-        Rails.logger.info("InactiveFamilyCleanerJob: Archived data for family #{family.id} (email: #{email}, token_digest: #{archive.download_token_digest.first(8)}...)")
+        # No email in the log line: it is stored on the ArchivedExport record
+        # (which is what the archive is for), but logs ship to an external
+        # drain in cleartext. family.id and the archive id identify the row.
+        Rails.logger.info("InactiveFamilyCleanerJob: Archived data for family #{family.id} (archive: #{archive.id}, token_digest: #{archive.download_token_digest.first(8)}...)")
       end
     end
 end
