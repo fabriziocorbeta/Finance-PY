@@ -1,11 +1,22 @@
 package py.com.cdco.financespy.wallet
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.ContextCompat
+import com.google.android.gms.location.CurrentLocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import py.com.cdco.financespy.auth.AndroidTokenStorage
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.Executors
+import kotlin.coroutines.resume
 
 // Orquesta la captura completa (extraer -> mapear cuenta -> POST al webhook ->
 // encolar si falla) usando solo un Context de Android.
@@ -35,6 +46,8 @@ object WalletCaptureHandler {
         val capturedAt = Instant.now().toString()
         val store = PendingCaptureStore(context)
         val token = runBlocking { AndroidTokenStorage(context).accessToken() }
+        val device = "${Build.MANUFACTURER} ${Build.MODEL}".trim()
+        val location = runBlocking { fetchLocationBestEffort(context) }
 
         purchases.forEach { purchase ->
             val accountId = AccountMapping.accountIdFor(context, purchase.cardText)
@@ -50,6 +63,9 @@ object WalletCaptureHandler {
                 amount = purchase.amount,
                 merchant = purchase.merchant,
                 item = purchase.cardText,
+                latitude = location?.first,
+                longitude = location?.second,
+                device = device,
                 nature = purchase.nature
             )
 
@@ -97,6 +113,50 @@ object WalletCaptureHandler {
             }
 
             callback?.invoke(applied)
+        }
+    }
+
+    // Best-effort device location for the current capture -- never blocks or
+    // degrades the rest of the pipeline. Returns null (not an error) if the
+    // user hasn't opted in via WalletLocationPreferences, hasn't granted
+    // ACCESS_COARSE_LOCATION, or no fix arrives within the timeout.
+    private const val LOCATION_TIMEOUT_MS = 4_000L
+
+    private suspend fun fetchLocationBestEffort(context: Context): Pair<Double, Double>? {
+        if (!WalletLocationPreferences(context).isLocationCaptureEnabled()) return null
+
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!hasPermission) return null
+
+        return withTimeoutOrNull(LOCATION_TIMEOUT_MS) {
+            suspendCancellableCoroutine { continuation ->
+                val cancellationSource = CancellationTokenSource()
+                continuation.invokeOnCancellation { cancellationSource.cancel() }
+
+                val request = CurrentLocationRequest.Builder()
+                    .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+                    .setDurationMillis(LOCATION_TIMEOUT_MS)
+                    .build()
+
+                try {
+                    LocationServices.getFusedLocationProviderClient(context)
+                        .getCurrentLocation(request, cancellationSource.token)
+                        .addOnSuccessListener { location ->
+                            val result = location?.let { it.latitude to it.longitude }
+                            if (continuation.isActive) continuation.resume(result)
+                        }
+                        .addOnFailureListener {
+                            if (continuation.isActive) continuation.resume(null)
+                        }
+                } catch (e: SecurityException) {
+                    // Permission revoked between the check above and this call --
+                    // rare race, treat the same as "no permission."
+                    if (continuation.isActive) continuation.resume(null)
+                }
+            }
         }
     }
 }

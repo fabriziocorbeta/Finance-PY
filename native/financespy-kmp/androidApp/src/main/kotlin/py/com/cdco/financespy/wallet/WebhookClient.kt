@@ -43,6 +43,11 @@ class WebhookClient(private val token: String) {
                 put("nature", capture.nature.name.lowercase())
                 if (rawText != null) put("raw_text", rawText)
                 put("timestamp", capture.capturedAt)
+                if (capture.latitude != null && capture.longitude != null) {
+                    put("latitude", capture.latitude)
+                    put("longitude", capture.longitude)
+                }
+                if (capture.device != null) put("device", capture.device)
             }
             connection.outputStream.use { it.write(body.toString().toByteArray()) }
 

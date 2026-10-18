@@ -28,6 +28,7 @@ struct TransactionDetailDto: Codable {
     let merchant: MerchantRefDto?
     let tags: [TagRefDto]
     let transfer: TransferInfoDto?
+    let location: TransactionLocationDto?
     let createdAt: String
     let updatedAt: String
 }

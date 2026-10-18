@@ -25,11 +25,21 @@ struct TransactionFormView: View {
     @State private var isSaving = false
     @State private var error: String? = nil
 
+    // Approximate DEVICE location at Wallet-capture time (Android-only
+    // capture) -- never the real merchant location. nil for any
+    // transaction not captured that way, and always nil for a new one.
+    @State private var locationLatitude: Double? = nil
+    @State private var locationLongitude: Double? = nil
+    @State private var locationDevice: String? = nil
+
     init(transactionToEdit: EntryEntity? = nil) {
         self.transactionToEdit = transactionToEdit
         if let tx = transactionToEdit {
             _accountId = State(initialValue: tx.accountId)
             _name = State(initialValue: tx.name)
+            _locationLatitude = State(initialValue: tx.transaction?.latitude)
+            _locationLongitude = State(initialValue: tx.transaction?.longitude)
+            _locationDevice = State(initialValue: tx.transaction?.device)
 
             let amount = Formatters.centsToDouble(tx.transaction?.signedAmountCents ?? tx.amountCents, currency: tx.currency)
             _amountText = State(initialValue: String(abs(amount)))
@@ -92,6 +102,16 @@ struct TransactionFormView: View {
 
                 Section(header: Text("Notas")) {
                     TextField("Introduce una nota", text: $notes)
+                }
+
+                if let latitude = locationLatitude, let longitude = locationLongitude {
+                    Section(header: Text("Ubicación aproximada (dispositivo)")) {
+                        TransactionLocationMapView(
+                            latitude: latitude,
+                            longitude: longitude,
+                            device: locationDevice
+                        )
+                    }
                 }
 
                 if let error = error {

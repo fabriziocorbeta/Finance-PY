@@ -15,6 +15,11 @@ android {
         targetSdk = 36
         versionCode = 4
         versionName = "0.1.0-layout-fix"
+        // Same pattern as the release keystore below: comes from an env var
+        // (CI secret or a local shell export), never committed. An empty
+        // value is a valid state -- Maps Compose just renders a blank/grey
+        // tile instead of crashing, same as any build without the key set.
+        manifestPlaceholders["googleMapsApiKey"] = System.getenv("GOOGLE_MAPS_API_KEY") ?: ""
     }
 
     // Release keystore comes from env vars (CI secrets) -- never committed,
@@ -79,6 +84,9 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.lifecycle.process)
+    // Best-effort device location at Wallet capture time (see
+    // WalletCaptureHandler) -- only used here, androidApp-only.
+    implementation(libs.play.services.location)
     // EncryptedSharedPreferences for AndroidOfflineStore / AndroidDashboardCache /
     // PendingCaptureStore / OwnerScope. `shared` also depends on this but only as
     // `implementation`, which isn't exposed transitively -- declared again here for
@@ -88,4 +96,9 @@ dependencies {
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
+    // android.jar's org.json classes are stubs that throw at runtime
+    // ("not mocked") under a plain JVM unit test -- this is a real
+    // implementation on the test classpath so PendingCaptureStoreTest can
+    // actually exercise JSONObject/JSONArray without Robolectric.
+    testImplementation("org.json:json:20231013")
 }

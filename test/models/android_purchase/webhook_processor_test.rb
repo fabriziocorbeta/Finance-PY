@@ -499,4 +499,68 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
     assert_equal -930000.0, entry.amount.to_f
     assert_equal "income", entry.classification
   end
+
+  test "stores device-reported latitude/longitude/device in extra when present" do
+    AndroidPurchase::WebhookProcessor.new(
+      {
+        account_id: @account.id,
+        amount: 15000,
+        merchant: "Super6",
+        item: "MiTarjeta",
+        timestamp: "2026-10-16T12:00:00-04:00",
+        raw_text: "x",
+        latitude: "-25.2968",
+        longitude: "-57.5947",
+        device: "SM-S928B"
+      },
+      family: @family
+    ).process
+
+    entry = @account.entries.order(created_at: :desc).first
+    assert_equal(-25.2968, entry.transaction.extra["latitude"])
+    assert_equal(-57.5947, entry.transaction.extra["longitude"])
+    assert_equal "SM-S928B", entry.transaction.extra["device"]
+  end
+
+  test "omits location from extra when latitude/longitude/device are absent" do
+    AndroidPurchase::WebhookProcessor.new(
+      {
+        account_id: @account.id,
+        amount: 15000,
+        merchant: "Super6",
+        item: "MiTarjeta",
+        timestamp: "2026-10-16T12:00:00-04:00",
+        raw_text: "x"
+      },
+      family: @family
+    ).process
+
+    entry = @account.entries.order(created_at: :desc).first
+    assert_not entry.transaction.extra.key?("latitude")
+    assert_not entry.transaction.extra.key?("longitude")
+    assert_not entry.transaction.extra.key?("device")
+  end
+
+  test "ignores an unparseable latitude/longitude without failing the webhook" do
+    result = AndroidPurchase::WebhookProcessor.new(
+      {
+        account_id: @account.id,
+        amount: 15000,
+        merchant: "Super6",
+        item: "MiTarjeta",
+        timestamp: "2026-10-16T12:00:00-04:00",
+        raw_text: "x",
+        latitude: "not-a-number",
+        longitude: "-57.5947",
+        device: "SM-S928B"
+      },
+      family: @family
+    ).process
+
+    assert_equal :created, result
+    entry = @account.entries.order(created_at: :desc).first
+    assert_not entry.transaction.extra.key?("latitude")
+    assert_not entry.transaction.extra.key?("longitude")
+    assert_equal "SM-S928B", entry.transaction.extra["device"]
+  end
 end

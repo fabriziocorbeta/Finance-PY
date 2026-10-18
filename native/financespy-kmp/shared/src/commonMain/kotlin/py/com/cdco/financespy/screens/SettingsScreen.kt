@@ -63,6 +63,8 @@ fun SettingsScreen(
     onToggleBiometricLock: ((Boolean) -> Unit)? = null,
     isScreenCaptureBlockEnabled: Boolean = true,
     onToggleScreenCaptureBlock: ((Boolean) -> Unit)? = null,
+    isWalletLocationCaptureEnabled: Boolean = false,
+    onToggleWalletLocationCapture: ((Boolean) -> Unit)? = null,
     onShareFile: ((ByteArray, String, String) -> Unit)? = null,
     onNavigateToRules: (() -> Unit)? = null,
     onNavigateToNavCustomization: (() -> Unit)? = null,
@@ -398,7 +400,7 @@ fun SettingsScreen(
                     }
                 }
 
-                if (onToggleBiometricLock != null || onToggleScreenCaptureBlock != null) {
+                if (onToggleBiometricLock != null || onToggleScreenCaptureBlock != null || onToggleWalletLocationCapture != null) {
                     item {
                         Text(
                             text = "Seguridad",
@@ -470,6 +472,37 @@ fun SettingsScreen(
                                         }
                                         Text(
                                             text = "Impide screenshots y grabación de pantalla, y oculta el contenido en la vista de apps recientes. Activado por defecto.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = FinancePyColors.textSecondary()
+                                        )
+                                    }
+                                }
+                                if (onToggleWalletLocationCapture != null) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Ubicación aproximada en transacciones capturadas",
+                                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                color = FinancePyColors.textPrimary(),
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Switch(
+                                                checked = isWalletLocationCaptureEnabled,
+                                                onCheckedChange = onToggleWalletLocationCapture,
+                                                colors = SwitchDefaults.colors(
+                                                    checkedThumbColor = FinancePyColors.surface(),
+                                                    checkedTrackColor = FinancePyColors.buttonBgPrimary(),
+                                                    uncheckedThumbColor = FinancePyColors.surface(),
+                                                    uncheckedTrackColor = FinancePyColors.borderSecondary()
+                                                )
+                                            )
+                                        }
+                                        Text(
+                                            text = "Guarda la ubicación aproximada del dispositivo (no la del comercio) al detectar una notificación bancaria. Desactivado por defecto; pedirá permiso de ubicación la primera vez.",
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = FinancePyColors.textSecondary()
                                         )
