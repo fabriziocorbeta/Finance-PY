@@ -41,6 +41,40 @@ class ActiveStorageAuthorizationTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  # Regression: authorization used to run only when record_type was "Transaction",
+  # which left every other attachment — bank statement PDFs, full family exports,
+  # family documents — readable by any signed-in user holding the URL.
+  test "user cannot access a non-transaction attachment from a different family" do
+    document = family_documents(:tax_return)
+    document.file.attach(
+      io: StringIO.new("Family A Tax Return"),
+      filename: "tax_return.pdf",
+      content_type: "application/pdf"
+    )
+
+    sign_in @user_b
+
+    get rails_blob_path(document.file)
+
+    assert_response :not_found
+  end
+
+  test "user can access a non-transaction attachment within their own family" do
+    document = family_documents(:tax_return)
+    document.file.attach(
+      io: StringIO.new("Family A Tax Return"),
+      filename: "tax_return.pdf",
+      content_type: "application/pdf"
+    )
+
+    sign_in @user_a
+
+    get rails_blob_path(document.file)
+
+    assert_response :redirect
+    assert_match(/rails\/active_storage\/disk/, response.header["Location"])
+  end
+
   test "user cannot access variants from a different family" do
     # Attach an image to test variants
     file = File.open(Rails.root.join("test/fixtures/files/square-placeholder.png"))
