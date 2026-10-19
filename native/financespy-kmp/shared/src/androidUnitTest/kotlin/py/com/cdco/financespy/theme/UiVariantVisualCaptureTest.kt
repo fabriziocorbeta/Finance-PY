@@ -526,8 +526,14 @@ class UiVariantVisualCaptureTest {
             )
         }
 
-        assertTrue(dashboardM3.width > 0 && dashboardIos.width > 0)
-        assertTrue(transactionsM3.width > 0 && transactionsIos.width > 0)
+        // Las dos variantes tienen que renderizar distinto. Antes esto solo
+        // afirmaba `width > 0`, que no puede fallar: si LocalUiVariant quedara
+        // mal cableado y ambas variantes cayeran a Material 3, o si una pantalla
+        // saliera en blanco, el test seguía en verde y las capturas quedaban
+        // idénticas sin que nadie se enterara.
+        assertDiffer(dashboardM3, dashboardIos, "Dashboard")
+        assertDiffer(transactionsM3, transactionsIos, "Transacciones")
+        assertDiffer(settingsM3, settingsIos, "Ajustes")
 
         val outDir = File("build/outputs/screenshots/ui-variants")
         outDir.mkdirs()
@@ -553,6 +559,45 @@ class UiVariantVisualCaptureTest {
             rightLabel = "Ajustes — iOS (HIG)",
             targetFile = File(outDir, "settings_side_by_side.png")
         )
+    }
+
+    // Compara pixel a pixel con un muestreo cada 4 (suficiente para detectar un
+    // cambio de tema completo y mucho más barato que recorrer el bitmap entero).
+    // Exige además que ninguna de las dos sea un lienzo de un solo color, que es
+    // como se ve una pantalla que no renderizó nada.
+    private fun assertDiffer(left: Bitmap, right: Bitmap, screen: String) {
+        assertTrue(left.width > 0 && left.height > 0, "$screen: Material 3 renderizó vacío")
+        assertTrue(right.width > 0 && right.height > 0, "$screen: iOS renderizó vacío")
+        assertTrue(!isBlank(left), "$screen: la captura Material 3 es de un solo color")
+        assertTrue(!isBlank(right), "$screen: la captura iOS es de un solo color")
+
+        var distintos = 0
+        var total = 0
+        val w = minOf(left.width, right.width)
+        val h = minOf(left.height, right.height)
+        for (x in 0 until w step 4) {
+            for (y in 0 until h step 4) {
+                total++
+                if (left.getPixel(x, y) != right.getPixel(x, y)) distintos++
+            }
+        }
+
+        val proporcion = distintos.toDouble() / total
+        assertTrue(
+            proporcion > 0.02,
+            "$screen: las dos variantes renderizaron casi igual (${"%.4f".format(proporcion)} de píxeles distintos). " +
+                "Probablemente LocalUiVariant no se está propagando."
+        )
+    }
+
+    private fun isBlank(bitmap: Bitmap): Boolean {
+        val first = bitmap.getPixel(0, 0)
+        for (x in 0 until bitmap.width step 8) {
+            for (y in 0 until bitmap.height step 8) {
+                if (bitmap.getPixel(x, y) != first) return false
+            }
+        }
+        return true
     }
 
     private fun renderScreenToBitmap(

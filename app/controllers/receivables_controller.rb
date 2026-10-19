@@ -17,10 +17,6 @@ class ReceivablesController < ApplicationController
     @completed = accounts.select { |a| a.balance.zero? }
   end
 
-  def show
-    super
-  end
-
   # A receivable's total_amount is the amount originally owed, so it has to
   # move the account's *opening* anchor -- not its current balance, which is
   # what's still outstanding and is derived from the payment entries. Without
