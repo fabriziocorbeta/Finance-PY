@@ -105,6 +105,8 @@ import py.com.cdco.financespy.screens.ChatScreen
 import py.com.cdco.financespy.screens.ChatViewModel
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.FinancePyTheme
+import py.com.cdco.financespy.theme.UiVariant
+import py.com.cdco.financespy.theme.UiVariantPreferences
 
 @Composable
 fun App(
@@ -150,6 +152,9 @@ fun App(
     onToggleScreenCaptureBlock: ((Boolean) -> Unit)? = null,
     isWalletLocationCaptureEnabled: Boolean = false,
     onToggleWalletLocationCapture: ((Boolean) -> Unit)? = null,
+    uiVariant: UiVariant = UiVariant.DEFAULT,
+    onSelectUiVariant: ((UiVariant) -> Unit)? = null,
+    uiVariantPreferences: UiVariantPreferences? = null,
     reportsViewModelFactory: () -> ReportsViewModel,
     upayImportViewModelFactory: () -> UpayImportViewModel,
     pdfStatementImportViewModelFactory: () -> PdfStatementImportViewModel,
@@ -160,7 +165,17 @@ fun App(
     chatsListViewModelFactory: () -> ChatsListViewModel = { TODO() },
     chatViewModelFactory: (String?) -> ChatViewModel = { _ -> TODO() }
 ) {
-    FinancePyTheme {
+    var localUiVariant by remember(uiVariantPreferences) {
+        mutableStateOf(uiVariantPreferences?.getUiVariant() ?: uiVariant)
+    }
+    val activeUiVariant = if (onSelectUiVariant != null) uiVariant else localUiVariant
+    val handleSelectUiVariant: (UiVariant) -> Unit = { selected ->
+        uiVariantPreferences?.setUiVariant(selected)
+        localUiVariant = selected
+        onSelectUiVariant?.invoke(selected)
+    }
+
+    FinancePyTheme(uiVariant = activeUiVariant) {
         if (isLoggedIn != null) {
             LaunchedEffect(Unit) {
                 println("ColdStartProfile: FIRST FRAME RENDERED at ${System.currentTimeMillis()} ms")
@@ -211,7 +226,9 @@ fun App(
                             .fillMaxSize()
                             .background(FinancePyColors.surface())
                             .statusBarsPadding()
-                            .navigationBarsPadding(),
+                            .let { mod ->
+                                if (activeUiVariant == UiVariant.IOS) mod else mod.navigationBarsPadding()
+                            },
                         containerColor = FinancePyColors.surface(),
                         topBar = {
                             val pending by (outbox?.pendingCount ?: kotlinx.coroutines.flow.MutableStateFlow(0)).collectAsState()
@@ -279,7 +296,9 @@ fun App(
                                 onNavigateToRules = { navController.navigate(Routes.RULES) },
                                 onNavigateToNavCustomization = { navController.navigate(Routes.NAV_CUSTOMIZATION) },
                                 onNavigateToUpayImport = { navController.navigate(Routes.UPAY_IMPORT) },
-                                onNavigateToPdfStatementImport = { navController.navigate(Routes.PDF_STATEMENT_IMPORT) }
+                                onNavigateToPdfStatementImport = { navController.navigate(Routes.PDF_STATEMENT_IMPORT) },
+                                uiVariant = activeUiVariant,
+                                onSelectUiVariant = handleSelectUiVariant
                             )
                         }
                         composable(Routes.UPAY_IMPORT) {

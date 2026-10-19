@@ -10,14 +10,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,10 +30,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.navigation.NavItem
 import py.com.cdco.financespy.theme.FinancePyColors
+import py.com.cdco.financespy.theme.LocalUiVariant
+import py.com.cdco.financespy.theme.UiVariant
 
 // Overlay simple (no ModalBottomSheet/Drawer de Material3 para minimizar
 // superficie de API nueva) mostrando los ítems del pool completo que no
@@ -46,6 +55,17 @@ fun AppHamburgerMenu(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val variant = LocalUiVariant.current
+    if (variant == UiVariant.IOS) {
+        IosMoreSheet(
+            items = items,
+            onItemClick = onItemClick,
+            onDismiss = onDismiss,
+            modifier = modifier
+        )
+        return
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -113,6 +133,121 @@ fun AppHamburgerMenu(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun IosMoreSheet(
+    items: List<NavItem>,
+    onItemClick: (NavItem) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.4f))
+            .clickable(onClick = onDismiss),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                .background(FinancePyColors.surface())
+                .clickable(onClick = {}, enabled = true)
+                .navigationBarsPadding()
+                .padding(bottom = 24.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 36.dp, height = 5.dp)
+                        .clip(RoundedCornerShape(2.5.dp))
+                        .background(FinancePyColors.borderPrimary())
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Más",
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                    color = FinancePyColors.textPrimary()
+                )
+                Text(
+                    text = "Listo",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                    color = FinancePyColors.buttonBgPrimary(),
+                    modifier = Modifier.clickable(onClick = onDismiss)
+                )
+            }
+
+            if (items.isEmpty()) {
+                Text(
+                    text = "Todos los ítems están en la barra principal.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = FinancePyColors.textSecondary(),
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                )
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(FinancePyColors.container())
+                ) {
+                    items.forEachIndexed { index, item ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onItemClick(item) }
+                                .padding(horizontal = 16.dp, vertical = 13.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = item.label,
+                                tint = FinancePyColors.buttonBgPrimary(),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = item.label,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = FinancePyColors.textPrimary(),
+                                modifier = Modifier.weight(1f)
+                            )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = FinancePyColors.textSubdued(),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        if (index < items.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(start = 48.dp),
+                                thickness = 0.5.dp,
+                                color = FinancePyColors.borderSecondary()
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
         }
     }
 }
