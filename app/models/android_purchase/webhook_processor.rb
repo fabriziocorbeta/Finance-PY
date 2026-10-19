@@ -5,7 +5,10 @@ class AndroidPurchase::WebhookProcessor
   # bank notification (see ContinentalSmsExtractor on the Android side).
   # Not exhaustive -- only brands confirmed against real captured
   # notifications so far; extend as more are seen in the wild.
-  FUEL_MERCHANT_KEYWORDS = %w[PETROBRAS COPETROL PUMA ENERGY BARCOS].freeze
+  # PETROPAR added 2026-10-18 after a real capture ("PETROPAR CONMEBOL",
+  # Gs. 72.000) came through uncategorized -- it is the state fuel company,
+  # so it is at least as common here as the private brands already listed.
+  FUEL_MERCHANT_KEYWORDS = %w[PETROBRAS COPETROL PUMA ENERGY BARCOS PETROPAR].freeze
 
   def initialize(params, family: nil, user: nil)
     @account_id = params[:account_id].to_s

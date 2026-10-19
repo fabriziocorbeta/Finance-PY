@@ -13,10 +13,16 @@ import py.com.cdco.financespy.security.OwnerScope
 // webhook POST attempt (see WalletCaptureHandler), never persisted to disk.
 // Everything the app actually needs to reconcile/retry a capture -- account,
 // amount, merchant, item, timestamp -- is already broken out below.
+// accountId is nullable on purpose: a capture whose card text matched no
+// account used to be thrown away on the spot, which silently lost real
+// money (confirmed live -- two Google Pay purchases vanished after the
+// matching account was renamed). Those are now queued with a null accountId
+// and re-resolved on every retryPending(), so the capture heals itself as
+// soon as an account matches again.
 data class PendingCapture(
     val id: String,
     val capturedAt: String,
-    val accountId: String,
+    val accountId: String?,
     val amount: String,
     val merchant: String,
     val item: String,
@@ -33,7 +39,10 @@ data class PendingCapture(
 internal fun parseCaptureJson(obj: JSONObject): PendingCapture = PendingCapture(
     id = obj.getString("id"),
     capturedAt = obj.getString("capturedAt"),
-    accountId = obj.getString("accountId"),
+    // Absent (or JSON null) for an unmatched capture. Reading with has()/
+    // isNull() rather than getString() keeps items queued by older builds,
+    // which always wrote the key, parsing unchanged.
+    accountId = if (obj.has("accountId") && !obj.isNull("accountId")) obj.getString("accountId") else null,
     amount = obj.getString("amount"),
     merchant = obj.getString("merchant"),
     item = obj.getString("item"),
@@ -46,7 +55,7 @@ internal fun parseCaptureJson(obj: JSONObject): PendingCapture = PendingCapture(
 internal fun captureToJson(c: PendingCapture): JSONObject = JSONObject().apply {
     put("id", c.id)
     put("capturedAt", c.capturedAt)
-    put("accountId", c.accountId)
+    c.accountId?.let { put("accountId", it) }
     put("amount", c.amount)
     put("merchant", c.merchant)
     put("item", c.item)
