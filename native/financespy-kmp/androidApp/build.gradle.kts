@@ -13,8 +13,8 @@ android {
         applicationId = "py.com.cdco.financespy"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.1.0-layout-fix"
+        versionCode = 5
+        versionName = "0.2.0"
         // Same pattern as the release keystore below: comes from an env var
         // (CI secret or a local shell export), never committed. An empty
         // value is a valid state -- Maps Compose just renders a blank/grey
