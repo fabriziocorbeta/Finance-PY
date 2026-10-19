@@ -1929,7 +1929,8 @@ CREATE TABLE public.receivables (
     updated_at timestamp(6) without time zone NOT NULL,
     locked_attributes jsonb DEFAULT '{}'::jsonb,
     subtype character varying,
-    family_id uuid NOT NULL
+    family_id uuid NOT NULL,
+    first_due_date date
 );
 
 ALTER TABLE ONLY public.receivables FORCE ROW LEVEL SECURITY;
@@ -8304,6 +8305,7 @@ CREATE POLICY webauthn_credentials_family_isolation_policy ON public.webauthn_cr
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261017000000'),
 ('20261016000000'),
 ('20261007160000'),
 ('20261007150000'),

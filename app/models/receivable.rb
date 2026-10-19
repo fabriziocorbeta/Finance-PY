@@ -36,7 +36,13 @@ class Receivable < ApplicationRecord
       amount = base_amount
       amount += remainder if i == installment_count
 
-      if due_day
+      # first_due_date wins outright when set: the user picked an exact date for
+      # installment 1, and the rest run monthly from it. Mixing in due_day here
+      # would make installment 2 jump to a different day of the month than the
+      # one they chose.
+      if first_due_date
+        current_due_date = i == 1 ? first_due_date : current_due_date.next_month
+      elsif due_day
         if i == 1
           candidate = Date.new(start_date.year, start_date.month, [ due_day, Date.new(start_date.year, start_date.month, -1).day ].min)
           current_due_date = candidate < start_date ? Date.new(start_date.next_month.year, start_date.next_month.month, [ due_day, Date.new(start_date.next_month.year, start_date.next_month.month, -1).day ].min) : candidate

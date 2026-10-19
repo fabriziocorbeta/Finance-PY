@@ -20,6 +20,7 @@ data class ReceivableFormState(
     val balance: String = "",
     val installmentCount: String = "",
     val dueDay: String = "",
+    val firstDueDate: String = "",
     val currency: String = "PYG",
     val notes: String = "",
     val isEditing: Boolean = false,
@@ -49,6 +50,7 @@ class ReceivableFormViewModel(
                             balance = entity.balance.toString(),
                             installmentCount = entity.installmentCount?.toString() ?: "",
                             dueDay = entity.dueDay?.toString() ?: "",
+                            firstDueDate = entity.firstDueDate ?: "",
                             currency = entity.currency,
                             notes = entity.notes ?: ""
                         )
@@ -63,6 +65,7 @@ class ReceivableFormViewModel(
     fun updateBalance(value: String) = _state.update { it.copy(balance = value) }
     fun updateInstallmentCount(value: String) = _state.update { it.copy(installmentCount = value) }
     fun updateDueDay(value: String) = _state.update { it.copy(dueDay = value) }
+    fun updateFirstDueDate(value: String) = _state.update { it.copy(firstDueDate = value) }
     fun updateCurrency(value: String) = _state.update { it.copy(currency = value) }
     fun updateNotes(value: String) = _state.update { it.copy(notes = value) }
 
@@ -110,6 +113,8 @@ class ReceivableFormViewModel(
             null
         }
 
+        val parsedFirstDueDate = current.firstDueDate.trim().ifBlank { null }
+
         _state.update { it.copy(isSaving = true, error = null) }
 
         scope.launch {
@@ -122,6 +127,7 @@ class ReceivableFormViewModel(
                         balance = parsedBalance,
                         installment_count = parsedInstallmentCount,
                         due_day = parsedDueDay,
+                        first_due_date = parsedFirstDueDate,
                         currency = current.currency,
                         notes = current.notes.ifBlank { null }
                     )
@@ -134,6 +140,7 @@ class ReceivableFormViewModel(
                         balance = parsedBalance,
                         installment_count = parsedInstallmentCount,
                         due_day = parsedDueDay,
+                        first_due_date = parsedFirstDueDate,
                         currency = current.currency,
                         notes = current.notes.ifBlank { null }
                     )
@@ -171,6 +178,7 @@ private fun ReceivableDto.toEntity() = ReceivableEntity(
     percentPaid = percent_paid ?: 0.0,
     installmentCount = installment_count,
     dueDay = due_day,
+    firstDueDate = first_due_date,
     currency = currency ?: "PYG",
     notes = notes,
     updatedAt = updated_at ?: "",

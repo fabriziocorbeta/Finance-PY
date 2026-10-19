@@ -104,4 +104,52 @@ class ReceivablesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Receivable account updated", flash[:notice]
     assert_enqueued_with(job: SyncJob)
   end
+
+  test "updating total_amount moves the opening balance anchor" do
+    patch receivable_path(@account), params: {
+      account: {
+        name: @account.name,
+        currency: @account.currency,
+        accountable_type: "Receivable",
+        accountable_attributes: {
+          id: @account.accountable_id,
+          total_amount: 2_000_000,
+          first_due_date: "2026-12-05"
+        }
+      }
+    }
+
+    assert_redirected_to @account
+    @account.reload
+
+    assert_equal 2_000_000, @account.accountable.total_amount.to_i
+    assert_equal Date.new(2026, 12, 5), @account.accountable.first_due_date
+    assert_equal 2_000_000, @account.first_valuation_amount.amount
+  end
+
+  # The card used to link at receivable_path(account.receivable), which 404s:
+  # receivables#show looks up an Account, and even with the right id it has no
+  # template (406). Both links on the card have to actually resolve.
+  test "card links to a working detail page and a working edit dialog" do
+    get receivables_path
+    assert_response :success
+    assert_select "a[href=?]", account_path(@account)
+    assert_select "a[href=?]", edit_receivable_path(@account)
+
+    get account_path(@account)
+    assert_response :success
+
+    get edit_receivable_path(@account)
+    assert_response :success
+    assert_select "input[name=?]", "account[accountable_attributes][first_due_date]"
+  end
+
+  test "first_due_date drives the installment schedule instead of due_day" do
+    receivable = @account.accountable
+    receivable.update!(total_amount: 300, installment_count: 3, due_day: 20, first_due_date: Date.new(2026, 1, 5))
+
+    due_dates = receivable.installment_schedule.map { |i| i[:due_date] }
+
+    assert_equal [ Date.new(2026, 1, 5), Date.new(2026, 2, 5), Date.new(2026, 3, 5) ], due_dates
+  end
 end

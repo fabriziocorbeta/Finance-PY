@@ -19,6 +19,7 @@ final class FinancePyApiReceivablesTests: XCTestCase {
             paidAmountCents: 0,
             installmentCount: 1,
             dueDay: 15,
+            firstDueDate: nil,
             currency: "USD",
             notes: nil,
             updatedAt: "2023",

@@ -16,6 +16,7 @@ final class ReceivableEntity {
     var percentPaid: Double
     var installmentCount: Int?
     var dueDay: Int?
+    var firstDueDate: String?
     var currency: String
     var notes: String?
     var updatedAt: String
@@ -37,6 +38,7 @@ final class ReceivableEntity {
         percentPaid: Double,
         installmentCount: Int?,
         dueDay: Int?,
+        firstDueDate: String?,
         currency: String,
         notes: String?,
         updatedAt: String,
@@ -55,6 +57,7 @@ final class ReceivableEntity {
         self.percentPaid = percentPaid
         self.installmentCount = installmentCount
         self.dueDay = dueDay
+        self.firstDueDate = firstDueDate
         self.currency = currency
         self.notes = notes
         self.updatedAt = updatedAt

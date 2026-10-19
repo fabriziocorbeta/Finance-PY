@@ -6,6 +6,7 @@ en:
       installment_count_placeholder: '6'
       due_day: Due day (optional)
       due_day_placeholder: '13'
+      first_due_date: First due date (optional)
     new:
       title: Enter receivable details
     edit:
@@ -18,6 +19,8 @@ en:
       completed: Completed (%{count})
       overdue: Overdue
       due_day: Due day
+      first_due_date: First due
+      edit: Edit
       original_balance: Original Balance
       remaining_balance: Remaining Balance
       installments: Installments

@@ -66,6 +66,7 @@ private fun receivableEntity(id: String) = ReceivableEntity(
     percentPaid = 0.0,
     installmentCount = null,
     dueDay = null,
+    firstDueDate = null,
     currency = "PYG",
     notes = null,
     updatedAt = "2026-08-25T12:00:00Z"
