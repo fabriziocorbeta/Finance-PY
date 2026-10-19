@@ -11,7 +11,7 @@ final class FinancePyApiTransactionsTests: XCTestCase {
 
     func testCreateTransactionSuccess() async throws {
         let accRef = AccountRefDto(id: "1", name: "Acc", accountType: "cash")
-        let tx = TransactionDetailDto(id: "1", date: "2023-01-01", amount: "10", amountCents: 1000, signedAmountCents: 1000, currency: "USD", name: "Tx", notes: nil, classification: "income", account: accRef, category: nil, merchant: nil, tags: [], transfer: nil, createdAt: "2023", updatedAt: "2023")
+        let tx = TransactionDetailDto(id: "1", date: "2023-01-01", amount: AnyStringAmount(wrappedValue: "10"), amountCents: 1000, signedAmountCents: 1000, currency: "USD", name: "Tx", notes: nil, classification: "income", account: accRef, category: nil, merchant: nil, tags: [], transfer: nil, location: nil, createdAt: "2023", updatedAt: "2023")
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
         let data = try encoder.encode(tx)
@@ -21,7 +21,7 @@ final class FinancePyApiTransactionsTests: XCTestCase {
             return (response, data)
         }
 
-        let body = CreateTransactionBody(accountId: "1", date: "2023", amount: "10", nature: "income", name: "Tx", notes: nil, currency: nil, categoryId: nil, merchantId: nil, tagIds: nil)
+        let body = CreateTransactionBody(accountId: "1", date: "2023", amount: AnyStringAmount(wrappedValue: "10"), nature: "income", name: "Tx", notes: nil, currency: nil, categoryId: nil, merchantId: nil, tagIds: nil)
         let result = try await FinancePyApi.shared.createTransaction(body: body)
         XCTAssertEqual(result.id, "1")
     }
@@ -32,7 +32,7 @@ final class FinancePyApiTransactionsTests: XCTestCase {
             return (response, "Bad Request".data(using: .utf8)!)
         }
         do {
-            _ = try await FinancePyApi.shared.createTransaction(body: CreateTransactionBody(accountId: "1", date: "2023", amount: "10", nature: "income", name: "Tx", notes: nil, currency: nil, categoryId: nil, merchantId: nil, tagIds: nil))
+            _ = try await FinancePyApi.shared.createTransaction(body: CreateTransactionBody(accountId: "1", date: "2023", amount: AnyStringAmount(wrappedValue: "10"), nature: "income", name: "Tx", notes: nil, currency: nil, categoryId: nil, merchantId: nil, tagIds: nil))
             XCTFail("Expected error")
         } catch NetworkError.httpError(let code, _) {
             XCTAssertEqual(code, 400)
@@ -47,7 +47,7 @@ final class FinancePyApiTransactionsTests: XCTestCase {
             return (response, "Server Error".data(using: .utf8)!)
         }
         do {
-            _ = try await FinancePyApi.shared.createTransaction(body: CreateTransactionBody(accountId: "1", date: "2023", amount: "10", nature: "income", name: "Tx", notes: nil, currency: nil, categoryId: nil, merchantId: nil, tagIds: nil))
+            _ = try await FinancePyApi.shared.createTransaction(body: CreateTransactionBody(accountId: "1", date: "2023", amount: AnyStringAmount(wrappedValue: "10"), nature: "income", name: "Tx", notes: nil, currency: nil, categoryId: nil, merchantId: nil, tagIds: nil))
             XCTFail("Expected error")
         } catch NetworkError.httpError(let code, _) {
             XCTAssertEqual(code, 500)
@@ -62,7 +62,7 @@ final class FinancePyApiTransactionsTests: XCTestCase {
             return (response, "not json".data(using: .utf8)!)
         }
         do {
-            _ = try await FinancePyApi.shared.createTransaction(body: CreateTransactionBody(accountId: "1", date: "2023", amount: "10", nature: "income", name: "Tx", notes: nil, currency: nil, categoryId: nil, merchantId: nil, tagIds: nil))
+            _ = try await FinancePyApi.shared.createTransaction(body: CreateTransactionBody(accountId: "1", date: "2023", amount: AnyStringAmount(wrappedValue: "10"), nature: "income", name: "Tx", notes: nil, currency: nil, categoryId: nil, merchantId: nil, tagIds: nil))
             XCTFail("Expected error")
         } catch NetworkError.decodingError {
             // Expected

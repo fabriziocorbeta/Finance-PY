@@ -10,9 +10,24 @@ final class FinancePyApiReceivablesTests: XCTestCase {
     }
 
     func testFetchReceivablesSuccess() async throws {
-        let rec = ReceivableDto(id: "1", accountId: "1", debtorName: "Debtor", description: nil, principalCents: 100, currency: "USD", status: "active", createdAt: "2023", updatedAt: "2023", defaultInterestRate: nil, defaultPenaltyRate: nil, terms: nil, installmentSchedule: nil)
-        let responseDto = ReceivablesResponseDto(data: [rec])
-        let data = try JSONEncoder().encode(responseDto)
+        let rec = ReceivableDto(
+            id: "1",
+            accountId: "1",
+            name: "Debtor",
+            balanceCents: 100,
+            originalBalanceCents: 100,
+            paidAmountCents: 0,
+            installmentCount: 1,
+            dueDay: 15,
+            currency: "USD",
+            notes: nil,
+            updatedAt: "2023",
+            installmentSchedule: nil
+        )
+        let responseDto = ReceivablesResponse(data: [rec], meta: nil)
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let data = try encoder.encode(responseDto)
 
         MockURLProtocol.requestHandler = { request in
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!

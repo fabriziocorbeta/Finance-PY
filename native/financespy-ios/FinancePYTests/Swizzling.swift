@@ -13,6 +13,8 @@ extension URLSessionConfiguration {
         guard !hasSwizzled else { return }
         hasSwizzled = true
 
+        URLProtocol.registerClass(MockURLProtocol.self)
+
         let originalSelector = #selector(getter: URLSessionConfiguration.default)
         let swizzledSelector = #selector(URLSessionConfiguration.swizzled_default)
 

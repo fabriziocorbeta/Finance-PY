@@ -1,6 +1,20 @@
 import XCTest
 @testable import FinancePY
 
+extension TokenResponse: Encodable {
+    private enum CodingKeys: String, CodingKey {
+        case accessToken, refreshToken, tokenType, expiresIn
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(accessToken, forKey: .accessToken)
+        try container.encodeIfPresent(refreshToken, forKey: .refreshToken)
+        try container.encode(tokenType, forKey: .tokenType)
+        try container.encode(expiresIn, forKey: .expiresIn)
+    }
+}
+
 @MainActor
 final class AuthRepositoryTests: XCTestCase {
 
@@ -13,7 +27,7 @@ final class AuthRepositoryTests: XCTestCase {
     func testExchangeCodeSuccess() async throws {
         let authRepo = AuthRepository.shared
         // Mock currentCodeVerifier
-        let pkce = PkceGenerator.generate()
+        _ = PkceGenerator.generate()
         // Use reflection or just login flow since currentCodeVerifier is private(set).
         // It's easier to build Authorization URL which sets the verifier
         _ = try authRepo.buildAuthorizationUrl()

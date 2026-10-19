@@ -72,9 +72,9 @@ final class FuelLogDtoDecodingTests: XCTestCase {
         let fuelLog = try decoder.decode(FuelLogDto.self, from: json)
 
         XCTAssertEqual(fuelLog.liters, "45.5")
-        XCTAssertEqual(fuelLog.cost, "10500.0")
+        XCTAssertEqual(fuelLog.cost, "10500")
         XCTAssertEqual(fuelLog.fuelLogLines?.first?.liters, "45.5")
-        XCTAssertEqual(fuelLog.fuelLogLines?.first?.cost, "10500.0")
+        XCTAssertEqual(fuelLog.fuelLogLines?.first?.cost, "10500")
     }
 
 }

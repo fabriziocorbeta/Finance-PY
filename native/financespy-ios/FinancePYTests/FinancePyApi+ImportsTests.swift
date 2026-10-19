@@ -10,18 +10,28 @@ final class FinancePyApiImportsTests: XCTestCase {
     }
 
     func testFetchImportsSuccess() async throws {
-        let imp = DocumentImportDto(id: "1", filename: "test.csv", status: "pending", importType: "bank", accountId: nil, rowsCount: 0, processedCount: 0, errorCount: 0, errorMessage: nil, createdAt: "2023", updatedAt: "2023")
-        let responseDto = ImportsResponseDto(data: [imp])
-        let data = try JSONEncoder().encode(responseDto)
+        let imp = ImportResultDto(
+            id: "1",
+            type: "UpayImport",
+            status: "pending",
+            accountId: nil,
+            error: nil,
+            statusDetail: nil,
+            stats: nil
+        )
+        let responseDto = ImportResultEnvelope(data: imp)
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let data = try encoder.encode(responseDto)
 
         MockURLProtocol.requestHandler = { request in
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (response, data)
         }
 
-        let result = try await FinancePyApi.shared.fetchImports()
-        XCTAssertEqual(result.count, 1)
-        XCTAssertEqual(result.first?.id, "1")
+        let result = try await FinancePyApi.shared.fetchImport(id: "1")
+        XCTAssertEqual(result.id, "1")
+        XCTAssertEqual(result.type, "UpayImport")
     }
 
     func testApi4xx() async {
@@ -30,7 +40,7 @@ final class FinancePyApiImportsTests: XCTestCase {
             return (response, "Bad Request".data(using: .utf8)!)
         }
         do {
-            _ = try await FinancePyApi.shared.fetchImports()
+            _ = try await FinancePyApi.shared.fetchImport(id: "1")
             XCTFail("Expected error")
         } catch NetworkError.httpError(let code, _) {
             XCTAssertEqual(code, 400)
@@ -45,7 +55,7 @@ final class FinancePyApiImportsTests: XCTestCase {
             return (response, "Server Error".data(using: .utf8)!)
         }
         do {
-            _ = try await FinancePyApi.shared.fetchImports()
+            _ = try await FinancePyApi.shared.fetchImport(id: "1")
             XCTFail("Expected error")
         } catch NetworkError.httpError(let code, _) {
             XCTAssertEqual(code, 500)
@@ -60,7 +70,7 @@ final class FinancePyApiImportsTests: XCTestCase {
             return (response, "not json".data(using: .utf8)!)
         }
         do {
-            _ = try await FinancePyApi.shared.fetchImports()
+            _ = try await FinancePyApi.shared.fetchImport(id: "1")
             XCTFail("Expected error")
         } catch NetworkError.decodingError {
             // Expected

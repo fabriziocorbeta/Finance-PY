@@ -48,7 +48,7 @@ final class GoalsDecodingTests: XCTestCase {
         XCTAssertEqual(goal.currentBalance, "1500.5") // Number from backend parsed into string wrapper
         XCTAssertEqual(goal.currentBalanceCents, 150050)
         XCTAssertEqual(goal.remainingAmount, "3499.5") // String from backend
-        XCTAssertEqual(goal.catchUpDelta, "50.0") // Number from backend parsed into string wrapper
+        XCTAssertEqual(goal.catchUpDelta, "50") // Whole number from backend parsed via Int64 branch of AnyStringAmount
         XCTAssertEqual(goal.accountIds, ["acc_1", "acc_2"])
     }
 

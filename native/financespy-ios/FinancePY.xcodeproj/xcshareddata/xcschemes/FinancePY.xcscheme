@@ -38,6 +38,16 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "59E19EE98ADAD3150898FC21"
+               BuildableName = "FinancePYTests.xctest"
+               BlueprintName = "FinancePYTests"
+               ReferencedContainer = "container:FinancePY.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

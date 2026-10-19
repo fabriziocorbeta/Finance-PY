@@ -10,9 +10,24 @@ final class FinancePyApiPurchaseOrdersTests: XCTestCase {
     }
 
     func testFetchPurchaseOrdersSuccess() async throws {
-        let po = PurchaseOrderDto(id: "1", referenceNumber: "PO1", status: "draft", totalCents: 100, currency: "USD", notes: nil, issuedAt: nil, expectedDeliveryAt: nil, vendorId: nil, createdAt: "2023", updatedAt: "2023", items: [])
+        let po = PurchaseOrderDto(
+            id: "1",
+            orderNumber: 1,
+            supplierName: "Supplier",
+            status: "draft",
+            currency: "USD",
+            expectedDate: nil,
+            notes: nil,
+            accountId: nil,
+            total: 100.0,
+            createdAt: "2023",
+            updatedAt: "2023",
+            purchaseOrderItems: []
+        )
         let responseDto = PurchaseOrdersResponseDto(data: [po])
-        let data = try JSONEncoder().encode(responseDto)
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let data = try encoder.encode(responseDto)
 
         MockURLProtocol.requestHandler = { request in
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!

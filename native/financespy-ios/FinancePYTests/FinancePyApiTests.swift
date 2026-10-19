@@ -29,7 +29,7 @@ final class FinancePyApiTests: XCTestCase {
     }
 
     func testFetchBalanceSheetSuccess() async throws {
-        let money = MoneyDto(cents: 1000, amount: "10.00", currency: "USD")
+        let money = MoneyDto(cents: 1000, amount: AnyStringAmount(wrappedValue: "10.00"), currency: "USD")
         let responseDto = BalanceSheetResponse(currency: "USD", netWorth: money, assets: money, liabilities: money)
 
         let encoder = JSONEncoder()
@@ -48,7 +48,7 @@ final class FinancePyApiTests: XCTestCase {
 
     func testFetchRecentTransactionsSuccess() async throws {
         let accountRef = AccountRefDto(id: "1", name: "Acc", accountType: "cash")
-        let transactionDto = TransactionListItemDto(id: "1", date: "2023-01-01", amountCents: 1000, signedAmountCents: -1000, currency: "USD", name: "Tx", classification: "expense", account: accountRef, category: nil, merchant: nil, createdAt: "2023-01-01", updatedAt: "2023-01-01")
+        let transactionDto = TransactionListItemDto(id: "1", date: "2023-01-01", amountCents: 1000, signedAmountCents: -1000, currency: "USD", name: "Tx", classification: "expense", account: accountRef, category: nil, merchant: nil, location: nil, createdAt: "2023-01-01", updatedAt: "2023-01-01")
         let paginationDto = PaginationDto(page: 1, perPage: 100, totalCount: 1, totalPages: 1)
         let responseDto = TransactionsResponse(transactions: [transactionDto], pagination: paginationDto)
 

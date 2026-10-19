@@ -9,7 +9,7 @@ final class ReceivableDetailViewTests: XCTestCase {
 
         let allAccounts = [account1, account2, account3]
 
-        let paymentAccounts = allAccounts.filter { $0.accountType?.lowercased() == "depository" && $0.status == "active" }
+        let paymentAccounts = allAccounts.filter { $0.accountType.lowercased() == "depository" && $0.status == "active" }
 
         XCTAssertEqual(paymentAccounts.count, 2)
         XCTAssertEqual(paymentAccounts[0].id, "1")

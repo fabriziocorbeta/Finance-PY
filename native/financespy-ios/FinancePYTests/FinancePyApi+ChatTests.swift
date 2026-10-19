@@ -11,8 +11,11 @@ final class FinancePyApiChatTests: XCTestCase {
 
     func testFetchChatsSuccess() async throws {
         let chat = ChatDto(id: "1", title: "Chat 1", error: nil, createdAt: "2023", updatedAt: "2023", messages: [], messageCount: 0, lastMessageAt: nil)
-        let responseDto = ChatsResponseDto(data: [chat])
-        let data = try JSONEncoder().encode(responseDto)
+        let pagination = PaginationDto(page: 1, perPage: 20, totalCount: 1, totalPages: 1)
+        let responseDto = ChatsListResponse(chats: [chat], pagination: pagination)
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let data = try encoder.encode(responseDto)
 
         MockURLProtocol.requestHandler = { request in
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
@@ -20,8 +23,8 @@ final class FinancePyApiChatTests: XCTestCase {
         }
 
         let result = try await FinancePyApi.shared.fetchChats()
-        XCTAssertEqual(result.count, 1)
-        XCTAssertEqual(result.first?.id, "1")
+        XCTAssertEqual(result.chats.count, 1)
+        XCTAssertEqual(result.chats.first?.id, "1")
     }
 
     func testFetchChats5xx() async {

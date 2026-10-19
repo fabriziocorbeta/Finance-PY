@@ -10,9 +10,29 @@ final class FinancePyApiSalesTests: XCTestCase {
     }
 
     func testFetchSalesSuccess() async throws {
-        let sale = SaleDto(id: "1", referenceNumber: "S1", status: "completed", totalCents: 100, currency: "USD", notes: nil, issuedAt: nil, clientId: nil, createdAt: "2023", updatedAt: "2023", items: [])
+        let sale = SaleDto(
+            id: "1",
+            saleNumber: 1,
+            clientName: "Client",
+            status: "completed",
+            currency: "USD",
+            paymentMethod: nil,
+            invoiceNumber: nil,
+            condition: nil,
+            notes: nil,
+            deliveryAddress: nil,
+            deliveryDate: nil,
+            carrier: nil,
+            accountId: nil,
+            total: 100.0,
+            createdAt: "2023",
+            updatedAt: "2023",
+            saleItems: []
+        )
         let responseDto = SalesResponseDto(data: [sale])
-        let data = try JSONEncoder().encode(responseDto)
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let data = try encoder.encode(responseDto)
 
         MockURLProtocol.requestHandler = { request in
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
