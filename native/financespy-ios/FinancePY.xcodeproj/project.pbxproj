@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AC01ASSET0001AAAA0001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AC01ASSET0001AAAA0002 /* Assets.xcassets */; };
 		ABCDEF0123456789ABCDEF02 /* ReceivableDetailViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCDEF0123456789ABCDEF01 /* ReceivableDetailViewTests.swift */; };
 		DDDDDDDDDDDDDDDDDDDDDDD2 /* DecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDDDDDDDDDDDDDDDDDDDDDD1 /* DecodingTests.swift */; };
 		C5ABCD012345678900000002 /* FuelLogDtoDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5ABCD012345678900000001 /* FuelLogDtoDecodingTests.swift */; };
@@ -110,6 +111,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		AC01ASSET0001AAAA0002 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = FinancePY/Assets.xcassets; sourceTree = SOURCE_ROOT; };
 		ABCDEF0123456789ABCDEF01 /* ReceivableDetailViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReceivableDetailViewTests.swift; path = FinancePYTests/ReceivableDetailViewTests.swift; sourceTree = SOURCE_ROOT; };
 		DDDDDDDDDDDDDDDDDDDDDDD1 /* DecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DecodingTests.swift; path = FinancePYTests/DecodingTests.swift; sourceTree = SOURCE_ROOT; };
 		C5ABCD012345678900000001 /* FuelLogDtoDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FuelLogDtoDecodingTests.swift; path = FinancePYTests/FuelLogDtoDecodingTests.swift; sourceTree = SOURCE_ROOT; };
@@ -414,6 +416,7 @@
 				07934466B711642D1BB38E29 /* FinancePyApi+BudgetsTests.swift */,
 				EC4043DE84F88648CD81FFF8 /* FinancePyApi+ChatTests.swift */,
 				ED6C47B096051C1A7560872E /* FinancePyApi+FleetTests.swift */,
+				AC01ASSET0001AAAA0002 /* Assets.xcassets */,
 				3CEB423AB441949581808740 /* FinancePyApi+GoalsTests.swift */,
 				AC01CON7RACT0001AAAA0002 /* ApiContractShapeTests.swift */,
 				8071475B9A7D9545E423C32D /* FinancePyApi+ImportsTests.swift */,
@@ -566,6 +569,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AC01ASSET0001AAAA0001 /* Assets.xcassets in Resources */,
 				DD782D00959044D050FB8352 /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
