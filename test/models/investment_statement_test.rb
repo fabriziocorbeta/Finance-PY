@@ -7,6 +7,50 @@ class InvestmentStatementTest < ActiveSupport::TestCase
     @statement = InvestmentStatement.new(@family, user: nil)
   end
 
+  # A fund or savings account has no priced holdings, so its return arrives as
+  # credited interest. This used to report nothing at all: `interest` was
+  # hardcoded to 0 in Totals, and unrealized_gains_trend returned nil without
+  # holdings, so a real balance of credited interest rendered as a bare "-".
+  test "interest credits count toward total interest" do
+    account = create_investment_account(balance: 1000)
+    create_interest_trade(account: account, amount: 150)
+
+    assert_equal 150, @statement.total_interest
+  end
+
+  test "interest drives the return trend when there are no priced holdings" do
+    account = create_investment_account(balance: 10_000)
+    create_buy_trade(account: account, amount: 10_000)
+    create_interest_trade(account: account, amount: 500)
+
+    trend = @statement.unrealized_gains_trend
+
+    assert_not_nil trend, "expected a trend once interest has been credited"
+    assert_equal 500, trend.value.amount
+    assert_equal 10_000, trend.previous.amount
+    assert_equal 10_500, trend.current.amount
+  end
+
+  # Interest is a return *on* capital, not new capital. Counting it as a
+  # contribution would inflate the denominator and understate the yield.
+  test "interest is excluded from contributions and withdrawals" do
+    account = create_investment_account(balance: 5_000)
+    create_buy_trade(account: account, amount: 5_000)
+    create_interest_trade(account: account, amount: 250)
+
+    totals = @statement.totals(period: Period.all_time)
+
+    assert_equal 5_000, totals.contributions.amount
+    assert_equal 0, totals.withdrawals.amount
+    assert_equal 250, totals.interest.amount
+  end
+
+  test "return trend stays nil when there is neither a holding nor interest" do
+    create_investment_account(balance: 1000)
+
+    assert_nil @statement.unrealized_gains_trend
+  end
+
   test "portfolio_value and cash_balance with a single-currency family" do
     create_investment_account(balance: 1000, cash_balance: 100)
 
@@ -185,6 +229,40 @@ class InvestmentStatementTest < ActiveSupport::TestCase
         cash_balance: cash_balance,
         currency: currency,
         accountable: Investment.new
+      )
+    end
+
+    # Mirrors how an interest credit is actually stored: a Trade labelled
+    # "Interest", qty 0 (no security changes hands), and a negative entry
+    # amount because money comes into the account.
+    def create_interest_trade(account:, amount:, date: Date.current)
+      account.entries.create!(
+        date: date,
+        name: "Interest",
+        amount: -amount,
+        currency: account.currency,
+        entryable: Trade.new(
+          security: securities(:aapl),
+          qty: 0,
+          price: 0,
+          currency: account.currency,
+          investment_activity_label: "Interest"
+        )
+      )
+    end
+
+    def create_buy_trade(account:, amount:, qty: 1, date: Date.current)
+      account.entries.create!(
+        date: date,
+        name: "Buy",
+        amount: amount,
+        currency: account.currency,
+        entryable: Trade.new(
+          security: securities(:aapl),
+          qty: qty,
+          price: amount / qty,
+          currency: account.currency
+        )
       )
     end
 end
