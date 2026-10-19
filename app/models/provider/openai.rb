@@ -240,7 +240,13 @@ class Provider::Openai < Provider
       )
 
       result = PdfProcessor.new(
-        client,
+        # Same reasoning as extract_bank_statement below: this runs inside
+        # ProcessPdfJob, not a live request, and reading a full statement PDF
+        # routinely takes longer than the chat client's 60s. Using `client`
+        # here made every PDF import die at ~62s with
+        # "Net::ReadTimeout with #<TCPSocket:(closed)>" -- confirmed against
+        # production, where two consecutive imports failed at 62.3s and 61.5s.
+        bank_statement_client,
         model: effective_model,
         pdf_content: pdf_content,
         custom_provider: custom_provider?,
