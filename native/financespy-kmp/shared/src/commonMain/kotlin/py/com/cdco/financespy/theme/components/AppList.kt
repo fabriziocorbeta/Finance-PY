@@ -65,11 +65,11 @@ fun AppGroupedListCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val metrics = LocalFinancePyMetrics.current
+    val shape = RoundedCornerShape(metrics.cardCornerRadius)
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(metrics.cardCornerRadius))
-            .background(FinancePyColors.container()),
+            .iosLiquidGlass(shape),
         content = content
     )
 }
