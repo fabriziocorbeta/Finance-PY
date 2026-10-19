@@ -16,5 +16,6 @@ json.subtype account.subtype
 json.status account.status
 json.institution_name account.institution_name
 json.institution_domain account.institution_domain
+json.card_identifier account.card_identifier
 json.created_at account.created_at.iso8601
 json.updated_at account.updated_at.iso8601

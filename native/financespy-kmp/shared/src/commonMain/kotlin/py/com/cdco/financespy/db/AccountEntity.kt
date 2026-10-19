@@ -14,5 +14,10 @@ data class AccountEntity(
     val accountType: String,
     val subtype: String?,
     val status: String,
-    val updatedAt: String
+    val updatedAt: String,
+    // Últimos 4 dígitos de la tarjeta física. Es lo único estable para mapear
+    // una notificación del banco a esta cuenta: el nombre lo elige el usuario
+    // y varias tarjetas del mismo emisor lo comparten.
+    val cardIdentifier: String? = null,
+    val institutionName: String? = null
 )

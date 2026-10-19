@@ -40,6 +40,8 @@ en:
       institution_name_placeholder: e.g., Chase Bank
       institution_domain_label: Institution domain
       institution_domain_placeholder: e.g., chase.com
+      card_identifier_label: Card last 4 digits
+      card_identifier_placeholder: e.g., 2269
       notes_label: Notes
       notes_placeholder: Store additional information like account numbers, sort codes, IBAN, routing numbers, etc.
     index:

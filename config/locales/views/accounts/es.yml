@@ -46,6 +46,8 @@ es:
     form:
       additional_details: Detalles adicionales
       balance: Saldo actual
+      card_identifier_label: Últimos 4 dígitos de la tarjeta
+      card_identifier_placeholder: ej. 2269
       institution_domain_label: Dominio de la institución
       institution_domain_placeholder: ej. chase.com
       institution_name_label: Nombre de la institución

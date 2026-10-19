@@ -18,7 +18,15 @@ class Account < ApplicationRecord
 
   before_validation :assign_default_owner, if: -> { owner_id.blank? }
 
+  # Last digits of the physical card, used to match a bank notification to this
+  # account (see AccountMapping on Android). Banks print them inconsistently --
+  # "••2269", "** 2269", "2744" -- so only the digits are kept and the client
+  # compares against that. Stored as a string, not an integer: leading zeros are
+  # significant ("0042" is not 42).
+  normalizes :card_identifier, with: ->(value) { value.to_s.gsub(/\D/, "").presence }
+
   validates :name, :balance, :currency, presence: true
+  validates :card_identifier, format: { with: /\A\d{4}\z/ }, allow_nil: true
   validate :owner_belongs_to_family, if: -> { owner_id.present? && family_id.present? }
 
   belongs_to :family

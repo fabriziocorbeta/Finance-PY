@@ -10,6 +10,26 @@ class AccountTest < ActiveSupport::TestCase
     @member = users(:family_member)
   end
 
+  # Banks print the card digits inconsistently across notifications, so the
+  # stored value has to be digits-only for the client to compare against.
+  test "card_identifier keeps only digits" do
+    { "••2269" => "2269", "** 2269" => "2269", "2744" => "2744", "....8394" => "8394" }.each do |input, expected|
+      @account.update!(card_identifier: input)
+      assert_equal expected, @account.reload.card_identifier, "input: #{input.inspect}"
+    end
+  end
+
+  test "card_identifier blanks out to nil rather than empty string" do
+    @account.update!(card_identifier: "••••")
+    assert_nil @account.reload.card_identifier
+  end
+
+  test "card_identifier rejects anything that is not exactly four digits" do
+    @account.card_identifier = "226"
+    assert_not @account.valid?
+    assert_includes @account.errors.attribute_names, :card_identifier
+  end
+
   test "can destroy" do
     assert_difference "Account.count", -1 do
       @account.destroy

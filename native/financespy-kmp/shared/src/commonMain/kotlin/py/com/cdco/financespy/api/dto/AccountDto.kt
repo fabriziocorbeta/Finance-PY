@@ -16,7 +16,9 @@ data class AccountDto(
     val account_type: String,
     val subtype: String? = null,
     val status: String,
-    val updated_at: String
+    val updated_at: String,
+    val card_identifier: String? = null,
+    val institution_name: String? = null
 )
 
 @Serializable

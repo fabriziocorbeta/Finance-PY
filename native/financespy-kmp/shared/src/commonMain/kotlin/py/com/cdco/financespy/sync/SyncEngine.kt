@@ -125,7 +125,8 @@ class SyncEngine(
 private fun AccountDto.toEntity() = AccountEntity(
     id = id, name = name, balanceCents = balance_cents, cashBalanceCents = cash_balance_cents,
     currency = currency, classification = classification, accountType = account_type,
-    subtype = subtype, status = status, updatedAt = updated_at
+    subtype = subtype, status = status, updatedAt = updated_at,
+    cardIdentifier = card_identifier, institutionName = institution_name
 )
 
 private fun TransactionListItemDto.toEntryEntity() = EntryEntity(

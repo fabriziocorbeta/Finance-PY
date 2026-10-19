@@ -39,6 +39,12 @@
             label: t(".institution_domain_label"),
             placeholder: account.provider&.institution_domain || t(".institution_domain_placeholder") %>
 
+        <%= form.text_field :card_identifier,
+            label: t(".card_identifier_label"),
+            placeholder: t(".card_identifier_placeholder"),
+            inputmode: "numeric",
+            maxlength: 4 %>
+
         <%= form.text_area :notes,
             label: t(".notes_label"),
             placeholder: t(".notes_placeholder"),
