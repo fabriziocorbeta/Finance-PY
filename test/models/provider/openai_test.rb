@@ -8,6 +8,27 @@ class Provider::OpenaiTest < ActiveSupport::TestCase
     @subject_model = "gpt-4.1"
   end
 
+  # Reading a statement PDF runs in ProcessPdfJob, not a live request, and
+  # routinely takes longer than the chat client's 60s. Using the chat client
+  # here made every PDF import die at ~62s with Net::ReadTimeout; this pins
+  # process_pdf to the long-timeout client so it cannot regress silently.
+  test "process_pdf uses the long bank-statement timeout, not the chat timeout" do
+    chat_timeout = @openai.send(:client).request_timeout
+    pdf_timeout = @openai.send(:bank_statement_client).request_timeout
+
+    assert_operator pdf_timeout, :>, chat_timeout,
+      "expected the bank-statement client to allow longer requests than the chat client"
+
+    Provider::Openai::PdfProcessor.stub :new, ->(client, **) {
+      assert_equal pdf_timeout, client.request_timeout,
+        "process_pdf must use the long-timeout client -- the chat client's #{chat_timeout}s " \
+        "is what caused Net::ReadTimeout on every statement import"
+      Struct.new(:process).new(nil)
+    } do
+      @openai.process_pdf(pdf_content: "%PDF-1.4 fake", content_type: "application/pdf")
+    end
+  end
+
   test "openai errors are automatically raised" do
     VCR.use_cassette("openai/chat/error") do
       response = @openai.chat_response("Test", model: "invalid-model-that-will-trigger-api-error")
