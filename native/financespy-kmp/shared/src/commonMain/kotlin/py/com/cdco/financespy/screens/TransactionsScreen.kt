@@ -11,18 +11,25 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -30,6 +37,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,15 +58,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.CategoryDto
 import py.com.cdco.financespy.api.dto.TransactionListItemDto
 import py.com.cdco.financespy.screens.components.parseHexColor
 import py.com.cdco.financespy.theme.FinancePyColors
+import py.com.cdco.financespy.theme.LocalUiVariant
+import py.com.cdco.financespy.theme.UiVariant
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
 import py.com.cdco.financespy.theme.components.AppCard
+import py.com.cdco.financespy.theme.components.AppGroupedListCard
+import py.com.cdco.financespy.theme.components.AppSearchField
+import py.com.cdco.financespy.theme.components.AppSegmentedControl
 import py.com.cdco.financespy.theme.components.ButtonVariant
 import py.com.cdco.financespy.theme.components.liquidGlass
 import py.com.cdco.financespy.utils.formatMoney
@@ -70,6 +84,7 @@ fun TransactionsScreen(
     onTransactionClick: (String) -> Unit,
     onCreateClick: () -> Unit
 ) {
+    val variant = LocalUiVariant.current
     val state by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     var showFilterSheet by remember { mutableStateOf(false) }
@@ -90,108 +105,138 @@ fun TransactionsScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(FinancePyColors.surface())
-    ) {
-        Row(
+    if (variant == UiVariant.IOS) {
+        IosTransactionsContent(
+            state = state,
+            listState = listState,
+            onSearchQueryChange = { viewModel.updateSearchQuery(it) },
+            onSelectAccount = { accountId ->
+                viewModel.applyFilters(
+                    accountId = accountId,
+                    categoryId = state.selectedCategoryId,
+                    type = state.selectedType,
+                    startDate = state.startDate,
+                    endDate = state.endDate
+                )
+            },
+            onSelectType = { type ->
+                viewModel.applyFilters(
+                    accountId = state.selectedAccountId,
+                    categoryId = state.selectedCategoryId,
+                    type = type,
+                    startDate = state.startDate,
+                    endDate = state.endDate
+                )
+            },
+            onOpenFilters = { showFilterSheet = true },
+            onTransactionClick = onTransactionClick,
+            onDeleteClick = { transactionPendingDelete = it },
+            onCreateClick = onCreateClick
+        )
+    } else {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .background(FinancePyColors.surface())
         ) {
-            OutlinedTextField(
-                value = state.searchQuery,
-                onValueChange = { viewModel.updateSearchQuery(it) },
-                placeholder = { Text("Buscar transacciones...") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Buscar",
-                        tint = FinancePyColors.textSecondary()
-                    )
-                },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(8.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = state.searchQuery,
+                    onValueChange = { viewModel.updateSearchQuery(it) },
+                    placeholder = { Text("Buscar transacciones...") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Buscar",
+                            tint = FinancePyColors.textSecondary()
+                        )
+                    },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp)
+                )
 
-            IconButton(onClick = { showFilterSheet = true }) {
-                Icon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = "Filtrar",
-                    tint = FinancePyColors.textPrimary()
+                IconButton(onClick = { showFilterSheet = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Filtrar",
+                        tint = FinancePyColors.textPrimary()
+                    )
+                }
+            }
+
+            if (state.isOffline) {
+                Text(
+                    text = "Sin conexión: mostrando datos guardados (últimos 90 días)",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = FinancePyColors.textSecondary(),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
             }
-        }
 
-        if (state.isOffline) {
-            Text(
-                text = "Sin conexión: mostrando datos guardados (últimos 90 días)",
-                style = MaterialTheme.typography.labelMedium,
-                color = FinancePyColors.textSecondary(),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
-        }
-
-        Box(modifier = Modifier.fillMaxSize()) {
-            when {
-                state.isLoading && state.transactions.isEmpty() -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = FinancePyColors.textPrimary())
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    state.isLoading && state.transactions.isEmpty() -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = FinancePyColors.textPrimary())
+                        }
                     }
-                }
-                state.transactions.isEmpty() -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "No se encontraron transacciones.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = FinancePyColors.textSecondary()
-                        )
-                    }
-                }
-                else -> {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = AppBottomNavOverlayClearance),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(state.transactions, key = { it.id }) { entry ->
-                            TransactionRow(
-                                entry = entry,
-                                onClick = { if (!entry.pending) onTransactionClick(entry.id) },
-                                onEditClick = { if (!entry.pending) onTransactionClick(entry.id) },
-                                onDeleteClick = { transactionPendingDelete = entry }
+                    state.transactions.isEmpty() -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "No se encontraron transacciones.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = FinancePyColors.textSecondary()
                             )
                         }
+                    }
+                    else -> {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = AppBottomNavOverlayClearance),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(state.transactions, key = { it.id }) { entry ->
+                                TransactionRow(
+                                    entry = entry,
+                                    onClick = { if (!entry.pending) onTransactionClick(entry.id) },
+                                    onEditClick = { if (!entry.pending) onTransactionClick(entry.id) },
+                                    onDeleteClick = { transactionPendingDelete = entry }
+                                )
+                            }
 
-                        if (state.isLoadingMore) {
-                            item {
-                                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        color = FinancePyColors.textPrimary()
-                                    )
+                            if (state.isLoadingMore) {
+                                item {
+                                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                            color = FinancePyColors.textPrimary()
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            val isDark = isSystemInDarkTheme()
-            FloatingActionButton(
-                onClick = onCreateClick,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(bottom = AppBottomNavOverlayClearance, end = 16.dp, top = 16.dp, start = 16.dp),
-                containerColor = FinancePyColors.buttonBgPrimary(),
-                contentColor = if (isDark) FinancePyColors.Black else FinancePyColors.White
-            ) {
-                Text(text = "+", style = MaterialTheme.typography.headlineSmall)
+                val isDark = isSystemInDarkTheme()
+                FloatingActionButton(
+                    onClick = onCreateClick,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(bottom = AppBottomNavOverlayClearance, end = 16.dp, top = 16.dp, start = 16.dp),
+                    containerColor = FinancePyColors.buttonBgPrimary(),
+                    contentColor = if (isDark) FinancePyColors.Black else FinancePyColors.White
+                ) {
+                    Text(text = "+", style = MaterialTheme.typography.headlineSmall)
+                }
             }
         }
     }
@@ -199,8 +244,12 @@ fun TransactionsScreen(
     if (showFilterSheet) {
         val sheetState = rememberModalBottomSheetState()
         ModalBottomSheet(
-            containerColor = Color.Transparent,
-            modifier = Modifier.liquidGlass(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
+            containerColor = if (variant == UiVariant.IOS) FinancePyColors.surface() else Color.Transparent,
+            modifier = if (variant == UiVariant.IOS) {
+                Modifier
+            } else {
+                Modifier.liquidGlass(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+            },
             onDismissRequest = { showFilterSheet = false },
             sheetState = sheetState
         ) {
@@ -220,8 +269,8 @@ fun TransactionsScreen(
 
     transactionPendingDelete?.let { entry ->
         AlertDialog(
-            modifier = Modifier.liquidGlass(RoundedCornerShape(28.dp)),
-            containerColor = Color.Transparent,
+            modifier = Modifier.liquidGlass(RoundedCornerShape(if (variant == UiVariant.IOS) 14.dp else 28.dp)),
+            containerColor = if (variant == UiVariant.IOS) FinancePyColors.container() else Color.Transparent,
             onDismissRequest = { transactionPendingDelete = null },
             title = { Text("Eliminar transacción") },
             text = {
@@ -245,6 +294,419 @@ fun TransactionsScreen(
                 )
             }
         )
+    }
+}
+
+// Variante iOS (Apple HIG + paridad visual con TransactionsView.swift de
+// financespy-ios): barra de navegación con selector de cuenta estilo Menu
+// Picker y acción "+" en la esquina superior derecha (sin FAB flotante),
+// Large Title "Transacciones" de 34sp, barra de búsqueda estilo .searchable,
+// control segmentado Todas/Ingresos/Gastos y lista agrupada por fecha con
+// contenedores Inset Grouped de 10dp y separadores hairline.
+@Composable
+private fun IosTransactionsContent(
+    state: TransactionsUiState,
+    listState: LazyListState,
+    onSearchQueryChange: (String) -> Unit,
+    onSelectAccount: (String?) -> Unit,
+    onSelectType: (String) -> Unit,
+    onOpenFilters: () -> Unit,
+    onTransactionClick: (String) -> Unit,
+    onDeleteClick: (TransactionListItemDto) -> Unit,
+    onCreateClick: () -> Unit
+) {
+    var accountMenuExpanded by remember { mutableStateOf(false) }
+    val selectedAccountName = state.accounts.firstOrNull { it.id == state.selectedAccountId }?.name
+        ?: "Todas las cuentas"
+    val groupedByDate = remember(state.transactions) {
+        state.transactions.groupBy { it.date }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(FinancePyColors.surface())
+    ) {
+        // iOS Navigation Bar: Account Menu Picker on left, Filter + Add ("+") on right
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(FinancePyColors.buttonBgPrimary().copy(alpha = 0.12f))
+                        .clickable { accountMenuExpanded = true }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = selectedAccountName,
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = FinancePyColors.buttonBgPrimary(),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = null,
+                        tint = FinancePyColors.buttonBgPrimary(),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = accountMenuExpanded,
+                    onDismissRequest = { accountMenuExpanded = false }
+                ) {
+                    val allSelected = state.selectedAccountId == null
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "Todas las cuentas",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = if (allSelected) FontWeight.SemiBold else FontWeight.Normal
+                                ),
+                                color = if (allSelected) FinancePyColors.buttonBgPrimary() else FinancePyColors.textPrimary()
+                            )
+                        },
+                        trailingIcon = if (allSelected) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = FinancePyColors.buttonBgPrimary(),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        } else null,
+                        onClick = {
+                            accountMenuExpanded = false
+                            onSelectAccount(null)
+                        }
+                    )
+                    state.accounts.forEach { acc ->
+                        val isSelected = acc.id == state.selectedAccountId
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = acc.name,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                    ),
+                                    color = if (isSelected) FinancePyColors.buttonBgPrimary() else FinancePyColors.textPrimary()
+                                )
+                            },
+                            trailingIcon = if (isSelected) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = FinancePyColors.buttonBgPrimary(),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            } else null,
+                            onClick = {
+                                accountMenuExpanded = false
+                                onSelectAccount(acc.id)
+                            }
+                        )
+                    }
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                IconButton(
+                    onClick = onOpenFilters,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Tune,
+                        contentDescription = "Filtrar",
+                        tint = FinancePyColors.buttonBgPrimary(),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clip(CircleShape)
+                        .background(FinancePyColors.buttonBgPrimary())
+                        .clickable(onClick = onCreateClick),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Nueva transacción",
+                        tint = FinancePyColors.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+
+        // iOS Large Title + Search Bar + Segmented Control
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "Transacciones",
+                style = MaterialTheme.typography.headlineLarge,
+                color = FinancePyColors.textPrimary()
+            )
+
+            AppSearchField(
+                value = state.searchQuery,
+                onValueChange = onSearchQueryChange,
+                placeholder = "Buscar",
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            AppSegmentedControl(
+                options = listOf(
+                    "all" to "Todas",
+                    "income" to "Ingresos",
+                    "expense" to "Gastos"
+                ),
+                selected = state.selectedType,
+                onSelect = onSelectType,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        if (state.isOffline) {
+            Text(
+                text = "Sin conexión · mostrando últimos 90 días guardados",
+                style = MaterialTheme.typography.labelMedium,
+                color = FinancePyColors.textSecondary(),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+            )
+        } else {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        when {
+            state.isLoading && state.transactions.isEmpty() -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = FinancePyColors.buttonBgPrimary())
+                }
+            }
+            state.transactions.isEmpty() -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "No hay transacciones guardadas.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = FinancePyColors.textSecondary()
+                    )
+                }
+            }
+            else -> {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        top = 8.dp,
+                        end = 16.dp,
+                        bottom = AppBottomNavOverlayClearance + 16.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
+                ) {
+                    groupedByDate.forEach { (date, entriesForDate) ->
+                        item(key = "section_$date") {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    text = date.uppercase(),
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = FinancePyColors.textSecondary(),
+                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                )
+                                AppGroupedListCard {
+                                    entriesForDate.forEachIndexed { idx, entry ->
+                                        IosTransactionRow(
+                                            entry = entry,
+                                            onClick = { if (!entry.pending) onTransactionClick(entry.id) },
+                                            onEditClick = { if (!entry.pending) onTransactionClick(entry.id) },
+                                            onDeleteClick = { onDeleteClick(entry) }
+                                        )
+                                        if (idx < entriesForDate.lastIndex) {
+                                            HorizontalDivider(
+                                                modifier = Modifier.padding(start = 60.dp),
+                                                thickness = 0.5.dp,
+                                                color = FinancePyColors.borderSecondary()
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (state.isLoadingMore) {
+                        item {
+                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    color = FinancePyColors.buttonBgPrimary()
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IosTransactionRow(
+    entry: TransactionListItemDto,
+    onClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    val dotColor = entry.category?.color?.let { parseHexColor(it) } ?: FinancePyColors.buttonBgPrimary()
+    val isIncome = entry.classification == "income"
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(start = 14.dp, end = 8.dp, top = 11.dp, bottom = 11.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(dotColor.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(dotColor)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Text(
+                    text = entry.name,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    color = FinancePyColors.textPrimary(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    entry.category?.name?.takeIf { it.isNotBlank() }?.let { catName ->
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(dotColor.copy(alpha = 0.15f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = catName,
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                                color = dotColor,
+                                maxLines = 1
+                            )
+                        }
+                    }
+
+                    val secondaryInfo = buildString {
+                        if (entry.account.name.isNotBlank()) {
+                            append(entry.account.name)
+                        } else {
+                            append(entry.date)
+                        }
+                        if (entry.pending) {
+                            append(" · Pendiente")
+                        }
+                    }
+                    Text(
+                        text = secondaryInfo,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = FinancePyColors.textSecondary(),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Text(
+            text = formatMoney(entry.amount_cents, entry.currency),
+            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+            color = if (isIncome) FinancePyColors.success() else FinancePyColors.textPrimary()
+        )
+
+        Box {
+            IconButton(
+                onClick = { showMenu = true },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MoreHoriz,
+                    contentDescription = "Más opciones",
+                    tint = FinancePyColors.textSubdued(),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                if (!entry.pending) DropdownMenuItem(
+                    text = { Text("Editar") },
+                    onClick = {
+                        showMenu = false
+                        onEditClick()
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = if (entry.pending) "Descartar" else "Eliminar",
+                            color = FinancePyColors.destructive()
+                        )
+                    },
+                    onClick = {
+                        showMenu = false
+                        onDeleteClick()
+                    }
+                )
+            }
+        }
     }
 }
 

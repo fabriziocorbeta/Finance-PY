@@ -45,12 +45,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import py.com.cdco.financespy.api.dto.FamilyExportDto
 import py.com.cdco.financespy.theme.FinancePyColors
+import py.com.cdco.financespy.theme.UiVariant
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.theme.components.ButtonVariant
 import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
+import py.com.cdco.financespy.theme.components.AppSegmentedControl
 import py.com.cdco.financespy.theme.components.liquidGlass
 
 @Composable
@@ -69,7 +73,9 @@ fun SettingsScreen(
     onNavigateToRules: (() -> Unit)? = null,
     onNavigateToNavCustomization: (() -> Unit)? = null,
     onNavigateToUpayImport: (() -> Unit)? = null,
-    onNavigateToPdfStatementImport: (() -> Unit)? = null
+    onNavigateToPdfStatementImport: (() -> Unit)? = null,
+    uiVariant: UiVariant = UiVariant.DEFAULT,
+    onSelectUiVariant: ((UiVariant) -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsState()
     val pendingOutboxCount by viewModel.pendingOutboxCount.collectAsState()
@@ -303,6 +309,69 @@ fun SettingsScreen(
                                     color = FinancePyColors.textSecondary(),
                                     modifier = Modifier.padding(start = 8.dp)
                                 )
+                            }
+                        }
+                    }
+                }
+
+                if (onSelectUiVariant != null) {
+                    item {
+                        Text(
+                            text = "Apariencia",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = FinancePyColors.textPrimary()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        AppCard {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text(
+                                    text = "Variante de interfaz",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = FinancePyColors.textPrimary()
+                                )
+                                AppSegmentedControl(
+                                    options = UiVariant.entries.map { it to it.label },
+                                    selected = uiVariant,
+                                    onSelect = onSelectUiVariant,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                UiVariant.entries.forEach { option ->
+                                    val selected = option == uiVariant
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onSelectUiVariant(option) }
+                                            .padding(vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RadioButton(
+                                            selected = selected,
+                                            onClick = { onSelectUiVariant(option) },
+                                            colors = RadioButtonDefaults.colors(
+                                                selectedColor = FinancePyColors.buttonBgPrimary(),
+                                                unselectedColor = FinancePyColors.textSecondary()
+                                            )
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = option.label,
+                                                style = MaterialTheme.typography.bodyMedium.copy(
+                                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                                                ),
+                                                color = FinancePyColors.textPrimary()
+                                            )
+                                            Text(
+                                                text = option.description,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = FinancePyColors.textSecondary()
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
