@@ -52,6 +52,11 @@ class Settings::WebauthnCredentialsController < ApplicationController
 
   def destroy
     Current.user.webauthn_credentials.find(params[:id]).destroy!
+    # Removing a passkey is a credential change: it's the action taken when a
+    # device is lost or suspected compromised, so sessions established with
+    # that credential must not outlive it.
+    Current.user.revoke_all_oauth_tokens!
+    Current.user.revoke_all_sessions!(except: Current.session)
     redirect_to settings_security_path, notice: t("webauthn_credentials.success")
   end
 

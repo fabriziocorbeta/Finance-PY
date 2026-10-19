@@ -19,6 +19,13 @@ class EmailConfirmationsController < ApplicationController
     end
 
     if confirmed
+      # The email is the account's recovery identity, so changing it is a
+      # credential change: sessions and tokens issued against the old address
+      # must not survive it. No `except:` here -- this action is
+      # unauthenticated (there is no Current.session) and it already sends the
+      # user to the login page.
+      @user.revoke_all_oauth_tokens!
+      @user.revoke_all_sessions!
       redirect_to new_session_path, notice: t(".success_login")
     else
       redirect_to root_path, alert: t(".invalid_token")
