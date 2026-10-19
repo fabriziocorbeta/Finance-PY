@@ -12,6 +12,7 @@ struct ReceivableFormView: View {
     @State private var balance: String = ""
     @State private var installmentCount: String = ""
     @State private var dueDay: String = ""
+    @State private var firstDueDate: String = ""
     @State private var currency: String = "PYG"
     @State private var notes: String = ""
 
@@ -30,6 +31,9 @@ struct ReceivableFormView: View {
 
                 TextField(isEditing ? "Saldo actual" : "Saldo inicial (opcional, por defecto monto total)", text: $balance)
                     .keyboardType(.decimalPad)
+
+                TextField("Fecha de primer vencimiento (AAAA-MM-DD)", text: $firstDueDate)
+                    .keyboardType(.default)
 
                 TextField("Cantidad de cuotas (opcional)", text: $installmentCount)
                     .keyboardType(.numberPad)
@@ -75,6 +79,7 @@ struct ReceivableFormView: View {
             balance = String(existing.balance)
             installmentCount = existing.installmentCount.map(String.init) ?? ""
             dueDay = existing.dueDay.map(String.init) ?? ""
+            firstDueDate = existing.firstDueDate ?? ""
             currency = existing.currency
             notes = existing.notes ?? ""
         }
@@ -111,6 +116,8 @@ struct ReceivableFormView: View {
             return
         }
 
+        let parsedFirstDueDate: String? = firstDueDate.trimmingCharacters(in: .whitespaces).isEmpty ? nil : firstDueDate.trimmingCharacters(in: .whitespaces)
+
         isSaving = true
         error = nil
 
@@ -123,6 +130,7 @@ struct ReceivableFormView: View {
                         balance: parsedBalance,
                         installmentCount: parsedInstallmentCount,
                         dueDay: parsedDueDay,
+                        firstDueDate: parsedFirstDueDate,
                         currency: currency,
                         notes: notes.isEmpty ? nil : notes
                     )
@@ -137,6 +145,7 @@ struct ReceivableFormView: View {
                         balance: parsedBalance,
                         installmentCount: parsedInstallmentCount,
                         dueDay: parsedDueDay,
+                        firstDueDate: parsedFirstDueDate,
                         currency: currency,
                         notes: notes.isEmpty ? nil : notes
                     )
@@ -179,6 +188,7 @@ struct ReceivableFormView: View {
             existing.percentPaid = dto.percentPaid ?? 0.0
             existing.installmentCount = dto.installmentCount
             existing.dueDay = dto.dueDay
+            existing.firstDueDate = dto.firstDueDate
             existing.currency = dto.currency ?? "PYG"
             existing.notes = dto.notes
             existing.updatedAt = dto.updatedAt ?? ""
@@ -198,6 +208,7 @@ struct ReceivableFormView: View {
                 percentPaid: dto.percentPaid ?? 0.0,
                 installmentCount: dto.installmentCount,
                 dueDay: dto.dueDay,
+                firstDueDate: dto.firstDueDate,
                 currency: dto.currency ?? "PYG",
                 notes: dto.notes,
                 updatedAt: dto.updatedAt ?? "",

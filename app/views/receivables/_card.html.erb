@@ -5,7 +5,13 @@
 <% paid = Money.new(total.amount - pending.amount, account.currency) %>
 <% progress_percent = total.amount.zero? ? 100 : (((total.amount - pending.amount) / total.amount) * 100).round %>
 
-<% is_overdue = pending.amount.positive? && receivable.due_day.present? && Date.current.day > receivable.due_day.to_i %>
+<% is_overdue = pending.amount.positive? && if receivable.first_due_date.present?
+     receivable.first_due_date < Date.current
+   elsif receivable.due_day.present?
+     Date.current.day > receivable.due_day.to_i
+   else
+     false
+   end %>
 
 <div class="bg-container rounded-xl shadow-border-xs p-6">
   <%= link_to receivable_path(receivable), class: "block", data: { turbo_frame: "_top" } do %>
@@ -14,10 +20,12 @@
         <div class="flex items-center gap-2">
           <p class="text-base font-medium text-primary truncate"><%= account.name %></p>
           <% if is_overdue %>
-            <%= render DS::Pill.new(label: t("receivables.dashboard.overdue", default: "Vencido"), tone: :error, marker: false) %>
+            <%= render DS::Pill.new(label: t("receivables.dashboard.overdue"), tone: :error, marker: false) %>
           <% end %>
         </div>
-        <% if receivable.due_day.present? %>
+        <% if receivable.first_due_date.present? %>
+          <p class="text-xs text-subdued mt-0.5"><%= t("receivables.dashboard.first_due_date") %>: <%= l(receivable.first_due_date, format: :short) %></p>
+        <% elsif receivable.due_day.present? %>
           <p class="text-xs text-subdued mt-0.5"><%= t("receivables.dashboard.due_day") %>: <%= receivable.due_day %></p>
         <% end %>
       </div>
@@ -34,11 +42,15 @@
     </div>
   <% end %>
 
-  <% if pending.amount.positive? %>
-    <div class="mt-4">
+  <div class="mt-4 flex flex-col gap-2">
+    <% if pending.amount.positive? %>
       <%= link_to t("receivables.dashboard.register_payment"),
           new_transfer_path(from_account_id: account.id),
           class: "w-full inline-flex justify-center items-center rounded-lg bg-primary text-white text-sm font-medium py-2 px-4 hover:bg-primary/90 transition-colors" %>
-    </div>
-  <% end %>
+    <% end %>
+    <%= link_to t("receivables.dashboard.edit"),
+        edit_receivable_path(account),
+        data: { turbo_frame: :modal },
+        class: "w-full inline-flex justify-center items-center rounded-lg bg-container text-primary text-sm font-medium py-2 px-4 border border-primary hover:bg-secondary/5 transition-colors" %>
+  </div>
 </div>

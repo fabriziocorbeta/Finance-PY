@@ -17,6 +17,7 @@ data class ReceivableEntity(
     val percentPaid: Double,
     val installmentCount: Int?,
     val dueDay: Int?,
+    val firstDueDate: String?,
     val currency: String,
     val notes: String?,
     val updatedAt: String,

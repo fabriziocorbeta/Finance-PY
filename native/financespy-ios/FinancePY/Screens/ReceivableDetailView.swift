@@ -48,7 +48,9 @@ struct ReceivableDetailView: View {
                         if let count = receivable.installmentCount {
                             DetailRow(label: "Cantidad de cuotas", value: "\(count)")
                         }
-                        if let day = receivable.dueDay {
+                        if let date = receivable.firstDueDate {
+                            DetailRow(label: "Primer vencimiento", value: date)
+                        } else if let day = receivable.dueDay {
                             DetailRow(label: "Día de pago", value: "\(day)")
                         }
                         if let notes = receivable.notes, !notes.isEmpty {

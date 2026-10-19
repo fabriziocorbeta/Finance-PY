@@ -44,6 +44,7 @@ struct ReceivableDto: Codable {
     @OptionalFlexibleDouble var percentPaid: Double?
     let installmentCount: Int?
     let dueDay: Int?
+    let firstDueDate: String?
     let currency: String?
     let notes: String?
     let updatedAt: String?
@@ -60,6 +61,7 @@ struct CreateReceivableBody: Codable {
     let balance: Double?
     let installmentCount: Int?
     let dueDay: Int?
+    let firstDueDate: String?
     let currency: String
     let notes: String?
 }
@@ -74,6 +76,7 @@ struct UpdateReceivableBody: Codable {
     let balance: Double?
     let installmentCount: Int?
     let dueDay: Int?
+    let firstDueDate: String?
     let currency: String?
     let notes: String?
 }

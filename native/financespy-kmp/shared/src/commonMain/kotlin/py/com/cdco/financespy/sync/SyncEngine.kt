@@ -175,6 +175,7 @@ private fun ReceivableDto.toEntity() = ReceivableEntity(
     percentPaid = percent_paid ?: 0.0,
     installmentCount = installment_count,
     dueDay = due_day,
+    firstDueDate = first_due_date,
     currency = currency ?: "PYG",
     notes = notes,
     updatedAt = updated_at ?: "",

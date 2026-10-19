@@ -83,6 +83,7 @@ data class ReceivableDto(
     @Serializable(with = FlexibleDoubleSerializer::class) val percent_paid: Double? = null,
     val installment_count: Int? = null,
     val due_day: Int? = null,
+    val first_due_date: String? = null,
     val currency: String? = null,
     val notes: String? = null,
     val updated_at: String? = null,
@@ -101,6 +102,7 @@ data class CreateReceivableBody(
     val balance: Double? = null,
     val installment_count: Int? = null,
     val due_day: Int? = null,
+    val first_due_date: String? = null,
     val currency: String,
     val notes: String? = null
 )
@@ -117,6 +119,7 @@ data class UpdateReceivableBody(
     val balance: Double? = null,
     val installment_count: Int? = null,
     val due_day: Int? = null,
+    val first_due_date: String? = null,
     val currency: String? = null,
     val notes: String? = null
 )

@@ -114,6 +114,7 @@ RSpec.describe 'API V1 Receivables', type: :request do
           balance: { type: :number, description: 'Initial account balance' },
           installment_count: { type: :integer, description: 'Number of installments' },
           due_day: { type: :integer, description: 'Day of month payment is due (1-31)' },
+          first_due_date: { type: :string, description: 'First payment due date (YYYY-MM-DD)' },
           currency: { type: :string, description: 'Currency code' },
           notes: { type: :string, description: 'Notes' }
         }
@@ -238,6 +239,7 @@ RSpec.describe 'API V1 Receivables', type: :request do
           balance: { type: :number },
           installment_count: { type: :integer },
           due_day: { type: :integer },
+          first_due_date: { type: :string, nullable: true },
           currency: { type: :string },
           notes: { type: :string }
         }

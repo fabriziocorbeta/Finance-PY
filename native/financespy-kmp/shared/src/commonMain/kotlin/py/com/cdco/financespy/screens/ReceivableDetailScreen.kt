@@ -93,7 +93,12 @@ fun ReceivableDetailScreen(
                             receivable.installmentCount?.let {
                                 DetailRow(label = "Cantidad de cuotas", value = it.toString())
                             }
-                            receivable.dueDay?.let {
+                            // firstDueDate replaces dueDay in the UI when set: the
+                            // backend derives the whole schedule from it and ignores
+                            // dueDay, so showing both would contradict itself.
+                            receivable.firstDueDate?.let {
+                                DetailRow(label = "Primer vencimiento", value = it)
+                            } ?: receivable.dueDay?.let {
                                 DetailRow(label = "Día de pago", value = it.toString())
                             }
                             receivable.notes?.takeIf { it.isNotBlank() }?.let { notes ->

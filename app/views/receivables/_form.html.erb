@@ -10,6 +10,9 @@
                                default_currency: Current.family.currency,
                                required: true %>
 
+      <%= receivable_form.date_field :first_due_date,
+                               label: t("receivables.form.first_due_date") %>
+
       <div class="flex items-center gap-2">
         <%= receivable_form.number_field :installment_count,
                                label: t("receivables.form.installment_count"),
