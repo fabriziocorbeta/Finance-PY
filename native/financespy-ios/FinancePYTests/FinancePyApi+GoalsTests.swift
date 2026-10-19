@@ -26,7 +26,7 @@ final class FinancePyApiGoalsTests: XCTestCase {
             remainingAmount: AnyStringAmount(wrappedValue: "100"),
             remainingAmountCents: 10000,
             progressPercent: 0,
-            pace: nil,
+            pace: AnyStringAmount(wrappedValue: nil),
             status: nil,
             monthsRemaining: nil,
             catchUpDelta: AnyStringAmount(wrappedValue: nil),

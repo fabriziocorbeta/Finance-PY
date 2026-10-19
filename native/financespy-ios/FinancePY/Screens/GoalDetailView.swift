@@ -169,7 +169,9 @@ struct GoalDetailView: View {
             }
 
             if let months = goal.monthsRemaining {
-                Text("Meses restantes: \(months)")
+                // El backend manda fracciones (11.366666666666667), que
+                // interpoladas crudas quedarían ilegibles en pantalla.
+                Text("Meses restantes: \(months, specifier: "%.1f")")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }

@@ -18,9 +18,15 @@ struct GoalDto: Codable, Identifiable {
     @AnyStringAmount var remainingAmount: String?
     let remainingAmountCents: Int64?
     let progressPercent: Int?
-    let pace: String?
+    // Goal#pace devuelve un numérico (BigDecimal), no un string -- igual que el
+    // resto de los montos de la API, por eso va con @AnyStringAmount.
+    @AnyStringAmount var pace: String?
     let status: String?
-    let monthsRemaining: Int?
+    // Goal#months_remaining es `days / 30.0`, o sea un Float: para una meta real
+    // en producción vale 11.366666666666667. Declararlo Int? hacía que
+    // JSONDecoder rechazara la respuesta entera y la pantalla de Metas quedara
+    // bloqueada salvo que la fecha cayera justo en un múltiplo de 30 días.
+    let monthsRemaining: Double?
     @AnyStringAmount var catchUpDelta: String?
     let accountIds: [String]?
     let allocations: [String: String?]?

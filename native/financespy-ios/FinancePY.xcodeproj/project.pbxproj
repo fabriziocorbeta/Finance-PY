@@ -14,6 +14,7 @@
 		1A2B3C4D5E6F7A8B9C0D1E2F /* FinancePyApi+Merchants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6G7H8I9J0K1L2 /* FinancePyApi+Merchants.swift */; };
 		03F55B74FAAA7C3CCF2FACE6 /* RulesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9663AA6245B37971F33B64B5 /* RulesListView.swift */; };
 		04894A2BAD57DD449A8919A1 /* FinancePyApi+GoalsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CEB423AB441949581808740 /* FinancePyApi+GoalsTests.swift */; };
+		AC01CON7RACT0001AAAA0001 /* ApiContractShapeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC01CON7RACT0001AAAA0002 /* ApiContractShapeTests.swift */; };
 		08DA427AAB717615A229F95B /* FinancePyApi+PurchaseOrders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05D34C3CA1215DFFA58CA0D0 /* FinancePyApi+PurchaseOrders.swift */; };
 		08EB48CF8BA8B76BD1E59704 /* FinancePyApi+ChatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC4043DE84F88648CD81FFF8 /* FinancePyApi+ChatTests.swift */; };
 		121F09A9603A661D7EF57505 /* ChatViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 480179980F80028F5B6B4EAF /* ChatViewModelTests.swift */; };
@@ -156,6 +157,7 @@
 		328FF2C3629277DC5F99011F /* ReportsViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ReportsViewModelTests.swift; path = FinancePYTests/ReportsViewModelTests.swift; sourceTree = SOURCE_ROOT; };
 		354A4E6BA9410DDAF1F9F788 /* FinancePyApiTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FinancePyApiTests.swift; path = "FinancePYTests/FinancePyApiTests.swift"; sourceTree = SOURCE_ROOT; };
 		3CEB423AB441949581808740 /* FinancePyApi+GoalsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+GoalsTests.swift"; path = "FinancePYTests/FinancePyApi+GoalsTests.swift"; sourceTree = SOURCE_ROOT; };
+		AC01CON7RACT0001AAAA0002 /* ApiContractShapeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ApiContractShapeTests.swift"; path = "FinancePYTests/ApiContractShapeTests.swift"; sourceTree = SOURCE_ROOT; };
 		40ACC679E52F92898B1F1087 /* BudgetDashboardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BudgetDashboardView.swift; sourceTree = "<group>"; };
 		4380D20DB42743A78E6B08FA /* FinancePyApi+Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Settings.swift"; sourceTree = "<group>"; };
 		480179980F80028F5B6B4EAF /* ChatViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChatViewModelTests.swift; path = FinancePYTests/ChatViewModelTests.swift; sourceTree = SOURCE_ROOT; };
@@ -413,6 +415,7 @@
 				EC4043DE84F88648CD81FFF8 /* FinancePyApi+ChatTests.swift */,
 				ED6C47B096051C1A7560872E /* FinancePyApi+FleetTests.swift */,
 				3CEB423AB441949581808740 /* FinancePyApi+GoalsTests.swift */,
+				AC01CON7RACT0001AAAA0002 /* ApiContractShapeTests.swift */,
 				8071475B9A7D9545E423C32D /* FinancePyApi+ImportsTests.swift */,
 				99D944FF83F2497FB2911303 /* FinancePyApi+ProductsTests.swift */,
 				DD674AF49205062091AA0D89 /* FinancePyApi+PurchaseOrdersTests.swift */,
@@ -674,6 +677,7 @@
 				08EB48CF8BA8B76BD1E59704 /* FinancePyApi+ChatTests.swift in Sources */,
 				49364FD8BFC24889B54FBC37 /* FinancePyApi+FleetTests.swift in Sources */,
 				04894A2BAD57DD449A8919A1 /* FinancePyApi+GoalsTests.swift in Sources */,
+				AC01CON7RACT0001AAAA0001 /* ApiContractShapeTests.swift in Sources */,
 				D2D046CAAE194C41D242DC91 /* FinancePyApi+ImportsTests.swift in Sources */,
 				E574452081337A4E37B32D88 /* FinancePyApi+ProductsTests.swift in Sources */,
 				22114FA7A256B25EC31B332A /* FinancePyApi+PurchaseOrdersTests.swift in Sources */,

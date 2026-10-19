@@ -36,6 +36,14 @@ struct SaleDto: Codable, Identifiable {
     let saleItems: [SaleItemDto]?
 }
 
+// Los endpoints individuales (show/create/update/complete/cancel) envuelven el
+// recurso en `data`, igual que la colección -- ver app/views/api/v1/sales/
+// show.json.jbuilder. Sin este wrapper el decode falla con
+// keyNotFound("id"), porque SaleDto espera los campos en la raíz.
+struct SaleResponseDto: Codable {
+    let data: SaleDto
+}
+
 struct SalesResponseDto: Codable {
     let data: [SaleDto]
 }
@@ -76,20 +84,20 @@ extension FinancePyApi {
     }
 
     func fetchSale(id: String) async throws -> SaleDto {
-        let response: SaleDto = try await ApiClient.shared.request(path: "/api/v1/sales/\(id)")
-        return response
+        let response: SaleResponseDto = try await ApiClient.shared.request(path: "/api/v1/sales/\(id)")
+        return response.data
     }
 
     func createSale(payload: SaleDataPayload) async throws -> SaleDto {
         let body = SalePayload(sale: payload)
-        let response: SaleDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/sales", body: body)
-        return response
+        let response: SaleResponseDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/sales", body: body)
+        return response.data
     }
 
     func updateSale(id: String, payload: SaleDataPayload) async throws -> SaleDto {
         let body = SalePayload(sale: payload)
-        let response: SaleDto = try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/sales/\(id)", body: body)
-        return response
+        let response: SaleResponseDto = try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/sales/\(id)", body: body)
+        return response.data
     }
 
     func deleteSale(id: String) async throws {
@@ -97,12 +105,12 @@ extension FinancePyApi {
     }
 
     func completeSale(id: String) async throws -> SaleDto {
-        let response: SaleDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/sales/\(id)/complete")
-        return response
+        let response: SaleResponseDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/sales/\(id)/complete")
+        return response.data
     }
 
     func cancelSale(id: String) async throws -> SaleDto {
-        let response: SaleDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/sales/\(id)/cancel")
-        return response
+        let response: SaleResponseDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/sales/\(id)/cancel")
+        return response.data
     }
 }

@@ -31,6 +31,12 @@ struct PurchaseOrderDto: Codable, Identifiable {
     let purchaseOrderItems: [PurchaseOrderItemDto]?
 }
 
+// Mismo envelope que la colección: los endpoints individuales envuelven el
+// recurso en `data` (app/views/api/v1/purchase_orders/show.json.jbuilder).
+struct PurchaseOrderResponseDto: Codable {
+    let data: PurchaseOrderDto
+}
+
 struct PurchaseOrdersResponseDto: Codable {
     let data: [PurchaseOrderDto]
 }
@@ -72,20 +78,20 @@ extension FinancePyApi {
     }
 
     func fetchPurchaseOrder(id: String) async throws -> PurchaseOrderDto {
-        let response: PurchaseOrderDto = try await ApiClient.shared.request(path: "/api/v1/purchase_orders/\(id)")
-        return response
+        let response: PurchaseOrderResponseDto = try await ApiClient.shared.request(path: "/api/v1/purchase_orders/\(id)")
+        return response.data
     }
 
     func createPurchaseOrder(payload: PurchaseOrderDataPayload) async throws -> PurchaseOrderDto {
         let body = PurchaseOrderPayload(purchaseOrder: payload)
-        let response: PurchaseOrderDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/purchase_orders", body: body)
-        return response
+        let response: PurchaseOrderResponseDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/purchase_orders", body: body)
+        return response.data
     }
 
     func updatePurchaseOrder(id: String, payload: PurchaseOrderDataPayload) async throws -> PurchaseOrderDto {
         let body = PurchaseOrderPayload(purchaseOrder: payload)
-        let response: PurchaseOrderDto = try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/purchase_orders/\(id)", body: body)
-        return response
+        let response: PurchaseOrderResponseDto = try await ApiClient.shared.request(method: "PATCH", path: "/api/v1/purchase_orders/\(id)", body: body)
+        return response.data
     }
 
     func deletePurchaseOrder(id: String) async throws {
@@ -93,12 +99,12 @@ extension FinancePyApi {
     }
 
     func receivePurchaseOrder(id: String) async throws -> PurchaseOrderDto {
-        let response: PurchaseOrderDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/purchase_orders/\(id)/receive")
-        return response
+        let response: PurchaseOrderResponseDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/purchase_orders/\(id)/receive")
+        return response.data
     }
 
     func cancelPurchaseOrder(id: String) async throws -> PurchaseOrderDto {
-        let response: PurchaseOrderDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/purchase_orders/\(id)/cancel")
-        return response
+        let response: PurchaseOrderResponseDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/purchase_orders/\(id)/cancel")
+        return response.data
     }
 }
