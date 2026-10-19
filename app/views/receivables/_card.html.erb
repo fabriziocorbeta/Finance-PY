@@ -14,7 +14,11 @@
    end %>
 
 <div class="bg-container rounded-xl shadow-border-xs p-6">
-  <%= link_to receivable_path(receivable), class: "block", data: { turbo_frame: "_top" } do %>
+<%# Links to the account page, not receivable_path: receivables#show is routed
+    but has no template (406), and passing the accountable's id to it 404s
+    because set_account looks up an Account. The account page is what actually
+    renders the receivable's installment schedule (receivables/tabs/_overview). %>
+  <%= link_to account_path(account), class: "block", data: { turbo_frame: "_top" } do %>
     <div class="flex items-start gap-3">
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2">
