@@ -1,6 +1,4 @@
-class AddFirstDueDateToReceivables < ActiveRecord::Migration[8.0]
-  disable_ddl_transaction!
-
+class AddFirstDueDateToReceivables < ActiveRecord::Migration[7.2]
   def change
     add_column :receivables, :first_due_date, :date
   end

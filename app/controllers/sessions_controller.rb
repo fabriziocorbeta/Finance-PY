@@ -75,7 +75,7 @@ class SessionsController < ApplicationController
         # consumer of /oauth/authorize) dead-ends here with no error and the
         # app never gets a token. consumed once: never leave it in session for
         # a later, unrelated login to pick up.
-        redirect_to(session.delete(:return_to).presence || root_path)
+        redirect_to(consume_return_to || root_path)
       end
     else
       flash.now[:alert] = t(".invalid_credentials")
@@ -332,7 +332,9 @@ class SessionsController < ApplicationController
       return unless AuthConfig.local_admin_override_enabled?
       return unless user&.super_admin?
 
-      Rails.logger.info("[AUTH] Super admin override login: user_id=#{user.id} email=#{user.email}")
+      # user_id only: the email is encrypted at rest but logs ship to an
+      # external drain in cleartext. The id is enough to identify the account.
+      Rails.logger.info("[AUTH] Super admin override login: user_id=#{user.id}")
     end
 
     def demo_host_match?(demo)
