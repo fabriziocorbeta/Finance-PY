@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.api.dto.FleetVehicleDto
 import py.com.cdco.financespy.theme.FinancePyColors
+import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
 import py.com.cdco.financespy.theme.components.liquidGlass
 
 @Composable
@@ -115,7 +116,10 @@ fun FleetListScreen(
             contentColor = FinancePyColors.surface(),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(24.dp)
+                // La barra inferior flota por encima del contenido, así que sin
+                // este despeje el FAB queda debajo: invisible y, peor, sin
+                // poder tocarse. El resto de las pantallas con FAB ya lo hacen.
+                .padding(end = 24.dp, bottom = AppBottomNavOverlayClearance)
         ) {
             Text(
                 text = "+",
