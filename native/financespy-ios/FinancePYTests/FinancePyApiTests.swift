@@ -1,4 +1,6 @@
 import XCTest
+import SwiftUI
+import SwiftData
 @testable import FinancePY
 
 final class FinancePyApiTests: XCTestCase {
@@ -29,12 +31,10 @@ final class FinancePyApiTests: XCTestCase {
     }
 
     func testFetchBalanceSheetSuccess() async throws {
-        let money = MoneyDto(cents: 1000, amount: AnyStringAmount(wrappedValue: "10.00"), currency: "USD")
-        let responseDto = BalanceSheetResponse(currency: "USD", netWorth: money, assets: money, liabilities: money)
-
-        let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
-        let data = try encoder.encode(responseDto)
+        let json = """
+        {"currency":"PYG","net_worth":{"amount":-8403581,"currency":"PYG","formatted":"-8.403.581 ₲"},"assets":{"amount":18378948,"currency":"PYG","formatted":"18.378.948 ₲"},"liabilities":{"amount":26782529,"currency":"PYG","formatted":"26.782.529 ₲"}}
+        """
+        let data = json.data(using: .utf8)!
 
         MockURLProtocol.requestHandler = { request in
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
@@ -42,8 +42,72 @@ final class FinancePyApiTests: XCTestCase {
         }
 
         let balanceSheet = try await FinancePyApi.shared.fetchBalanceSheet()
-        XCTAssertEqual(balanceSheet.currency, "USD")
-        XCTAssertEqual(balanceSheet.netWorth.cents, 1000)
+        XCTAssertEqual(balanceSheet.currency, "PYG")
+        XCTAssertEqual(balanceSheet.netWorth.amount, "-8403581")
+        XCTAssertEqual(balanceSheet.netWorth.currency, "PYG")
+        XCTAssertEqual(balanceSheet.netWorth.formatted, "-8.403.581 ₲")
+        XCTAssertEqual(balanceSheet.assets.amount, "18378948")
+        XCTAssertEqual(balanceSheet.assets.currency, "PYG")
+        XCTAssertEqual(balanceSheet.assets.formatted, "18.378.948 ₲")
+        XCTAssertEqual(balanceSheet.liabilities.amount, "26782529")
+        XCTAssertEqual(balanceSheet.liabilities.currency, "PYG")
+        XCTAssertEqual(balanceSheet.liabilities.formatted, "26.782.529 ₲")
+    }
+
+    func testFormatMoneyWithProductionPayload() {
+        let netWorth = MoneyDto(amount: AnyStringAmount(wrappedValue: "-8403581"), currency: "PYG", formatted: "-8.403.581 ₲")
+        XCTAssertEqual(Formatters.formatMoney(netWorth), "-8.403.581 ₲")
+
+        let fallbackWithAmount = MoneyDto(amount: AnyStringAmount(wrappedValue: "-8403581"), currency: "PYG")
+        XCTAssertEqual(Formatters.formatMoney(fallbackWithAmount), "PYG -8403581")
+
+        let fallbackWithCents = MoneyDto(cents: 1000, currency: "USD")
+        XCTAssertEqual(Formatters.formatMoney(fallbackWithCents), Formatters.formatCents(1000, currency: "USD"))
+
+        let empty = MoneyDto()
+        XCTAssertEqual(Formatters.formatMoney(empty), "--")
+    }
+
+    @MainActor
+    func testDashboardViewRendersBalanceSheetSnapshot() throws {
+        let json = """
+        {"currency":"PYG","net_worth":{"amount":-8403581,"currency":"PYG","formatted":"-8.403.581 ₲"},"assets":{"amount":18378948,"currency":"PYG","formatted":"18.378.948 ₲"},"liabilities":{"amount":26782529,"currency":"PYG","formatted":"26.782.529 ₲"}}
+        """
+        let data = json.data(using: .utf8)!
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let balanceSheet = try decoder.decode(BalanceSheetResponse.self, from: data)
+
+        let schema = Schema([AccountEntity.self, EntryEntity.self, TransactionEntity.self, ReceivableEntity.self])
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [config])
+        let context = ModelContext(container)
+
+        let syncEngine = SyncEngine(modelContext: context)
+        syncEngine.balanceSheet = balanceSheet
+
+        let view = DashboardView(syncEngine: syncEngine)
+            .modelContainer(container)
+
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 393, height: 852))
+        let hostingController = UIHostingController(rootView: view)
+        hostingController.view.frame = window.bounds
+        window.rootViewController = hostingController
+        window.makeKeyAndVisible()
+        hostingController.view.setNeedsLayout()
+        hostingController.view.layoutIfNeeded()
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 2.0
+        let renderer = UIGraphicsImageRenderer(bounds: window.bounds, format: format)
+        let uiImage = renderer.image { ctx in
+            hostingController.view.layer.render(in: ctx.cgContext)
+        }
+
+        let pngData = try XCTUnwrap(uiImage.pngData())
+        let outputPath = "/tmp/dashboard_patrimonio_neto.png"
+        try pngData.write(to: URL(fileURLWithPath: outputPath))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: outputPath))
     }
 
     func testFetchRecentTransactionsSuccess() async throws {
