@@ -104,6 +104,7 @@ struct ReceivablesListView: View {
                     existing.percentPaid = dto.percentPaid ?? 0.0
                     existing.installmentCount = dto.installmentCount
                     existing.dueDay = dto.dueDay
+                    existing.firstDueDate = dto.firstDueDate
                     existing.currency = dto.currency ?? "PYG"
                     existing.notes = dto.notes
                     existing.updatedAt = dto.updatedAt ?? ""
@@ -123,6 +124,7 @@ struct ReceivablesListView: View {
                         percentPaid: dto.percentPaid ?? 0.0,
                         installmentCount: dto.installmentCount,
                         dueDay: dto.dueDay,
+                        firstDueDate: dto.firstDueDate,
                         currency: dto.currency ?? "PYG",
                         notes: dto.notes,
                         updatedAt: dto.updatedAt ?? "",
