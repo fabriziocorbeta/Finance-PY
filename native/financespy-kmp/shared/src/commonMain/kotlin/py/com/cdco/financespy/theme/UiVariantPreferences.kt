@@ -17,7 +17,7 @@ enum class UiVariant(
     IOS(
         id = "ios",
         label = "iOS (HIG)",
-        description = "Lenguaje visual estilo Cupertino: títulos grandes, listas agrupadas y barra inferior fija."
+        description = "Lenguaje visual iOS 26 Liquid Glass: títulos grandes, listas agrupadas y dock flotante translúcido."
     );
 
     companion object {

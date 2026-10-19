@@ -154,8 +154,7 @@ private fun IosMoreSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-                .background(FinancePyColors.surface())
+                .iosLiquidGlass(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp), contrastBoost = 0.15f)
                 .clickable(onClick = {}, enabled = true)
                 .navigationBarsPadding()
                 .padding(bottom = 24.dp)
@@ -206,8 +205,7 @@ private fun IosMoreSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(FinancePyColors.container())
+                        .iosLiquidGlass(RoundedCornerShape(14.dp))
                 ) {
                     items.forEachIndexed { index, item ->
                         Row(

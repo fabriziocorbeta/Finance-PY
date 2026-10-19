@@ -177,11 +177,11 @@ fun AppBottomNav(
     }
 }
 
-// Barra inferior estilo UITabBar (Apple HIG / MainTabView de financespy-ios):
-// acoplada de borde a borde en la parte inferior con línea divisoria hairline
-// de 0.5dp arriba, fondo translúcido secondarySystemGroupedBackground, íconos
-// con tint systemBlue en el tab activo y systemGray en los inactivos, y el
-// ítem "Más" con ellipsis horizontal igual que SwiftUI TabView.
+// Barra inferior estilo iOS 26 Liquid Glass:
+// cápsula flotante despegada de los 3 bordes (navigationBarsPadding + 16dp horizontal),
+// con material iosLiquidGlass (refracción en bordes, luminosidad adaptativa, surface
+// sheen y sombra difusa), badge líquido deslizante systemBlue sobre el tab activo,
+// íconos y tipografía SF Pro (10sp).
 @Composable
 private fun IosTabBar(
     items: List<NavItem>,
@@ -190,41 +190,64 @@ private fun IosTabBar(
     onMoreClick: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = GlassTransitions.materializeEnter,
+        exit = GlassTransitions.materializeExit,
         modifier = modifier
-            .fillMaxWidth()
-            .background(FinancePyColors.container().copy(alpha = 0.96f))
-            .navigationBarsPadding()
     ) {
-        HorizontalDivider(
-            thickness = 0.5.dp,
-            color = FinancePyColors.borderSecondary()
-        )
-        Row(
+        val shape = RoundedCornerShape(32.dp)
+        Column(
             modifier = Modifier
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
                 .fillMaxWidth()
-                .padding(top = 6.dp, bottom = 4.dp, start = 4.dp, end = 4.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
+                .iosLiquidGlass(shape = shape, contrastBoost = 0.20f)
         ) {
-            items.forEach { item ->
-                val active = currentRoute == item.route
-                IosTabBarItem(
-                    icon = item.icon,
-                    label = item.label,
-                    active = active,
-                    onClick = { onNavigate(item) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            if (onMoreClick != null) {
-                IosTabBarItem(
-                    icon = Icons.Filled.MoreHoriz,
-                    label = "Más",
-                    active = false,
-                    onClick = onMoreClick,
-                    modifier = Modifier.weight(1f)
-                )
+            val centers = remember(items) { mutableStateListOf<Float>().apply { repeat(items.size) { add(0f) } } }
+            val activeIndex = items.indexOfFirst { it.route == currentRoute }.let { if (it < 0) null else it }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp)
+            ) {
+                if (activeIndex != null && centers.getOrNull(activeIndex)?.let { it > 0f } == true) {
+                    LiquidNavBadge(
+                        targetCenterPx = centers[activeIndex],
+                        color = FinancePyColors.buttonBgPrimary()
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    items.forEachIndexed { index, item ->
+                        val active = currentRoute == item.route
+                        IosTabBarItem(
+                            item = item,
+                            active = active,
+                            onClick = { onNavigate(item) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .onGloballyPositioned { coords ->
+                                    val centerX = coords.positionInParent().x + coords.size.width / 2f
+                                    if (index < centers.size) centers[index] = centerX
+                                }
+                        )
+                    }
+                    if (onMoreClick != null) {
+                        IosTabBarMoreItem(
+                            onClick = onMoreClick,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
         }
     }
@@ -232,13 +255,13 @@ private fun IosTabBar(
 
 @Composable
 private fun IosTabBarItem(
-    icon: ImageVector,
-    label: String,
+    item: NavItem,
     active: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val tint = if (active) FinancePyColors.buttonBgPrimary() else FinancePyColors.textSecondary()
+    val activeTint = FinancePyColors.buttonBgPrimary()
+    val inactiveTint = FinancePyColors.textSecondary()
     val interactionSource = remember { MutableInteractionSource() }
 
     Column(
@@ -252,20 +275,72 @@ private fun IosTabBarItem(
             .padding(vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = tint,
-            modifier = Modifier.size(22.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(BadgeSize)
+                .clip(CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = item.icon,
+                contentDescription = item.label,
+                tint = if (active) Color.White else inactiveTint,
+                modifier = Modifier.size(20.dp)
+            )
+        }
         Spacer(modifier = Modifier.height(2.dp))
         Text(
-            text = label,
+            text = item.label,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontSize = 10.sp,
                 fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal
             ),
-            color = tint,
+            color = if (active) activeTint else inactiveTint,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun IosTabBarMoreItem(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Column(
+        modifier = modifier
+            .selectable(
+                selected = false,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+            .padding(vertical = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(BadgeSize)
+                .clip(CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.MoreHoriz,
+                contentDescription = "Más",
+                tint = FinancePyColors.textSecondary(),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = "Más",
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Normal
+            ),
+            color = FinancePyColors.textSecondary(),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )

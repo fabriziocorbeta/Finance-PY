@@ -61,9 +61,7 @@ fun Modifier.liquidGlass(
 ): Modifier = composed {
     val variant = LocalUiVariant.current
     if (variant == UiVariant.IOS) {
-        this
-            .clip(shape)
-            .background(FinancePyColors.container())
+        this.iosLiquidGlass(shape = shape, contrastBoost = contrastBoost)
     } else {
         val isDark = isSystemInDarkTheme()
 
@@ -115,8 +113,7 @@ fun AppCard(
             .liquidGlass(shape)
             .padding(metrics.cardPadding)
         UiVariant.IOS -> modifier
-            .clip(shape)
-            .background(FinancePyColors.container())
+            .iosLiquidGlass(shape)
             .padding(metrics.cardPadding)
     }
 

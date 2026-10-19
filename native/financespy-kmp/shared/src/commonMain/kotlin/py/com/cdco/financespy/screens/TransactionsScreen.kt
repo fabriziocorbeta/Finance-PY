@@ -74,6 +74,7 @@ import py.com.cdco.financespy.theme.components.AppGroupedListCard
 import py.com.cdco.financespy.theme.components.AppSearchField
 import py.com.cdco.financespy.theme.components.AppSegmentedControl
 import py.com.cdco.financespy.theme.components.ButtonVariant
+import py.com.cdco.financespy.theme.components.iosLiquidGlass
 import py.com.cdco.financespy.theme.components.liquidGlass
 import py.com.cdco.financespy.utils.formatMoney
 
@@ -244,9 +245,9 @@ fun TransactionsScreen(
     if (showFilterSheet) {
         val sheetState = rememberModalBottomSheetState()
         ModalBottomSheet(
-            containerColor = if (variant == UiVariant.IOS) FinancePyColors.surface() else Color.Transparent,
+            containerColor = Color.Transparent,
             modifier = if (variant == UiVariant.IOS) {
-                Modifier
+                Modifier.iosLiquidGlass(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp), contrastBoost = 0.15f)
             } else {
                 Modifier.liquidGlass(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
             },
@@ -269,8 +270,12 @@ fun TransactionsScreen(
 
     transactionPendingDelete?.let { entry ->
         AlertDialog(
-            modifier = Modifier.liquidGlass(RoundedCornerShape(if (variant == UiVariant.IOS) 14.dp else 28.dp)),
-            containerColor = if (variant == UiVariant.IOS) FinancePyColors.container() else Color.Transparent,
+            modifier = if (variant == UiVariant.IOS) {
+                Modifier.iosLiquidGlass(RoundedCornerShape(20.dp))
+            } else {
+                Modifier.liquidGlass(RoundedCornerShape(28.dp))
+            },
+            containerColor = Color.Transparent,
             onDismissRequest = { transactionPendingDelete = null },
             title = { Text("Eliminar transacción") },
             text = {
