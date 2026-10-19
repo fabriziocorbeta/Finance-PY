@@ -174,7 +174,8 @@ END) STORED,
     institution_name character varying,
     institution_domain character varying,
     notes text,
-    owner_id uuid
+    owner_id uuid,
+    card_identifier character varying
 );
 
 ALTER TABLE ONLY public.accounts FORCE ROW LEVEL SECURITY;
@@ -8305,6 +8306,7 @@ CREATE POLICY webauthn_credentials_family_isolation_policy ON public.webauthn_cr
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261019000000'),
 ('20261017000000'),
 ('20261016000000'),
 ('20261007160000'),
