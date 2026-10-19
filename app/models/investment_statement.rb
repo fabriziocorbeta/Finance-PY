@@ -143,20 +143,40 @@ class InvestmentStatement
     all_time_totals.interest&.amount || 0
   end
 
+  # Total return across the portfolio.
+  #
+  # For securities, that is unrealized gain: what the holdings are worth now
+  # versus what they cost. For an interest-bearing account -- a fund or a
+  # savings account, which is what most of this family's investments are --
+  # there are no priced holdings at all, so that comparison has nothing to work
+  # with and used to return nil, rendering as a bare "-" even when real
+  # interest had been credited.
+  #
+  # Interest is the return on those accounts, so it is folded in: the trend
+  # runs from capital contributed to capital contributed plus interest earned,
+  # which is exactly the yield over the period the money was in.
   def unrealized_gains_trend
-    holdings = current_holdings.to_a
-    return nil if holdings.empty?
+    holdings_with_cost_basis = current_holdings.to_a.select(&:avg_cost)
 
-    # Only include holdings with known cost basis in the calculation
-    holdings_with_cost_basis = holdings.select(&:avg_cost)
-    return nil if holdings_with_cost_basis.empty?
-
-    current = holdings_with_cost_basis.sum do |h|
+    holdings_current = holdings_with_cost_basis.sum do |h|
       convert_to_family_currency(h.amount, h.currency)
     end
-    previous = holdings_with_cost_basis.sum do |h|
+    holdings_cost = holdings_with_cost_basis.sum do |h|
       convert_to_family_currency(h.qty * h.avg_cost.amount, h.currency)
     end
+
+    interest_earned = all_time_totals.interest&.amount || 0
+    contributed = all_time_totals.contributions&.amount || 0
+
+    # Nothing to report on: no priced holdings and no income credited.
+    return nil if holdings_with_cost_basis.empty? && interest_earned.zero?
+
+    previous = holdings_cost + (interest_earned.zero? ? 0 : contributed)
+    current = holdings_current + (interest_earned.zero? ? 0 : contributed + interest_earned)
+
+    # A zero baseline would make the percentage meaningless (or a division by
+    # zero); the absolute gain is still worth showing.
+    return nil if previous.zero? && current.zero?
 
     Trend.new(
       current: Money.new(current, family.currency),
