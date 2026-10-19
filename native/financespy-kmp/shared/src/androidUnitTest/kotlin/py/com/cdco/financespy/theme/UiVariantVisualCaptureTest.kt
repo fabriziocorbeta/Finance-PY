@@ -7,12 +7,22 @@ import android.graphics.Paint
 import android.os.Looper
 import android.view.View
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -81,6 +91,7 @@ import py.com.cdco.financespy.screens.TransactionsScreen
 import py.com.cdco.financespy.screens.TransactionsViewModel
 import py.com.cdco.financespy.sync.SyncEngine
 import py.com.cdco.financespy.theme.components.AppBottomNav
+import py.com.cdco.financespy.theme.components.AppCard
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.test.assertTrue
@@ -526,6 +537,84 @@ class UiVariantVisualCaptureTest {
             )
         }
 
+        // Captura con contenido pasando por debajo de la barra inferior (scrolling content),
+        // donde la translucidez y refracción del glass se aprecian directamente.
+        val contentUnderNavM3 = renderScreenToBitmap(UiVariant.MATERIAL3) {
+            Box(modifier = Modifier.fillMaxSize().background(FinancePyColors.surface())) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(20) { idx ->
+                        AppCard(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Movimiento #$idx — Supermercado Stock",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = FinancePyColors.textPrimary()
+                                )
+                                Text(
+                                    text = "-₲ 245.000",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = FinancePyColors.destructive()
+                                )
+                            }
+                        }
+                    }
+                }
+                AppBottomNav(
+                    items = barItems,
+                    currentRoute = Routes.TRANSACTIONS,
+                    onNavigate = {},
+                    onMoreClick = {},
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+            }
+        }
+
+        val contentUnderNavIos = renderScreenToBitmap(UiVariant.IOS) {
+            Box(modifier = Modifier.fillMaxSize().background(FinancePyColors.surface())) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(20) { idx ->
+                        AppCard(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Movimiento #$idx — Supermercado Stock",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = FinancePyColors.textPrimary()
+                                )
+                                Text(
+                                    text = "-₲ 245.000",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = FinancePyColors.destructive()
+                                )
+                            }
+                        }
+                    }
+                }
+                AppBottomNav(
+                    items = barItems,
+                    currentRoute = Routes.TRANSACTIONS,
+                    onNavigate = {},
+                    onMoreClick = {},
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+            }
+        }
+
         // Las dos variantes tienen que renderizar distinto. Antes esto solo
         // afirmaba `width > 0`, que no puede fallar: si LocalUiVariant quedara
         // mal cableado y ambas variantes cayeran a Material 3, o si una pantalla
@@ -534,6 +623,7 @@ class UiVariantVisualCaptureTest {
         assertDiffer(dashboardM3, dashboardIos, "Dashboard")
         assertDiffer(transactionsM3, transactionsIos, "Transacciones")
         assertDiffer(settingsM3, settingsIos, "Ajustes")
+        assertDiffer(contentUnderNavM3, contentUnderNavIos, "Barra inferior con contenido debajo")
 
         val outDir = File("build/outputs/screenshots/ui-variants")
         outDir.mkdirs()
@@ -542,23 +632,46 @@ class UiVariantVisualCaptureTest {
             left = dashboardM3,
             right = dashboardIos,
             leftLabel = "Material 3 (Actual / Default)",
-            rightLabel = "iOS (Apple HIG)",
+            rightLabel = "iOS 26 Liquid Glass",
             targetFile = File(outDir, "dashboard_side_by_side.png")
         )
         saveSideBySide(
             left = transactionsM3,
             right = transactionsIos,
             leftLabel = "Material 3 (Actual / Default)",
-            rightLabel = "iOS (Apple HIG)",
+            rightLabel = "iOS 26 Liquid Glass",
             targetFile = File(outDir, "transactions_side_by_side.png")
         )
         saveSideBySide(
             left = settingsM3,
             right = settingsIos,
             leftLabel = "Ajustes — Material 3",
-            rightLabel = "Ajustes — iOS (HIG)",
+            rightLabel = "Ajustes — iOS 26 Liquid Glass",
             targetFile = File(outDir, "settings_side_by_side.png")
         )
+
+        // Close-up focalizado en la zona inferior donde el contenido pasa por debajo de la barra
+        val cropTop = 1350
+        val cropHeight = 890
+        val navCropM3 = Bitmap.createBitmap(contentUnderNavM3, 0, cropTop, contentUnderNavM3.width, cropHeight)
+        val navCropIos = Bitmap.createBitmap(contentUnderNavIos, 0, cropTop, contentUnderNavIos.width, cropHeight)
+
+        saveSideBySide(
+            left = navCropM3,
+            right = navCropIos,
+            leftLabel = "Barra inferior — Material 3 (Contenido pasando debajo)",
+            rightLabel = "Barra inferior — iOS 26 Liquid Glass (Contenido pasando debajo)",
+            targetFile = File(outDir, "bottom_nav_content_underneath.png")
+        )
+
+        // Sincronizar automáticamente en la carpeta de documentación para el PR
+        val docsDir = File("../docs/screenshots/ui-variants")
+        if (docsDir.exists() || docsDir.mkdirs()) {
+            File(outDir, "dashboard_side_by_side.png").copyTo(File(docsDir, "dashboard_side_by_side.png"), overwrite = true)
+            File(outDir, "transactions_side_by_side.png").copyTo(File(docsDir, "transactions_side_by_side.png"), overwrite = true)
+            File(outDir, "settings_side_by_side.png").copyTo(File(docsDir, "settings_side_by_side.png"), overwrite = true)
+            File(outDir, "bottom_nav_content_underneath.png").copyTo(File(docsDir, "bottom_nav_content_underneath.png"), overwrite = true)
+        }
     }
 
     // Compara pixel a pixel con un muestreo cada 4 (suficiente para detectar un
