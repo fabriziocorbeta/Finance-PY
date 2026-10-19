@@ -36,4 +36,20 @@ class EmailConfirmationsControllerTest < ActionDispatch::IntegrationTest
     ActiveRecord::Base.connection.execute("RESET app.current_family_id") rescue nil
     ActiveRecord::Base.connection.execute("RESET ROLE") rescue nil
   end
+
+  # The email is the account's recovery identity, so a session or token issued
+  # against the old address must not survive the change.
+  test "confirming a new email revokes the user's sessions and tokens" do
+    user = users(:new_email)
+    RlsContext.with_auth_bypass(reason: "test_setup") { user.update!(unconfirmed_email: "revoked@example.com") }
+
+    stale_session = RlsContext.with_auth_bypass(reason: "test_setup") { user.sessions.create! }
+    other_user_session = RlsContext.with_auth_bypass(reason: "test_setup") { users(:family_member).sessions.create! }
+
+    get new_email_confirmation_path(token: user.generate_token_for(:email_confirmation))
+    assert_redirected_to new_session_path
+
+    assert_not Session.exists?(stale_session.id), "Expected the user's pre-change session to be destroyed"
+    assert Session.exists?(other_user_session.id), "Expected another user's session to be untouched"
+  end
 end

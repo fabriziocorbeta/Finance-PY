@@ -124,6 +124,13 @@ class MfaController < ApplicationController
     end
 
     user.disable_mfa!
+    # Turning MFA off lowers the bar for every existing session, so the same
+    # revocation the password flows do applies here: anyone still holding a
+    # session or token from before now has easier access than the user just
+    # chose to allow. The current session is kept so the user isn't logged out
+    # of the page they're on.
+    user.revoke_all_oauth_tokens!
+    user.revoke_all_sessions!(except: Current.session)
     redirect_to settings_security_path, notice: t(".success")
   end
 

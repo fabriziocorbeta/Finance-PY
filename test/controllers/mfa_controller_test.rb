@@ -246,6 +246,28 @@ class MfaControllerTest < ActionDispatch::IntegrationTest
     assert_empty @user.webauthn_credentials
   end
 
+  # Turning MFA off lowers the bar for every session that already exists, so
+  # the same revocation the password-change flow performs applies here.
+  test "disable revokes other sessions while keeping the current one" do
+    @user.setup_mfa!
+    @user.enable_mfa!
+
+    # sign_in already created the session this request runs under; capture it
+    # before adding another, since both share a created_at second.
+    current_session = @user.sessions.order(:created_at).last
+    stale_session = RlsContext.with_auth_bypass(reason: "test_setup") { @user.sessions.create! }
+    other_user_session = RlsContext.with_auth_bypass(reason: "test_setup") { users(:family_admin).sessions.create! }
+    assert_not_equal stale_session.id, current_session.id
+
+    totp = ROTP::TOTP.new(@user.otp_secret, issuer: "Sure Finances")
+    delete disable_mfa_path, params: { password: user_password_test, code: totp.now }
+
+    assert_redirected_to settings_security_path
+    assert_not Session.exists?(stale_session.id), "Expected the user's other session to be destroyed"
+    assert Session.exists?(current_session.id), "Expected the current session to be preserved"
+    assert Session.exists?(other_user_session.id), "Expected another user's session to be untouched"
+  end
+
   private
     def register_webauthn_credential(origin: "http://www.example.com", rp_id: "www.example.com")
       client = WebAuthn::FakeClient.new(origin)
