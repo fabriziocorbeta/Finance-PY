@@ -51,10 +51,6 @@ object WalletCaptureHandler {
 
         purchases.forEach { purchase ->
             val accountId = AccountMapping.accountIdFor(context, purchase.cardText)
-            if (accountId == null) {
-                onResult?.invoke("unrecognized_card", purchase.cardText)
-                return@forEach
-            }
 
             val capture = PendingCapture(
                 id = UUID.randomUUID().toString(),
@@ -68,6 +64,21 @@ object WalletCaptureHandler {
                 device = device,
                 nature = purchase.nature
             )
+
+            // No account matched this card. Queue it instead of dropping it:
+            // this used to `return@forEach` and the purchase was gone for
+            // good, with nothing on disk and no way to notice. It cost two
+            // real Google Pay purchases on 2026-10-18, after the matching
+            // account was renamed ("Amex Gold" -> "Amex - Glod") and
+            // AccountMapping -- which compares the card text against the
+            // account NAME -- stopped matching. retryPending() re-resolves
+            // the account on every app open, so the capture lands by itself
+            // once an account matches again.
+            if (accountId == null) {
+                store.add(capture)
+                onResult?.invoke("unrecognized_card", purchase.cardText)
+                return@forEach
+            }
 
             if (token.isNullOrBlank()) {
                 store.add(capture)
@@ -101,7 +112,15 @@ object WalletCaptureHandler {
             var applied = 0
 
             store.readAll().forEach { capture ->
-                when (client.post(capture)) {
+                // A capture queued with no account (unrecognized card) gets
+                // its mapping retried here, not just its POST: the account it
+                // belongs to may have been renamed or created since. Still
+                // unresolved means leave it queued -- never drop it.
+                val resolved = capture.accountId
+                    ?: AccountMapping.accountIdFor(context, capture.item)
+                    ?: return@forEach
+
+                when (client.post(capture.copy(accountId = resolved))) {
                     is WebhookResult.Success -> {
                         store.remove(capture.id)
                         applied++
