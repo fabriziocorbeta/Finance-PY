@@ -77,6 +77,8 @@ import py.com.cdco.financespy.screens.TransactionFormViewModel
 import py.com.cdco.financespy.screens.TransactionsViewModel
 import py.com.cdco.financespy.sync.SyncEngine
 import py.com.cdco.financespy.sync.currentIsoDate
+import py.com.cdco.financespy.theme.AndroidUiVariantPreferences
+import py.com.cdco.financespy.theme.UiVariant
 import py.com.cdco.financespy.wallet.WalletCaptureHandler
 import py.com.cdco.financespy.wallet.WalletLocationPreferences
 import android.view.MotionEvent
@@ -99,6 +101,8 @@ class MainActivity : FragmentActivity() {
     private val screenCaptureBlockEnabled = mutableStateOf(true)
     private val walletLocationPreferences by lazy { WalletLocationPreferences(applicationContext) }
     private val walletLocationCaptureEnabled = mutableStateOf(false)
+    private val uiVariantPreferences by lazy { AndroidUiVariantPreferences(applicationContext) }
+    private val uiVariant = mutableStateOf(UiVariant.DEFAULT)
 
     // App-level (not Activity-level) observer: fires only when the whole app
     // truly leaves the foreground, not on rotation/config-change recreation
@@ -314,6 +318,7 @@ class MainActivity : FragmentActivity() {
         ProcessLifecycleOwner.get().lifecycle.addObserver(processLifecycleObserver)
         biometricLockEnabled.value = securityPreferences.isBiometricLockEnabled()
         walletLocationCaptureEnabled.value = walletLocationPreferences.isLocationCaptureEnabled()
+        uiVariant.value = uiVariantPreferences.getUiVariant()
 
         initDatabaseBuilder(applicationContext)
 
@@ -518,6 +523,11 @@ class MainActivity : FragmentActivity() {
                     ) {
                         locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
                     }
+                },
+                uiVariant = uiVariant.value,
+                onSelectUiVariant = { selected ->
+                    uiVariantPreferences.setUiVariant(selected)
+                    uiVariant.value = selected
                 },
                 reportsViewModelFactory = { reportsViewModel },
                 upayImportViewModelFactory = {

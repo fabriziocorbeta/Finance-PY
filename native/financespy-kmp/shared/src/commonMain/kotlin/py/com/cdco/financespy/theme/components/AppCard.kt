@@ -24,6 +24,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.theme.FinancePyColors
+import py.com.cdco.financespy.theme.LocalFinancePyMetrics
+import py.com.cdco.financespy.theme.LocalUiVariant
+import py.com.cdco.financespy.theme.UiVariant
 
 // Enter/exit pair for a glass surface appearing or disappearing, modeled on
 // SwiftUI's GlassEffectTransition.materialize (see Apple's
@@ -56,39 +59,46 @@ fun Modifier.liquidGlass(
     // of what's scrolled behind it, without changing how cards/dialogs look.
     contrastBoost: Float = 0f
 ): Modifier = composed {
-    val isDark = isSystemInDarkTheme()
-
-    val glassBg = if (isDark) {
-        FinancePyColors.container().copy(alpha = (0.65f + contrastBoost).coerceAtMost(1f))
+    val variant = LocalUiVariant.current
+    if (variant == UiVariant.IOS) {
+        this
+            .clip(shape)
+            .background(FinancePyColors.container())
     } else {
-        FinancePyColors.container().copy(alpha = (0.75f + contrastBoost).coerceAtMost(1f))
-    }
+        val isDark = isSystemInDarkTheme()
 
-    val borderGradient = Brush.linearGradient(
-        colors = if (isDark) {
-            listOf(
-                Color.White.copy(alpha = 0.25f),
-                Color.White.copy(alpha = 0.05f)
-            )
+        val glassBg = if (isDark) {
+            FinancePyColors.container().copy(alpha = (0.65f + contrastBoost).coerceAtMost(1f))
         } else {
-            listOf(
-                Color.White.copy(alpha = 0.9f),
-                Color.White.copy(alpha = 0.3f)
-            )
+            FinancePyColors.container().copy(alpha = (0.75f + contrastBoost).coerceAtMost(1f))
         }
-    )
 
-    this
-        .shadow(
-            elevation = 8.dp,
-            shape = shape,
-            clip = false,
-            ambientColor = Color.Black.copy(alpha = 0.05f),
-            spotColor = Color.Black.copy(alpha = 0.1f)
+        val borderGradient = Brush.linearGradient(
+            colors = if (isDark) {
+                listOf(
+                    Color.White.copy(alpha = 0.25f),
+                    Color.White.copy(alpha = 0.05f)
+                )
+            } else {
+                listOf(
+                    Color.White.copy(alpha = 0.9f),
+                    Color.White.copy(alpha = 0.3f)
+                )
+            }
         )
-        .clip(shape)
-        .background(glassBg)
-        .border(width = 1.5.dp, brush = borderGradient, shape = shape)
+
+        this
+            .shadow(
+                elevation = 8.dp,
+                shape = shape,
+                clip = false,
+                ambientColor = Color.Black.copy(alpha = 0.05f),
+                spotColor = Color.Black.copy(alpha = 0.1f)
+            )
+            .clip(shape)
+            .background(glassBg)
+            .border(width = 1.5.dp, brush = borderGradient, shape = shape)
+    }
 }
 
 @Composable
@@ -96,11 +106,22 @@ fun AppCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val shape = RoundedCornerShape(12.dp)
-    Column(
-        modifier = modifier
+    val variant = LocalUiVariant.current
+    val metrics = LocalFinancePyMetrics.current
+    val shape = RoundedCornerShape(metrics.cardCornerRadius)
+
+    val cardModifier = when (variant) {
+        UiVariant.MATERIAL3 -> modifier
             .liquidGlass(shape)
-            .padding(16.dp),
+            .padding(metrics.cardPadding)
+        UiVariant.IOS -> modifier
+            .clip(shape)
+            .background(FinancePyColors.container())
+            .padding(metrics.cardPadding)
+    }
+
+    Column(
+        modifier = cardModifier,
         content = content
     )
 }

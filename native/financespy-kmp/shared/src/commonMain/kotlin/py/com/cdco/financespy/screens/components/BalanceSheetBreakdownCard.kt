@@ -21,8 +21,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,14 +39,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.api.dto.AccountGroupDto
 import py.com.cdco.financespy.api.dto.ClassificationGroupDto
 import py.com.cdco.financespy.api.dto.DashboardBalanceSheetDto
 import py.com.cdco.financespy.theme.FinancePyColors
+import py.com.cdco.financespy.theme.LocalUiVariant
+import py.com.cdco.financespy.theme.UiVariant
 import py.com.cdco.financespy.theme.components.AppCard
+import py.com.cdco.financespy.theme.components.AppGroupedListCard
 import py.com.cdco.financespy.utils.formatMoney
 
 @Composable
@@ -54,6 +58,17 @@ fun BalanceSheetBreakdownCard(
     onAccountClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val variant = LocalUiVariant.current
+    if (variant == UiVariant.IOS) {
+        IosBalanceSheetBreakdownSection(
+            balanceSheet = balanceSheet,
+            currency = currency,
+            onAccountClick = onAccountClick,
+            modifier = modifier
+        )
+        return
+    }
+
     AppCard(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -75,6 +90,167 @@ fun BalanceSheetBreakdownCard(
                     currency = currency,
                     onAccountClick = onAccountClick
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun IosBalanceSheetBreakdownSection(
+    balanceSheet: DashboardBalanceSheetDto?,
+    currency: String,
+    onAccountClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val classificationGroups = balanceSheet?.classification_groups ?: emptyList()
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        classificationGroups.forEach { cg ->
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = cg.name.uppercase(),
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = FinancePyColors.textSecondary()
+                    )
+                    Text(
+                        text = formatMoney(cg.total, currency),
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = FinancePyColors.textSecondary()
+                    )
+                }
+
+                AppGroupedListCard {
+                    cg.account_groups.forEachIndexed { idx, group ->
+                        IosAccountGroupRow(
+                            accountGroup = group,
+                            currency = currency,
+                            onAccountClick = onAccountClick
+                        )
+                        if (idx < cg.account_groups.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(start = 36.dp),
+                                thickness = 0.5.dp,
+                                color = FinancePyColors.borderSecondary()
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IosAccountGroupRow(
+    accountGroup: AccountGroupDto,
+    currency: String,
+    onAccountClick: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(true) }
+
+    val successColor = FinancePyColors.success()
+    val destructiveColor = FinancePyColors.destructive()
+    val warningColor = FinancePyColors.warning()
+    val primaryColor = FinancePyColors.buttonBgPrimary()
+    val groupColor = parseColorString(
+        accountGroup.color, primaryColor, successColor, destructiveColor, warningColor, primaryColor
+    )
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(groupColor, CircleShape)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = accountGroup.name,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    color = FinancePyColors.textPrimary(),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = formatMoney(accountGroup.total, currency),
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                    color = FinancePyColors.textPrimary()
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (expanded) "Colapsar" else "Expandir",
+                    tint = FinancePyColors.textSubdued(),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = expanded && accountGroup.accounts.isNotEmpty(),
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                accountGroup.accounts.forEach { acc ->
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 36.dp),
+                        thickness = 0.5.dp,
+                        color = FinancePyColors.borderSecondary()
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onAccountClick(acc.id) }
+                            .padding(start = 36.dp, end = 16.dp, top = 11.dp, bottom = 11.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = acc.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = FinancePyColors.textPrimary(),
+                            modifier = Modifier.weight(1f)
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = formatMoney(acc.balance, acc.currency),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                color = FinancePyColors.textSecondary()
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = FinancePyColors.textSubdued(),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
