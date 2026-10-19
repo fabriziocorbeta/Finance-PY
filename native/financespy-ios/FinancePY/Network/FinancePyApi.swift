@@ -76,6 +76,19 @@ struct MoneyDto: Codable {
     let cents: Int64?
     @AnyStringAmount var amount: String?
     let currency: String?
+    let formatted: String?
+
+    init(
+        cents: Int64? = nil,
+        amount: AnyStringAmount = AnyStringAmount(wrappedValue: nil),
+        currency: String? = nil,
+        formatted: String? = nil
+    ) {
+        self.cents = cents
+        self._amount = amount
+        self.currency = currency
+        self.formatted = formatted
+    }
 }
 
 struct TransactionsResponse: Codable {

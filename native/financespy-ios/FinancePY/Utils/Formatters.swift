@@ -26,4 +26,16 @@ enum Formatters {
         let amount = centsToDouble(cents, currency: currency)
         return formatter.string(from: NSNumber(value: amount)) ?? "\(currency) \(amount)"
     }
+
+    static func formatMoney(_ money: MoneyDto) -> String {
+        if let formatted = money.formatted, !formatted.isEmpty {
+            return formatted
+        } else if let cents = money.cents {
+            return formatCents(cents, currency: money.currency ?? "PYG")
+        } else if let amount = money.amount, let currency = money.currency {
+            return "\(currency) \(amount)"
+        } else {
+            return "--"
+        }
+    }
 }

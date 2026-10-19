@@ -185,7 +185,7 @@ struct DashboardView: View {
                 }
             }
             .task {
-                if accounts.isEmpty {
+                if accounts.isEmpty || syncEngine.balanceSheet == nil {
                     _ = await syncEngine.syncAll()
                 }
             }
@@ -193,13 +193,7 @@ struct DashboardView: View {
     }
 
     private func formatMoney(_ money: MoneyDto) -> String {
-        if let amount = money.amount, let currency = money.currency {
-            return "\(currency) \(amount)"
-        } else if let cents = money.cents {
-            return formatCents(cents, currency: money.currency ?? "PYG")
-        } else {
-            return "--"
-        }
+        Formatters.formatMoney(money)
     }
 
     private func formatCents(_ cents: Int64, currency: String) -> String {
