@@ -39,7 +39,10 @@ fun Modifier.iosLiquidGlass(
 
     // 1. Crystalline translucent substrate
     val baseAlpha = if (isDark) {
-        (0.38f + contrastBoost * 0.35f).coerceIn(0.32f, 0.70f)
+        // Ceiling raised to 0.95 so a caller that needs a near-solid surface
+        // (the dock, which has to stay legible over scrolling text) can ask
+        // for it. Cards still sit near the low end and read as glass.
+        (0.38f + contrastBoost * 0.35f).coerceIn(0.32f, 0.95f)
     } else {
         (0.58f + contrastBoost * 0.4f).coerceIn(0.50f, 0.90f)
     }
