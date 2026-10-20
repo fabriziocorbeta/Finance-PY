@@ -147,17 +147,31 @@ private fun IosMoreSheet(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.4f))
+            // iOS dims the backdrop heavily behind a sheet so the content
+            // underneath reads as out of focus rather than as competing text.
+            // At 0.4 the dashboard was still legible through it, which is what
+            // made the sheet feel transparent. The real backdrop blur that iOS
+            // uses needs a screen-space shader Compose does not expose, so the
+            // depth comes from dimming plus the sheet's own opaque surface.
+            .background(Color.Black.copy(alpha = 0.72f))
             .clickable(onClick = onDismiss),
         contentAlignment = Alignment.BottomCenter
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .iosLiquidGlass(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp), contrastBoost = 0.15f)
+                // Translucent on purpose -- that is the Liquid Glass look. It
+                // stays readable because what is behind it is blurred (see the
+                // NavHost in App.kt) and dimmed by the scrim, rather than
+                // because the sheet itself is opaque.
+                .iosLiquidGlass(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp), contrastBoost = 0.30f)
                 .clickable(onClick = {}, enabled = true)
                 .navigationBarsPadding()
-                .padding(bottom = 24.dp)
+                // The dock floats over this sheet rather than sitting beside
+                // it, so a fixed 24.dp left the last entry (Flota) hidden
+                // behind the bar -- visible but untappable, the same failure
+                // the FAB screens hit. Clear the measured dock height instead.
+                .padding(bottom = AppBottomNavOverlayClearance)
         ) {
             Box(
                 modifier = Modifier

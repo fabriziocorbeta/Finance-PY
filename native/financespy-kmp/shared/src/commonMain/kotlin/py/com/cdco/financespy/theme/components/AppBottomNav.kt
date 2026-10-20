@@ -205,7 +205,15 @@ private fun IosTabBar(
                 .navigationBarsPadding()
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)
                 .fillMaxWidth()
-                .iosLiquidGlass(shape = shape, contrastBoost = 0.20f)
+                // Opaque base under the glass treatment. The dock sits over
+                // scrolling content, and at any glassy alpha the rows
+                // underneath stayed legible through the tab labels and
+                // competed with them -- 0.90 was still not enough on a real
+                // device. The glass layer above still supplies the sheen, rim
+                // and curvature, so it reads as a material rather than a flat
+                // slab; it just does not show what is behind it.
+                .background(FinancePyColors.container(), shape)
+                .iosLiquidGlass(shape = shape, contrastBoost = 1.5f)
         ) {
             val centers = remember(items) { mutableStateListOf<Float>().apply { repeat(items.size) { add(0f) } } }
             val activeIndex = items.indexOfFirst { it.route == currentRoute }.let { if (it < 0) null else it }

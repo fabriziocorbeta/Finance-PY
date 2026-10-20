@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -282,6 +283,14 @@ fun App(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(FinancePyColors.surface())
+                                // Backdrop blur while the overflow sheet is
+                                // open, the way iOS defocuses what is behind a
+                                // sheet. Blur has to be applied to the content
+                                // underneath -- a blur on the sheet itself
+                                // would only smear the sheet. Needs API 31+;
+                                // on older devices this is a no-op and the
+                                // scrim alone provides the separation.
+                                .blur(if (showHamburgerMenu) 18.dp else 0.dp)
                                 .padding(top = innerPadding.calculateTopPadding())
                         ) {
                         composable(Routes.ONBOARDING) {
