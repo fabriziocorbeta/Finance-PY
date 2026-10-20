@@ -44,7 +44,12 @@ fun Modifier.iosLiquidGlass(
         (0.58f + contrastBoost * 0.4f).coerceIn(0.50f, 0.90f)
     }
     val glassSubstrate = if (isDark) {
-        Color(0xFF222228).copy(alpha = baseAlpha)
+        // Near-black rather than the mid-grey #222228 this used to be. Against
+        // a true-black background that grey read as a flat grey panel, not as
+        // glass -- on a real OLED device the panels looked like grey boxes
+        // sitting on black, which is the opposite of what Liquid Glass does on
+        // iOS 26 (dark panels that let the backdrop through).
+        Color(0xFF0B0B0D).copy(alpha = baseAlpha)
     } else {
         Color(0xFFFAFBFD).copy(alpha = baseAlpha)
     }
@@ -52,11 +57,15 @@ fun Modifier.iosLiquidGlass(
     // 2. Optical surface sheen (simulates the 3D curved front face catching environment light)
     val surfaceSheen = Brush.verticalGradient(
         if (isDark) {
+            // A white wash at 0.28 over a dark panel is what actually made the
+            // cards look grey. In dark mode the key light should be a thin
+            // highlight along the top edge, not a veil across the whole
+            // surface.
             listOf(
-                Color.White.copy(alpha = 0.28f),
-                Color.White.copy(alpha = 0.06f),
+                Color.White.copy(alpha = 0.10f),
+                Color.White.copy(alpha = 0.02f),
                 Color.Transparent,
-                Color.White.copy(alpha = 0.08f)
+                Color.White.copy(alpha = 0.03f)
             )
         } else {
             listOf(
@@ -71,11 +80,14 @@ fun Modifier.iosLiquidGlass(
     // 3. Directional specular bevel rim (Fresnel reflection: bright top key light, soft ground bounce)
     val borderBrush = Brush.verticalGradient(
         if (isDark) {
+            // The rim is meant to be a hairline catching light, but at 0.65 it
+            // drew a visible grey outline around every panel. Toned down so the
+            // edge is felt rather than seen.
             listOf(
-                Color.White.copy(alpha = 0.65f),
-                Color.White.copy(alpha = 0.28f),
-                Color.White.copy(alpha = 0.08f),
-                Color.White.copy(alpha = 0.18f)
+                Color.White.copy(alpha = 0.22f),
+                Color.White.copy(alpha = 0.09f),
+                Color.White.copy(alpha = 0.03f),
+                Color.White.copy(alpha = 0.06f)
             )
         } else {
             listOf(
