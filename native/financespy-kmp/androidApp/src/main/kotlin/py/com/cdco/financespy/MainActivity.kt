@@ -178,7 +178,10 @@ class MainActivity : FragmentActivity() {
             }
         )
     }
-    private val api by lazy { FinancePyApi(httpClient) }
+    private val isDemoMode by lazy { intent.getBooleanExtra("demo_mode", false) }
+    private val api: FinancePyApi by lazy {
+        if (isDemoMode) py.com.cdco.financespy.api.DemoFinancePyApi() else FinancePyApi(httpClient)
+    }
     private val database by lazy { buildDatabase() }
     private val syncEngine by lazy {
         SyncEngine(
@@ -335,7 +338,17 @@ class MainActivity : FragmentActivity() {
             }
         }
 
+        if (isDemoMode) {
+            uiVariant.value = UiVariant.IOS
+            isLoggedIn.value = true
+            appLifecycleObserver.isLoggedIn = true
+            appLifecycleObserver.resetClock()
+            screenCaptureBlockEnabled.value = false
+            applyScreenCaptureBlock(false)
+        }
+
         lifecycleScope.launch(Dispatchers.IO) {
+            if (isDemoMode) return@launch
             val tAuthStart = System.currentTimeMillis()
             val loggedIn = authRepository.isLoggedIn()
             var onboardingNeeded = false
