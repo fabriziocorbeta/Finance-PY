@@ -55,7 +55,7 @@ kotlin {
         androidUnitTest.dependencies {
             implementation("androidx.test:core:1.6.1")
             implementation("org.robolectric:robolectric:4.14.1")
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
         }
     }
 }
