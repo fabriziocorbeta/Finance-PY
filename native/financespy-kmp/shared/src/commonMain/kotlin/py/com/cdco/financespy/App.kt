@@ -32,6 +32,7 @@ import py.com.cdco.financespy.navigation.NavItem
 import py.com.cdco.financespy.navigation.NavItems
 import py.com.cdco.financespy.navigation.NavPreferences
 import py.com.cdco.financespy.navigation.Routes
+import py.com.cdco.financespy.screens.MoreScreen
 import py.com.cdco.financespy.screens.NavCustomizationScreen
 import py.com.cdco.financespy.screens.NavCustomizationViewModel
 import py.com.cdco.financespy.theme.components.AppBottomNav
@@ -215,6 +216,7 @@ fun App(
                     currentRoute == Routes.RECEIVABLES ||
                     currentRoute == Routes.DEBTS ||
                     currentRoute == Routes.REPORTS ||
+                    currentRoute == Routes.MORE ||
                     (isBusinessModeEnabled && currentRoute in businessRoutes)
 
                 fun navigateToItem(item: NavItem) {
@@ -588,9 +590,18 @@ fun App(
                                 chatId = chatId
                             )
                         }
+
+                        composable(Routes.MORE) {
+                            MoreScreen(
+                                items = overflowItems,
+                                onItemClick = { item -> navigateToItem(item) },
+                                onImportClick = { navController.navigate(Routes.PDF_STATEMENT_IMPORT) },
+                                onSettingsClick = { navController.navigate(Routes.SETTINGS) }
+                            )
+                        }
                     }
 
-                    if (showHamburgerMenu) {
+                    if (showHamburgerMenu && activeUiVariant != UiVariant.IOS) {
                         AppHamburgerMenu(
                             items = overflowItems,
                             onItemClick = { item -> navigateToItem(item) },
@@ -604,8 +615,24 @@ fun App(
                             items = barItems,
                             currentRoute = currentRoute,
                             onNavigate = { item -> navigateToItem(item) },
-                            onMoreClick = if (overflowItems.isNotEmpty()) {
-                                { showHamburgerMenu = true }
+                            onMoreClick = if (overflowItems.isNotEmpty() || activeUiVariant == UiVariant.IOS) {
+                                if (activeUiVariant == UiVariant.IOS) {
+                                    {
+                                        if (currentRoute != Routes.MORE) {
+                                            navController.navigate(Routes.MORE) {
+                                                popUpTo(Routes.DASHBOARD) {
+                                                    saveState = true
+                                                }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    if (overflowItems.isNotEmpty()) {
+                                        { showHamburgerMenu = true }
+                                    } else null
+                                }
                             } else null,
                             modifier = Modifier.align(Alignment.BottomCenter)
                         )
