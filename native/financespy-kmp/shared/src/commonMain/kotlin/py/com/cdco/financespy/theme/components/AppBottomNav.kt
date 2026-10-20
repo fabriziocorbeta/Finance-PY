@@ -47,6 +47,7 @@ import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.coroutineScope
@@ -68,6 +69,12 @@ import py.com.cdco.financespy.theme.UiVariant
 var AppBottomNavOverlayClearance by mutableStateOf(96.dp)
 
 private val BadgeSize = 32.dp
+
+// The iOS dock is a chunkier slab than the Material 3 pill: taller, with more
+// breathing room above and below the icons. Kept separate from BadgeSize so
+// the Material 3 bar, which shares that constant, is unaffected.
+private val IosBadgeSize = 40.dp
+private val IosIconSize = 25.dp
 
 // Replica el diseño real de la barra inferior de la web (mobile, `_nav_item.html.erb`):
 // ícono en box redondeado 32dp, activo = fondo container + texto/ícono primario,
@@ -138,12 +145,13 @@ fun AppBottomNav(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 6.dp)
+                    .padding(vertical = 12.dp)
             ) {
                 if (activeIndex != null && centers.getOrNull(activeIndex)?.let { it > 0f } == true) {
                     LiquidNavBadge(
                         targetCenterPx = centers[activeIndex],
-                        color = FinancePyColors.buttonBgPrimary()
+                        color = FinancePyColors.buttonBgPrimary(),
+                        badgeSize = IosBadgeSize
                     )
                 }
 
@@ -280,12 +288,12 @@ private fun IosTabBarItem(
                 indication = null,
                 onClick = onClick
             )
-            .padding(vertical = 2.dp),
+            .padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             modifier = Modifier
-                .size(BadgeSize)
+                .size(IosBadgeSize)
                 .clip(CircleShape),
             contentAlignment = Alignment.Center
         ) {
@@ -293,14 +301,14 @@ private fun IosTabBarItem(
                 imageVector = item.icon,
                 contentDescription = item.label,
                 tint = if (active) Color.White else inactiveTint,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(IosIconSize)
             )
         }
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = item.label,
             style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 10.sp,
+                fontSize = 11.sp,
                 fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal
             ),
             color = if (active) activeTint else inactiveTint,
@@ -325,12 +333,12 @@ private fun IosTabBarMoreItem(
                 indication = null,
                 onClick = onClick
             )
-            .padding(vertical = 2.dp),
+            .padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             modifier = Modifier
-                .size(BadgeSize)
+                .size(IosBadgeSize)
                 .clip(CircleShape),
             contentAlignment = Alignment.Center
         ) {
@@ -338,14 +346,14 @@ private fun IosTabBarMoreItem(
                 imageVector = Icons.Filled.MoreHoriz,
                 contentDescription = "Más",
                 tint = FinancePyColors.textSecondary(),
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(IosIconSize)
             )
         }
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = "Más",
             style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 10.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Normal
             ),
             color = FinancePyColors.textSecondary(),
@@ -366,10 +374,13 @@ private fun IosTabBarMoreItem(
 @Composable
 private fun BoxScope.LiquidNavBadge(
     targetCenterPx: Float,
-    color: Color
+    color: Color,
+    // Shared by both variants, so the size is a parameter: the iOS dock uses a
+    // larger badge to match its bigger icons, Material 3 keeps the original.
+    badgeSize: Dp = BadgeSize
 ) {
     val density = LocalDensity.current
-    val badgeSizePx = with(density) { BadgeSize.toPx() }
+    val badgeSizePx = with(density) { badgeSize.toPx() }
 
     val leftAnim = remember { Animatable(targetCenterPx - badgeSizePx / 2f) }
     val rightAnim = remember { Animatable(targetCenterPx + badgeSizePx / 2f) }
@@ -426,7 +437,7 @@ private fun BoxScope.LiquidNavBadge(
         modifier = Modifier
             .align(Alignment.TopStart)
             .offset(x = leftDp)
-            .size(width = widthDp, height = BadgeSize)
+            .size(width = widthDp, height = badgeSize)
             .clip(RoundedCornerShape(percent = 50))
             .background(color)
     )
