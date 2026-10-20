@@ -61,8 +61,20 @@ class ApiKey < ApplicationRecord
     expires_at.present? && expires_at < Time.current
   end
 
+  # Constant-time comparison. `==` on strings returns as soon as two bytes
+  # differ, so the time it takes leaks how much of the key the caller got
+  # right -- the classic timing oracle against a secret. No production code
+  # path calls this today (authentication goes through find_by_value, which
+  # matches on the deterministic-encryption index and has no such leak), but
+  # a method that compares a secret should not be the unsafe one to reach for.
+  #
+  # secure_compare (not the fixed_length_ variant, which raises on a length
+  # mismatch) digests both sides first, so it handles keys of differing
+  # length without leaking the length itself.
   def key_matches?(plain_key)
-    display_key == plain_key
+    return false if plain_key.blank? || display_key.blank?
+
+    ActiveSupport::SecurityUtils.secure_compare(display_key, plain_key)
   end
 
   def revoke!
