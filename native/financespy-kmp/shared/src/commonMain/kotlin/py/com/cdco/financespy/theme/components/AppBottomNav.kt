@@ -210,6 +210,12 @@ private fun IosTabBar(
         val shape = RoundedCornerShape(32.dp)
         Column(
             modifier = Modifier
+                // Opaque backdrop behind the whole dock band, painted before
+                // the insets padding so it reaches the very bottom of the
+                // screen. Without it the rows kept scrolling into view in the
+                // gap between the dock's lower edge and the screen edge --
+                // "Oro / $ 4,05" was readable under the dock on a real device.
+                .background(FinancePyColors.surface())
                 .navigationBarsPadding()
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)
                 .fillMaxWidth()
@@ -229,12 +235,13 @@ private fun IosTabBar(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 6.dp)
+                    .padding(vertical = 10.dp)
             ) {
                 if (activeIndex != null && centers.getOrNull(activeIndex)?.let { it > 0f } == true) {
                     LiquidNavBadge(
                         targetCenterPx = centers[activeIndex],
-                        color = FinancePyColors.buttonBgPrimary()
+                        color = FinancePyColors.buttonBgPrimary(),
+                        badgeSize = IosBadgeSize
                     )
                 }
 
