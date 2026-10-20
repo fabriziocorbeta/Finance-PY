@@ -76,6 +76,12 @@ private val BadgeSize = 32.dp
 private val IosBadgeSize = 40.dp
 private val IosIconSize = 25.dp
 
+// Measured off the iOS 26 simulator (iPhone 17 Pro Max, @3x): the tab bar
+// capsule is 56pt tall and sits 24pt above the bottom of the screen, and the
+// selected tab's grey capsule is 73x46pt around the icon-plus-label pair.
+private val IosDockHeight = 56.dp
+private val IosTabItemShape = RoundedCornerShape(22.dp)
+
 // Replica el diseño real de la barra inferior de la web (mobile, `_nav_item.html.erb`):
 // ícono en box redondeado 32dp, activo = fondo container + texto/ícono primario,
 // inactivo = sin fondo + texto/ícono secundario. Label 11sp debajo.
@@ -150,8 +156,7 @@ fun AppBottomNav(
                 if (activeIndex != null && centers.getOrNull(activeIndex)?.let { it > 0f } == true) {
                     LiquidNavBadge(
                         targetCenterPx = centers[activeIndex],
-                        color = FinancePyColors.buttonBgPrimary(),
-                        badgeSize = IosBadgeSize
+                        color = FinancePyColors.buttonBgPrimary()
                     )
                 }
 
@@ -210,66 +215,50 @@ private fun IosTabBar(
         val shape = RoundedCornerShape(32.dp)
         Column(
             modifier = Modifier
-                // Opaque backdrop behind the whole dock band, painted before
-                // the insets padding so it reaches the very bottom of the
-                // screen. Without it the rows kept scrolling into view in the
-                // gap between the dock's lower edge and the screen edge --
-                // "Oro / $ 4,05" was readable under the dock on a real device.
-                .background(FinancePyColors.surface())
                 .navigationBarsPadding()
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)
                 .fillMaxWidth()
-                // Opaque base under the glass treatment. The dock sits over
-                // scrolling content, and at any glassy alpha the rows
-                // underneath stayed legible through the tab labels and
-                // competed with them -- 0.90 was still not enough on a real
-                // device. The glass layer above still supplies the sheen, rim
-                // and curvature, so it reads as a material rather than a flat
-                // slab; it just does not show what is behind it.
-                .background(FinancePyColors.container(), shape)
-                .iosLiquidGlass(shape = shape, contrastBoost = 1.5f)
+                // Translucent, like the reference -- the dock is a material,
+                // not a panel. Measured on the iOS 26 simulator (iPhone 17
+                // Pro Max): content shows through the real tab bar with a
+                // luminance spread of ~18 over a band of show-through text,
+                // i.e. visibly present but never readable, because iOS blurs
+                // what is behind the bar.
+                //
+                // Compose gives us no backdrop blur, so translucency alone
+                // renders that same text SHARP (measured spread ~88 on a real
+                // device) and it competes with the tab labels. Raising the
+                // fill's alpha does not fix it either -- going 0.35 -> 0.86
+                // moved the spread by 2. What the eye reads as "glass" here
+                // is the blur, not the alpha. AppBottomNavScrim (behind this,
+                // in App.kt) supplies that blur; this layer stays light so the
+                // blurred backdrop still modulates it.
+                .iosLiquidGlass(shape = shape, contrastBoost = 0.35f)
         ) {
-            val centers = remember(items) { mutableStateListOf<Float>().apply { repeat(items.size) { add(0f) } } }
-            val activeIndex = items.indexOfFirst { it.route == currentRoute }.let { if (it < 0) null else it }
-
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 10.dp)
+                    // 56pt tall in the reference, measured from the capsule's
+                    // top to bottom edge.
+                    .height(IosDockHeight)
+                    .padding(horizontal = 6.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (activeIndex != null && centers.getOrNull(activeIndex)?.let { it > 0f } == true) {
-                    LiquidNavBadge(
-                        targetCenterPx = centers[activeIndex],
-                        color = FinancePyColors.buttonBgPrimary(),
-                        badgeSize = IosBadgeSize
+                items.forEach { item ->
+                    val active = currentRoute == item.route
+                    IosTabBarItem(
+                        item = item,
+                        active = active,
+                        onClick = { onNavigate(item) },
+                        modifier = Modifier.weight(1f)
                     )
                 }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    items.forEachIndexed { index, item ->
-                        val active = currentRoute == item.route
-                        IosTabBarItem(
-                            item = item,
-                            active = active,
-                            onClick = { onNavigate(item) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .onGloballyPositioned { coords ->
-                                    val centerX = coords.positionInParent().x + coords.size.width / 2f
-                                    if (index < centers.size) centers[index] = centerX
-                                }
-                        )
-                    }
-                    if (onMoreClick != null) {
-                        IosTabBarMoreItem(
-                            onClick = onMoreClick,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                if (onMoreClick != null) {
+                    IosTabBarMoreItem(
+                        onClick = onMoreClick,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }
@@ -287,6 +276,10 @@ private fun IosTabBarItem(
     val inactiveTint = FinancePyColors.textSecondary()
     val interactionSource = remember { MutableInteractionSource() }
 
+    // The reference marks the selected tab with a grey capsule that wraps the
+    // icon AND the label together (measured 73x46pt in the simulator), not
+    // with a filled circle behind the icon alone. The icon and label both turn
+    // blue inside it; they do not go white.
     Column(
         modifier = modifier
             .selectable(
@@ -295,23 +288,19 @@ private fun IosTabBarItem(
                 indication = null,
                 onClick = onClick
             )
-            .padding(vertical = 6.dp),
+            .padding(horizontal = 2.dp)
+            .clip(IosTabItemShape)
+            .background(if (active) FinancePyColors.buttonBgSecondary() else Color.Transparent)
+            .padding(vertical = 5.dp, horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier
-                .size(IosBadgeSize)
-                .clip(CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = item.icon,
-                contentDescription = item.label,
-                tint = if (active) Color.White else inactiveTint,
-                modifier = Modifier.size(IosIconSize)
-            )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
+        Icon(
+            imageVector = item.icon,
+            contentDescription = item.label,
+            tint = if (active) activeTint else inactiveTint,
+            modifier = Modifier.size(IosIconSize)
+        )
+        Spacer(modifier = Modifier.height(3.dp))
         Text(
             text = item.label,
             style = MaterialTheme.typography.labelSmall.copy(
@@ -340,23 +329,17 @@ private fun IosTabBarMoreItem(
                 indication = null,
                 onClick = onClick
             )
-            .padding(vertical = 6.dp),
+            .padding(horizontal = 2.dp)
+            .padding(vertical = 5.dp, horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier
-                .size(IosBadgeSize)
-                .clip(CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Filled.MoreHoriz,
-                contentDescription = "Más",
-                tint = FinancePyColors.textSecondary(),
-                modifier = Modifier.size(IosIconSize)
-            )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
+        Icon(
+            imageVector = Icons.Filled.MoreHoriz,
+            contentDescription = "Más",
+            tint = FinancePyColors.textSecondary(),
+            modifier = Modifier.size(IosIconSize)
+        )
+        Spacer(modifier = Modifier.height(3.dp))
         Text(
             text = "Más",
             style = MaterialTheme.typography.labelSmall.copy(
