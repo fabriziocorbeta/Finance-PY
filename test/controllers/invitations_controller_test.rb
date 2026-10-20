@@ -17,7 +17,7 @@ class InvitationsControllerTest < ActionDispatch::IntegrationTest
     Rails.application.config.stubs(:app_mode).returns("managed".inquiry)
 
     assert_difference("Invitation.count") do
-      assert_enqueued_with(job: ActionMailer::MailDeliveryJob) do
+      assert_enqueued_with(job: RlsMailDeliveryJob) do
         post invitations_url, params: {
           invitation: {
             email: "new@example.com",
@@ -41,7 +41,7 @@ class InvitationsControllerTest < ActionDispatch::IntegrationTest
     assert original_family_id != @admin.family_id
 
     assert_difference("Invitation.count") do
-      assert_enqueued_with(job: ActionMailer::MailDeliveryJob) do
+      assert_enqueued_with(job: RlsMailDeliveryJob) do
         post invitations_url, params: {
           invitation: {
             email: existing_user.email,

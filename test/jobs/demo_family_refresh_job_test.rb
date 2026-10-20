@@ -52,7 +52,7 @@ class DemoFamilyRefreshJobTest < ActiveJob::TestCase
       Demo::Generator.expects(:new).returns(generator)
 
       assert_enqueued_with(job: DestroyJob, args: [ @demo_family ]) do
-        assert_enqueued_jobs 2, only: ActionMailer::MailDeliveryJob do
+        assert_enqueued_jobs 2, only: RlsMailDeliveryJob do
           DemoFamilyRefreshJob.perform_now
         end
       end

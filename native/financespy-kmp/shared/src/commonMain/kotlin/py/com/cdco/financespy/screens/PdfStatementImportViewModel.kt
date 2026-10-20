@@ -89,14 +89,23 @@ class PdfStatementImportViewModel(
 
     private suspend fun pollUntilReviewable(initial: PdfImportResultDto) {
         var result = initial
-        var attempts = 0
-        // ~2 minutes of polling before giving up and telling the user to
-        // check back later -- a real statement with many pages can take a
-        // while, but this screen shouldn't spin forever if something's stuck.
-        while (attempts < 40 && (result.status == "importing" || result.status == "pending" && result.stats?.rows_count == 0)) {
-            delay(3000)
+        var waited = 0L
+        // The old budget was ~2 minutes, which is less than the job actually
+        // takes: a real 4-page credit-card statement measured 173s end to end
+        // in production (7 chunks, 24 transactions). The screen gave up at
+        // 120s and told the user to come back later while the extraction was
+        // still running and about to succeed -- the rows were always there a
+        // minute after the message appeared.
+        //
+        // Six minutes covers that with headroom. Polling backs off from 2s to
+        // 5s so a slow statement doesn't mean a hundred requests.
+        while (waited < POLL_BUDGET_MS &&
+            (result.status == "importing" || result.status == "pending" && result.stats?.rows_count == 0)
+        ) {
+            val interval = if (waited < 30_000L) 2_000L else 5_000L
+            delay(interval)
+            waited += interval
             result = runCatching { api.fetchImport(result.id) }.getOrDefault(result)
-            attempts++
         }
 
         when {
@@ -109,10 +118,15 @@ class PdfStatementImportViewModel(
                 val rows = runCatching { api.fetchPdfImportRows(result.id) }.getOrDefault(emptyList())
                 _state.value = _state.value.copy(isBusy = false, step = PdfImportStep.REVIEW, rows = rows)
             }
+            // Genuinely still running after the full budget. The work is not
+            // lost -- the job keeps going and the rows land in Importaciones --
+            // so the message says where to find them rather than implying the
+            // upload failed.
             else -> _state.value = _state.value.copy(
                 isBusy = false,
                 step = PdfImportStep.PICK,
-                error = "El extracto se sigue procesando. Probá de nuevo en un rato desde Importaciones."
+                error = "El extracto sigue procesándose en el servidor. " +
+                    "Las transacciones van a aparecer en Importaciones cuando termine; no hace falta volver a subirlo."
             )
         }
     }
@@ -136,4 +150,12 @@ class PdfStatementImportViewModel(
             selectedAccountId = _state.value.selectedAccountId
         )
     }
+
+    private companion object {
+        // Measured: a 4-page credit-card statement took 173s end to end in
+        // production. 6 minutes leaves room for a longer one without the
+        // screen claiming failure while the job is still working.
+        const val POLL_BUDGET_MS = 360_000L
+    }
+
 }
