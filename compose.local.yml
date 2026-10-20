@@ -14,20 +14,26 @@
 # Ver docs/cloudflared-config.yml.example
 #
 # Límites de recursos (para no afectar a otras personas usando esta PC):
-# Total: ~3.2GB RAM / ~2.25 cores (subido de ~2.7GB/2 cores el 2026-09-01 al
-# sumar Postgres local). CORRECCION 2026-09-03: la PC tiene 8GB reales (i5
-# 7200U), no 16GB como decia esta linea antes -- y WSL2 tiene un tope
-# EXPLICITO de memory=4GB en .wslconfig (no el default ~50% del host), asi
-# que estos ~3.2GB de mem_limit son la mayor parte del techo real
-# disponible, no un margen de cortesia comodo. `free -h` dentro de WSL2 ya
-# mostro apenas ~65MB libres en un momento normal de uso -- si se agregan
-# servicios o se suben limites, hacerlo con `free -h` a la vista, no a
-# ciegas. Numeros base sincronizados 2026-08-04 con compose.prod.yml
-# (commit 5656158) -- incluye el fix de WEB_CONCURRENCY=1 que evita el OOM
-# real encontrado durante el intento de Render (Puma en cluster mode con 2
-# workers no entra en una instancia chica). cpu_shares bajo en todos los
-# servicios: en contención, el uso normal de la PC gana prioridad sobre
-# estos contenedores.
+# Total: ~4.77GB RAM / 3.0 cores. ACTUALIZADO 2026-10-20: RAM del host subida
+# a 6GB y .wslconfig (memory=) subido en consecuencia, CPU a 3 cores -- antes
+# eran ~3.2GB/2.25 cores sobre una PC de 8GB con WSL2 topeado en 4GB
+# explícitos, que dejaba ~65MB libres en uso normal (`free -h` lo confirmó).
+# La prioridad del reparto nuevo fue Postgres: corría con mem_limit=640m
+# pero sin ningún tuning propio (shared_buffers etc. en default de fábrica,
+# 128MB), así que la mitad de esa memoria ya asignada quedaba sin usar -- ver
+# command: más abajo. Igual que antes, dejar margen bajo el tope real del
+# host (6GB), no ocuparlo entero -- si se agregan servicios o se suben
+# límites de nuevo, hacerlo con `free -h` a la vista. El host también tiene
+# 2GB de swap, que es colchón del sistema operativo ante un pico puntual
+# (lento porque va a disco, no una opción para correr algo ahí a propósito),
+# no licencia para subir mem_limit por encima de la RAM real disponible.
+# Numeros base
+# sincronizados históricamente con compose.prod.yml (commit 5656158) --
+# incluye el fix de WEB_CONCURRENCY=1 que evita el OOM real encontrado
+# durante el intento de Render (Puma en cluster mode con 2 workers no entra
+# en una instancia chica), que sigue valiendo sin importar el tamaño del
+# host. cpu_shares bajo en todos los servicios: en contención, el uso normal
+# de la PC gana prioridad sobre estos contenedores.
 
 x-rails-env: &rails_env
   SECRET_KEY_BASE: ${SECRET_KEY_BASE:?SECRET_KEY_BASE requerido en .env.local}
@@ -115,7 +121,7 @@ services:
       start_period: 30s
     networks:
       - financespy_net
-    mem_limit: 1536m
+    mem_limit: 2048m
     cpus: 1.0
     cpu_shares: 512
 
@@ -149,8 +155,8 @@ services:
       start_period: 20s
     networks:
       - financespy_net
-    mem_limit: 768m
-    cpus: 0.5
+    mem_limit: 1024m
+    cpus: 0.75
     cpu_shares: 512
 
   redis:
@@ -183,6 +189,23 @@ services:
     # Digest resuelto 2026-09-23 vs Docker Hub, mismo tag/major (17).
     image: postgres:17@sha256:f4c66b820c6f974249089d3d16d86a3698eae11e8746eb6644b2271031e91232
     restart: unless-stopped
+    # Tuning explícito en vez de los defaults de fábrica (shared_buffers=128MB
+    # sin importar mem_limit). Con mem_limit en 640m el contenedor tenía casi
+    # el doble de lo que Postgres realmente usaba para cachear datos -- medido
+    # 2026-10-20 durante una revisión de performance. Números calculados sobre
+    # el mem_limit de 1280m de abajo: shared_buffers ~25% (320MB, regla
+    # estándar de Postgres), effective_cache_size ~70% (896MB, el estimado de
+    # cuánto del resto el kernel va a cachear vía page cache aunque Postgres
+    # no lo controle), work_mem conservador porque hay pool de 7 conexiones
+    # (RAILS_MAX_THREADS+4) más las de Sidekiq que pueden ordenar/agrupar en
+    # paralelo -- 8MB * 7 ya son 56MB, dejar margen. Si se sube mem_limit de
+    # nuevo, recalcular estos tres en la misma proporción, no solo el límite.
+    command: >
+      postgres
+      -c shared_buffers=320MB
+      -c effective_cache_size=896MB
+      -c work_mem=8MB
+      -c maintenance_work_mem=96MB
     environment:
       POSTGRES_DB: financespy
       POSTGRES_USER: ${POSTGRES_LOCAL_USER:?POSTGRES_LOCAL_USER requerido en .env.local}
@@ -202,8 +225,8 @@ services:
       retries: 10
     networks:
       - financespy_net
-    mem_limit: 640m
-    cpus: 0.5
+    mem_limit: 1280m
+    cpus: 0.75
     cpu_shares: 512
 
 volumes:
