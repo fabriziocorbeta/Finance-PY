@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -216,52 +217,73 @@ fun App(
                     (isBusinessModeEnabled && currentRoute in businessRoutes)
 
                 fun navigateToItem(item: NavItem) {
-                    navController.navigate(item.route) { launchSingleTop = true }
+                    if (item.route == currentRoute) {
+                        showHamburgerMenu = false
+                        return
+                    }
+                    navController.navigate(item.route) {
+                        popUpTo(Routes.DASHBOARD) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                     showHamburgerMenu = false
                 }
 
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Scaffold(
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = FinancePyColors.surface()
+                ) {
+                    Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(FinancePyColors.surface())
-                            .statusBarsPadding()
-                            .let { mod ->
-                                if (activeUiVariant == UiVariant.IOS) mod else mod.navigationBarsPadding()
-                            },
-                        containerColor = FinancePyColors.surface(),
-                        topBar = {
-                            val pending by (outbox?.pendingCount ?: kotlinx.coroutines.flow.MutableStateFlow(0)).collectAsState()
-                            val failed by (outbox?.failedCount ?: kotlinx.coroutines.flow.MutableStateFlow(0)).collectAsState()
-                            if (pending > 0 || failed > 0) {
-                                androidx.compose.material3.Text(
-                                    text = buildString {
-                                        if (pending > 0) append("$pending pendiente(s) de sincronizar")
-                                        if (pending > 0 && failed > 0) append(" · ")
-                                        if (failed > 0) append("$failed con error")
-                                    },
-                                    color = androidx.compose.ui.graphics.Color.White,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(androidx.compose.ui.graphics.Color(0xFF8A5A00))
-                                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                                )
-                            }
-                        }
-                        // No bottomBar slot here on purpose -- Scaffold reserves exactly
-                        // its height as bottom innerPadding, which clips the NavHost
-                        // content above it, leaving nothing behind the bar for its
-                        // liquidGlass translucency to show. AppBottomNav is instead
-                        // overlaid on top of the content below, in the outer Box, so
-                        // screens scroll underneath it like iOS's floating tab bar.
-                    ) { innerPadding ->
-                    val startDestination = if (needsOnboarding) Routes.ONBOARDING else Routes.DASHBOARD
-
-                    NavHost(
-                        navController = navController,
-                        startDestination = startDestination,
-                        modifier = Modifier.padding(top = innerPadding.calculateTopPadding())
                     ) {
+                        Scaffold(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(FinancePyColors.surface())
+                                .statusBarsPadding()
+                                .let { mod ->
+                                    if (activeUiVariant == UiVariant.IOS) mod else mod.navigationBarsPadding()
+                                },
+                            containerColor = FinancePyColors.surface(),
+                            topBar = {
+                                val pending by (outbox?.pendingCount ?: kotlinx.coroutines.flow.MutableStateFlow(0)).collectAsState()
+                                val failed by (outbox?.failedCount ?: kotlinx.coroutines.flow.MutableStateFlow(0)).collectAsState()
+                                if (pending > 0 || failed > 0) {
+                                    androidx.compose.material3.Text(
+                                        text = buildString {
+                                            if (pending > 0) append("$pending pendiente(s) de sincronizar")
+                                            if (pending > 0 && failed > 0) append(" · ")
+                                            if (failed > 0) append("$failed con error")
+                                        },
+                                        color = androidx.compose.ui.graphics.Color.White,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(androidx.compose.ui.graphics.Color(0xFF8A5A00))
+                                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
+                            // No bottomBar slot here on purpose -- Scaffold reserves exactly
+                            // its height as bottom innerPadding, which clips the NavHost
+                            // content above it, leaving nothing behind the bar for its
+                            // liquidGlass translucency to show. AppBottomNav is instead
+                            // overlaid on top of the content below, in the outer Box, so
+                            // screens scroll underneath it like iOS's floating tab bar.
+                        ) { innerPadding ->
+                        val startDestination = if (needsOnboarding) Routes.ONBOARDING else Routes.DASHBOARD
+
+                        NavHost(
+                            navController = navController,
+                            startDestination = startDestination,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(FinancePyColors.surface())
+                                .padding(top = innerPadding.calculateTopPadding())
+                        ) {
                         composable(Routes.ONBOARDING) {
                             OnboardingScreen(
                                 viewModel = remember { onboardingViewModelFactory() },
@@ -579,8 +601,9 @@ fun App(
                             modifier = Modifier.align(Alignment.BottomCenter)
                         )
                     }
+                    }
+                }
             }
         }
     }
-}
 }

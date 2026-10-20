@@ -39,12 +39,12 @@ fun Modifier.iosLiquidGlass(
 
     // 1. Crystalline translucent substrate
     val baseAlpha = if (isDark) {
-        (0.62f + contrastBoost * 0.4f).coerceIn(0.55f, 0.92f)
+        (0.38f + contrastBoost * 0.35f).coerceIn(0.32f, 0.70f)
     } else {
         (0.58f + contrastBoost * 0.4f).coerceIn(0.50f, 0.90f)
     }
     val glassSubstrate = if (isDark) {
-        Color(0xFF1C1C20).copy(alpha = baseAlpha)
+        Color(0xFF222228).copy(alpha = baseAlpha)
     } else {
         Color(0xFFFAFBFD).copy(alpha = baseAlpha)
     }
@@ -53,10 +53,10 @@ fun Modifier.iosLiquidGlass(
     val surfaceSheen = Brush.verticalGradient(
         if (isDark) {
             listOf(
-                Color.White.copy(alpha = 0.16f),
-                Color.White.copy(alpha = 0.03f),
+                Color.White.copy(alpha = 0.28f),
+                Color.White.copy(alpha = 0.06f),
                 Color.Transparent,
-                Color.White.copy(alpha = 0.05f)
+                Color.White.copy(alpha = 0.08f)
             )
         } else {
             listOf(
@@ -72,10 +72,10 @@ fun Modifier.iosLiquidGlass(
     val borderBrush = Brush.verticalGradient(
         if (isDark) {
             listOf(
-                Color.White.copy(alpha = 0.48f),
-                Color.White.copy(alpha = 0.20f),
-                Color.White.copy(alpha = 0.06f),
-                Color.White.copy(alpha = 0.12f)
+                Color.White.copy(alpha = 0.65f),
+                Color.White.copy(alpha = 0.28f),
+                Color.White.copy(alpha = 0.08f),
+                Color.White.copy(alpha = 0.18f)
             )
         } else {
             listOf(

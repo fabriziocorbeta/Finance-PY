@@ -28,6 +28,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -284,11 +285,15 @@ private fun IosDashboardScreen(
     val currentPeriodKey = state.selectedPeriod ?: dashboard?.period?.key ?: "current_month"
     val currentPeriodLabel = periodOptions.find { it.first == currentPeriodKey }?.second ?: "Este mes"
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(FinancePyColors.surface())
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = FinancePyColors.surface()
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(FinancePyColors.surface())
+        ) {
         // iOS Navigation Bar (ToolbarItem leading: Period Menu, trailing: Actualizar + Ajustes)
         Row(
             modifier = Modifier
@@ -495,6 +500,7 @@ private fun IosDashboardScreen(
                 }
             }
         }
+    }
     }
 }
 

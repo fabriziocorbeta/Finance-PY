@@ -43,6 +43,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -106,7 +107,11 @@ fun TransactionsScreen(
         }
     }
 
-    if (variant == UiVariant.IOS) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = FinancePyColors.surface()
+    ) {
+        if (variant == UiVariant.IOS) {
         IosTransactionsContent(
             state = state,
             listState = listState,
@@ -240,6 +245,7 @@ fun TransactionsScreen(
                 }
             }
         }
+    }
     }
 
     if (showFilterSheet) {

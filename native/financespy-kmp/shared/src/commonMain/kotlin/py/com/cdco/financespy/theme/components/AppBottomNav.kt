@@ -178,7 +178,7 @@ fun AppBottomNav(
 }
 
 // Barra inferior estilo iOS 26 Liquid Glass:
-// cápsula flotante despegada de los 3 bordes (navigationBarsPadding + 16dp horizontal),
+// cápsula flotante despegada de los 3 bordes (navigationBarsPadding + 24dp inferior + 16dp horizontal),
 // con material iosLiquidGlass (refracción en bordes, luminosidad adaptativa, surface
 // sheen y sombra difusa), badge líquido deslizante systemBlue sobre el tab activo,
 // íconos y tipografía SF Pro (10sp).
@@ -203,7 +203,7 @@ private fun IosTabBar(
         Column(
             modifier = Modifier
                 .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)
                 .fillMaxWidth()
                 .iosLiquidGlass(shape = shape, contrastBoost = 0.20f)
         ) {
