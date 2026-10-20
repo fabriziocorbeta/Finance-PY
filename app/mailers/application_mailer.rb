@@ -1,4 +1,9 @@
 class ApplicationMailer < ActionMailer::Base
+  # Mailer params carry User records, and `users` is FORCE RLS'd. ActiveJob
+  # resolves those GlobalIDs before any RLS context exists, so the default
+  # delivery job fails deserialization on a record that is really there.
+  self.delivery_job = RlsMailDeliveryJob
+
   default from: email_address_with_name(
     ENV.fetch("EMAIL_SENDER", "sender@sure.local"),
     "#{Rails.configuration.x.brand_name} #{Rails.configuration.x.product_name}"
