@@ -33,7 +33,7 @@ struct SalesListView: View {
                                         .font(.caption)
                                         .foregroundColor(statusColor(for: sale.status))
                                     Spacer()
-                                    Text("\(sale.currency.uppercased()) \(String(format: "%.2f", sale.total))")
+                                    Text(money(sale.total, sale.currency))
                                         .font(.subheadline)
                                         .bold()
                                 }
@@ -82,5 +82,12 @@ struct SalesListView: View {
         case "cancelled": return .red
         default: return .orange
         }
+    }
+
+    // Each document carries its own currency (PYG has no decimals, USD has two),
+    // so never a fixed "%.2f". The API may send the code lowercased ("pyg").
+    private func money(_ amount: Double, _ currency: String) -> String {
+        let code = currency.uppercased()
+        return Formatters.formatCents(Formatters.doubleToCents(amount, currency: code), currency: code)
     }
 }
