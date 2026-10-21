@@ -1,4 +1,5 @@
 import Foundation
+@testable import FinancePY
 
 extension URLSessionConfiguration {
     @objc class func swizzled_default() -> URLSessionConfiguration {
@@ -14,6 +15,12 @@ extension URLSessionConfiguration {
         hasSwizzled = true
 
         URLProtocol.registerClass(MockURLProtocol.self)
+
+        // Swizzling alone misses ApiClient.shared when the host app created it first.
+        ApiClient.shared.overrideTransportForTesting(
+            session: MockURLProtocol.makeSession(),
+            baseUrl: MockURLProtocol.unroutableBaseUrl
+        )
 
         let originalSelector = #selector(getter: URLSessionConfiguration.default)
         let swizzledSelector = #selector(URLSessionConfiguration.swizzled_default)

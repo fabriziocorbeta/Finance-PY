@@ -20,7 +20,7 @@ struct SaleDetailView: View {
             } else if let sale = sale {
                 List {
                     Section("Información General") {
-                        LabeledContent("Estado", value: sale.status.capitalized)
+                        LabeledContent("Estado", value: Formatters.saleStatusLabel(sale.status))
                         if let clientName = sale.clientName {
                             LabeledContent("Cliente", value: clientName)
                         }

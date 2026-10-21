@@ -29,7 +29,7 @@ struct SalesListView: View {
                                 Text(sale.clientName ?? "Sin cliente")
                                     .font(.headline)
                                 HStack {
-                                    Text(sale.status.capitalized)
+                                    Text(Formatters.saleStatusLabel(sale.status))
                                         .font(.caption)
                                         .foregroundColor(statusColor(for: sale.status))
                                     Spacer()

@@ -49,7 +49,7 @@ struct ReceivableDetailView: View {
                             DetailRow(label: "Cantidad de cuotas", value: "\(count)")
                         }
                         if let date = receivable.firstDueDate {
-                            DetailRow(label: "Primer vencimiento", value: date)
+                            DetailRow(label: "Primer vencimiento", value: Formatters.formatDate(date))
                         } else if let day = receivable.dueDay {
                             DetailRow(label: "Día de pago", value: "\(day)")
                         }
@@ -225,7 +225,7 @@ struct InstallmentRowView: View {
                 Text("Cuota \(installment.number)")
                     .font(.body)
 
-                let dateInfo = "Vence: \(installment.dueDate)" + (installment.paidAt != nil ? " • Pagada: \(installment.paidAt!)" : "")
+                let dateInfo = "Vence: \(Formatters.formatDate(installment.dueDate))" + (installment.paidAt.map { " • Pagada: \(Formatters.formatDate($0))" } ?? "")
                 Text(dateInfo)
                     .font(.caption)
                     .foregroundColor(.secondary)

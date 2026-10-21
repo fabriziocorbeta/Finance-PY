@@ -114,7 +114,7 @@ struct GoalDetailView: View {
                     infoRow(label: "Monto restante:", value: formatMoney(rem, currency: goal.currency))
                 }
                 if let date = goal.targetDate {
-                    infoRow(label: "Fecha objetivo:", value: date)
+                    infoRow(label: "Fecha objetivo:", value: Formatters.formatDate(date))
                 }
                 if let notes = goal.notes, !notes.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
@@ -308,7 +308,7 @@ struct GoalDetailView: View {
                         .foregroundColor(pledge.status == "open" ? .green : .secondary)
 
                     if let date = pledge.expiresAt {
-                        Text("• \(String(date.prefix(10)))")
+                        Text("• \(Formatters.formatDate(date))")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }

@@ -61,6 +61,7 @@
 		'50000000000000000000B4' = {isa = PBXBuildFile; fileRef = 60000000000000000000B4; };
 		'50000000000000000000B5' = {isa = PBXBuildFile; fileRef = 60000000000000000000B5; };
 		5B4A9A4A2C3F1087A1089138 /* ReportsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 328FF2C3629277DC5F99011F /* ReportsViewModelTests.swift */; };
+		A7C3F0E1D2B4A5968778E902 /* FormattersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C3F0E1D2B4A5968778E901 /* FormattersTests.swift */; };
 		5B7233CF596023A94D5DAAE4 /* FinancePyApi+Rules.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDF0C6E6BAC3A5B36FDEED4A /* FinancePyApi+Rules.swift */; };
 		5CB0196AA15FAEA62D3737D9 /* ProductsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C4BC1E7108C9827007CD72A /* ProductsListView.swift */; };
 		5E16448C9AE9BF42DA0EEB85 /* FinancePyApiTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 354A4E6BA9410DDAF1F9F788 /* FinancePyApiTests.swift */; };
@@ -154,6 +155,7 @@
 		300000000000000000000010 /* FleetListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetListView.swift; sourceTree = "<group>"; };
 		300000000000000000000011 /* FleetVehicleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetVehicleDetailView.swift; sourceTree = "<group>"; };
 		328FF2C3629277DC5F99011F /* ReportsViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ReportsViewModelTests.swift; path = FinancePYTests/ReportsViewModelTests.swift; sourceTree = SOURCE_ROOT; };
+		A7C3F0E1D2B4A5968778E901 /* FormattersTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FormattersTests.swift; path = FinancePYTests/FormattersTests.swift; sourceTree = SOURCE_ROOT; };
 		354A4E6BA9410DDAF1F9F788 /* FinancePyApiTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FinancePyApiTests.swift; path = "FinancePYTests/FinancePyApiTests.swift"; sourceTree = SOURCE_ROOT; };
 		3CEB423AB441949581808740 /* FinancePyApi+GoalsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FinancePyApi+GoalsTests.swift"; path = "FinancePYTests/FinancePyApi+GoalsTests.swift"; sourceTree = SOURCE_ROOT; };
 		40ACC679E52F92898B1F1087 /* BudgetDashboardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BudgetDashboardView.swift; sourceTree = "<group>"; };
@@ -405,6 +407,7 @@
 				480179980F80028F5B6B4EAF /* ChatViewModelTests.swift */,
 				E5D6AABB0E9FF3D77404B290 /* ChatsListViewModelTests.swift */,
 				328FF2C3629277DC5F99011F /* ReportsViewModelTests.swift */,
+				A7C3F0E1D2B4A5968778E901 /* FormattersTests.swift */,
 				8CF840278658CDA71E356087 /* ApiClientTests.swift */,
 				2CC84899811493A0C0B4741E /* AuthRepositoryTests.swift */,
 				354A4E6BA9410DDAF1F9F788 /* FinancePyApiTests.swift */,
@@ -663,6 +666,7 @@
 				121F09A9603A661D7EF57505 /* ChatViewModelTests.swift in Sources */,
 				12820DA191D76F1872D259BC /* ChatsListViewModelTests.swift in Sources */,
 				5B4A9A4A2C3F1087A1089138 /* ReportsViewModelTests.swift in Sources */,
+				A7C3F0E1D2B4A5968778E902 /* FormattersTests.swift in Sources */,
 				A25E44A5B4615C3B20485436 /* ApiClientTests.swift in Sources */,
 				96B240D981E5C89BA2E2D4A1 /* AuthRepositoryTests.swift in Sources */,
 				5E16448C9AE9BF42DA0EEB85 /* FinancePyApiTests.swift in Sources */,

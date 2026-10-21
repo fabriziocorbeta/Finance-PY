@@ -29,7 +29,7 @@ struct PurchaseOrdersListView: View {
                                 Text(po.supplierName ?? "Sin proveedor")
                                     .font(.headline)
                                 HStack {
-                                    Text(po.status.capitalized)
+                                    Text(Formatters.purchaseOrderStatusLabel(po.status))
                                         .font(.caption)
                                         .foregroundColor(statusColor(for: po.status))
                                     Spacer()

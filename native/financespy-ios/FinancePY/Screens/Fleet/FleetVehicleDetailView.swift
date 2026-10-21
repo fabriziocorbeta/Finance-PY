@@ -172,7 +172,7 @@ struct FuelLogCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(fuelLog.loggedAt)
+                Text(Formatters.formatDate(fuelLog.loggedAt))
                     .font(.subheadline)
                     .fontWeight(.semibold)
                 Spacer()
@@ -409,7 +409,7 @@ struct AddFuelLogView: View {
                     Text(type.capitalized).tag(type)
                 }
             }
-            .onChange(of: lines[index].fuelType) { newValue in
+            .onChange(of: lines[index].fuelType) { _, newValue in
                 let defaultBrand: String
                 switch newValue {
                 case "nafta": defaultBrand = "Podium"

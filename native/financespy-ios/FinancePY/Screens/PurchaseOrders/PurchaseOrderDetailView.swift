@@ -20,13 +20,13 @@ struct PurchaseOrderDetailView: View {
             } else if let po = po {
                 List {
                     Section("Información General") {
-                        LabeledContent("Estado", value: po.status.capitalized)
+                        LabeledContent("Estado", value: Formatters.purchaseOrderStatusLabel(po.status))
                         if let supplierName = po.supplierName {
                             LabeledContent("Proveedor", value: supplierName)
                         }
                         LabeledContent("Total", value: "\(po.currency.uppercased()) \(String(format: "%.2f", po.total))")
                         if let expectedDate = po.expectedDate {
-                            LabeledContent("Fecha Esperada", value: expectedDate)
+                            LabeledContent("Fecha Esperada", value: Formatters.formatDate(expectedDate))
                         }
                         if let notes = po.notes {
                             LabeledContent("Notas", value: notes)

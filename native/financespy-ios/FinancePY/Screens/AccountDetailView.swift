@@ -37,7 +37,7 @@ struct AccountDetailView: View {
                             }
 
                             HStack {
-                                Text(account.accountType.capitalized)
+                                Text(Formatters.accountTypeLabel(account.accountType))
                                 if let subtype = account.subtype {
                                     Text("• \(subtype)")
                                 }
@@ -70,7 +70,7 @@ struct AccountDetailView: View {
                                                     .foregroundColor(.accentColor)
                                             }
 
-                                            Text(entry.date)
+                                            Text(Formatters.formatDate(entry.date))
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
                                         }

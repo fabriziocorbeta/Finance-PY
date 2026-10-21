@@ -17,7 +17,7 @@ struct RuleDetailView: View {
                 LabeledContent("Recurso", value: rule.resourceType)
                 LabeledContent("Estado", value: rule.active ? "Activa" : "Inactiva")
                 if let effectiveDate = rule.effectiveDate {
-                    LabeledContent("Fecha Efectiva", value: effectiveDate)
+                    LabeledContent("Fecha Efectiva", value: Formatters.formatDate(effectiveDate))
                 }
             }
 
