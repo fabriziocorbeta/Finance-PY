@@ -160,13 +160,19 @@ struct ReceivableDetailView: View {
         }
     }
 
+    // The API sends "depository" (accountable_type.underscore), not "Depository";
+    // an exact match left the payment picker empty against the real server.
+    static func paymentAccounts(from accounts: [AccountDto]) -> [AccountDto] {
+        accounts.filter { $0.accountType.lowercased() == "depository" && $0.status == "active" }
+    }
+
     private func openPaymentDialog() {
         showPaymentDialog = true
         paymentError = nil
         Task {
             do {
                 let allAccounts = try await FinancePyApi.shared.fetchAllAccounts()
-                paymentAccounts = allAccounts.filter { $0.accountType == "Depository" && $0.status == "active" }
+                paymentAccounts = Self.paymentAccounts(from: allAccounts)
                 if paymentFromAccountId.isEmpty {
                     paymentFromAccountId = paymentAccounts.first?.id ?? ""
                 }
