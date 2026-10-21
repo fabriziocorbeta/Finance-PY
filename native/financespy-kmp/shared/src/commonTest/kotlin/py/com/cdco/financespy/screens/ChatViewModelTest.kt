@@ -356,8 +356,9 @@ class ChatViewModelTest {
                     {"id": "chat_1", "title": "Chat", "error": "$friendly", "messages": [$failedTurn,
                       {"id": "msg_2", "type": "assistant_message", "role": "assistant", "content": ""}]}
                 """.trimIndent()
+                // Once the reply is done the error is gone (Chat#retry_last_message! clears it).
                 else -> HttpStatusCode.OK to """
-                    {"id": "chat_1", "title": "Chat", "error": "$friendly", "messages": [$failedTurn,
+                    {"id": "chat_1", "title": "Chat", "error": null, "messages": [$failedTurn,
                       {"id": "msg_2", "type": "assistant_message", "role": "assistant", "content": "Listo"}]}
                 """.trimIndent()
             }
@@ -419,6 +420,65 @@ class ChatViewModelTest {
         scheduler.runCurrent()
 
         assertEquals(ChatErrors.BUSY, viewModel.state.value.error)
+
+        viewModel.dispose()
+    }
+
+    @Test
+    fun testPollShowsErrorWhenReplyWasCutShort() = scope.runTest {
+        var fetches = 0
+        val api = apiReplying { path, _ ->
+            when {
+                path.endsWith("/messages") ->
+                    HttpStatusCode.Created to """{"id": "msg_3", "type": "user_message", "role": "user", "content": "New"}"""
+                ++fetches == 1 -> HttpStatusCode.OK to answeredChat
+                // Text had streamed when the provider failed: the server keeps the partial reply
+                // (status failed, not serialized) and stores chat.error.
+                else -> HttpStatusCode.OK to """
+                    {"id": "chat_1", "title": "Chat", "error": "$friendly", "messages": [
+                      {"id": "msg_1", "type": "user_message", "role": "user", "content": "Old"},
+                      {"id": "msg_2", "type": "assistant_message", "role": "assistant", "content": "Old reply"},
+                      {"id": "msg_3", "type": "user_message", "role": "user", "content": "New"},
+                      {"id": "msg_4", "type": "assistant_message", "role": "assistant", "content": "Tus gastos de"}
+                    ]}
+                """.trimIndent()
+            }
+        }
+        val viewModel = ChatViewModel(scope, api, chatId = "chat_1")
+        scheduler.runCurrent()
+
+        viewModel.sendMessage("New")
+        scheduler.runCurrent()
+        scheduler.advanceTimeBy(2500)
+        scheduler.runCurrent()
+        scheduler.advanceTimeBy(20_000)
+        scheduler.runCurrent()
+
+        val state = viewModel.state.value
+        assertEquals(friendly, state.error)
+        assertEquals("Tus gastos de", state.messages.last().content)
+        assertEquals(2, fetches)
+
+        viewModel.dispose()
+    }
+
+    @Test
+    fun testSendOverDailyQuotaShowsServerReason() = scope.runTest {
+        val reason = "Alcanzaste el límite diario de uso de IA de tu familia. Volvé a intentarlo mañana."
+        val api = apiReplying { path, _ ->
+            if (path.endsWith("/messages")) {
+                HttpStatusCode.UnprocessableEntity to """{"error": "Failed to create message", "details": ["$reason"]}"""
+            } else {
+                HttpStatusCode.OK to answeredChat
+            }
+        }
+        val viewModel = ChatViewModel(scope, api, chatId = "chat_1")
+        scheduler.runCurrent()
+
+        viewModel.sendMessage("Hola")
+        scheduler.runCurrent()
+
+        assertEquals(reason, viewModel.state.value.error)
 
         viewModel.dispose()
     }

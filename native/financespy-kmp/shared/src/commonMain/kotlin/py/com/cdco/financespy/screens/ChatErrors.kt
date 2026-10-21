@@ -4,6 +4,7 @@ import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -51,12 +52,25 @@ internal object ChatErrors {
             return when (val status = e.response.status.value) {
                 401 -> SESSION_EXPIRED
                 403 -> if (errorCode(e) == "feature_disabled") FEATURE_DISABLED else FORBIDDEN
+                // Validation failures (daily AI quota used up, model not allowed) come back as
+                // {"error": "Failed to create message", "details": [<localized reason>]}.
+                422 -> validationDetail(e) ?: fallback
                 429, 503 -> BUSY
                 else -> if (status >= 500) SERVER else fallback
             }
         }
         if (e is HttpRequestTimeoutException || e is kotlinx.io.IOException) return OFFLINE
         return fallback
+    }
+
+    // Only `details` is shown: it holds the server's localized validation messages, while
+    // `error` is an English summary ("Failed to create message").
+    private suspend fun validationDetail(e: ResponseException): String? = try {
+        val body = json.parseToJsonElement(e.response.bodyAsText()) as? JsonObject
+        (body?.get("details") as? JsonArray)
+            ?.firstNotNullOfOrNull { (it as? JsonPrimitive)?.contentOrNull?.takeIf { text -> text.isNotBlank() } }
+    } catch (_: Exception) {
+        null
     }
 
     private suspend fun errorCode(e: ResponseException): String? = try {
