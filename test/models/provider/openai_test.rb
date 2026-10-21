@@ -293,6 +293,39 @@ class Provider::OpenaiTest < ActiveSupport::TestCase
     assert_equal "Custom OpenAI-compatible (https://custom-api.example.com/v1)", custom_provider.provider_name
   end
 
+  test "chat errors carry the HTTP status / timeout kind the assistant fallback relies on" do
+    provider = Provider::Openai.new("test-token", uri_base: "https://custom-api.example.com/v1", model: "custom-model")
+    fake_client = mock
+    provider.stubs(:client).returns(fake_client)
+
+    {
+      Faraday::ServerError.new("the server responded with status 503", { status: 503, body: "ResourceExhausted" }) => [ true, true ],
+      Faraday::TooManyRequestsError.new("the server responded with status 429", { status: 429 }) => [ true, true ],
+      Faraday::ServerError.new("the server responded with status 502", { status: 502 }) => [ true, false ],
+      Faraday::TimeoutError.new("Net::ReadTimeout with #<TCPSocket:(closed)>") => [ true, false ],
+      Faraday::ConnectionFailed.new("Failed to open TCP connection") => [ true, false ],
+      Faraday::UnauthorizedError.new("the server responded with status 401", { status: 401 }) => [ false, false ],
+      Faraday::BadRequestError.new("the server responded with status 400", { status: 400 }) => [ false, false ]
+    }.each do |raised, (retryable, busy)|
+      fake_client.stubs(:chat).raises(raised)
+
+      error = provider.chat_response("hola", model: "custom-model").error
+
+      assert_kind_of Provider::Openai::Error, error
+      assert_equal retryable, error.retryable?, "retryable? for #{raised.class}"
+      assert_equal busy, error.busy?, "busy? for #{raised.class}"
+    end
+  end
+
+  test "with_request_timeout keeps endpoint and model but shortens the HTTP timeout" do
+    provider = Provider::Openai.new("test-token", uri_base: "https://custom-api.example.com/v1", model: "custom-model")
+    short = provider.with_request_timeout(25)
+
+    assert_equal 25, short.send(:client).request_timeout
+    assert_equal provider.provider_name, short.provider_name
+    assert_equal "configured model: custom-model", short.supported_models_description
+  end
+
   test "supported_models_description returns model prefixes for standard provider" do
     expected = "models starting with: gpt-4, gpt-5, o1, o3"
     assert_equal expected, @subject.supported_models_description

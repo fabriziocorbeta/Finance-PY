@@ -151,8 +151,14 @@ class Chat < ApplicationRecord
     def build_error_payload(error)
       technical_message = error_message_for(error)
 
+      message = if error.is_a?(Assistant::ModelFallback::Exhausted)
+        I18n.t("chat.errors.busy")
+      else
+        classify_error_message(technical_message)
+      end
+
       {
-        message: classify_error_message(technical_message),
+        message: message,
         technical_message: technical_message,
         type: error.class.name
       }

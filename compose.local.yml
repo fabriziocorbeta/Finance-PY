@@ -47,6 +47,8 @@ x-rails-env: &rails_env
   OPENAI_ACCESS_TOKEN: ${OPENAI_ACCESS_TOKEN:-}
   OPENAI_URI_BASE: ${OPENAI_URI_BASE:-}
   OPENAI_MODEL: ${OPENAI_MODEL:-}
+  OPENAI_FALLBACK_MODELS: ${OPENAI_FALLBACK_MODELS:-}
+  OPENAI_CHAT_ATTEMPT_TIMEOUT: ${OPENAI_CHAT_ATTEMPT_TIMEOUT:-}
   # Fijadas explicitas 2026-09-04 (antes se derivaban de SECRET_KEY_BASE en
   # cada boot, ver config/initializers/active_record_encryption.rb) -- que
   # un solo secreto cubra sesiones/cookies Y cifrado de datos (otp_secret,

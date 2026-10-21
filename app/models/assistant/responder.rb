@@ -1,6 +1,7 @@
 class Assistant::Responder
-  def initialize(message:, instructions:, function_tool_caller:, llm:)
+  def initialize(message:, instructions:, function_tool_caller:, llm:, model: nil)
     @message = message
+    @model = model.presence || message.ai_model
     @instructions = instructions
     @function_tool_caller = function_tool_caller
     @llm = llm
@@ -44,7 +45,7 @@ class Assistant::Responder
   end
 
   private
-    attr_reader :message, :instructions, :function_tool_caller, :llm
+    attr_reader :message, :instructions, :function_tool_caller, :llm, :model
 
     def handle_follow_up_response(response)
       streamer = proc do |chunk|
@@ -75,7 +76,7 @@ class Assistant::Responder
     def get_llm_response(streamer:, function_results: [], previous_response_id: nil)
       response = llm.chat_response(
         message.content,
-        model: message.ai_model,
+        model: model,
         instructions: instructions,
         functions: function_tool_caller.function_definitions,
         function_results: function_results,
