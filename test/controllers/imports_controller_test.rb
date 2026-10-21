@@ -133,6 +133,49 @@ class ImportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal I18n.t("imports.create.invalid_document_file_type"), flash[:alert]
   end
 
+  test "new still offers PDF and photo upload when no vector store is configured" do
+    VectorStore::Registry.stubs(:adapter).returns(nil)
+
+    get new_import_url
+
+    assert_response :success
+    assert_select "input[type=hidden][name='import[type]'][value=DocumentImport]"
+    assert_select "input[type=file][accept*='.pdf'][accept*='.jpg']"
+  end
+
+  test "uploads pdf as PdfImport via DocumentImport option when no vector store is configured" do
+    VectorStore::Registry.stubs(:adapter).returns(nil)
+    Family.any_instance.expects(:upload_document).never
+
+    assert_difference "PdfImport.count", 1 do
+      post imports_url, params: {
+        import: {
+          type: "DocumentImport",
+          import_file: file_fixture_upload("imports/sample_bank_statement.pdf", "application/pdf")
+        }
+      }
+    end
+
+    assert_redirected_to import_url(PdfImport.order(:created_at).last)
+  end
+
+  test "rejects non-pdf documents when no vector store is configured" do
+    VectorStore::Registry.stubs(:adapter).returns(nil)
+    Family.any_instance.expects(:upload_document).never
+
+    assert_no_difference "Import.count" do
+      post imports_url, params: {
+        import: {
+          type: "DocumentImport",
+          import_file: file_fixture_upload("imports/valid.csv", "text/csv")
+        }
+      }
+    end
+
+    assert_redirected_to new_import_url
+    assert_equal I18n.t("imports.create.document_provider_not_configured"), flash[:alert]
+  end
+
   test "publishes import" do
     import = imports(:transaction)
 

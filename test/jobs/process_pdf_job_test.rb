@@ -123,6 +123,20 @@ class ProcessPdfJobTest < ActiveJob::TestCase
     assert_equal "complete", @import.reload.status
   end
 
+  test "completes the import when no vector store is configured" do
+    attach_pdf!(@import)
+    process_result = Struct.new(:document_type).new("financial_document")
+    @import.expects(:process_with_ai).once.returns(process_result)
+    @import.stubs(:send_next_steps_email)
+    VectorStore.stubs(:adapter).returns(nil)
+
+    assert_no_difference "FamilyDocument.count" do
+      ProcessPdfJob.perform_now(@import)
+    end
+
+    assert_equal "complete", @import.reload.status
+  end
+
   private
 
     def attach_pdf!(import)

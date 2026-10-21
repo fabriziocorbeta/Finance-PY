@@ -2,6 +2,7 @@ class ImportsController < ApplicationController
   include SettingsHelper
 
   IMAGE_IMPORT_EXTENSIONS = %w[.jpg .jpeg .png].freeze
+  PDF_IMPORT_EXTENSIONS = ([ ".pdf" ] + IMAGE_IMPORT_EXTENSIONS).freeze
 
   before_action :set_import, only: %i[show update publish destroy revert apply_template]
 
@@ -156,7 +157,11 @@ class ImportsController < ApplicationController
 
     def create_document_import(file)
       adapter = VectorStore.adapter
-      unless adapter
+      filename = file.original_filename.to_s
+      ext = File.extname(filename).downcase
+
+      # PDFs and receipt photos become a PdfImport, which does not need a vector store.
+      unless adapter || PDF_IMPORT_EXTENSIONS.include?(ext)
         redirect_to new_import_path, alert: t("imports.create.document_provider_not_configured")
         return
       end
@@ -166,9 +171,7 @@ class ImportsController < ApplicationController
         return
       end
 
-      filename = file.original_filename.to_s
-      ext = File.extname(filename).downcase
-      supported_extensions = adapter.supported_extensions.map(&:downcase)
+      supported_extensions = adapter ? adapter.supported_extensions.map(&:downcase) : PDF_IMPORT_EXTENSIONS
 
       unless supported_extensions.include?(ext)
         redirect_to new_import_path, alert: t("imports.create.invalid_document_file_type")
@@ -216,9 +219,9 @@ class ImportsController < ApplicationController
 
     def document_upload_supported_extensions
       adapter = VectorStore.adapter
-      return [] unless adapter
+      base_extensions = adapter ? adapter.supported_extensions.map(&:downcase) : PDF_IMPORT_EXTENSIONS
 
-      extensions = (adapter.supported_extensions.map(&:downcase) + IMAGE_IMPORT_EXTENSIONS).uniq
+      extensions = (base_extensions + IMAGE_IMPORT_EXTENSIONS).uniq
       mime_types = extensions.filter_map { |ext| IMAGE_MIME_TYPES_BY_EXTENSION[ext] }.uniq
 
       (extensions + mime_types).sort
