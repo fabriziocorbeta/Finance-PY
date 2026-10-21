@@ -215,8 +215,21 @@ private fun IosTabBar(
         val shape = RoundedCornerShape(32.dp)
         Column(
             modifier = Modifier
+                // Bottom inset measured against the reference: iOS clears the
+                // bottom of the screen by 24pt in total, but
+                // navigationBarsPadding() already contributes the gesture-bar
+                // inset on Android, so the extra 24dp that used to sit here
+                // stacked on top of it and pushed the dock to a measured 39pt
+                // off the bottom. 8dp lands it near the reference.
+                //
+                // The 16dp side margin is deliberately unchanged: iOS insets
+                // by 16pt on a 440pt-wide screen, i.e. the bar spans 92.7% of
+                // the width. At 16dp on this 411dp-wide device the bar spans
+                // 92.2% -- already the same proportion. Matching iOS's 408pt
+                // as an absolute number here would make the bar wider
+                // relative to the screen than it is on iOS.
                 .navigationBarsPadding()
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
                 .fillMaxWidth()
                 // Translucent, like the reference -- the dock is a material,
                 // not a panel. Measured on the iOS 26 simulator (iPhone 17
