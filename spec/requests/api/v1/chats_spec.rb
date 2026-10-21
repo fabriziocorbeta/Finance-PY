@@ -289,10 +289,6 @@ RSpec.describe 'API V1 Chats', type: :request do
       response '202', 'retry started' do
         schema '$ref' => '#/components/schemas/RetryResponse'
 
-        before do
-          allow_any_instance_of(AssistantMessage).to receive(:valid?).and_return(true)
-        end
-
         run_test!
       end
 

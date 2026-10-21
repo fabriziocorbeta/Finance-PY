@@ -26,28 +26,22 @@ class Api::V1::MessagesController < Api::V1::BaseController
   end
 
   def retry
-    last_message = @chat.messages.ordered.last
+    # E5 fix: retry triggers a real LLM call (AssistantResponseJob) same as
+    # a normal message create, but was never covered by the family's daily
+    # LLM token quota (that check lives on UserMessage#llm_quota_available,
+    # and retry never creates a UserMessage). Check it explicitly here so a
+    # caller can't loop this endpoint to bypass the quota entirely.
+    if UsageQuota.llm_quota_exceeded?(@chat.user.family)
+      render json: { error: I18n.t("chats.errors.llm_quota_exceeded") }, status: :unprocessable_entity
+      return
+    end
 
-    if last_message&.type == "AssistantMessage"
-      # E5 fix: retry triggers a real LLM call (AssistantResponseJob) same as
-      # a normal message create, but was never covered by the family's daily
-      # LLM token quota (that check lives on UserMessage#llm_quota_available,
-      # and retry never creates a UserMessage). Check it explicitly here so a
-      # caller can't loop this endpoint to bypass the quota entirely.
-      family = @chat.user.family
-      if UsageQuota.llm_quota_exceeded?(family)
-        render json: { error: I18n.t("chats.errors.llm_quota_exceeded") }, status: :unprocessable_entity
-        return
-      end
-
-      new_message = @chat.messages.create!(
-        type: "AssistantMessage",
-        content: "",
-        ai_model: last_message.ai_model
-      )
-
-      AssistantResponseJob.perform_later(new_message)
-      render json: { message: "Retry initiated", message_id: new_message.id }, status: :accepted
+    # Same domain path as the web retry (ChatsController#retry): clears
+    # chat.error and re-asks the assistant for the last user message -- the
+    # failed-turn case, where Assistant::Builtin already destroyed the empty
+    # reply -- and is idempotent for a double-tapped retry.
+    if (assistant_message = @chat.retry_last_message!)
+      render json: { message: "Retry initiated", message_id: assistant_message.id }, status: :accepted
     else
       render json: { error: "No assistant message to retry" }, status: :unprocessable_entity
     end

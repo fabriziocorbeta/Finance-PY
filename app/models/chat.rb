@@ -90,15 +90,59 @@ class Chat < ApplicationRecord
     conversation_messages.ordered.last.role != "assistant"
   end
 
+  # A pending AssistantMessage older than this is treated as orphaned (its job
+  # died without reaching Assistant::Builtin's rescue, e.g. a worker killed
+  # mid-deploy) rather than as a response still in flight, so a retry can
+  # replace it instead of leaving the chat stuck on "thinking" forever.
+  STALE_PENDING_RESPONSE_AFTER = 5.minutes
+
+  # Re-asks the assistant to answer the most recent UserMessage. Covers both a
+  # failed turn (Assistant::Builtin destroyed the empty reply, so the user
+  # message is last, or demoted a partial reply to `failed`) and regenerating
+  # an answer that did complete.
+  #
+  # Returns the pending AssistantMessage that will hold the answer, or nil when
+  # the chat has no user message to answer. When a fresh pending reply already
+  # exists for that user message (a response is in flight, or a double-tapped
+  # retry), that one is returned and nothing new is enqueued.
   def retry_last_message!
-    update!(error: nil)
+    user_message = nil
+    pending = nil
+    stale = nil
+    enqueue = false
 
-    last_message = conversation_messages.ordered.last
+    # Row lock on the chat serializes concurrent retries: the second request
+    # waits here, then sees the first one's committed pending reply. It also
+    # doubles as an RLS visibility check -- if the policy hid this chat from
+    # the current context, the locking reload raises RecordNotFound instead of
+    # the error-clearing UPDATE below silently matching zero rows.
+    with_lock do
+      update!(error: nil)
 
-    if last_message.present? && last_message.role == "user"
+      user_message = messages.where(type: "UserMessage").ordered.last
+      next unless user_message
 
-      ask_assistant_later(last_message)
+      pending = messages.where(type: "AssistantMessage", status: "pending")
+                        .where(created_at: user_message.created_at..)
+                        .ordered.last
+
+      if pending && pending.created_at < STALE_PENDING_RESPONSE_AFTER.ago
+        stale = pending.destroy!
+        pending = nil
+      end
+
+      unless pending
+        pending = messages.create!(type: "AssistantMessage", content: "", ai_model: user_message.ai_model, status: :pending)
+        enqueue = true
+      end
     end
+
+    broadcast_remove target: error_target
+    stale&.broadcast_remove_to(self)
+    # Enqueued only after the lock's transaction commits, so the worker can
+    # never deserialize the job before the pending message row is visible.
+    AssistantResponseJob.perform_later(user_message, pending) if enqueue
+    pending
   end
 
   def update_latest_response!(provider_response_id)
