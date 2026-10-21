@@ -7,18 +7,77 @@ enum NetworkError: LocalizedError {
     case invalidResponse
     case decodingError(Error)
 
+    // Most screens render error.localizedDescription as-is, so this must be
+    // user-facing Spanish -- never the raw "HTTP error 403: {json}" body.
     var errorDescription: String? {
-        switch self {
-        case .unauthorized:
-            return "Session expired or unauthorized. Please log in again."
-        case .invalidUrl:
-            return "Invalid request URL."
-        case .httpError(let code, let message):
-            return "HTTP error \(code): \(message ?? "No details")"
-        case .invalidResponse:
-            return "Invalid response received from server."
-        case .decodingError(let error):
-            return "Failed to decode response: \(error.localizedDescription)"
+        UserFacingError.message(for: self)
+    }
+}
+
+// The one place that turns a thrown error (or a chat's stored failure) into
+// Spanish text a user can act on.
+enum UserFacingError {
+    static let assistantDisabled = "El asistente IA no está activado para tu cuenta. Activalo desde Ajustes en la versión web."
+    static let assistantBusy = "El asistente está ocupado. Probá de nuevo en unos minutos."
+    static let serverBusy = "El servidor está ocupado. Probá de nuevo en unos minutos."
+    static let sessionExpired = "Tu sesión expiró. Volvé a iniciar sesión."
+    static let offline = "No hay conexión a internet. Revisá tu conexión y probá de nuevo."
+    static let forbidden = "No tenés permiso para hacer esto."
+    static let generic = "Algo salió mal. Probá de nuevo en unos minutos."
+
+    private static let offlineCodes: Set<URLError.Code> = [
+        .notConnectedToInternet, .networkConnectionLost, .timedOut,
+        .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed,
+        .dataNotAllowed, .internationalRoamingOff
+    ]
+
+    /// `assistant: true` words "busy" responses as the AI assistant being busy.
+    static func message(for error: Error, assistant: Bool = false) -> String {
+        if let networkError = error as? NetworkError {
+            switch networkError {
+            case .unauthorized:
+                return sessionExpired
+            case .httpError(let status, let body):
+                return message(status: status, body: body, assistant: assistant)
+            case .invalidUrl, .invalidResponse, .decodingError:
+                return generic
+            }
+        }
+        if let urlError = error as? URLError {
+            return offlineCodes.contains(urlError.code) ? offline : generic
+        }
+        return (error as? LocalizedError)?.errorDescription ?? generic
+    }
+
+    /// Text for a chat's `error` field: the server already sends the friendly
+    /// message, but if it ever arrives as the stored JSON payload, only its
+    /// "message" is shown (never "technical_message").
+    static func chatFailure(_ raw: String?) -> String? {
+        guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
+        guard raw.hasPrefix("{") else { return raw }
+        let payload = raw.data(using: .utf8).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+        if let message = payload?["message"] as? String, !message.isEmpty {
+            return message
+        }
+        return generic
+    }
+
+    private static func message(status: Int, body: String?, assistant: Bool) -> String {
+        let payload = body?.data(using: .utf8).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+
+        switch status {
+        case 401:
+            return sessionExpired
+        case 403:
+            return payload?["error"] as? String == "feature_disabled" ? assistantDisabled : forbidden
+        case 422:
+            // Rails validation messages ("details") are already localized and actionable.
+            let details = (payload?["details"] as? [String])?.filter { !$0.isEmpty } ?? []
+            return details.isEmpty ? generic : details.joined(separator: "\n")
+        case 429, 502, 503, 504:
+            return assistant ? assistantBusy : serverBusy
+        default:
+            return generic
         }
     }
 }
