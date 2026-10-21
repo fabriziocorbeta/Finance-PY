@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		ABCDEF0123456789ABCDEF02 /* ReceivableDetailViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCDEF0123456789ABCDEF01 /* ReceivableDetailViewTests.swift */; };
 		DDDDDDDDDDDDDDDDDDDDDDD2 /* DecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDDDDDDDDDDDDDDDDDDDDDD1 /* DecodingTests.swift */; };
+		F0A1B2C3D4E5F60718293A4C /* FormattersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A1B2C3D4E5F60718293A4B /* FormattersTests.swift */; };
 		C5ABCD012345678900000002 /* FuelLogDtoDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5ABCD012345678900000001 /* FuelLogDtoDecodingTests.swift */; };
 		9F3C6D1A2B5E8F4701234567 /* FinancePyApi+Categories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E2B5A3C7F9D1E4601234567 /* FinancePyApi+Categories.swift */; };
 		1A2B3C4D5E6F7A8B9C0D1E2F /* FinancePyApi+Merchants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6G7H8I9J0K1L2 /* FinancePyApi+Merchants.swift */; };
@@ -111,6 +112,7 @@
 /* Begin PBXFileReference section */
 		ABCDEF0123456789ABCDEF01 /* ReceivableDetailViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReceivableDetailViewTests.swift; path = FinancePYTests/ReceivableDetailViewTests.swift; sourceTree = SOURCE_ROOT; };
 		DDDDDDDDDDDDDDDDDDDDDDD1 /* DecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DecodingTests.swift; path = FinancePYTests/DecodingTests.swift; sourceTree = SOURCE_ROOT; };
+		F0A1B2C3D4E5F60718293A4B /* FormattersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FormattersTests.swift; path = FinancePYTests/FormattersTests.swift; sourceTree = SOURCE_ROOT; };
 		C5ABCD012345678900000001 /* FuelLogDtoDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FuelLogDtoDecodingTests.swift; path = FinancePYTests/FuelLogDtoDecodingTests.swift; sourceTree = SOURCE_ROOT; };
 		8E2B5A3C7F9D1E4601234567 /* FinancePyApi+Categories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Categories.swift"; sourceTree = "<group>"; };
 		A1B2C3D4E5F6G7H8I9J0K1L2 /* FinancePyApi+Merchants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FinancePyApi+Merchants.swift"; sourceTree = "<group>"; };
@@ -398,6 +400,7 @@
 			children = (
 				ABCDEF0123456789ABCDEF01 /* ReceivableDetailViewTests.swift */,
 				DDDDDDDDDDDDDDDDDDDDDDD1 /* DecodingTests.swift */,
+				F0A1B2C3D4E5F60718293A4B /* FormattersTests.swift */,
 				2A0987D5A3E944C9A53077F7 /* InstallmentDtoDecodingTests.swift */,
 				C5ABCD012345678900000001 /* FuelLogDtoDecodingTests.swift */,
 				E0BF8438BE6410F5711D5A22 /* Swizzling.swift */,
@@ -671,6 +674,7 @@
 				D2CF4B95BB4079BC480EE872 /* FinancePyApi+AccountsWriteTests.swift in Sources */,
 				7F8F454898B43866F94EC871 /* FinancePyApi+BudgetsTests.swift in Sources */,
 				DDDDDDDDDDDDDDDDDDDDDDD2 /* DecodingTests.swift in Sources */,
+				F0A1B2C3D4E5F60718293A4C /* FormattersTests.swift in Sources */,
 				08EB48CF8BA8B76BD1E59704 /* FinancePyApi+ChatTests.swift in Sources */,
 				49364FD8BFC24889B54FBC37 /* FinancePyApi+FleetTests.swift in Sources */,
 				04894A2BAD57DD449A8919A1 /* FinancePyApi+GoalsTests.swift in Sources */,

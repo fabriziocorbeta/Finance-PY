@@ -27,6 +27,14 @@ enum Formatters {
         return formatter.string(from: NSNumber(value: amount)) ?? "\(currency) \(amount)"
     }
 
+    static func formatAmount(_ amount: Double, currency: String, locale: Locale = .current) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.locale = locale
+        formatter.currencyCode = currency
+        return formatter.string(from: NSNumber(value: amount)) ?? "\(currency) \(amount)"
+    }
+
     static func formatMoney(_ money: MoneyDto) -> String {
         if let formatted = money.formatted, !formatted.isEmpty {
             return formatted
