@@ -67,14 +67,17 @@ class ChatViewModel(
                 // at index 0 -- rendered at the TOP, away from the input, and
                 // the auto-scroll (aimed at the last index) landed on the
                 // oldest message instead. Confirmed live on device.
+                val messages = response.messages ?: emptyList()
+                val failure = assistantFailure(response.error, messages)
                 _state.value = _state.value.copy(
                     title = response.title ?: "",
-                    messages = response.messages ?: emptyList(),
-                    isLoading = false
+                    messages = messages,
+                    isLoading = false,
+                    error = failure
                 )
-                checkAndPoll(response.messages)
+                if (failure == null) checkAndPoll(messages)
             } catch (e: Exception) {
-                _state.value = _state.value.copy(isLoading = false, error = e.message ?: "Error al cargar chat")
+                _state.value = _state.value.copy(isLoading = false, error = ChatErrors.fromException(e, "No se pudo cargar el chat."))
             }
         }
     }
@@ -112,7 +115,7 @@ class ChatViewModel(
                     checkAndPoll(updatedMessages)
                 }
             } catch (e: Exception) {
-                _state.value = _state.value.copy(isSending = false, error = e.message ?: "Error al enviar mensaje")
+                _state.value = _state.value.copy(isSending = false, error = ChatErrors.fromException(e, "No se pudo enviar el mensaje."))
             }
         }
     }
@@ -137,7 +140,7 @@ class ChatViewModel(
                 )
                 checkAndPoll(updatedMessages)
             } catch (e: Exception) {
-                 _state.value = _state.value.copy(isSending = false, error = e.message ?: "Error al reintentar mensaje")
+                 _state.value = _state.value.copy(isSending = false, error = ChatErrors.fromException(e, "No se pudo reintentar el mensaje."))
             }
         }
     }
@@ -174,6 +177,15 @@ class ChatViewModel(
                     messages = messages
                 )
 
+                // The server deletes the pending reply (or keeps a cut-short one) and stores
+                // chat.error when the LLM call fails, so without this the loop spun for
+                // 3 minutes and blamed a slow AI, or a truncated answer looked complete.
+                val failure = assistantFailure(response.error, messages)
+                if (failure != null) {
+                    _state.value = _state.value.copy(error = failure)
+                    break
+                }
+
                 // If there's an assistant message for the last user message, or no more pending, stop
                 if (!hasPendingReply(messages)) {
                     break
@@ -204,8 +216,23 @@ class ChatViewModel(
     // Messages come back ordered oldest-first (server's `ordered` scope),
     // so whether a reply is still pending can be inferred directly: no
     // reply has arrived yet exactly when the last message is still a user
-    // message.
+    // message -- or the assistant message after it is still the empty
+    // placeholder the server (and retryMessage) creates before any text streams in.
     private fun hasPendingReply(messages: List<MessageDto>): Boolean {
-        return messages.lastOrNull()?.type == "user_message"
+        val last = messages.lastOrNull() ?: return false
+        return last.type == "user_message" || (last.role == "assistant" && last.content.isNullOrBlank())
+    }
+
+    // The server clears chat.error whenever it starts a new turn (Chat#ask_assistant_later), so a
+    // set error belongs to the latest turn. It fails in one of two shapes: the blank reply is
+    // deleted (last message is the user's), or text had already streamed and the reply is kept,
+    // marked failed (last message is a non-blank assistant one -- the API does not expose that
+    // status, so the error is the only sign the answer is cut short). The one case ignored is an
+    // empty assistant placeholder: that turn is still running, e.g. a retry started on top of a
+    // stale error, so the loop must keep polling.
+    private fun assistantFailure(rawError: String?, messages: List<MessageDto>): String? {
+        val last = messages.lastOrNull() ?: return null
+        if (last.type != "user_message" && last.content.isNullOrBlank()) return null
+        return ChatErrors.fromChatError(rawError)
     }
 }
