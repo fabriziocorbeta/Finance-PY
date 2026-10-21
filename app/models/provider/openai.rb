@@ -3,7 +3,31 @@ class Provider::Openai < Provider
   include Provider::Openai::Concerns::LangfuseSanitizer
 
   # Subclass so errors caught in this provider are raised as Provider::Openai::Error
-  Error = Class.new(Provider::Error)
+  class Error < Provider::Error
+    RETRYABLE_HTTP_STATUSES = [ 429, 500, 502, 503, 504 ].freeze
+    BUSY_HTTP_STATUSES = [ 429, 503 ].freeze
+
+    # Filled from the underlying Faraday error so the assistant can tell a busy
+    # or slow model (worth trying another) from a config error without parsing text.
+    attr_reader :http_status, :transport_failure
+
+    def initialize(message, details: nil, http_status: nil, transport_failure: nil)
+      super(message, details: details)
+      @http_status = http_status
+      @transport_failure = transport_failure
+    end
+
+    def retryable?
+      transport_failure.present? || RETRYABLE_HTTP_STATUSES.include?(http_status)
+    end
+
+    def busy?
+      BUSY_HTTP_STATUSES.include?(http_status)
+    end
+  end
+
+  TIMEOUT_ERRORS = [ Faraday::TimeoutError, Net::ReadTimeout, Net::OpenTimeout ].freeze
+  CONNECTION_ERRORS = [ Faraday::ConnectionFailed, Errno::ECONNRESET, Errno::ECONNREFUSED ].freeze
 
   DEFAULT_MODEL = "gpt-4.1".freeze
   SUPPORTED_MODELS = %w[gpt-4 gpt-5 o1 o3].freeze
@@ -36,13 +60,13 @@ class Provider::Openai < Provider
   # gemma-3-12b-it) return 404 on this account, so do not substitute them.
   VISION_MODEL = ENV.fetch("OPENAI_VISION_MODEL", "nvidia/nemotron-nano-12b-v2-vl")
 
-  def initialize(access_token, uri_base: nil, model: nil)
+  def initialize(access_token, uri_base: nil, model: nil, request_timeout: nil)
     @access_token = access_token
     client_options = { access_token: access_token }
     llm_uri_base = uri_base.presence
     llm_model = model.presence
     client_options[:uri_base] = llm_uri_base if llm_uri_base.present?
-    client_options[:request_timeout] = ENV.fetch("OPENAI_REQUEST_TIMEOUT", 60).to_i
+    client_options[:request_timeout] = request_timeout.presence || ENV.fetch("OPENAI_REQUEST_TIMEOUT", 60).to_i
 
     @client = ::OpenAI::Client.new(**client_options)
     @uri_base = llm_uri_base
@@ -50,6 +74,12 @@ class Provider::Openai < Provider
       raise Error, "Model is required when using a custom OpenAI‑compatible provider"
     end
     @default_model = llm_model.presence || self.class.effective_model
+  end
+
+  # Same credentials and endpoint with a shorter HTTP timeout, so the assistant
+  # can give up on a slow model and hand the turn to the next one.
+  def with_request_timeout(seconds)
+    self.class.new(@access_token, uri_base: @uri_base, model: @default_model, request_timeout: seconds)
   end
 
   def supports_model?(model)
@@ -352,6 +382,24 @@ class Provider::Openai < Provider
 
   private
     attr_reader :client
+
+    def default_error_transformer(error)
+      base = super
+      Error.new(
+        base.message,
+        details: base.details,
+        http_status: (error.response_status if error.is_a?(Faraday::Error)),
+        transport_failure: transport_failure_for(error)
+      )
+    end
+
+    def transport_failure_for(error)
+      if TIMEOUT_ERRORS.any? { |klass| error.is_a?(klass) }
+        :timeout
+      elsif CONNECTION_ERRORS.any? { |klass| error.is_a?(klass) }
+        :connection
+      end
+    end
 
     def bank_statement_client
       client_options = { access_token: @access_token, request_timeout: BANK_STATEMENT_REQUEST_TIMEOUT }

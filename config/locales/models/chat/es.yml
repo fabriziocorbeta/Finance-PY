@@ -2,6 +2,8 @@
 es:
   chat:
     errors:
+      busy: El asistente está ocupado en este momento y no pudo responder. Intentá
+        de nuevo en unos minutos.
       default: No se pudo generar una respuesta. Intentá de nuevo.
       misconfigured: El proveedor de IA no está configurado correctamente. Contactá
         a tu administrador.

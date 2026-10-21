@@ -1,9 +1,14 @@
 class Assistant::Responder
-  def initialize(message:, instructions:, function_tool_caller:, llm:)
+  # `follow_up_llm` answers after the tools ran (defaults to `llm`). The
+  # assistant gives it the full request timeout: once tools have run no other
+  # model can take over, so a short per-attempt timeout would only fail the turn.
+  def initialize(message:, instructions:, function_tool_caller:, llm:, model: nil, follow_up_llm: nil)
     @message = message
+    @model = model.presence || message.ai_model
     @instructions = instructions
     @function_tool_caller = function_tool_caller
     @llm = llm
+    @follow_up_llm = follow_up_llm || llm
   end
 
   def on(event_name, &block)
@@ -44,7 +49,7 @@ class Assistant::Responder
   end
 
   private
-    attr_reader :message, :instructions, :function_tool_caller, :llm
+    attr_reader :message, :instructions, :function_tool_caller, :llm, :follow_up_llm, :model
 
     def handle_follow_up_response(response)
       streamer = proc do |chunk|
@@ -68,14 +73,15 @@ class Assistant::Responder
       get_llm_response(
         streamer: streamer,
         function_results: function_tool_calls.map(&:to_result),
-        previous_response_id: response.id
+        previous_response_id: response.id,
+        provider: follow_up_llm
       )
     end
 
-    def get_llm_response(streamer:, function_results: [], previous_response_id: nil)
-      response = llm.chat_response(
+    def get_llm_response(streamer:, function_results: [], previous_response_id: nil, provider: llm)
+      response = provider.chat_response(
         message.content,
-        model: message.ai_model,
+        model: model,
         instructions: instructions,
         functions: function_tool_caller.function_definitions,
         function_results: function_results,

@@ -20,41 +20,9 @@ class Assistant::Builtin < Assistant::Base
   def respond_to(message, assistant_message: nil)
     assistant_message ||= AssistantMessage.new(chat: chat, content: "", ai_model: message.ai_model)
 
-    llm_provider = get_model_provider(message.ai_model)
-    unless llm_provider
-      raise StandardError, build_no_provider_error_message(message.ai_model)
+    Assistant::ModelFallback.new(message.ai_model).run(retry_allowed: -> { untouched?(assistant_message) }) do |model, request_timeout|
+      respond_with_model(message, assistant_message, model: model, request_timeout: request_timeout)
     end
-
-    responder = Assistant::Responder.new(
-      message: message,
-      instructions: instructions,
-      function_tool_caller: function_tool_caller,
-      llm: llm_provider
-    )
-
-    latest_response_id = chat.latest_assistant_response_id
-
-    responder.on(:output_text) do |text|
-      if assistant_message.content.blank?
-        Chat.transaction do
-          assistant_message.append_text!(text)
-          chat.update_latest_response!(latest_response_id)
-        end
-      else
-        assistant_message.append_text!(text)
-      end
-    end
-
-    responder.on(:response) do |data|
-      if data[:function_tool_calls].present?
-        assistant_message.tool_calls = data[:function_tool_calls]
-        latest_response_id = data[:id]
-      else
-        chat.update_latest_response!(data[:id])
-      end
-    end
-
-    responder.respond(previous_response_id: latest_response_id)
   rescue => e
     if assistant_message&.persisted?
       if assistant_message.content.blank?
@@ -70,6 +38,59 @@ class Assistant::Builtin < Assistant::Base
   private
 
     attr_reader :functions
+
+    def respond_with_model(message, assistant_message, model:, request_timeout:)
+      full_timeout_provider = get_model_provider(model)
+      unless full_timeout_provider
+        raise StandardError, build_no_provider_error_message(model)
+      end
+      llm_provider = if request_timeout && full_timeout_provider.respond_to?(:with_request_timeout)
+        full_timeout_provider.with_request_timeout(request_timeout)
+      else
+        full_timeout_provider
+      end
+
+      # Saved with the first streamed text, so the message shows who really answered.
+      assistant_message.ai_model = model
+
+      responder = Assistant::Responder.new(
+        message: message,
+        instructions: instructions,
+        function_tool_caller: function_tool_caller,
+        llm: llm_provider,
+        follow_up_llm: full_timeout_provider,
+        model: model
+      )
+
+      latest_response_id = chat.latest_assistant_response_id
+
+      responder.on(:output_text) do |text|
+        if assistant_message.content.blank?
+          Chat.transaction do
+            assistant_message.append_text!(text)
+            chat.update_latest_response!(latest_response_id)
+          end
+        else
+          assistant_message.append_text!(text)
+        end
+      end
+
+      responder.on(:response) do |data|
+        if data[:function_tool_calls].present?
+          assistant_message.tool_calls = data[:function_tool_calls]
+          latest_response_id = data[:id]
+        else
+          chat.update_latest_response!(data[:id])
+        end
+      end
+
+      responder.respond(previous_response_id: latest_response_id)
+    end
+
+    # Another model may only take over while nothing of this turn is visible.
+    def untouched?(assistant_message)
+      assistant_message.content.blank? && assistant_message.tool_calls.empty?
+    end
 
     def function_tool_caller
       @function_tool_caller ||= Assistant::FunctionToolCaller.new(
