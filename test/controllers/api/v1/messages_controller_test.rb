@@ -19,6 +19,15 @@ class Api::V1::MessagesControllerTest < ActionDispatch::IntegrationTest
       scopes: "read_write"
     )
 
+    @user.api_keys.active.destroy_all
+    @api_key = ApiKey.create!(
+      user: @user,
+      name: "Test Read-Write Key",
+      scopes: [ "read_write" ],
+      source: "web",
+      display_key: "test_rw_#{SecureRandom.hex(8)}"
+    )
+
     @chat = chats(:one)
   end
 
@@ -58,24 +67,86 @@ class Api::V1::MessagesControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "should retry last assistant message" do
-    skip "Retry functionality needs debugging"
+  test "retry regenerates the answer to the last user message when the last turn completed" do
+    user_message = messages(:chat1_user)
 
-    # Create an assistant message to retry
-    assistant_message = @chat.messages.create!(
-      type: "AssistantMessage",
-      content: "Previous response",
-      ai_model: "gpt-4"
-    )
+    post "/api/v1/chats/#{@chat.id}/messages/retry", headers: api_headers(@api_key)
 
-    assert_enqueued_with(job: AssistantResponseJob) do
-      post "/api/v1/chats/#{@chat.id}/messages/retry",
-        headers: bearer_auth_header(@write_token)
+    assert_response :accepted
+    pending = AssistantMessage.find(JSON.parse(response.body)["message_id"])
+    assert pending.pending?
+    assert_equal user_message.ai_model, pending.ai_model
+    assert_enqueued_with(job: AssistantResponseJob, args: [ user_message, pending ])
+  end
+
+  # The failed-turn case: Assistant::Builtin destroys the empty reply and sets
+  # chat.error, leaving the user message last. This used to 422.
+  test "retry after a failed turn clears the error and re-asks for the user message" do
+    user_message = failed_turn!
+
+    assert_difference "AssistantMessage.count", 1 do
+      post "/api/v1/chats/#{@chat.id}/messages/retry", headers: api_headers(@api_key)
     end
 
     assert_response :accepted
-    response_body = JSON.parse(response.body)
-    assert response_body["message_id"].present?
+    body = JSON.parse(response.body)
+    assert_equal "Retry initiated", body["message"]
+    pending = AssistantMessage.find(body["message_id"])
+    assert pending.pending?
+    assert_nil @chat.reload.error
+    assert_enqueued_with(job: AssistantResponseJob, args: [ user_message, pending ])
+  end
+
+  test "retry after a partially streamed reply that was demoted to failed re-asks for the user message" do
+    user_message = failed_turn!
+    @chat.messages.create!(type: "AssistantMessage", content: "Partial", ai_model: "gpt-4.1", status: :failed)
+
+    post "/api/v1/chats/#{@chat.id}/messages/retry", headers: api_headers(@api_key)
+
+    assert_response :accepted
+    pending = AssistantMessage.find(JSON.parse(response.body)["message_id"])
+    assert_enqueued_with(job: AssistantResponseJob, args: [ user_message, pending ])
+  end
+
+  test "double-tapped retry enqueues one response and returns the same pending message" do
+    failed_turn!
+
+    assert_difference "AssistantMessage.count", 1 do
+      assert_enqueued_jobs 1, only: AssistantResponseJob do
+        2.times { post "/api/v1/chats/#{@chat.id}/messages/retry", headers: api_headers(@api_key) }
+      end
+    end
+
+    assert_response :accepted
+    assert_equal @chat.messages.where(type: "AssistantMessage", status: "pending").sole.id,
+      JSON.parse(response.body)["message_id"]
+  end
+
+  test "retry replaces a pending reply whose job died long ago" do
+    user_message = failed_turn!
+    stale = @chat.messages.create!(type: "AssistantMessage", content: "", ai_model: "gpt-4.1", status: :pending)
+    stale.update_columns(created_at: (Chat::STALE_PENDING_RESPONSE_AFTER + 1.minute).ago)
+
+    post "/api/v1/chats/#{@chat.id}/messages/retry", headers: api_headers(@api_key)
+
+    assert_response :accepted
+    assert_not AssistantMessage.exists?(stale.id)
+    pending = AssistantMessage.find(JSON.parse(response.body)["message_id"])
+    assert_enqueued_with(job: AssistantResponseJob, args: [ user_message, pending ])
+  end
+
+  test "retry returns 404 for another family's chat" do
+    other_user = users(:family_member)
+    other_user.update!(family: families(:empty))
+    other_chat = chats(:two)
+    other_chat.update!(user: other_user, error: { message: "boom" }.to_json)
+
+    assert_no_enqueued_jobs only: AssistantResponseJob do
+      post "/api/v1/chats/#{other_chat.id}/messages/retry", headers: api_headers(@api_key)
+    end
+
+    assert_response :not_found
+    assert_not_nil other_chat.reload.error
   end
 
   test "should refuse to retry once the family's daily LLM token quota is used up" do
@@ -102,12 +173,13 @@ class Api::V1::MessagesControllerTest < ActionDispatch::IntegrationTest
     assert_equal I18n.t("chats.errors.llm_quota_exceeded"), response_body["error"]
   end
 
-  test "should not retry if no assistant message exists" do
-    # Remove all assistant messages
-    @chat.messages.where(type: "AssistantMessage").destroy_all
+  test "should not retry a chat with no user message to answer" do
+    @chat.messages.destroy_all
 
-    post "/api/v1/chats/#{@chat.id}/messages/retry.json",
-      headers: bearer_auth_header(@write_token)
+    assert_no_enqueued_jobs only: AssistantResponseJob do
+      post "/api/v1/chats/#{@chat.id}/messages/retry.json",
+        headers: bearer_auth_header(@write_token)
+    end
 
     assert_response :unprocessable_entity
     response_body = JSON.parse(response.body)
@@ -131,5 +203,17 @@ class Api::V1::MessagesControllerTest < ActionDispatch::IntegrationTest
 
     def bearer_auth_header(token)
       { "Authorization" => "Bearer #{token.token}" }
+    end
+
+    def api_headers(api_key)
+      { "X-Api-Key" => api_key.display_key }
+    end
+
+    # Leaves @chat the way Assistant::Builtin#respond_to does when the LLM call
+    # fails: empty reply destroyed, user message last, chat.error set.
+    def failed_turn!
+      @chat.messages.where(type: "AssistantMessage").destroy_all
+      @chat.update!(error: { message: "boom", technical_message: "boom", type: "StandardError" }.to_json)
+      messages(:chat1_user)
     end
 end
