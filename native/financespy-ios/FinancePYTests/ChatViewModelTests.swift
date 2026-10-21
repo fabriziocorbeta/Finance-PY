@@ -151,6 +151,29 @@ final class ChatViewModelTests: XCTestCase {
                        "El título no puede estar vacío")
     }
 
+    // Payload shapes copied from the real Api::V1 controllers: forms must keep
+    // showing why the server rejected the data, not "probá en unos minutos".
+    func testValidationErrorsKeepTheServerMessagesOnForms() {
+        // goals/budgets/receivables/fleet/rules/accounts: render "errors"
+        let goals = #"{"error":"validation_failed","message":"Goal could not be created","errors":["Nombre no puede estar vacío","Monto objetivo debe ser mayor que 0"]}"#
+        XCTAssertEqual(NetworkError.httpError(422, goals).localizedDescription,
+                       "Nombre no puede estar vacío\nMonto objetivo debe ser mayor que 0")
+        // tags: joined full messages straight in "error"
+        let tags = #"{"error":"Nombre ya está en uso"}"#
+        XCTAssertEqual(NetworkError.httpError(422, tags).localizedDescription, "Nombre ya está en uso")
+        // A bare code with no messages is not shown, and never suggests waiting.
+        let bare = #"{"error":"validation_failed","message":"Receivable could not be created","errors":[]}"#
+        XCTAssertEqual(NetworkError.httpError(422, bare).localizedDescription, UserFacingError.invalidRequest)
+        XCTAssertEqual(NetworkError.httpError(400, #"{"error":"bad_request"}"#).localizedDescription, UserFacingError.invalidRequest)
+    }
+
+    func testForbiddenAndNotFoundAreSpecific() {
+        let business = #"{"error":"business_mode_disabled","message":"Business mode is not enabled for your family"}"#
+        XCTAssertEqual(NetworkError.httpError(403, business).localizedDescription, UserFacingError.businessModeDisabled)
+        XCTAssertEqual(NetworkError.httpError(403, #"{"error":"insufficient_scope"}"#).localizedDescription, UserFacingError.forbidden)
+        XCTAssertEqual(NetworkError.httpError(404, #"{"error":"record_not_found"}"#).localizedDescription, UserFacingError.notFound)
+    }
+
     func testChatFailureNeverShowsTechnicalMessage() {
         XCTAssertNil(UserFacingError.chatFailure(nil))
         XCTAssertNil(UserFacingError.chatFailure("  "))

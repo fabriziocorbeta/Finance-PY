@@ -23,6 +23,10 @@ enum UserFacingError {
     static let sessionExpired = "Tu sesión expiró. Volvé a iniciar sesión."
     static let offline = "No hay conexión a internet. Revisá tu conexión y probá de nuevo."
     static let forbidden = "No tenés permiso para hacer esto."
+    static let businessModeDisabled = "El modo empresa no está activado para tu familia."
+    static let notFound = "No encontramos lo que buscabas. Puede que se haya eliminado."
+    // A rejected request will not succeed by waiting, so never say "probá en unos minutos" here.
+    static let invalidRequest = "No se pudo completar la operación. Revisá los datos y probá de nuevo."
     static let generic = "Algo salió mal. Probá de nuevo en unos minutos."
 
     private static let offlineCodes: Set<URLError.Code> = [
@@ -69,16 +73,43 @@ enum UserFacingError {
         case 401:
             return sessionExpired
         case 403:
-            return payload?["error"] as? String == "feature_disabled" ? assistantDisabled : forbidden
-        case 422:
-            // Rails validation messages ("details") are already localized and actionable.
-            let details = (payload?["details"] as? [String])?.filter { !$0.isEmpty } ?? []
-            return details.isEmpty ? generic : details.joined(separator: "\n")
+            switch payload?["error"] as? String {
+            case "feature_disabled": return assistantDisabled
+            case "business_mode_disabled": return businessModeDisabled
+            default: return forbidden
+            }
+        case 404:
+            return notFound
+        case 400, 422:
+            return validationMessages(in: payload) ?? invalidRequest
         case 429, 502, 503, 504:
             return assistant ? assistantBusy : serverBusy
         default:
             return generic
         }
+    }
+
+    /// The validation messages a 422 carries, already localized by Rails
+    /// (default locale es). Most API controllers send them as "errors"
+    /// (validation_failed); chats/messages use "details"; tags put the joined
+    /// full messages straight into "error". A bare code like
+    /// "validation_failed" is not a message, so it is skipped.
+    private static func validationMessages(in payload: [String: Any]?) -> String? {
+        guard let payload else { return nil }
+        // Order matters: "details"/"errors" hold the messages; "message" is English boilerplate.
+        for key in ["details", "errors"] {
+            let messages = (payload[key] as? [String])?
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty } ?? []
+            if !messages.isEmpty {
+                return messages.joined(separator: "\n")
+            }
+        }
+        if let error = (payload["error"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+           error.contains(" ") {
+            return error
+        }
+        return nil
     }
 }
 
