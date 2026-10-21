@@ -37,11 +37,14 @@ final class ApiClient {
         self.session = URLSession(configuration: config)
     }
 
+    #if DEBUG
     // Test-only: `shared` can be built by the host app before tests swizzle URLSessionConfiguration.
+    // Compiled out of Release so nothing in a shipped build can repoint the client.
     func overrideTransportForTesting(session: URLSession, baseUrl: String) {
         self.session = session
         self.baseUrl = baseUrl
     }
+    #endif
 
     func request<T: Decodable>(path: String, queryItems: [URLQueryItem]? = nil) async throws -> T {
         try await request(method: "GET", path: path, queryItems: queryItems, body: Optional<EmptyBody>.none)
