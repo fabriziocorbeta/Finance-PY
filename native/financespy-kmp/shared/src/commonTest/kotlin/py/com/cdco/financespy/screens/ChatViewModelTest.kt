@@ -26,6 +26,8 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -245,5 +247,190 @@ class ChatViewModelTest {
         assertEquals(3, callCount)
 
         viewModel.dispose()
+    }
+
+    // Mirrors ApiClient (expectSuccess = true): a 4xx/5xx throws instead of decoding a DTO.
+    private fun apiReplying(handler: (path: String, call: Int) -> Pair<HttpStatusCode, String>): FinancePyApi {
+        var calls = 0
+        val mockConfig = MockEngineConfig()
+        mockConfig.dispatcher = dispatcher
+        mockConfig.addHandler { request ->
+            calls++
+            val (status, body) = handler(request.url.encodedPath, calls)
+            respond(content = body, status = status, headers = headersOf(HttpHeaders.ContentType, "application/json"))
+        }
+        val httpClient = HttpClient(MockEngine(mockConfig)) {
+            expectSuccess = true
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+        return FinancePyApi(httpClient)
+    }
+
+    private val answeredChat = """
+        {"id": "chat_1", "title": "Chat", "error": null, "messages": [
+          {"id": "msg_1", "type": "user_message", "role": "user", "content": "Old"},
+          {"id": "msg_2", "type": "assistant_message", "role": "assistant", "content": "Old reply"}
+        ]}
+    """.trimIndent()
+
+    private val friendly = "El proveedor de IA no está disponible temporalmente en este momento. Intentá de nuevo en unos minutos."
+
+    @Test
+    fun testPollStopsAndShowsChatErrorWhenAssistantFailed() = scope.runTest {
+        var fetches = 0
+        val api = apiReplying { path, _ ->
+            when {
+                path.endsWith("/messages") ->
+                    HttpStatusCode.Created to """{"id": "msg_3", "type": "user_message", "role": "user", "content": "New"}"""
+                ++fetches == 1 -> HttpStatusCode.OK to answeredChat
+                // The LLM 503'd: the server deleted the pending reply and stored chat.error.
+                else -> HttpStatusCode.OK to """
+                    {"id": "chat_1", "title": "Chat", "error": "$friendly", "messages": [
+                      {"id": "msg_1", "type": "user_message", "role": "user", "content": "Old"},
+                      {"id": "msg_2", "type": "assistant_message", "role": "assistant", "content": "Old reply"},
+                      {"id": "msg_3", "type": "user_message", "role": "user", "content": "New"}
+                    ]}
+                """.trimIndent()
+            }
+        }
+        val viewModel = ChatViewModel(scope, api, chatId = "chat_1")
+        scheduler.runCurrent()
+
+        viewModel.sendMessage("New")
+        scheduler.runCurrent()
+        scheduler.advanceTimeBy(2500)
+        scheduler.runCurrent()
+
+        var state = viewModel.state.value
+        assertEquals(friendly, state.error)
+        assertFalse(state.isSending)
+        assertEquals("user", state.messages.last().role)
+        assertEquals(2, fetches)
+
+        // Polling must have stopped: no more fetches however long we wait.
+        scheduler.advanceTimeBy(20_000)
+        scheduler.runCurrent()
+        state = viewModel.state.value
+        assertEquals(2, fetches)
+        assertEquals(friendly, state.error)
+
+        viewModel.dispose()
+    }
+
+    @Test
+    fun testOpeningChatWithFailedTurnShowsErrorWithoutPolling() = scope.runTest {
+        var fetches = 0
+        val api = apiReplying { _, _ ->
+            fetches++
+            // Legacy servers stored the raw JSON payload; never show it or technical_message.
+            HttpStatusCode.OK to """
+                {"id": "chat_1", "title": "Chat",
+                 "error": "{\"message\":\"$friendly\",\"technical_message\":\"503 Service Unavailable\"}",
+                 "messages": [{"id": "msg_1", "type": "user_message", "role": "user", "content": "Hola"}]}
+            """.trimIndent()
+        }
+        val viewModel = ChatViewModel(scope, api, chatId = "chat_1")
+        scheduler.runCurrent()
+        scheduler.advanceTimeBy(10_000)
+        scheduler.runCurrent()
+
+        assertEquals(friendly, viewModel.state.value.error)
+        assertEquals(1, fetches)
+
+        viewModel.dispose()
+    }
+
+    @Test
+    fun testRetryClearsErrorAndPollsDespiteStaleChatError() = scope.runTest {
+        var fetches = 0
+        val failedTurn = """
+            {"id": "msg_1", "type": "user_message", "role": "user", "content": "Hola"}
+        """.trimIndent()
+        val api = apiReplying { path, _ ->
+            when {
+                path.endsWith("/retry") ->
+                    HttpStatusCode.Accepted to """{"message": "Retry initiated", "message_id": "msg_2"}"""
+                ++fetches == 1 -> HttpStatusCode.OK to """{"id": "chat_1", "title": "Chat", "error": "$friendly", "messages": [$failedTurn]}"""
+                // The retry endpoint leaves chat.error in place while its placeholder is pending.
+                fetches == 2 -> HttpStatusCode.OK to """
+                    {"id": "chat_1", "title": "Chat", "error": "$friendly", "messages": [$failedTurn,
+                      {"id": "msg_2", "type": "assistant_message", "role": "assistant", "content": ""}]}
+                """.trimIndent()
+                else -> HttpStatusCode.OK to """
+                    {"id": "chat_1", "title": "Chat", "error": "$friendly", "messages": [$failedTurn,
+                      {"id": "msg_2", "type": "assistant_message", "role": "assistant", "content": "Listo"}]}
+                """.trimIndent()
+            }
+        }
+        val viewModel = ChatViewModel(scope, api, chatId = "chat_1")
+        scheduler.runCurrent()
+        assertEquals(friendly, viewModel.state.value.error)
+
+        viewModel.retryMessage()
+        scheduler.runCurrent()
+        assertNull(viewModel.state.value.error)
+
+        scheduler.advanceTimeBy(2500)
+        scheduler.runCurrent()
+        assertNull(viewModel.state.value.error)
+        assertEquals(2, fetches)
+
+        scheduler.advanceTimeBy(2500)
+        scheduler.runCurrent()
+        val state = viewModel.state.value
+        assertNull(state.error)
+        assertEquals("Listo", state.messages.last().content)
+        assertEquals(3, fetches)
+
+        viewModel.dispose()
+    }
+
+    @Test
+    fun testSendWithAiDisabledShowsFriendlyText() = scope.runTest {
+        val api = apiReplying { path, _ ->
+            if (path.endsWith("/messages")) {
+                HttpStatusCode.Forbidden to """{"error": "feature_disabled", "message": "AI features are not enabled for this user"}"""
+            } else {
+                HttpStatusCode.OK to answeredChat
+            }
+        }
+        val viewModel = ChatViewModel(scope, api, chatId = "chat_1")
+        scheduler.runCurrent()
+
+        viewModel.sendMessage("Hola")
+        scheduler.runCurrent()
+
+        val state = viewModel.state.value
+        assertEquals(ChatErrors.FEATURE_DISABLED, state.error)
+        assertFalse(state.isSending)
+
+        viewModel.dispose()
+    }
+
+    @Test
+    fun testSendWhenAssistantBusyShowsFriendlyText() = scope.runTest {
+        val api = apiReplying { path, _ ->
+            if (path.endsWith("/messages")) HttpStatusCode.ServiceUnavailable to "{}" else HttpStatusCode.OK to answeredChat
+        }
+        val viewModel = ChatViewModel(scope, api, chatId = "chat_1")
+        scheduler.runCurrent()
+
+        viewModel.sendMessage("Hola")
+        scheduler.runCurrent()
+
+        assertEquals(ChatErrors.BUSY, viewModel.state.value.error)
+
+        viewModel.dispose()
+    }
+
+    @Test
+    fun testChatErrorDecoding() {
+        assertNull(ChatErrors.fromChatError(null))
+        assertNull(ChatErrors.fromChatError("  "))
+        assertEquals(friendly, ChatErrors.fromChatError(friendly))
+        assertEquals(friendly, ChatErrors.fromChatError("""{"message":"$friendly","technical_message":"boom"}"""))
+        assertEquals("Viejo error", ChatErrors.fromChatError("\"Viejo error\""))
+        assertEquals(ChatErrors.ASSISTANT_FAILED, ChatErrors.fromChatError("""{"technical_message":"boom"}"""))
+        assertEquals(ChatErrors.ASSISTANT_FAILED, ChatErrors.fromChatError("{not json"))
     }
 }
