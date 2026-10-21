@@ -40,11 +40,15 @@ class Assistant::Builtin < Assistant::Base
     attr_reader :functions
 
     def respond_with_model(message, assistant_message, model:, request_timeout:)
-      llm_provider = get_model_provider(model)
-      unless llm_provider
+      full_timeout_provider = get_model_provider(model)
+      unless full_timeout_provider
         raise StandardError, build_no_provider_error_message(model)
       end
-      llm_provider = llm_provider.with_request_timeout(request_timeout) if request_timeout && llm_provider.respond_to?(:with_request_timeout)
+      llm_provider = if request_timeout && full_timeout_provider.respond_to?(:with_request_timeout)
+        full_timeout_provider.with_request_timeout(request_timeout)
+      else
+        full_timeout_provider
+      end
 
       # Saved with the first streamed text, so the message shows who really answered.
       assistant_message.ai_model = model
@@ -54,6 +58,7 @@ class Assistant::Builtin < Assistant::Base
         instructions: instructions,
         function_tool_caller: function_tool_caller,
         llm: llm_provider,
+        follow_up_llm: full_timeout_provider,
         model: model
       )
 

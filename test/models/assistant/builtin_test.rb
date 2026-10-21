@@ -113,6 +113,31 @@ class Assistant::BuiltinTest < ActiveSupport::TestCase
     assert_equal "gpt-4.1", partial.ai_model
   end
 
+  test "after tools ran, the follow-up call keeps the full timeout because no other model can take over" do
+    Assistant::Function::GetAccounts.any_instance.stubs(:call).returns("2 cuentas")
+
+    primary = mock("provider gpt-4.1")
+    with_attempt_timeout = mock("provider gpt-4.1 with attempt timeout")
+    @assistant.stubs(:get_model_provider).with("gpt-4.1").returns(primary)
+    primary.expects(:with_request_timeout).with(Assistant::ModelFallback::DEFAULT_ATTEMPT_TIMEOUT).returns(with_attempt_timeout)
+
+    tool_request = Provider::LlmConcept::ChatFunctionRequest.new(id: "1", call_id: "1", function_name: "get_accounts", function_args: "{}")
+    tool_response = Provider::LlmConcept::ChatResponse.new(id: "resp_tools", model: "test", messages: [], function_requests: [ tool_request ])
+    with_attempt_timeout.expects(:chat_response).once.returns(provider_success_response(tool_response))
+
+    # The answer after the tool results goes through the full-timeout provider.
+    expect_answer(primary, model: "gpt-4.1", text: "Tenés 2 cuentas")
+
+    with_env_overrides("OPENAI_FALLBACK_MODELS" => "openai/gpt-oss-20b") do
+      @assistant.respond_to(@message, assistant_message: @assistant_message)
+    end
+
+    answer = @assistant_message.reload
+    assert_equal "Tenés 2 cuentas", answer.content
+    assert_equal 1, answer.tool_calls.size
+    assert_nil @chat.reload.error
+  end
+
   private
 
     def provider_for(model)
