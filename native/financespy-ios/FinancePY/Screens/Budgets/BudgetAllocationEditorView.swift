@@ -96,7 +96,7 @@ struct BudgetAllocationEditorView: View {
 
                         Spacer()
 
-                        TextField(budget.currency ?? "USD", text: binding(for: category.id))
+                        TextField(budget.currency ?? "PYG", text: binding(for: category.id))
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                             .frame(width: 100)
@@ -147,7 +147,7 @@ struct BudgetAllocationEditorView: View {
     }
 
     private func formatMoney(_ amount: Double) -> String {
-        return "\(budget.currency ?? "USD") \(amount)"
+        Formatters.formatAmount(amount, currency: budget.currency ?? "PYG")
     }
 
     private func saveAllocations() {

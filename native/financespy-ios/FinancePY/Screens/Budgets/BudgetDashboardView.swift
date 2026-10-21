@@ -83,7 +83,7 @@ struct BudgetDashboardView: View {
                                     Text("Disponible para asignar")
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
-                                    Text(formatMoney(budget.availableToAllocate ?? 0, currency: budget.currency))
+                                    Text(Formatters.formatAmount(budget.availableToAllocate ?? 0, currency: budget.currency ?? "PYG"))
                                         .font(.title3)
                                         .bold()
                                         .foregroundColor((budget.availableToAllocate ?? 0) < 0 ? .red : .primary)
@@ -104,10 +104,10 @@ struct BudgetDashboardView: View {
                                 Text("Resumen de Gastos")
                                     .font(.subheadline)
                                 HStack {
-                                    Text("Gastado: \(formatMoney(budget.actualSpending ?? 0, currency: budget.currency))")
+                                    Text("Gastado: \(Formatters.formatAmount(budget.actualSpending ?? 0, currency: budget.currency ?? "PYG"))")
                                         .foregroundColor(.red)
                                     Spacer()
-                                    Text("Presupuestado: \(formatMoney(budget.budgetedSpending ?? 0, currency: budget.currency))")
+                                    Text("Presupuestado: \(Formatters.formatAmount(budget.budgetedSpending ?? 0, currency: budget.currency ?? "PYG"))")
                                         .foregroundColor(.secondary)
                                 }
                             }
@@ -159,7 +159,7 @@ struct BudgetDashboardView: View {
                                 ForEach(filteredCategoryGroups(budget.categories ?? []), id: \.parent.id) { group in
                                     CategoryGroupView(
                                         group: group,
-                                        currency: budget.currency ?? "USD",
+                                        currency: budget.currency ?? "PYG",
                                         isExpanded: expandedGroups.contains(group.parent.id),
                                         onToggleExpand: {
                                             if expandedGroups.contains(group.parent.id) {
@@ -186,7 +186,7 @@ struct BudgetDashboardView: View {
                 await loadBudget()
             }
             .sheet(item: $selectedCategory) { cat in
-                CategoryDetailSheet(category: cat, currency: budget?.currency ?? "USD")
+                CategoryDetailSheet(category: cat, currency: budget?.currency ?? "PYG")
             }
         }
     }
@@ -310,13 +310,6 @@ struct BudgetDashboardView: View {
     }
 
     // Helpers
-    private func formatMoney(_ amount: Double, currency: String?) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = currency ?? "PYG"
-        return formatter.string(from: NSNumber(value: amount)) ?? "\(currency ?? "PYG") \(amount)"
-    }
-
     private func hasOverBudgetCategories(_ categories: [BudgetCategoryDto]?) -> Bool {
         return categories?.contains(where: { $0.overBudget }) ?? false
     }
@@ -363,12 +356,12 @@ struct OverviewSummaryView: View {
             HStack {
                 Text("Presupuestado")
                 Spacer()
-                Text("\(budget.budgetedSpending ?? 0, specifier: "%.2f")")
+                Text(Formatters.formatAmount(budget.budgetedSpending ?? 0, currency: budget.currency ?? "PYG"))
             }
             HStack {
                 Text("Gastado")
                 Spacer()
-                Text("\(budget.actualSpending ?? 0, specifier: "%.2f")")
+                Text(Formatters.formatAmount(budget.actualSpending ?? 0, currency: budget.currency ?? "PYG"))
             }
         }
         .padding()
@@ -385,12 +378,12 @@ struct IncomeSummaryView: View {
             HStack {
                 Text("Ingreso Esperado")
                 Spacer()
-                Text("\(budget.expectedIncome ?? 0, specifier: "%.2f")")
+                Text(Formatters.formatAmount(budget.expectedIncome ?? 0, currency: budget.currency ?? "PYG"))
             }
             HStack {
                 Text("Ingreso Real")
                 Spacer()
-                Text("\(budget.actualIncome ?? 0, specifier: "%.2f")")
+                Text(Formatters.formatAmount(budget.actualIncome ?? 0, currency: budget.currency ?? "PYG"))
             }
         }
         .padding()
@@ -448,7 +441,7 @@ struct CategoryRow: View {
                 Text(category.categoryName ?? "Categoría")
                     .font(.subheadline)
                     .fontWeight(.medium)
-                Text("\(formatMoney(category.actualSpending ?? 0)) / \(formatMoney(category.budgetedSpending ?? 0))")
+                Text("\(Formatters.formatAmount(category.actualSpending ?? 0, currency: currency)) / \(Formatters.formatAmount(category.budgetedSpending ?? 0, currency: currency))")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -456,7 +449,7 @@ struct CategoryRow: View {
             Spacer()
 
             let available = category.availableToSpend ?? 0
-            Text(formatMoney(available))
+            Text(Formatters.formatAmount(available, currency: currency))
                 .font(.subheadline)
                 .foregroundColor(category.overBudget ? .red : .primary)
         }
@@ -466,10 +459,6 @@ struct CategoryRow: View {
             Rectangle().frame(width: nil, height: 1, alignment: .bottom).foregroundColor(Color(.separator)),
             alignment: .bottom
         )
-    }
-
-    private func formatMoney(_ amount: Double) -> String {
-        return "\(currency) \(amount)"
     }
 }
 
@@ -486,17 +475,17 @@ struct CategoryDetailSheet: View {
                 HStack {
                     Text("Presupuestado:")
                     Spacer()
-                    Text("\(currency) \(category.budgetedSpending ?? 0, specifier: "%.2f")")
+                    Text(Formatters.formatAmount(category.budgetedSpending ?? 0, currency: currency))
                 }
                 HStack {
                     Text("Gastado:")
                     Spacer()
-                    Text("\(currency) \(category.actualSpending ?? 0, specifier: "%.2f")")
+                    Text(Formatters.formatAmount(category.actualSpending ?? 0, currency: currency))
                 }
                 HStack {
                     Text("Disponible:")
                     Spacer()
-                    Text("\(currency) \(category.availableToSpend ?? 0, specifier: "%.2f")")
+                    Text(Formatters.formatAmount(category.availableToSpend ?? 0, currency: currency))
                         .foregroundColor(category.overBudget ? .red : .primary)
                 }
 
