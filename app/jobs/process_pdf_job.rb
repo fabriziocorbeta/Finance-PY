@@ -111,7 +111,8 @@ class ProcessPdfJob < ApplicationJob
         metadata: { "type" => document_type }
       )
 
-      return if family_document
+      # No store configured is the expected setup on OpenAI-compatible hosts, not a failure worth a warning.
+      return if family_document || !VectorStore.configured?
 
       Rails.logger.warn("ProcessPdfJob: Vector store upload failed for import #{pdf_import.id}")
     end

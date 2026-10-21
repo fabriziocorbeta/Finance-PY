@@ -128,7 +128,9 @@ class ProcessPdfJobTest < ActiveJob::TestCase
     process_result = Struct.new(:document_type).new("financial_document")
     @import.expects(:process_with_ai).once.returns(process_result)
     @import.stubs(:send_next_steps_email)
-    VectorStore.stubs(:adapter).returns(nil)
+    VectorStore::Registry.stubs(:adapter).returns(nil)
+    Rails.logger.stubs(:warn)
+    Rails.logger.expects(:warn).with { |message| message.to_s.include?("Vector store upload failed") }.never
 
     assert_no_difference "FamilyDocument.count" do
       ProcessPdfJob.perform_now(@import)
