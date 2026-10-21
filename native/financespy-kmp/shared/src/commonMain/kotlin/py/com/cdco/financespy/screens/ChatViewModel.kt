@@ -177,8 +177,9 @@ class ChatViewModel(
                     messages = messages
                 )
 
-                // The server deletes the pending reply and stores chat.error when the LLM call
-                // fails, so without this the loop spun for 3 minutes and blamed a slow AI.
+                // The server deletes the pending reply (or keeps a cut-short one) and stores
+                // chat.error when the LLM call fails, so without this the loop spun for
+                // 3 minutes and blamed a slow AI, or a truncated answer looked complete.
                 val failure = assistantFailure(response.error, messages)
                 if (failure != null) {
                     _state.value = _state.value.copy(error = failure)
@@ -222,10 +223,16 @@ class ChatViewModel(
         return last.type == "user_message" || (last.role == "assistant" && last.content.isNullOrBlank())
     }
 
-    // chat.error only means the latest turn failed while no assistant message (not even a
-    // placeholder) follows the last user message: the API retry endpoint keeps the old error.
+    // The server clears chat.error whenever it starts a new turn (Chat#ask_assistant_later), so a
+    // set error belongs to the latest turn. It fails in one of two shapes: the blank reply is
+    // deleted (last message is the user's), or text had already streamed and the reply is kept,
+    // marked failed (last message is a non-blank assistant one -- the API does not expose that
+    // status, so the error is the only sign the answer is cut short). The one case ignored is an
+    // empty assistant placeholder: that turn is still running, e.g. a retry started on top of a
+    // stale error, so the loop must keep polling.
     private fun assistantFailure(rawError: String?, messages: List<MessageDto>): String? {
-        if (messages.lastOrNull()?.type != "user_message") return null
+        val last = messages.lastOrNull() ?: return null
+        if (last.type != "user_message" && last.content.isNullOrBlank()) return null
         return ChatErrors.fromChatError(rawError)
     }
 }
