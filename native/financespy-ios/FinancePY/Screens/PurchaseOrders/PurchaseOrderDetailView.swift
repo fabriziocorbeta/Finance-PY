@@ -20,13 +20,13 @@ struct PurchaseOrderDetailView: View {
             } else if let po = po {
                 List {
                     Section("Información General") {
-                        LabeledContent("Estado", value: po.status.capitalized)
+                        LabeledContent("Estado", value: Formatters.purchaseOrderStatusLabel(po.status))
                         if let supplierName = po.supplierName {
                             LabeledContent("Proveedor", value: supplierName)
                         }
-                        LabeledContent("Total", value: "\(po.currency.uppercased()) \(String(format: "%.2f", po.total))")
+                        LabeledContent("Total", value: money(po.total, po.currency))
                         if let expectedDate = po.expectedDate {
-                            LabeledContent("Fecha Esperada", value: expectedDate)
+                            LabeledContent("Fecha Esperada", value: Formatters.formatDate(expectedDate))
                         }
                         if let notes = po.notes {
                             LabeledContent("Notas", value: notes)
@@ -39,13 +39,13 @@ struct PurchaseOrderDetailView: View {
                                 HStack {
                                     VStack(alignment: .leading) {
                                         Text(item.productName ?? "Producto")
-                                        Text("\(item.quantity) x \(String(format: "%.2f", item.unitCost))")
+                                        Text("\(item.quantity) x \(money(item.unitCost, po.currency))")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
                                     Spacer()
                                     if let sub = item.subtotal {
-                                        Text(String(format: "%.2f", sub))
+                                        Text(money(sub, po.currency))
                                     }
                                 }
                             }
@@ -130,5 +130,12 @@ struct PurchaseOrderDetailView: View {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    // Each document carries its own currency (PYG has no decimals, USD has two),
+    // so never a fixed "%.2f". The API may send the code lowercased ("pyg").
+    private func money(_ amount: Double, _ currency: String) -> String {
+        let code = currency.uppercased()
+        return Formatters.formatCents(Formatters.doubleToCents(amount, currency: code), currency: code)
     }
 }

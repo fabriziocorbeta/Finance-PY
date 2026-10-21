@@ -49,7 +49,7 @@ struct ReceivableDetailView: View {
                             DetailRow(label: "Cantidad de cuotas", value: "\(count)")
                         }
                         if let date = receivable.firstDueDate {
-                            DetailRow(label: "Primer vencimiento", value: date)
+                            DetailRow(label: "Primer vencimiento", value: Formatters.formatDate(date))
                         } else if let day = receivable.dueDay {
                             DetailRow(label: "Día de pago", value: "\(day)")
                         }
@@ -160,13 +160,19 @@ struct ReceivableDetailView: View {
         }
     }
 
+    // The API sends "depository" (accountable_type.underscore), not "Depository";
+    // an exact match left the payment picker empty against the real server.
+    static func paymentAccounts(from accounts: [AccountDto]) -> [AccountDto] {
+        accounts.filter { $0.accountType.lowercased() == "depository" && $0.status == "active" }
+    }
+
     private func openPaymentDialog() {
         showPaymentDialog = true
         paymentError = nil
         Task {
             do {
                 let allAccounts = try await FinancePyApi.shared.fetchAllAccounts()
-                paymentAccounts = allAccounts.filter { $0.accountType == "Depository" && $0.status == "active" }
+                paymentAccounts = Self.paymentAccounts(from: allAccounts)
                 if paymentFromAccountId.isEmpty {
                     paymentFromAccountId = paymentAccounts.first?.id ?? ""
                 }
@@ -225,7 +231,7 @@ struct InstallmentRowView: View {
                 Text("Cuota \(installment.number)")
                     .font(.body)
 
-                let dateInfo = "Vence: \(installment.dueDate)" + (installment.paidAt != nil ? " • Pagada: \(installment.paidAt!)" : "")
+                let dateInfo = "Vence: \(Formatters.formatDate(installment.dueDate))" + (installment.paidAt.map { " • Pagada: \(Formatters.formatDate($0))" } ?? "")
                 Text(dateInfo)
                     .font(.caption)
                     .foregroundColor(.secondary)

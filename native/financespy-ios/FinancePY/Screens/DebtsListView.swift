@@ -45,7 +45,7 @@ struct DebtsListView: View {
                                         Text(debt.name)
                                             .font(.body)
                                             .fontWeight(.medium)
-                                        Text(debt.accountType.capitalized)
+                                        Text(Formatters.accountTypeLabel(debt.accountType))
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }

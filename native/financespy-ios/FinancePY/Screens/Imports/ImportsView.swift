@@ -147,7 +147,7 @@ struct ImportsView: View {
                         }
                         HStack {
                             if let date = row.fields.date {
-                                Text(date)
+                                Text(Formatters.formatDate(date))
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }

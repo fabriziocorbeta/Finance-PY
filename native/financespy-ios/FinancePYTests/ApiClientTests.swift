@@ -9,6 +9,38 @@ final class ApiClientTests: XCTestCase {
         MockURLProtocol.requestHandler = nil
     }
 
+    func testSharedClientIsRoutedThroughMockAndNeverTargetsProduction() async {
+        XCTAssertEqual(ApiClient.shared.baseUrl, MockURLProtocol.unroutableBaseUrl)
+
+        // No handler installed: the mock must still be the one answering.
+        do {
+            let _: EmptyResponse = try await ApiClient.shared.request(path: "/test")
+            XCTFail("Expected the mock to reject an unhandled request")
+        } catch let error as NSError where error.domain == MockURLProtocol.unhandledRequestErrorDomain {
+            // Expected
+        } catch {
+            XCTFail("Request was not intercepted by MockURLProtocol: \(error)")
+        }
+    }
+
+    func testSharedUrlSessionIsInterceptedByMock() async {
+        // AuthRepository talks to URLSession.shared directly.
+        let url = URL(string: "\(MockURLProtocol.unroutableBaseUrl)/oauth/token")!
+        do {
+            _ = try await URLSession.shared.data(from: url)
+            XCTFail("Expected the mock to reject an unhandled request")
+        } catch let error as NSError where error.domain == MockURLProtocol.unhandledRequestErrorDomain {
+            // Expected
+        } catch {
+            XCTFail("URLSession.shared was not intercepted by MockURLProtocol: \(error)")
+        }
+    }
+
+    func testHostAppCanDetectUnitTestRun() {
+        // FinancePYApp skips its launch auth check / sync when this is set.
+        XCTAssertNotNil(ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"])
+    }
+
     func testRequestSuccess() async throws {
         struct TestDto: Codable { let id: String }
         let expectedDto = TestDto(id: "123")

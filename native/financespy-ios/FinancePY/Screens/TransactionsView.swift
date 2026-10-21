@@ -59,7 +59,7 @@ struct TransactionsView: View {
                                             .foregroundColor(.accentColor)
                                     }
 
-                                    Text(entry.date)
+                                    Text(Formatters.formatDate(entry.date))
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }

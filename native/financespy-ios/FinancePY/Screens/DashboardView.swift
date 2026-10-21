@@ -89,7 +89,7 @@ struct DashboardView: View {
                                             Text(account.name)
                                                 .font(.body)
                                                 .fontWeight(.medium)
-                                            Text(account.accountType.capitalized)
+                                            Text(Formatters.accountTypeLabel(account.accountType))
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
                                         }
@@ -142,7 +142,7 @@ struct DashboardView: View {
                                                         .cornerRadius(4)
                                                 }
 
-                                                Text(entry.date)
+                                                Text(Formatters.formatDate(entry.date))
                                                     .font(.caption)
                                                     .foregroundColor(.secondary)
                                             }

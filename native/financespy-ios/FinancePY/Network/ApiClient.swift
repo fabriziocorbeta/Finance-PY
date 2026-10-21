@@ -26,9 +26,9 @@ enum NetworkError: LocalizedError {
 final class ApiClient {
     static let shared = ApiClient()
 
-    let baseUrl = "https://finance.cd-co.com.py"
+    private(set) var baseUrl = "https://finance.cd-co.com.py"
     private let tokenStorage = KeychainTokenStorage.shared
-    private let session: URLSession
+    private var session: URLSession
 
     init() {
         let config = URLSessionConfiguration.default
@@ -36,6 +36,15 @@ final class ApiClient {
         config.timeoutIntervalForResource = 30.0
         self.session = URLSession(configuration: config)
     }
+
+    #if DEBUG
+    // Test-only: `shared` can be built by the host app before tests swizzle URLSessionConfiguration.
+    // Compiled out of Release so nothing in a shipped build can repoint the client.
+    func overrideTransportForTesting(session: URLSession, baseUrl: String) {
+        self.session = session
+        self.baseUrl = baseUrl
+    }
+    #endif
 
     func request<T: Decodable>(path: String, queryItems: [URLQueryItem]? = nil) async throws -> T {
         try await request(method: "GET", path: path, queryItems: queryItems, body: Optional<EmptyBody>.none)

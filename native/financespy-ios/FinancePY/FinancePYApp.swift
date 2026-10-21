@@ -36,6 +36,8 @@ struct FinancePYApp: App {
                 }
             }
             .task {
+                // As the unit-test host, a logged-in simulator would otherwise sync against production.
+                guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
                 self.isLoggedIn = await authRepository.isLoggedIn()
                 self.isCheckingAuth = false
             }

@@ -20,11 +20,11 @@ struct SaleDetailView: View {
             } else if let sale = sale {
                 List {
                     Section("Información General") {
-                        LabeledContent("Estado", value: sale.status.capitalized)
+                        LabeledContent("Estado", value: Formatters.saleStatusLabel(sale.status))
                         if let clientName = sale.clientName {
                             LabeledContent("Cliente", value: clientName)
                         }
-                        LabeledContent("Total", value: "\(sale.currency.uppercased()) \(String(format: "%.2f", sale.total))")
+                        LabeledContent("Total", value: money(sale.total, sale.currency))
                         if let notes = sale.notes {
                             LabeledContent("Notas", value: notes)
                         }
@@ -36,13 +36,13 @@ struct SaleDetailView: View {
                                 HStack {
                                     VStack(alignment: .leading) {
                                         Text(item.productName ?? "Producto")
-                                        Text("\(item.quantity) x \(String(format: "%.2f", item.unitPrice))")
+                                        Text("\(item.quantity) x \(money(item.unitPrice, sale.currency))")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
                                     Spacer()
                                     if let sub = item.subtotal {
-                                        Text(String(format: "%.2f", sub))
+                                        Text(money(sub, sale.currency))
                                     }
                                 }
                             }
@@ -127,5 +127,12 @@ struct SaleDetailView: View {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    // Each document carries its own currency (PYG has no decimals, USD has two),
+    // so never a fixed "%.2f". The API may send the code lowercased ("pyg").
+    private func money(_ amount: Double, _ currency: String) -> String {
+        let code = currency.uppercased()
+        return Formatters.formatCents(Formatters.doubleToCents(amount, currency: code), currency: code)
     }
 }
