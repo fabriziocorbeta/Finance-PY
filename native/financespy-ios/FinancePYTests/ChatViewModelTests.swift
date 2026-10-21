@@ -73,7 +73,142 @@ final class ChatViewModelTests: XCTestCase {
 
         try await Task.sleep(nanoseconds: 100_000_000)
 
-        XCTAssertNotNil(viewModel.error)
-        XCTAssertTrue(viewModel.error!.contains("500"))
+        XCTAssertEqual(viewModel.error, UserFacingError.generic)
     }
+
+    // MARK: - Assistant failures
+
+    func testChatErrorStopsPollingAndShowsFriendlyMessage() async throws {
+        let friendly = "El asistente no está disponible en este momento. Probá de nuevo en unos minutos."
+        let counter = RequestCounter()
+        MockURLProtocol.requestHandler = { request in
+            let n = counter.increment()
+            // First load: reply still pending. Then the LLM fails: the server
+            // drops the pending reply and stores the friendly error on the chat.
+            let body = n == 1
+                ? Self.chatJSON(messages: [Self.userMessageJSON, Self.assistantMessageJSON(content: "")])
+                : Self.chatJSON(error: friendly, messages: [Self.userMessageJSON])
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data(body.utf8))
+        }
+
+        let viewModel = ChatViewModel(chatId: "c1", pollIntervalNanoseconds: 10_000_000)
+        try await waitUntil { viewModel.error != nil }
+
+        XCTAssertEqual(viewModel.error, friendly)
+        XCTAssertEqual(viewModel.messages.map(\.id), ["u1"])
+
+        let requestsAfterError = counter.value
+        try await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertEqual(counter.value, requestsAfterError, "polling must stop once chat.error is set")
+    }
+
+    func testStreamedReplyStopsPollingOnceItStopsGrowing() async throws {
+        let counter = RequestCounter()
+        MockURLProtocol.requestHandler = { request in
+            let n = counter.increment()
+            let content = n == 1 ? "" : (n == 2 ? "Hola" : "Hola, ¿en qué te ayudo?")
+            let body = Self.chatJSON(messages: [Self.userMessageJSON, Self.assistantMessageJSON(content: content)])
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data(body.utf8))
+        }
+
+        let viewModel = ChatViewModel(chatId: "c1", pollIntervalNanoseconds: 10_000_000)
+        try await Task.sleep(nanoseconds: 400_000_000)
+
+        XCTAssertNil(viewModel.error)
+        XCTAssertEqual(viewModel.messages.last?.content, "Hola, ¿en qué te ayudo?")
+        let requestsWhenDone = counter.value
+        try await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertEqual(counter.value, requestsWhenDone, "polling must stop once the reply is complete")
+    }
+
+    func testFeatureDisabledShowsSpanishTextInChatsList() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(url: request.url!, statusCode: 403, httpVersion: nil, headerFields: nil)!
+            let body = #"{"error":"feature_disabled","message":"AI features are not enabled for this user"}"#
+            return (response, Data(body.utf8))
+        }
+
+        let viewModel = ChatsListViewModel()
+        await viewModel.fetchChats()
+
+        XCTAssertEqual(viewModel.error, UserFacingError.assistantDisabled)
+    }
+
+    func testApiErrorsMapToSpanishUserText() {
+        let disabledBody = #"{"error":"feature_disabled","message":"AI features are not enabled for this user"}"#
+        XCTAssertEqual(UserFacingError.message(for: NetworkError.httpError(403, disabledBody), assistant: true),
+                       "El asistente IA no está activado para tu cuenta. Activalo desde Ajustes en la versión web.")
+        XCTAssertEqual(NetworkError.httpError(403, disabledBody).localizedDescription, UserFacingError.assistantDisabled)
+        XCTAssertEqual(UserFacingError.message(for: NetworkError.httpError(503, nil), assistant: true),
+                       "El asistente está ocupado. Probá de nuevo en unos minutos.")
+        XCTAssertEqual(UserFacingError.message(for: NetworkError.httpError(429, "{}"), assistant: true), UserFacingError.assistantBusy)
+        XCTAssertEqual(UserFacingError.message(for: NetworkError.unauthorized), UserFacingError.sessionExpired)
+        XCTAssertEqual(UserFacingError.message(for: URLError(.notConnectedToInternet)), UserFacingError.offline)
+        XCTAssertEqual(UserFacingError.message(for: NetworkError.httpError(500, "<html>boom</html>")), UserFacingError.generic)
+        XCTAssertEqual(UserFacingError.message(for: NetworkError.httpError(422, #"{"error":"x","details":["El título no puede estar vacío"]}"#)),
+                       "El título no puede estar vacío")
+    }
+
+    // Payload shapes copied from the real Api::V1 controllers: forms must keep
+    // showing why the server rejected the data, not "probá en unos minutos".
+    func testValidationErrorsKeepTheServerMessagesOnForms() {
+        // goals/budgets/receivables/fleet/rules/accounts: render "errors"
+        let goals = #"{"error":"validation_failed","message":"Goal could not be created","errors":["Nombre no puede estar vacío","Monto objetivo debe ser mayor que 0"]}"#
+        XCTAssertEqual(NetworkError.httpError(422, goals).localizedDescription,
+                       "Nombre no puede estar vacío\nMonto objetivo debe ser mayor que 0")
+        // tags: joined full messages straight in "error"
+        let tags = #"{"error":"Nombre ya está en uso"}"#
+        XCTAssertEqual(NetworkError.httpError(422, tags).localizedDescription, "Nombre ya está en uso")
+        // A bare code with no messages is not shown, and never suggests waiting.
+        let bare = #"{"error":"validation_failed","message":"Receivable could not be created","errors":[]}"#
+        XCTAssertEqual(NetworkError.httpError(422, bare).localizedDescription, UserFacingError.invalidRequest)
+        XCTAssertEqual(NetworkError.httpError(400, #"{"error":"bad_request"}"#).localizedDescription, UserFacingError.invalidRequest)
+    }
+
+    func testForbiddenAndNotFoundAreSpecific() {
+        let business = #"{"error":"business_mode_disabled","message":"Business mode is not enabled for your family"}"#
+        XCTAssertEqual(NetworkError.httpError(403, business).localizedDescription, UserFacingError.businessModeDisabled)
+        XCTAssertEqual(NetworkError.httpError(403, #"{"error":"insufficient_scope"}"#).localizedDescription, UserFacingError.forbidden)
+        XCTAssertEqual(NetworkError.httpError(404, #"{"error":"record_not_found"}"#).localizedDescription, UserFacingError.notFound)
+    }
+
+    func testChatFailureNeverShowsTechnicalMessage() {
+        XCTAssertNil(UserFacingError.chatFailure(nil))
+        XCTAssertNil(UserFacingError.chatFailure("  "))
+        XCTAssertEqual(UserFacingError.chatFailure("Probá de nuevo."), "Probá de nuevo.")
+        let stored = #"{"message":"Probá de nuevo.","technical_message":"503 Service Unavailable","type":"Faraday::ServerError"}"#
+        XCTAssertEqual(UserFacingError.chatFailure(stored), "Probá de nuevo.")
+        XCTAssertEqual(UserFacingError.chatFailure(#"{"technical_message":"503"}"#), UserFacingError.generic)
+    }
+
+    // MARK: - Helpers
+
+    private static let userMessageJSON = #"{"id":"u1","type":"user_message","role":"user","content":"Hola","created_at":"2026-10-21T10:00:00Z","updated_at":"2026-10-21T10:00:00Z"}"#
+
+    private static func assistantMessageJSON(content: String) -> String {
+        #"{"id":"a1","type":"assistant_message","role":"assistant","content":"\#(content)","model":"m","created_at":"2026-10-21T10:00:01Z","updated_at":"2026-10-21T10:00:01Z"}"#
+    }
+
+    private static func chatJSON(error: String? = nil, messages: [String]) -> String {
+        let errorJSON = error.map { "\"\($0)\"" } ?? "null"
+        return #"{"id":"c1","title":"Chat","error":\#(errorJSON),"created_at":"2026-10-21T10:00:00Z","updated_at":"2026-10-21T10:00:00Z","messages":[\#(messages.joined(separator: ","))]}"#
+    }
+
+    private func waitUntil(timeout: TimeInterval = 2, _ condition: () -> Bool) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition() && Date() < deadline {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+    }
+}
+
+private final class RequestCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    var value: Int { lock.withLock { count } }
+
+    func increment() -> Int { lock.withLock { count += 1; return count } }
 }

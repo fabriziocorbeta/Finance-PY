@@ -7,19 +7,109 @@ enum NetworkError: LocalizedError {
     case invalidResponse
     case decodingError(Error)
 
+    // Most screens render error.localizedDescription as-is, so this must be
+    // user-facing Spanish -- never the raw "HTTP error 403: {json}" body.
     var errorDescription: String? {
-        switch self {
-        case .unauthorized:
-            return "Session expired or unauthorized. Please log in again."
-        case .invalidUrl:
-            return "Invalid request URL."
-        case .httpError(let code, let message):
-            return "HTTP error \(code): \(message ?? "No details")"
-        case .invalidResponse:
-            return "Invalid response received from server."
-        case .decodingError(let error):
-            return "Failed to decode response: \(error.localizedDescription)"
+        UserFacingError.message(for: self)
+    }
+}
+
+// The one place that turns a thrown error (or a chat's stored failure) into
+// Spanish text a user can act on.
+enum UserFacingError {
+    static let assistantDisabled = "El asistente IA no está activado para tu cuenta. Activalo desde Ajustes en la versión web."
+    static let assistantBusy = "El asistente está ocupado. Probá de nuevo en unos minutos."
+    static let serverBusy = "El servidor está ocupado. Probá de nuevo en unos minutos."
+    static let sessionExpired = "Tu sesión expiró. Volvé a iniciar sesión."
+    static let offline = "No hay conexión a internet. Revisá tu conexión y probá de nuevo."
+    static let forbidden = "No tenés permiso para hacer esto."
+    static let businessModeDisabled = "El modo empresa no está activado para tu familia."
+    static let notFound = "No encontramos lo que buscabas. Puede que se haya eliminado."
+    // A rejected request will not succeed by waiting, so never say "probá en unos minutos" here.
+    static let invalidRequest = "No se pudo completar la operación. Revisá los datos y probá de nuevo."
+    static let generic = "Algo salió mal. Probá de nuevo en unos minutos."
+
+    private static let offlineCodes: Set<URLError.Code> = [
+        .notConnectedToInternet, .networkConnectionLost, .timedOut,
+        .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed,
+        .dataNotAllowed, .internationalRoamingOff
+    ]
+
+    /// `assistant: true` words "busy" responses as the AI assistant being busy.
+    static func message(for error: Error, assistant: Bool = false) -> String {
+        if let networkError = error as? NetworkError {
+            switch networkError {
+            case .unauthorized:
+                return sessionExpired
+            case .httpError(let status, let body):
+                return message(status: status, body: body, assistant: assistant)
+            case .invalidUrl, .invalidResponse, .decodingError:
+                return generic
+            }
         }
+        if let urlError = error as? URLError {
+            return offlineCodes.contains(urlError.code) ? offline : generic
+        }
+        return (error as? LocalizedError)?.errorDescription ?? generic
+    }
+
+    /// Text for a chat's `error` field: the server already sends the friendly
+    /// message, but if it ever arrives as the stored JSON payload, only its
+    /// "message" is shown (never "technical_message").
+    static func chatFailure(_ raw: String?) -> String? {
+        guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
+        guard raw.hasPrefix("{") else { return raw }
+        let payload = raw.data(using: .utf8).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+        if let message = payload?["message"] as? String, !message.isEmpty {
+            return message
+        }
+        return generic
+    }
+
+    private static func message(status: Int, body: String?, assistant: Bool) -> String {
+        let payload = body?.data(using: .utf8).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+
+        switch status {
+        case 401:
+            return sessionExpired
+        case 403:
+            switch payload?["error"] as? String {
+            case "feature_disabled": return assistantDisabled
+            case "business_mode_disabled": return businessModeDisabled
+            default: return forbidden
+            }
+        case 404:
+            return notFound
+        case 400, 422:
+            return validationMessages(in: payload) ?? invalidRequest
+        case 429, 502, 503, 504:
+            return assistant ? assistantBusy : serverBusy
+        default:
+            return generic
+        }
+    }
+
+    /// The validation messages a 422 carries, already localized by Rails
+    /// (default locale es). Most API controllers send them as "errors"
+    /// (validation_failed); chats/messages use "details"; tags put the joined
+    /// full messages straight into "error". A bare code like
+    /// "validation_failed" is not a message, so it is skipped.
+    private static func validationMessages(in payload: [String: Any]?) -> String? {
+        guard let payload else { return nil }
+        // Order matters: "details"/"errors" hold the messages; "message" is English boilerplate.
+        for key in ["details", "errors"] {
+            let messages = (payload[key] as? [String])?
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty } ?? []
+            if !messages.isEmpty {
+                return messages.joined(separator: "\n")
+            }
+        }
+        if let error = (payload["error"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+           error.contains(" ") {
+            return error
+        }
+        return nil
     }
 }
 

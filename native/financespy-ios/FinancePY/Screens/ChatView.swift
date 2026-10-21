@@ -50,10 +50,10 @@ struct ChatView: View {
                         }
                         .padding()
                     }
-                    .onChange(of: viewModel.messages.count) { _ in
+                    .onChange(of: viewModel.messages.count) {
                         scrollToBottom(proxy: proxy)
                     }
-                    .onChange(of: viewModel.isSending) { isSending in
+                    .onChange(of: viewModel.isSending) { _, isSending in
                         if isSending {
                             withAnimation {
                                 proxy.scrollTo("sending_indicator", anchor: .bottom)
@@ -114,6 +114,12 @@ struct MessageBubble: View {
         message.role == "user"
     }
 
+    // A pending assistant reply arrives with empty content, not nil.
+    private var displayText: String {
+        let content = message.content ?? ""
+        return content.isEmpty && !isUser ? "Pensando..." : content
+    }
+
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
             if !isUser {
@@ -127,7 +133,7 @@ struct MessageBubble: View {
             }
 
             VStack(alignment: isUser ? .trailing : .leading, spacing: 4) {
-                Text(message.content ?? (message.type == "user_message" ? "" : "Pensando..."))
+                Text(displayText)
                     .padding(12)
                     .background(isUser ? Color.blue : Color(UIColor.secondarySystemBackground))
                     .foregroundColor(isUser ? .white : .primary)

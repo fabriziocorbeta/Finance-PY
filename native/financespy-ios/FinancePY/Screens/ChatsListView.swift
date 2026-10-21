@@ -11,6 +11,7 @@ struct ChatsListView: View {
                     ProgressView()
                 } else if let error = viewModel.error, viewModel.chats.isEmpty {
                     Text(error)
+                        .multilineTextAlignment(.center)
                         .foregroundColor(.red)
                         .padding()
                 } else if viewModel.chats.isEmpty {

@@ -15,7 +15,7 @@ final class ChatsListViewModel: ObservableObject {
             let response = try await FinancePyApi.shared.fetchChats()
             chats = response.chats
         } catch {
-            self.error = error.localizedDescription
+            self.error = UserFacingError.message(for: error, assistant: true)
         }
 
         isLoading = false
