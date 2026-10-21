@@ -45,18 +45,20 @@ enum Formatters {
 extension Formatters {
     // The API sends `accountable_type.underscore` ("credit_card", "other_liability");
     // ignoring underscores/case also covers the CamelCase form used on writes.
+    // Same labels as config/locales/views/accounts/es.yml (accounts.types.*), which the
+    // web balance sheet shows, so an account has the same type name on web and iOS.
     static func accountTypeLabel(_ raw: String) -> String {
         switch raw.replacingOccurrences(of: "_", with: "").lowercased() {
-        case "depository": return "Cuenta bancaria"
+        case "depository": return "Efectivo"
         case "creditcard": return "Tarjeta de crédito"
         case "loan": return "Préstamo"
         case "investment": return "Inversión"
         case "crypto": return "Cripto"
-        case "property": return "Inmueble"
+        case "property": return "Propiedad"
         case "vehicle": return "Vehículo"
         case "otherasset": return "Otro activo"
-        case "otherliability": return "Otro pasivo"
-        case "receivable": return "Cuenta a cobrar"
+        case "otherliability": return "Otra deuda"
+        case "receivable": return "Cuenta por cobrar"
         default: return humanize(raw)
         }
     }

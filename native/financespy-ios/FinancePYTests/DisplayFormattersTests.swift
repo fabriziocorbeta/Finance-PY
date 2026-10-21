@@ -1,23 +1,24 @@
 import XCTest
 @testable import FinancePY
 
-final class FormattersTests: XCTestCase {
+// Separate from FormattersTests (money formatting) so both files can coexist.
+final class DisplayFormattersTests: XCTestCase {
 
     // MARK: - Account types
 
     func testAccountTypeLabelCoversEveryServerAccountableType() {
         // Strings exactly as /api/v1/accounts serializes `accountable_type.underscore`.
         let expected: [String: String] = [
-            "depository": "Cuenta bancaria",
+            "depository": "Efectivo",
             "credit_card": "Tarjeta de crédito",
             "loan": "Préstamo",
             "investment": "Inversión",
             "crypto": "Cripto",
-            "property": "Inmueble",
+            "property": "Propiedad",
             "vehicle": "Vehículo",
             "other_asset": "Otro activo",
-            "other_liability": "Otro pasivo",
-            "receivable": "Cuenta a cobrar"
+            "other_liability": "Otra deuda",
+            "receivable": "Cuenta por cobrar"
         ]
         for (raw, label) in expected {
             XCTAssertEqual(Formatters.accountTypeLabel(raw), label, raw)
@@ -27,8 +28,8 @@ final class FormattersTests: XCTestCase {
     func testAccountTypeLabelAcceptsCamelCaseAndCapitalizedForms() {
         XCTAssertEqual(Formatters.accountTypeLabel("CreditCard"), "Tarjeta de crédito")
         XCTAssertEqual(Formatters.accountTypeLabel("Credit_Card"), "Tarjeta de crédito")
-        XCTAssertEqual(Formatters.accountTypeLabel("OtherLiability"), "Otro pasivo")
-        XCTAssertEqual(Formatters.accountTypeLabel("Depository"), "Cuenta bancaria")
+        XCTAssertEqual(Formatters.accountTypeLabel("OtherLiability"), "Otra deuda")
+        XCTAssertEqual(Formatters.accountTypeLabel("Depository"), "Efectivo")
     }
 
     func testAccountTypeLabelFallsBackToHumanizedValue() {
