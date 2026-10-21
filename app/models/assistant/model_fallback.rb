@@ -9,8 +9,18 @@
 #   60) because it is the last resort.
 # - Anything else (400/401/403/404, tool errors, ...) is re-raised untouched.
 #
-# Worst case with the defaults and a 3-model chain: 2 x (2s + 25s) + (2s + 60s)
-# ~ 2 minutes, all spent inside AssistantResponseJob, never in a web request.
+# The timeout is the HTTP read timeout (ruby-openai `request_timeout`), i.e. the
+# longest wait for the next bytes, not a cap on the whole request. That bounds
+# the non-streaming chat-completions call used with OpenAI-compatible endpoints
+# (nothing arrives until the answer is complete). On the streaming Responses
+# API path it only bounds the gaps between events, so it does not cap how long
+# a model may take to produce its first text there.
+#
+# Worst case with the defaults and a 3-model chain, every model busy and each
+# 503 arriving just before the timeout: 2 x (25s + 2s + 25s) + (60s + 2s + 60s)
+# ~ 3m46s, all spent inside AssistantResponseJob, never in a web request. With
+# no fallback models: 60s + 2s + 60s ~ 2 minutes. Once tools have run the
+# follow-up call gets the full OPENAI_REQUEST_TIMEOUT (no model can take over).
 class Assistant::ModelFallback
   DEFAULT_ATTEMPT_TIMEOUT = 25
   BUSY_RETRY_DELAY = 2
