@@ -44,7 +44,7 @@ jobs:
           exit-code: "0" # no falla el job -- este workflow es de visibilidad/alerta, no un gate de PR
 
       - name: Upload results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@3ea06614dafe36dec890db3446326e0d40ce53d4 # v3
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v3
         with:
           sarif_file: trivy-results.sarif
 
