@@ -24,7 +24,7 @@ jobs:
           git diff --quiet --staged || git commit -m "ci: omit structure.sql from diff for pipelock"
 
       - name: Pipelock Scan
-        uses: luckyPipewrench/pipelock@ca05ed06f360f5aac5518ab6ea2b11d729b70bee # v3
+        uses: luckyPipewrench/pipelock@d6bb0003c1dac00d3b2df8dd1eb1a51ed8cecd6a # v3
         with:
           scan-diff: 'true'
           fail-on-findings: 'true'
