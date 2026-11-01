@@ -3,7 +3,7 @@ class TradeImport < Import
     transaction do
       mappings.each(&:create_mappable!)
 
-      trades = rows.map do |row|
+      trades = rows.filter_map do |row|
         mapped_account = if account
           account
         else
@@ -15,6 +15,12 @@ class TradeImport < Import
           ticker: row.ticker,
           exchange_operating_mic: row.exchange_operating_mic
         )
+
+        # Skip rows that duplicate a trade already imported for this account
+        # (same security, date, qty and price). Without this, re-uploading
+        # the same CSV (or a retried import job) creates identical trades
+        # every time, inflating totals.
+        next if security.present? && duplicate_trade_exists?(mapped_account, security, row)
 
         Trade.new(
           security: security,
@@ -78,6 +84,16 @@ class TradeImport < Import
   end
 
   private
+    def duplicate_trade_exists?(account, security, row)
+      return false if account.nil?
+
+      account.trades
+        .where(security: security, qty: row.qty, price: row.price)
+        .where(entries: { date: row.date_iso })
+        .where.not(entries: { import_id: id })
+        .exists?
+    end
+
     def investment_activity_label_for(qty)
       # Set activity label based on quantity signage
       # Buy trades have positive qty, Sell trades have negative qty
