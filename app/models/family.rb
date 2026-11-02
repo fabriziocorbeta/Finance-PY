@@ -350,21 +350,26 @@ class Family < ApplicationRecord
   end
 
   # Used for invalidating entry related aggregation queries
+  #
+  # Includes the row count alongside the max updated_at: a destroyed entry
+  # doesn't bump any surviving row's updated_at, so the timestamp alone can't
+  # detect a deletion. The count does.
   def entries_cache_version(date_range: nil)
     if date_range
       @entries_cache_version_by_range ||= {}
       @entries_cache_version_by_range[date_range] ||= begin
+        scope = entries.where(date: date_range)
         ts = if defined?(@async_entries_range_max) && @async_entries_range_max && @async_entries_range_max[date_range]
           @async_entries_range_max[date_range].first&.updated_at
         else
-          entries.where(date: date_range).maximum(:updated_at)
+          scope.maximum(:updated_at)
         end
-        ts.present? ? ts.to_i : 0
+        "#{ts.present? ? ts.to_i : 0}-#{scope.count}"
       end
     else
       @entries_cache_version ||= begin
         ts = entries_max_updated_at
-        ts.present? ? ts.to_i : 0
+        "#{ts.present? ? ts.to_i : 0}-#{entries.count}"
       end
     end
   end
