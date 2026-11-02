@@ -16,11 +16,13 @@ set -euo pipefail
 
 # compose.local.yml + .env.local is what actually runs in production (confirmed
 # via `docker inspect ... com.docker.compose.project.config_files`) - compose.prod.yml
-# is unused. Caddy listens on local port 8080, not 80.
+# is unused. Caddy only publishes 80/443 (auto-HTTPS, SNI-routed to
+# finance.cd-co.com.py) - there is no local 8080 listener, so health checks
+# hit the web container directly instead of guessing a host-mapped port.
 COMPOSE_FILE="${COMPOSE_FILE:-compose.local.yml}"
 ENV_FILE="${ENV_FILE:-.env.local}"
 CADDY_CONTAINER="${CADDY_CONTAINER:-financespy-caddy-1}"
-PROD_URL="${PROD_URL:-http://localhost:8080}"
+PROD_URL="${PROD_URL:-http://localhost:3000}"
 
 COMPOSE=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
 
@@ -56,7 +58,7 @@ HEALTHCHECK_TIMEOUT="${HEALTHCHECK_TIMEOUT:-60}"
 elapsed=0
 UP_STATUS="000"
 while [ "$elapsed" -lt "$HEALTHCHECK_TIMEOUT" ]; do
-  UP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/up" || echo "000")
+  UP_STATUS=$("${COMPOSE[@]}" exec -T web curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/up" || echo "000")
   if [ "$UP_STATUS" = "200" ]; then
     break
   fi
@@ -74,7 +76,7 @@ fi
 
 if [ -n "${INTERNAL_VERSION_TOKEN:-}" ]; then
   echo "Checking /internal/version endpoint..."
-  DEPLOYED_JSON=$(curl -s -H "X-Internal-Token: $INTERNAL_VERSION_TOKEN" "$PROD_URL/internal/version" || echo "")
+  DEPLOYED_JSON=$("${COMPOSE[@]}" exec -T web curl -s -H "X-Internal-Token: $INTERNAL_VERSION_TOKEN" "$PROD_URL/internal/version" || echo "")
   DEPLOYED_SHA=$(echo "$DEPLOYED_JSON" | grep -o '"commit_sha":"[^"]*"' | cut -d'"' -f4 || echo "")
 
   if [ "$DEPLOYED_SHA" = "$CURRENT_HEAD" ]; then
