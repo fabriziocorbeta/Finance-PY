@@ -10,21 +10,30 @@ class InvestmentFlowStatement
 
   # Get contribution/withdrawal totals for a period
   def period_totals(period: Period.current_month)
-    scope = family.transactions
+    transaction_scope = family.transactions
       .visible
       .excluding_pending
       .where(entries: { date: period.date_range })
       .where(kind: %w[standard investment_contribution])
       .where(investment_activity_label: %w[Contribution Withdrawal])
 
+    # Trades (e.g. a mutual fund sell/redemption) can also be labeled as a
+    # Contribution/Withdrawal, so they must be included or they silently
+    # disappear from this report even though the UI lets users label them.
+    trade_scope = family.trades
+      .where(entries: { date: period.date_range })
+      .where(investment_activity_label: %w[Contribution Withdrawal])
+
     if user
-      scope = scope.joins(entry: :account).merge(Account.included_in_finances_for(user))
+      transaction_scope = transaction_scope.joins(entry: :account).merge(Account.included_in_finances_for(user))
+      trade_scope = trade_scope.joins(entry: :account).merge(Account.included_in_finances_for(user))
     end
 
-    transactions = scope
+    contributions = transaction_scope.where(investment_activity_label: "Contribution").sum("entries.amount").abs +
+      trade_scope.where(investment_activity_label: "Contribution").sum("entries.amount").abs
 
-    contributions = transactions.where(investment_activity_label: "Contribution").sum("entries.amount").abs
-    withdrawals = transactions.where(investment_activity_label: "Withdrawal").sum("entries.amount").abs
+    withdrawals = transaction_scope.where(investment_activity_label: "Withdrawal").sum("entries.amount").abs +
+      trade_scope.where(investment_activity_label: "Withdrawal").sum("entries.amount").abs
 
     PeriodTotals.new(
       contributions: Money.new(contributions, family.currency),
