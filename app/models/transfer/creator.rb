@@ -39,7 +39,7 @@ class Transfer::Creator
 
       Transaction.new(
         kind: kind,
-        category: (investment_contributions_category if kind == "investment_contribution"),
+        category: (investment_contributions_category if kind == "investment_contribution" && destination_is_investment? && !source_is_investment?),
         # InvestmentFlowStatement#period_totals (the "Contribuciones del Período"
         # widget on Reportes, web and native) only counts transactions tagged
         # investment_activity_label: "Contribution" -- without this, a transfer
@@ -61,7 +61,13 @@ class Transfer::Creator
     end
 
     def investment_activity_label_for(kind)
-      "Contribution" if kind == "investment_contribution"
+      return nil unless kind == "investment_contribution"
+
+      if destination_is_investment? && !source_is_investment?
+        "Contribution"
+      elsif source_is_investment? && !destination_is_investment?
+        "Withdrawal"
+      end
     end
 
     def inflow_transaction
@@ -97,6 +103,12 @@ class Transfer::Creator
       elsif destination_account.liability?
         "cc_payment"
       elsif destination_is_investment? && !source_is_investment?
+        "investment_contribution"
+      elsif source_is_investment? && !destination_is_investment?
+        # A withdrawal out of an investment/crypto account. Reuses the same
+        # kind as a contribution (rather than a new enum value) so it passes
+        # InvestmentFlowStatement#period_totals' `kind` filter -- the label
+        # below is what actually distinguishes it as a withdrawal.
         "investment_contribution"
       elsif source_account.receivable?
         # The one case keyed off the SOURCE rather than the destination -- a
