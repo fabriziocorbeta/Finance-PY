@@ -9,22 +9,53 @@ class PdfImport < Import
     transaction do
       mappings.each(&:create_mappable!)
 
-      new_transactions = rows.map do |row|
+      new_transactions = []
+      updated_entries = []
+      claimed_entry_ids = Set.new # Track entries we've already claimed in this import
+      adapter = Account::ProviderImportAdapter.new(account)
+
+      rows.each do |row|
         category = mappings.categories.mappable_for(row.category)
 
-        Transaction.new(
-          category: category,
-          entry: Entry.new(
-            account: account,
-            date: row.date_iso,
-            amount: row.signed_amount,
-            name: row.name,
-            currency: row.currency,
-            notes: row.notes,
-            import: self,
-            import_locked: true
-          )
+        # Same dedup rule TransactionImport (CSV) already applies: skip creating a
+        # new row when one already exists for this account/date/amount/currency
+        # without an external_id. Without this, re-uploading a statement that
+        # overlaps a previous import (or a charge already entered manually)
+        # silently doubles the entry.
+        duplicate_entry = adapter.find_duplicate_transaction(
+          date: row.date_iso,
+          amount: row.signed_amount,
+          currency: row.currency,
+          exclude_entry_ids: claimed_entry_ids
         )
+
+        if duplicate_entry
+          duplicate_entry.transaction.category = category if category.present?
+          duplicate_entry.notes = row.notes if row.notes.present?
+          duplicate_entry.import = self
+          duplicate_entry.import_locked = true
+          updated_entries << duplicate_entry
+          claimed_entry_ids.add(duplicate_entry.id)
+        else
+          new_transactions << Transaction.new(
+            category: category,
+            entry: Entry.new(
+              account: account,
+              date: row.date_iso,
+              amount: row.signed_amount,
+              name: row.name,
+              currency: row.currency,
+              notes: row.notes,
+              import: self,
+              import_locked: true
+            )
+          )
+        end
+      end
+
+      updated_entries.each do |entry|
+        entry.transaction.save!
+        entry.save!
       end
 
       Transaction.import!(new_transactions, recursive: true) if new_transactions.any?
