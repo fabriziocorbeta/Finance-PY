@@ -125,6 +125,32 @@ class Transfer::CreatorTest < ActiveSupport::TestCase
     assert_equal "funds_movement", inflow.kind
   end
 
+  test "creates investment withdrawal when transferring from investment to depository" do
+    creator = Transfer::Creator.new(
+      family: @family,
+      source_account_id: @destination_account.id, # investment account
+      destination_account_id: @source_account.id, # depository
+      date: @date,
+      amount: @amount
+    )
+
+    transfer = creator.create
+
+    assert transfer.persisted?
+
+    # Verify outflow transaction (on the investment account) is tagged as a Withdrawal
+    outflow = transfer.outflow_transaction
+    assert_equal "investment_contribution", outflow.kind
+    assert_equal "Withdrawal", outflow.investment_activity_label
+    assert_nil outflow.category, "Should NOT auto-assign the Investment Contributions category to a withdrawal"
+    assert_equal "Transfer to #{@source_account.name}", outflow.entry.name
+
+    # Verify inflow transaction (always funds_movement)
+    inflow = transfer.inflow_transaction
+    assert_equal "funds_movement", inflow.kind
+    assert_equal "Transfer from #{@destination_account.name}", inflow.entry.name
+  end
+
   test "creates loan payment" do
     loan_account = accounts(:loan)
 
