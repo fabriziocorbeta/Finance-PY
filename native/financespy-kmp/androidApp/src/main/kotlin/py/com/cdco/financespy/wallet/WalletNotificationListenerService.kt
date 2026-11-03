@@ -10,8 +10,20 @@ class WalletNotificationListenerService : NotificationListenerService() {
 
         val extras = sbn.notification.extras
         val title = extras.getCharSequence("android.title")?.toString() ?: ""
-        val text = collectNotificationText(extras)
-        if (title.isEmpty() && text.isEmpty()) return
+        val parts = collectNotificationParts(extras)
+        if (title.isEmpty() && parts.isEmpty()) return
+
+        // Bank/payment apps commonly re-post (update) an existing notification
+        // with its full visible history re-attached as new messages arrive in
+        // the same thread, so this callback re-receives parts already handed
+        // to the extractors on a previous call. Filter those out here, before
+        // anything reaches the extractors/backend -- see SeenNotificationPartsStore
+        // for why the backend's own external_id idempotency check can't catch
+        // this (confirmed live duplicate captures, Familia Corbeta Oct-Nov 2026).
+        val newParts = SeenNotificationPartsStore(applicationContext).filterNew(parts)
+        if (newParts.isEmpty()) return
+
+        val text = newParts.joinToString("\n")
 
         // Se llama directo acá porque el OS puede bindear/arrancar este Service
         // con el proceso en frío. Service extiende ContextWrapper, así que applicationContext
@@ -23,12 +35,15 @@ class WalletNotificationListenerService : NotificationListenerService() {
     // SMS conversations (MessagingStyle/InboxStyle, used by the default
     // Messages app) carry individual messages in "android.messages" or
     // "android.textLines" instead of -- or in addition to -- a single
-    // "android.bigText"/"android.text". Collecting every source into one
-    // blob (deduped) and running extractors with findAll over all of it is
-    // what makes bundled multi-transaction notifications (see
+    // "android.bigText"/"android.text". Collecting every source into
+    // individual parts (deduped) and running extractors with findAll over
+    // all of them is what makes bundled multi-transaction notifications (see
     // ContinentalSmsExtractor) actually find every transaction instead of
-    // only whichever field happened to be checked first.
-    private fun collectNotificationText(extras: Bundle): String {
+    // only whichever field happened to be checked first. Kept as separate
+    // parts (rather than pre-joined) so SeenNotificationPartsStore can filter
+    // out individually already-seen lines from a repost that also carries
+    // genuinely new ones.
+    private fun collectNotificationParts(extras: Bundle): List<String> {
         val parts = LinkedHashSet<String>()
 
         extras.getCharSequence("android.bigText")?.toString()?.let { parts.add(it) }
@@ -43,6 +58,6 @@ class WalletNotificationListenerService : NotificationListenerService() {
             (parcelable as? Bundle)?.getCharSequence("text")?.toString()?.let { parts.add(it) }
         }
 
-        return parts.joinToString("\n")
+        return parts.toList()
     }
 }
