@@ -30,6 +30,21 @@ class Transaction < ApplicationRecord
   after_save :clear_merchant_unlinked_association, if: :merchant_id_previously_changed?
   after_commit :enqueue_recompute_budget_job, if: -> { destroyed? || saved_change_to_kind? || saved_change_to_category_id? }
 
+  # investment_activity_label and kind are independent columns, but every
+  # report that aggregates investment flows (InvestmentFlowStatement#period_totals)
+  # filters on BOTH at once. Any write path that sets the label to
+  # Contribution/Withdrawal without also setting kind to investment_contribution
+  # produces a transaction that is real money, saves successfully, and then
+  # silently never appears in any report -- this has already happened twice
+  # (Transfer::Creator's withdrawal side, and the manual "quick edit" activity
+  # label badge). Rather than relying on every current and future write path
+  # to remember both fields, enforce the invariant here once.
+  before_validation :sync_kind_with_investment_activity_label, if: :investment_activity_label_changed?
+
+  def sync_kind_with_investment_activity_label
+    self.kind = "investment_contribution" if %w[Contribution Withdrawal].include?(investment_activity_label)
+  end
+
   def enqueue_recompute_budget_job
     # Deliberately bypasses the `entry` association (has_one, via Entryable)
     # instead of using self.entry: if this callback ever fires before an Entry

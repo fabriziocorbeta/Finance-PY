@@ -173,6 +173,55 @@ class TransactionTest < ActiveSupport::TestCase
     assert_equal entry.account, transaction.entry.account
   end
 
+  # Regression test: InvestmentFlowStatement#period_totals only counts
+  # transactions whose kind is standard/investment_contribution AND whose
+  # investment_activity_label is Contribution/Withdrawal. kind and
+  # investment_activity_label are otherwise independent columns, so a
+  # transaction labeled as a Withdrawal/Contribution with any other kind
+  # (e.g. funds_movement, the default for a plain internal transfer) saves
+  # successfully but silently never appears in that report. This has already
+  # happened twice in production: Transfer::Creator's withdrawal side, and
+  # the manual "quick edit" activity label badge, which only ever PATCHes
+  # investment_activity_label and never kind.
+  test "setting investment_activity_label to Withdrawal syncs kind to investment_contribution" do
+    transaction = Transaction.create!(
+      family: families(:dylan_family),
+      kind: "funds_movement",
+      investment_activity_label: "Withdrawal",
+      entry: accounts(:investment).entries.build(
+        amount: 100, currency: "USD", date: Date.current, name: "Transfer to Checking"
+      )
+    )
+
+    assert_equal "investment_contribution", transaction.kind
+  end
+
+  test "setting investment_activity_label to Contribution syncs kind to investment_contribution" do
+    transaction = Transaction.create!(
+      family: families(:dylan_family),
+      kind: "funds_movement",
+      investment_activity_label: "Contribution",
+      entry: accounts(:depository).entries.build(
+        amount: -100, currency: "USD", date: Date.current, name: "Transfer to Robinhood"
+      )
+    )
+
+    assert_equal "investment_contribution", transaction.kind
+  end
+
+  test "investment_activity_label unrelated to Contribution/Withdrawal does not force kind" do
+    transaction = Transaction.create!(
+      family: families(:dylan_family),
+      kind: "standard",
+      investment_activity_label: "Dividend",
+      entry: accounts(:investment).entries.build(
+        amount: -10, currency: "USD", date: Date.current, name: "Dividend payment"
+      )
+    )
+
+    assert_equal "standard", transaction.kind
+  end
+
   # Regression test: pulls_family_id_from(:entry, :account) on Entryable
   # only fires while the Transaction itself is being validated/saved, so it
   # can't retroactively backfill family_id once the Transaction already
