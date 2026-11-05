@@ -12,6 +12,13 @@ class ApiKey < ApplicationRecord
   SOURCES = [ "web", "mobile", "monitoring" ].freeze
   DEMO_MONITORING_KEY = "demo_monitoring_key_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
 
+  # "web" keys are the ones a user generates themselves in Settings and can
+  # end up embedded in a URL outside the app's control (e.g. pasted into a
+  # Google Sheets =IMPORTDATA formula for the reports export feature) -- so
+  # they default to a short lifetime rather than living forever. "mobile" and
+  # "monitoring" keys are provisioned by the app itself and stay unaffected.
+  WEB_KEY_LIFETIME = 90.days
+
   # Validations
   validates :display_key, presence: true, uniqueness: true
   validates :name, presence: true
@@ -22,6 +29,7 @@ class ApiKey < ApplicationRecord
 
   # Callbacks
   before_validation :set_display_key
+  before_validation :set_default_expiration, on: :create
   before_destroy :prevent_demo_monitoring_key_destroy!
 
   # Scopes
@@ -97,6 +105,10 @@ class ApiKey < ApplicationRecord
       if key.present?
         self.display_key = key
       end
+    end
+
+    def set_default_expiration
+      self.expires_at ||= WEB_KEY_LIFETIME.from_now if source == "web"
     end
 
     def scopes_not_empty
