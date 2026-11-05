@@ -109,11 +109,37 @@ class ApiKeyTest < ActiveSupport::TestCase
   end
 
   test "should be active when expires_at is nil" do
+    # source: "mobile" so the "web" key default-expiration callback doesn't
+    # overwrite the nil we're explicitly testing here.
+    @api_key.source = "mobile"
     @api_key.expires_at = nil
     @api_key.save!
 
     assert @api_key.active?
     assert_not @api_key.expired?
+  end
+
+  test "web keys default to a 90-day expiration when none is given" do
+    @api_key.save!
+
+    assert_in_delta ApiKey::WEB_KEY_LIFETIME.from_now, @api_key.expires_at, 5.seconds
+  end
+
+  test "web keys keep an explicitly set expiration instead of the default" do
+    custom_expiration = 7.days.from_now
+    @api_key.expires_at = custom_expiration
+
+    @api_key.save!
+
+    assert_in_delta custom_expiration, @api_key.expires_at, 1.second
+  end
+
+  test "non-web keys do not get a default expiration" do
+    @api_key.source = "mobile"
+
+    @api_key.save!
+
+    assert_nil @api_key.expires_at
   end
 
   test "should generate secure key" do

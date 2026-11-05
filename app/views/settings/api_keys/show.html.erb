@@ -81,6 +81,9 @@
               <% else %>
                 • Never used
               <% end %>
+              <% if @current_api_key.expires_at %>
+                • Expires <%= time_ago_in_words(@current_api_key.expires_at) %> from now
+              <% end %>
             </p>
           </div>
         </div>
