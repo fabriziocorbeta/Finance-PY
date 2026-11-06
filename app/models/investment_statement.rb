@@ -167,12 +167,23 @@ class InvestmentStatement
 
     interest_earned = all_time_totals.interest&.amount || 0
     contributed = all_time_totals.contributions&.amount || 0
+    withdrawn = all_time_totals.withdrawals&.amount || 0
+
+    # A withdrawal draws down against interest already earned before it draws
+    # down against principal -- so money the user actually took out of the
+    # account shouldn't keep inflating this figure forever. Without this,
+    # "unrealized gain" meant "interest ever credited, all-time", and never
+    # went back down even after the user withdrew it, which is exactly what
+    # "unrealized" (still sitting in the account, untouched) is supposed to
+    # rule out. Floored at zero: a withdrawal larger than interest earned came
+    # out of principal and has no further effect here.
+    remaining_interest = [ interest_earned - withdrawn, 0 ].max
 
     # Nothing to report on: no priced holdings and no income credited.
     return nil if holdings_with_cost_basis.empty? && interest_earned.zero?
 
     previous = holdings_cost + (interest_earned.zero? ? 0 : contributed)
-    current = holdings_current + (interest_earned.zero? ? 0 : contributed + interest_earned)
+    current = holdings_current + (interest_earned.zero? ? 0 : contributed + remaining_interest)
 
     # A zero baseline would make the percentage meaningless (or a division by
     # zero); the absolute gain is still worth showing.

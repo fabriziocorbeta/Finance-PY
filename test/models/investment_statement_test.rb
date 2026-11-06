@@ -45,6 +45,31 @@ class InvestmentStatementTest < ActiveSupport::TestCase
     assert_equal 250, totals.interest.amount
   end
 
+  # Regression test: before this, a withdrawal never reduced the trend, so
+  # "unrealized gain" kept showing all-time interest earned even after the
+  # user had already pulled that money out of the account.
+  test "withdrawals draw down the interest shown in the trend" do
+    account = create_investment_account(balance: 10_000)
+    create_buy_trade(account: account, amount: 10_000)
+    create_interest_trade(account: account, amount: 500)
+    create_withdrawal_transaction(account: account, amount: 200)
+
+    trend = @statement.unrealized_gains_trend
+
+    assert_equal 300, trend.value.amount
+  end
+
+  test "a withdrawal larger than interest earned floors the trend at zero" do
+    account = create_investment_account(balance: 10_000)
+    create_buy_trade(account: account, amount: 10_000)
+    create_interest_trade(account: account, amount: 500)
+    create_withdrawal_transaction(account: account, amount: 800)
+
+    trend = @statement.unrealized_gains_trend
+
+    assert_equal 0, trend.value.amount
+  end
+
   test "return trend stays nil when there is neither a holding nor interest" do
     create_investment_account(balance: 1000)
 
@@ -249,6 +274,20 @@ class InvestmentStatementTest < ActiveSupport::TestCase
           investment_activity_label: "Interest"
         )
       )
+    end
+
+    # Mirrors a real withdrawal: a transfer out of the investment account,
+    # manually labeled "Withdrawal" via the quick-edit badge.
+    def create_withdrawal_transaction(account:, amount:, date: Date.current)
+      transaction = Transaction.create!(
+        family: @family,
+        kind: "funds_movement",
+        entry: account.entries.build(
+          date: date, name: "Withdrawal", amount: amount, currency: account.currency
+        )
+      )
+      transaction.update!(investment_activity_label: "Withdrawal")
+      transaction
     end
 
     def create_buy_trade(account:, amount:, qty: 1, date: Date.current)
