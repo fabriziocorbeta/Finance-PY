@@ -67,6 +67,26 @@ class Api::V1::TokenRevocationTest < ActionDispatch::IntegrationTest
     assert @token.reload.revoked?
   end
 
+  # Regression test: deactivate used to only revoke OAuth tokens and web
+  # sessions, leaving a deactivated user's API key (e.g. a report export URL
+  # with no expiration at all for mobile/monitoring keys) usable indefinitely.
+  test "deactivating a user revokes their API keys" do
+    api_key = ApiKey.create!(user: @user, name: "Mobile App", source: "mobile", scopes: [ "read" ], key: ApiKey.generate_secure_key)
+
+    @user.deactivate
+
+    assert api_key.reload.revoked?
+  end
+
+  test "deactivating a user does not revoke other users' API keys" do
+    other = users(:family_member)
+    other_key = ApiKey.create!(user: other, name: "Mobile App", source: "mobile", scopes: [ "read" ], key: ApiKey.generate_secure_key)
+
+    @user.deactivate
+
+    assert_not other_key.reload.revoked?
+  end
+
   test "401 responses carry a Bearer challenge so clients can refresh" do
     @token.revoke
 

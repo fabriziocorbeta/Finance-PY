@@ -214,6 +214,7 @@ class User < ApplicationRecord
   def deactivate
     revoke_all_oauth_tokens!
     revoke_all_sessions!
+    revoke_all_api_keys!
     update active: false, email: deactivated_email
   end
 
@@ -235,6 +236,16 @@ class User < ApplicationRecord
       scope = sessions
       scope = scope.where.not(id: except) if except.present?
       scope.destroy_all
+    end
+  end
+
+  # Revokes every API key this user holds. api_keys is FORCE RLS'd; called
+  # from deactivate, which can run before any family context exists.
+  # Without this, a deactivated user's API key kept working indefinitely
+  # (mobile/monitoring keys have no expiration at all).
+  def revoke_all_api_keys!
+    RlsContext.with_auth_bypass(reason: "user_revoke_all_api_keys") do
+      api_keys.visible.where(revoked_at: nil).update_all(revoked_at: Time.current)
     end
   end
 
