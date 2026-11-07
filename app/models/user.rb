@@ -49,6 +49,7 @@ class User < ApplicationRecord
   # SSO JIT users have password_digest = nil and authenticate via OIDC only.
   validates :password, presence: true, on: :create, unless: :skip_password_validation?
   validates :password, length: { minimum: 8 }, allow_nil: true
+  validate :password_digest_cannot_be_blanked_out, on: :update
   normalizes :email, with: ->(email) { email.strip.downcase }
   normalizes :unconfirmed_email, with: ->(email) { email&.strip&.downcase }
 
@@ -540,6 +541,23 @@ class User < ApplicationRecord
 
     def skip_password_validation?
       skip_password_validation == true
+    end
+
+    # has_secure_password's `password=` sets password_digest to nil whenever
+    # it is assigned a literal nil (e.g. a reset/update form submitted without
+    # a `password` param at all) -- and with `validations: false`, nothing
+    # else here catches that on update. Without this, a password reset (or
+    # any other update that touches `password`) could silently wipe the
+    # user's digest and lock them out of their own account. SSO-only users
+    # legitimately have no digest from the start, so this only fires when a
+    # real digest is actually being erased.
+    def password_digest_cannot_be_blanked_out
+      return if skip_password_validation?
+      return unless password_digest_changed?
+      return if password_digest.present?
+      return if password_digest_was.blank?
+
+      errors.add(:password, :blank)
     end
 
     def default_dashboard_section_order
