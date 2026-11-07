@@ -1034,8 +1034,13 @@ class Account::ProviderImportAdapterTest < ActiveSupport::TestCase
     end
   end
 
-  test "reconciles most recent pending when multiple exist" do
-    # Create two pending transactions with same amount
+  # Previously this picked "most recent pending" as a tie-break, which could
+  # silently reconcile the posted transaction against the wrong one of two
+  # same-amount recurring charges. It now refuses to guess when the names
+  # don't resolve the ambiguity (see find_pending_transaction's tie-breaker
+  # tests above) and leaves both pending entries, and the posted one, as
+  # separate entries.
+  test "does not guess between multiple ambiguous pending candidates when names don't resolve it" do
     older_pending = @adapter.import_transaction(
       external_id: "simplefin_older_pending",
       amount: 60.00,
@@ -1056,8 +1061,7 @@ class Account::ProviderImportAdapterTest < ActiveSupport::TestCase
       extra: { "simplefin" => { "pending" => true } }
     )
 
-    # Import posted - should match the most recent pending (by date)
-    assert_no_difference "@account.entries.count" do
+    assert_difference "@account.entries.count", 1 do
       posted_entry = @adapter.import_transaction(
         external_id: "simplefin_posted_recurring",
         amount: 60.00,
@@ -1068,10 +1072,11 @@ class Account::ProviderImportAdapterTest < ActiveSupport::TestCase
         extra: { "simplefin" => { "pending" => false } }
       )
 
-      # Should match the newer pending entry
-      assert_equal newer_pending.id, posted_entry.id
-      # Older pending should remain untouched
+      # A new, separate entry -- not reconciled against either pending one
+      assert_not_equal newer_pending.id, posted_entry.id
+      assert_not_equal older_pending.id, posted_entry.id
       assert_equal "simplefin_older_pending", older_pending.reload.external_id
+      assert_equal "simplefin_newer_pending", newer_pending.reload.external_id
     end
   end
 
