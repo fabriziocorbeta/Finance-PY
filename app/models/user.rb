@@ -50,6 +50,7 @@ class User < ApplicationRecord
   validates :password, presence: true, on: :create, unless: :skip_password_validation?
   validates :password, length: { minimum: 8 }, allow_nil: true
   validate :password_digest_cannot_be_blanked_out, on: :update
+  validate :verify_password_challenge, on: :update
   normalizes :email, with: ->(email) { email.strip.downcase }
   normalizes :unconfirmed_email, with: ->(email) { email&.strip&.downcase }
 
@@ -558,6 +559,25 @@ class User < ApplicationRecord
       return if password_digest_was.blank?
 
       errors.add(:password, :blank)
+    end
+
+    # has_secure_password validations: false drops ALL of its built-in
+    # checks, including the password_challenge verification it would
+    # otherwise add -- so the "current password" field on the settings
+    # change-password form (PasswordsController) was collected and forwarded
+    # to `update`, but nothing ever checked it against the real password.
+    # Re-add just that check, mirroring ActiveModel::SecurePassword's own
+    # validation. password_challenge is a plain attr_accessor (not a column),
+    # so it's only ever present on the self-service change-password path,
+    # which forces a non-nil value via with_defaults; the emailed-token
+    # password-reset flow never sets it at all, leaving this a no-op there.
+    def verify_password_challenge
+      return if skip_password_validation?
+      return unless (challenge = password_challenge)
+
+      unless password_digest_was.present? && BCrypt::Password.new(password_digest_was).is_password?(challenge)
+        errors.add(:password_challenge)
+      end
     end
 
     def default_dashboard_section_order
