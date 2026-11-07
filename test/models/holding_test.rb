@@ -63,6 +63,24 @@ class HoldingTest < ActiveSupport::TestCase
     assert_equal Money.new(expected_nvda_usd, "CAD").exchange_to("USD"), @nvda.avg_cost
   end
 
+  # Regression test: a holding's calculated avg_cost used to average in
+  # every buy trade ever made for that security, even ones from a position
+  # that was fully sold off and later reopened. That inflated/deflated
+  # unrealized gain for a new lot bought at a very different price.
+  test "average cost basis resets after a position is fully closed and reopened" do
+    security = create_security("TSLA", prices: [ { date: Date.current, price: 300.00 } ])
+
+    # Opened, fully closed (qty back to zero), then reopened at a different price.
+    create_trade(security, account: @account, qty: 10, price: 100.00, date: 3.days.ago.to_date)
+    create_trade(security, account: @account, qty: -10, price: 150.00, date: 2.days.ago.to_date)
+    create_trade(security, account: @account, qty: 10, price: 300.00, date: 1.day.ago.to_date)
+
+    holding = @account.holdings.create! \
+      date: Date.current, security: security, qty: 10, price: 300.00, amount: 3000, currency: "USD"
+
+    assert_equal Money.new(300.00), holding.avg_cost
+  end
+
   test "calculates total return trend" do
     @amzn.stubs(:avg_cost).returns(Money.new(214.00))
     @nvda.stubs(:avg_cost).returns(Money.new(126.00))
