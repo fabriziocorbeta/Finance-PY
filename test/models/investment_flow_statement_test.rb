@@ -58,4 +58,26 @@ class InvestmentFlowStatementTest < ActiveSupport::TestCase
 
     assert_equal Money.new(300, @family.currency), totals.withdrawals
   end
+
+  # Regression test: period_totals summed entries.amount directly with no
+  # FX conversion at all, so a foreign-currency account's contributions and
+  # withdrawals were reported using the raw, un-converted number as if it
+  # were already in family currency.
+  test "a withdrawal from a foreign-currency investment account is converted to family currency" do
+    eur_investment = @family.accounts.create! name: "EUR Brokerage", currency: "EUR", balance: 10000, accountable: Investment.new
+    ExchangeRate.create!(from_currency: "EUR", to_currency: @family.currency, date: Date.current, rate: 1.1)
+
+    transaction = Transaction.create!(
+      family: @family,
+      kind: "funds_movement",
+      entry: eur_investment.entries.build(
+        amount: 300, currency: "EUR", date: Date.current, name: "Withdrawal"
+      )
+    )
+    transaction.update!(investment_activity_label: "Withdrawal")
+
+    totals = InvestmentFlowStatement.new(@family).period_totals(period: Period.current_month)
+
+    assert_equal Money.new(330, @family.currency), totals.withdrawals
+  end
 end
