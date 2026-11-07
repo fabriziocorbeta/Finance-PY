@@ -1034,8 +1034,13 @@ class Account::ProviderImportAdapterTest < ActiveSupport::TestCase
     end
   end
 
-  test "reconciles most recent pending when multiple exist" do
-    # Create two pending transactions with same amount
+  # Previously this picked "most recent pending" as a tie-break, which could
+  # silently reconcile the posted transaction against the wrong one of two
+  # same-amount recurring charges. It now refuses to guess when the names
+  # don't resolve the ambiguity (see find_pending_transaction's tie-breaker
+  # tests above) and leaves both pending entries, and the posted one, as
+  # separate entries.
+  test "does not guess between multiple ambiguous pending candidates when names don't resolve it" do
     older_pending = @adapter.import_transaction(
       external_id: "simplefin_older_pending",
       amount: 60.00,
@@ -1056,8 +1061,7 @@ class Account::ProviderImportAdapterTest < ActiveSupport::TestCase
       extra: { "simplefin" => { "pending" => true } }
     )
 
-    # Import posted - should match the most recent pending (by date)
-    assert_no_difference "@account.entries.count" do
+    assert_difference "@account.entries.count", 1 do
       posted_entry = @adapter.import_transaction(
         external_id: "simplefin_posted_recurring",
         amount: 60.00,
@@ -1068,10 +1072,11 @@ class Account::ProviderImportAdapterTest < ActiveSupport::TestCase
         extra: { "simplefin" => { "pending" => false } }
       )
 
-      # Should match the newer pending entry
-      assert_equal newer_pending.id, posted_entry.id
-      # Older pending should remain untouched
+      # A new, separate entry -- not reconciled against either pending one
+      assert_not_equal newer_pending.id, posted_entry.id
+      assert_not_equal older_pending.id, posted_entry.id
       assert_equal "simplefin_older_pending", older_pending.reload.external_id
+      assert_equal "simplefin_newer_pending", newer_pending.reload.external_id
     end
   end
 
@@ -1183,6 +1188,73 @@ class Account::ProviderImportAdapterTest < ActiveSupport::TestCase
     )
 
     assert_equal past_pending.id, result.id
+  end
+
+  # Regression test: with two pending transactions sharing the same
+  # amount/date/currency (e.g. two recurring charges of the same amount),
+  # the old "most recent" tie-break could silently reconcile the posted
+  # transaction against the WRONG pending one. It must now refuse to guess
+  # when a name tie-breaker doesn't narrow it to exactly one.
+  test "find_pending_transaction refuses to guess between two ambiguous same-amount candidates" do
+    @adapter.import_transaction(
+      external_id: "simplefin_pending_gym",
+      amount: 20.00,
+      currency: "USD",
+      date: Date.today - 1.day,
+      name: "Gym Membership",
+      source: "simplefin",
+      extra: { "simplefin" => { "pending" => true } }
+    )
+    @adapter.import_transaction(
+      external_id: "simplefin_pending_streaming",
+      amount: 20.00,
+      currency: "USD",
+      date: Date.today - 1.day,
+      name: "Streaming Service",
+      source: "simplefin",
+      extra: { "simplefin" => { "pending" => true } }
+    )
+
+    result = @adapter.find_pending_transaction(
+      date: Date.today,
+      amount: 20.00,
+      currency: "USD",
+      source: "simplefin",
+      name: "Something Else Entirely"
+    )
+
+    assert_nil result
+  end
+
+  test "find_pending_transaction uses the name tie-breaker to resolve ambiguous same-amount candidates" do
+    gym = @adapter.import_transaction(
+      external_id: "simplefin_pending_gym_2",
+      amount: 20.00,
+      currency: "USD",
+      date: Date.today - 1.day,
+      name: "Gym Membership",
+      source: "simplefin",
+      extra: { "simplefin" => { "pending" => true } }
+    )
+    @adapter.import_transaction(
+      external_id: "simplefin_pending_streaming_2",
+      amount: 20.00,
+      currency: "USD",
+      date: Date.today - 1.day,
+      name: "Streaming Service",
+      source: "simplefin",
+      extra: { "simplefin" => { "pending" => true } }
+    )
+
+    result = @adapter.find_pending_transaction(
+      date: Date.today,
+      amount: 20.00,
+      currency: "USD",
+      source: "simplefin",
+      name: "Gym Membership"
+    )
+
+    assert_equal gym.id, result.id
   end
 
   # ============================================================================

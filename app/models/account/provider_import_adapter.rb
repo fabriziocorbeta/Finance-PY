@@ -102,7 +102,7 @@ class Account::ProviderImportAdapter
         # PRIORITY 2: Fallback to EXACT amount match (for SimpleFIN and providers without linking IDs)
         # Only searches backward in time - pending date must be <= posted date
         if pending_match.nil?
-          pending_match = find_pending_transaction(date: date, amount: amount, currency: currency, source: source)
+          pending_match = find_pending_transaction(date: date, amount: amount, currency: currency, source: source, name: name)
           if pending_match
             Rails.logger.info("Reconciling pending→posted via exact amount match: claiming entry #{pending_match.id} with new external_id #{external_id}")
           end
@@ -673,9 +673,12 @@ class Account::ProviderImportAdapter
   # @param amount [BigDecimal, Numeric] Transaction amount (must match exactly)
   # @param currency [String] Currency code
   # @param source [String] Provider name (e.g., "simplefin")
+  # @param name [String, nil] Posted transaction name, used to break ties when more than
+  #   one pending transaction shares the same amount/date/currency (e.g. two recurring
+  #   charges of the same amount pending at once)
   # @param date_window [Integer] Days to search around the posted date (default: 8)
-  # @return [Entry, nil] The pending entry or nil if not found
-  def find_pending_transaction(date:, amount:, currency:, source:, date_window: 8)
+  # @return [Entry, nil] The pending entry or nil if not found/ambiguous
+  def find_pending_transaction(date:, amount:, currency:, source:, name: nil, date_window: 8)
     date = Date.parse(date.to_s) unless date.is_a?(Date)
 
     # Look for entries that:
@@ -699,8 +702,31 @@ class Account::ProviderImportAdapter
         OR (transactions.extra -> 'enable_banking' ->> 'pending')::boolean = true
       SQL
       .order(date: :desc) # Prefer most recent pending transaction
+      .to_a
 
-    candidates.first
+    return candidates.first if candidates.size <= 1
+
+    # More than one pending transaction shares the exact same amount/date
+    # window/currency -- e.g. two recurring charges of the same amount
+    # pending at once. Picking "most recent" here would silently reconcile
+    # the posted transaction against whichever one happens to sort first,
+    # which can attach the wrong pending transaction's metadata/history to
+    # it. Fall back to a name tie-breaker, same as the fuzzy/low-confidence
+    # matchers below; if that doesn't narrow it to exactly one, refuse to
+    # guess.
+    if name.present?
+      name_words = name.downcase.gsub(/[^a-z0-9\s]/, "").split.first(3).join(" ")
+      if name_words.present?
+        name_matches = candidates.select do |c|
+          c_name_words = c.name.downcase.gsub(/[^a-z0-9\s]/, "").split.first(3).join(" ")
+          name_words == c_name_words
+        end
+        return name_matches.first if name_matches.size == 1
+      end
+    end
+
+    Rails.logger.info("Skipping exact pending match: #{candidates.size} ambiguous candidates for amount=#{amount} date=#{date}")
+    nil
   end
 
   # Finds a pending transaction using fuzzy amount matching for tip adjustments
