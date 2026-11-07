@@ -45,7 +45,12 @@ class BinanceItem::EarnImporterTest < ActiveSupport::TestCase
     assert_equal "1.5", result[:assets].first[:total]
   end
 
-  test "returns empty assets when both APIs fail" do
+  # Regression test: a failed fetch used to be swallowed inside
+  # fetch_flexible/fetch_locked and treated as "this product holds
+  # nothing", silently dropping that portion of the balance. It must now
+  # surface as an explicit error so the caller can fail the whole sync
+  # instead of proceeding with understated data.
+  test "surfaces an error instead of silently returning empty assets when both APIs fail" do
     @provider.stubs(:get_simple_earn_flexible).raises(Provider::Binance::ApiError, "error")
     @provider.stubs(:get_simple_earn_locked).raises(Provider::Binance::ApiError, "error")
 
@@ -53,6 +58,18 @@ class BinanceItem::EarnImporterTest < ActiveSupport::TestCase
 
     assert_equal "earn", result[:source]
     assert_equal [], result[:assets]
-    assert_equal({ "flexible" => nil, "locked" => nil }, result[:raw])
+    assert_equal "error", result[:error]
+  end
+
+  test "surfaces an error when only the flexible API fails" do
+    @provider.stubs(:get_simple_earn_flexible).raises(Provider::Binance::ApiError, "flexible down")
+    @provider.stubs(:get_simple_earn_locked).returns({
+      "rows" => [ { "asset" => "BNB", "amount" => "10.0" } ]
+    })
+
+    result = BinanceItem::EarnImporter.new(@item, provider: @provider).import
+
+    assert_equal [], result[:assets]
+    assert_equal "flexible down", result[:error]
   end
 end

@@ -17,6 +17,10 @@ class Holding < ApplicationRecord
 
   COST_BASIS_SOURCES = %w[manual calculated provider].freeze
 
+  # Below this, a running quantity is treated as "fully closed" rather than
+  # a real fractional remainder (provider data can leave rounding dust).
+  ZERO_QTY_THRESHOLD = 0.00000001
+
   belongs_to :account
   belongs_to :security
   belongs_to :account_provider, optional: true
@@ -271,10 +275,10 @@ class Holding < ApplicationRecord
         previous: start_amount
     end
 
-    # Calculates weighted average cost from buy trades.
-    # Returns nil if no trades exist (cost basis is unknown).
+    # Calculates weighted average cost from buy trades in the currently open
+    # lot. Returns nil if no trades exist (cost basis is unknown).
     def calculate_avg_cost
-      trades = account.trades
+      trade_rows = account.trades
         .with_entry
         .joins(ActiveRecord::Base.sanitize_sql_array([
           "LEFT JOIN exchange_rates ON (
@@ -284,17 +288,37 @@ class Holding < ApplicationRecord
           )", account.currency
         ]))
         .where(security_id: security.id)
-        .where("trades.qty > 0 AND entries.date <= ?", date)
+        .where("entries.date <= ?", date)
+        .order(Arel.sql("entries.date ASC, trades.id ASC"))
+        .pluck(:qty, Arel.sql("trades.price * COALESCE(exchange_rates.rate, 1)"))
 
-      total_cost, total_qty = trades.pick(
-        Arel.sql("SUM(trades.price * trades.qty * COALESCE(exchange_rates.rate, 1))"),
-        Arel.sql("SUM(trades.qty)")
-      )
+      buys = current_lot_trades(trade_rows).select { |qty, _price| qty.positive? }
 
-      # Return nil when no trades exist - cost basis is genuinely unknown
-      # Previously this fell back to current market price, which was misleading
-      return nil unless total_qty && total_qty > 0
+      # Return nil when there's nothing to average - cost basis is genuinely
+      # unknown. Previously this fell back to current market price, which
+      # was misleading.
+      return nil if buys.empty?
+
+      total_cost = buys.sum { |qty, price| qty * price }
+      total_qty = buys.sum(&:first)
 
       Money.new(total_cost / total_qty, currency)
+    end
+
+    # Average cost must reflect only the position currently open. Once a
+    # sell brings the running quantity back to (about) zero, the position
+    # was fully closed out -- trades before that point belong to a prior,
+    # unrelated lot and must not be averaged into a position that was
+    # reopened later at a different price.
+    def current_lot_trades(trade_rows)
+      running_qty = 0
+      last_close_index = nil
+
+      trade_rows.each_with_index do |(qty, _price), index|
+        running_qty += qty
+        last_close_index = index if running_qty.abs < ZERO_QTY_THRESHOLD
+      end
+
+      last_close_index ? trade_rows[(last_close_index + 1)..] : trade_rows
     end
 end

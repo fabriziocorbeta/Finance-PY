@@ -16,6 +16,26 @@ class UserTest < ActiveSupport::TestCase
     assert @user.valid?, @user.errors.full_messages.to_sentence
   end
 
+  # Regression test: has_secure_password's `password=` sets password_digest
+  # to nil when assigned a literal nil (e.g. a password-reset form submitted
+  # without a `password` param), and with `validations: false` nothing else
+  # caught that on update -- silently locking the user out of their own
+  # account.
+  test "an update cannot blank out an existing password digest" do
+    assert @user.has_local_password?
+
+    @user.password = nil
+
+    assert_not @user.valid?
+    assert_includes @user.errors[:password], "can't be blank"
+  end
+
+  test "a password change that sets a real digest is still valid" do
+    @user.password = @user.password_confirmation = "NewPassw0rd!xyz"
+
+    assert @user.valid?, @user.errors.full_messages.to_sentence
+  end
+
   # Regression test: has_secure_password validations: false drops the
   # built-in password_challenge check entirely, so a wrong "current
   # password" never blocked a password change.

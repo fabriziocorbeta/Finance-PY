@@ -52,11 +52,7 @@ class InvestmentStatement::Totals
         FROM (#{@trades_scope.to_sql}) t
         JOIN entries ae ON ae.entryable_id = t.id AND ae.entryable_type = 'Trade'
         JOIN accounts a ON a.id = ae.account_id
-        LEFT JOIN exchange_rates er ON (
-          er.date = ae.date AND
-          er.from_currency = ae.currency AND
-          er.to_currency = :target_currency
-        )
+        #{nearest_rate_join_sql}
         WHERE a.family_id = :family_id
           AND a.status IN ('draft', 'active')
           AND ae.excluded = false
@@ -67,6 +63,36 @@ class InvestmentStatement::Totals
     # buckets. NULL-safe because every pre-existing trade has a NULL label.
     def not_income_sql
       "COALESCE(t.investment_activity_label, '') NOT IN ('Interest', 'Dividend')"
+    end
+
+    # An exact-date join silently fell back to a 1:1 rate (via the outer
+    # COALESCE(er.rate, 1) above) whenever a trade landed on a day with no
+    # stored rate for its currency -- e.g. a weekend, or any day the FX
+    # importer hadn't backfilled yet -- with no indication that had
+    # happened. Mirrors the nearest-rate LATERAL join already used for the
+    # same problem in Balance::ChartSeriesBuilder: nearest rate on or before
+    # the trade's date, falling back to the nearest one after it.
+    def nearest_rate_join_sql
+      <<~SQL
+        LEFT JOIN LATERAL (
+          SELECT COALESCE(
+            (SELECT er.rate
+             FROM exchange_rates er
+             WHERE er.from_currency = ae.currency
+               AND er.to_currency = :target_currency
+               AND er.date <= ae.date
+             ORDER BY er.date DESC
+             LIMIT 1),
+            (SELECT er.rate
+             FROM exchange_rates er
+             WHERE er.from_currency = ae.currency
+               AND er.to_currency = :target_currency
+               AND er.date > ae.date
+             ORDER BY er.date ASC
+             LIMIT 1)
+          ) AS rate
+        ) er ON TRUE
+      SQL
     end
 
     def sql_params
