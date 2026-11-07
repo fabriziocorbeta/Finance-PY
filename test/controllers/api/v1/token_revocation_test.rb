@@ -71,7 +71,7 @@ class Api::V1::TokenRevocationTest < ActionDispatch::IntegrationTest
   # sessions, leaving a deactivated user's API key (e.g. a report export URL
   # with no expiration at all for mobile/monitoring keys) usable indefinitely.
   test "deactivating a user revokes their API keys" do
-    api_key = ApiKey.create!(user: @user, name: "Reports", source: "web", scopes: [ "read" ], key: ApiKey.generate_secure_key)
+    api_key = ApiKey.create!(user: @user, name: "Mobile App", source: "mobile", scopes: [ "read" ], key: ApiKey.generate_secure_key)
 
     @user.deactivate
 
@@ -80,7 +80,7 @@ class Api::V1::TokenRevocationTest < ActionDispatch::IntegrationTest
 
   test "deactivating a user does not revoke other users' API keys" do
     other = users(:family_member)
-    other_key = ApiKey.create!(user: other, name: "Reports", source: "web", scopes: [ "read" ], key: ApiKey.generate_secure_key)
+    other_key = ApiKey.create!(user: other, name: "Mobile App", source: "mobile", scopes: [ "read" ], key: ApiKey.generate_secure_key)
 
     @user.deactivate
 
