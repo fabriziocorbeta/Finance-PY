@@ -16,6 +16,30 @@ class UserTest < ActiveSupport::TestCase
     assert @user.valid?, @user.errors.full_messages.to_sentence
   end
 
+  # Regression test: has_secure_password validations: false drops the
+  # built-in password_challenge check entirely, so a wrong "current
+  # password" never blocked a password change.
+  test "a password change with the wrong current password challenge is invalid" do
+    @user.password = @user.password_confirmation = "NewPassw0rd!xyz"
+    @user.password_challenge = "wrong-password"
+
+    assert_not @user.valid?
+    assert_includes @user.errors.attribute_names, :password_challenge
+  end
+
+  test "a password change with the correct current password challenge is valid" do
+    @user.password = @user.password_confirmation = "NewPassw0rd!xyz"
+    @user.password_challenge = user_password_test
+
+    assert @user.valid?, @user.errors.full_messages.to_sentence
+  end
+
+  test "updating an unrelated field without touching password stays valid" do
+    @user.first_name = "Updated"
+
+    assert @user.valid?, @user.errors.full_messages.to_sentence
+  end
+
   # email
   test "email must be present" do
     potential_user = User.new(

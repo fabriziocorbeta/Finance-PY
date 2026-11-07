@@ -26,4 +26,24 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
     assert Session.exists?(current_session.id), "Expected current session to be preserved"
     assert Session.exists?(other_user_session.id), "Expected another user's session to be untouched"
   end
+
+  # Regression test: has_secure_password validations: false drops the
+  # built-in password_challenge check, so this form's "current password"
+  # field was collected and forwarded but never actually verified -- a
+  # signed-in user could change their password without knowing the old one.
+  test "update rejects an incorrect current password" do
+    sign_in @user
+    original_digest = @user.password_digest
+
+    patch password_path, params: {
+      user: {
+        password: "NewPassword123!",
+        password_confirmation: "NewPassword123!",
+        password_challenge: "definitely-not-the-current-password"
+      }
+    }
+
+    assert_response :unprocessable_entity
+    assert_equal original_digest, @user.reload.password_digest
+  end
 end
