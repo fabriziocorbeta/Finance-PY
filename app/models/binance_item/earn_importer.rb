@@ -31,18 +31,16 @@ class BinanceItem::EarnImporter
 
   private
 
+    # No rescue here: a failed fetch must propagate to #import's own rescue
+    # so the whole earn result is marked as failed (error: set), rather than
+    # silently treated as "this product genuinely holds nothing" by
+    # parse_flexible/parse_locked's `return {} unless raw.is_a?(Hash)` guard.
     def fetch_flexible
       provider.get_simple_earn_flexible
-    rescue => e
-      Rails.logger.warn "BinanceItem::EarnImporter #{binance_item.id} - flexible failed: #{e.message}"
-      nil
     end
 
     def fetch_locked
       provider.get_simple_earn_locked
-    rescue => e
-      Rails.logger.warn "BinanceItem::EarnImporter #{binance_item.id} - locked failed: #{e.message}"
-      nil
     end
 
     def parse_flexible(raw)

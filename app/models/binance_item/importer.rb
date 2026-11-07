@@ -16,6 +16,17 @@ class BinanceItem::Importer
     margin_result = BinanceItem::MarginImporter.new(binance_item, provider: binance_provider).import
     earn_result   = BinanceItem::EarnImporter.new(binance_item, provider: binance_provider).import
 
+    # Each sub-importer rescues its own fetch and returns assets: [] on
+    # failure -- indistinguishable from "this wallet genuinely has nothing in
+    # it". Proceeding anyway would silently zero out that wallet's share of
+    # the combined balance/holdings on a merely transient API error (a
+    # timeout, a rate limit). Fail the whole sync instead, so it's retried
+    # rather than quietly understating the user's real balance.
+    failed = [ spot_result, margin_result, earn_result ].select { |r| r[:error] }
+    if failed.any?
+      raise "Binance sync failed: #{failed.map { |r| "#{r[:source]} (#{r[:error]})" }.join(', ')}"
+    end
+
     all_assets = tagged_assets(spot_result) + tagged_assets(margin_result) + tagged_assets(earn_result)
 
     return { success: true, assets_imported: 0, total_usd: 0 } if all_assets.empty?
