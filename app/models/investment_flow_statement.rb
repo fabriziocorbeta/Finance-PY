@@ -8,8 +8,9 @@ class InvestmentFlowStatement
     @user = user
   end
 
-  # Get contribution/withdrawal totals for a period
-  def period_totals(period: Period.current_month)
+  # Get contribution/withdrawal totals for a period. Pass `account` to scope
+  # the totals to a single investment account instead of the whole family.
+  def period_totals(period: Period.current_month, account: nil)
     transaction_scope = family.transactions
       .visible
       .excluding_pending
@@ -23,6 +24,11 @@ class InvestmentFlowStatement
     trade_scope = family.trades
       .where(entries: { date: period.date_range })
       .where(investment_activity_label: %w[Contribution Withdrawal])
+
+    if account
+      transaction_scope = transaction_scope.where(entries: { account_id: account.id })
+      trade_scope = trade_scope.where(entries: { account_id: account.id })
+    end
 
     if user
       transaction_scope = transaction_scope.joins(entry: :account).merge(Account.included_in_finances_for(user))

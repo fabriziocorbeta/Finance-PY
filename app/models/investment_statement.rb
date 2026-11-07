@@ -12,11 +12,15 @@ class InvestmentStatement
     @user = user || Current.user
   end
 
-  # Get totals for a specific period
-  def totals(period: Period.current_month)
+  # Get totals for a specific period. Pass `account` to scope the totals to a
+  # single investment account instead of every investment account in the
+  # family.
+  def totals(period: Period.current_month, account: nil)
+    account_ids = account ? [ account.id ] : investment_account_ids
+
     trades_in_period = family.trades
       .joins(:entry)
-      .where(entries: { date: period.date_range, account_id: investment_account_ids })
+      .where(entries: { date: period.date_range, account_id: account_ids })
 
     result = totals_query(trades_scope: trades_in_period)
 
@@ -26,7 +30,7 @@ class InvestmentStatement
     # even though it's exactly what users mean by "contributed" or
     # "withdrew". Fold in InvestmentFlowStatement's transaction-based totals
     # so a transfer-funded account doesn't show 0 despite real activity.
-    flows = InvestmentFlowStatement.new(family, user: user).period_totals(period: period)
+    flows = InvestmentFlowStatement.new(family, user: user).period_totals(period: period, account: account)
 
     PeriodTotals.new(
       contributions: Money.new(result[:contributions], family.currency) + flows.contributions,
@@ -167,7 +171,6 @@ class InvestmentStatement
 
     interest_earned = all_time_totals.interest&.amount || 0
     contributed = all_time_totals.contributions&.amount || 0
-    withdrawn = all_time_totals.withdrawals&.amount || 0
 
     # A withdrawal draws down against interest already earned before it draws
     # down against principal -- so money the user actually took out of the
@@ -175,9 +178,13 @@ class InvestmentStatement
     # "unrealized gain" meant "interest ever credited, all-time", and never
     # went back down even after the user withdrew it, which is exactly what
     # "unrealized" (still sitting in the account, untouched) is supposed to
-    # rule out. Floored at zero: a withdrawal larger than interest earned came
-    # out of principal and has no further effect here.
-    remaining_interest = [ interest_earned - withdrawn, 0 ].max
+    # rule out. Floored at zero per account, then summed: a withdrawal from
+    # one investment account must only draw down interest earned in THAT
+    # account, not interest sitting untouched in a different one.
+    remaining_interest = investment_accounts.sum do |account|
+      account_totals = totals(period: Period.all_time, account: account)
+      [ (account_totals.interest&.amount || 0) - (account_totals.withdrawals&.amount || 0), 0 ].max
+    end
 
     # Nothing to report on: no priced holdings and no income credited.
     return nil if holdings_with_cost_basis.empty? && interest_earned.zero?

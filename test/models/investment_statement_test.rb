@@ -70,6 +70,24 @@ class InvestmentStatementTest < ActiveSupport::TestCase
     assert_equal 0, trend.value.amount
   end
 
+  # Regression test: before this, interest_earned/withdrawn were summed
+  # across every investment account before netting, so a withdrawal from one
+  # account could zero out interest that was still sitting untouched in a
+  # completely different account.
+  test "a withdrawal from one account does not draw down interest earned in another account" do
+    account_a = create_investment_account(balance: 10_000)
+    create_buy_trade(account: account_a, amount: 10_000)
+    create_interest_trade(account: account_a, amount: 500)
+
+    account_b = create_investment_account(balance: 1_000)
+    create_buy_trade(account: account_b, amount: 1_000)
+    create_withdrawal_transaction(account: account_b, amount: 800)
+
+    trend = @statement.unrealized_gains_trend
+
+    assert_equal 500, trend.value.amount
+  end
+
   test "return trend stays nil when there is neither a holding nor interest" do
     create_investment_account(balance: 1000)
 
