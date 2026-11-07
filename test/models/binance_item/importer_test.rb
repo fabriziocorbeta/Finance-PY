@@ -54,6 +54,23 @@ class BinanceItem::ImporterTest < ActiveSupport::TestCase
     end
   end
 
+  # Regression test: a sub-importer that failed to fetch (rate limit,
+  # timeout) returns assets: [] indistinguishable from "genuinely empty".
+  # Proceeding anyway silently zeroed out that wallet's share of the
+  # combined balance instead of failing the sync so it gets retried.
+  test "raises instead of silently dropping a wallet's balance when a sub-importer fails" do
+    stub_spot_result([ { symbol: "BTC", free: "1.0", locked: "0.0", total: "1.0" } ])
+    BinanceItem::MarginImporter.any_instance.stubs(:import).returns(
+      { assets: [], raw: nil, source: "margin", error: "rate limited" }
+    )
+
+    assert_no_difference "@item.binance_accounts.count" do
+      assert_raises(RuntimeError) do
+        BinanceItem::Importer.new(@item, binance_provider: @provider).import
+      end
+    end
+  end
+
   test "stores source breakdown in raw_payload" do
     BinanceItem::Importer.new(@item, binance_provider: @provider).import
 
