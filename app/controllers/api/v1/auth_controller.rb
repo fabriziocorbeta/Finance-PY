@@ -72,9 +72,14 @@ module Api
       end
 
       def login
-        user = User.auth_find_by_email(params[:email])
+        # auth_authenticate_by wraps Rails' authenticate_by, which runs a
+        # dummy bcrypt comparison even when no user matches the email. A
+        # find_by + authenticate split (the old code) skips bcrypt entirely
+        # for unknown emails, letting an attacker time responses to enumerate
+        # which emails exist.
+        user = User.auth_authenticate_by(email: params[:email], password: params[:password])
 
-        if user&.authenticate(params[:password])
+        if user
           # Check MFA if enabled
           if user.otp_required?
             if user.otp_locked?

@@ -361,6 +361,23 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Invalid email or password", response_data["error"]
   end
 
+  test "login uses the constant-time authenticate_by instead of find-then-authenticate" do
+    user = users(:family_admin)
+    password = user_password_test
+
+    # The vulnerable code looked the user up first and only ran bcrypt when
+    # found, letting response timing reveal whether an email is registered.
+    User.expects(:auth_find_by_email).never
+
+    post "/api/v1/auth/login", params: {
+      email: user.email,
+      password: password,
+      device: @device_info
+    }
+
+    assert_response :success
+  end
+
   test "should not login with non-existent email" do
     assert_no_difference("Doorkeeper::AccessToken.count") do
       post "/api/v1/auth/login", params: {
