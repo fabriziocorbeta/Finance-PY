@@ -21,6 +21,7 @@ class OfflineStorageService {
     String? notes,
     String? categoryId,
     String? categoryName,
+    String? exchangeRate,
     String? serverId,
     SyncStatus syncStatus = SyncStatus.pending,
   }) async {
@@ -39,6 +40,7 @@ class OfflineStorageService {
       notes: notes,
       categoryId: categoryId,
       categoryName: categoryName,
+      exchangeRate: exchangeRate,
       syncStatus: syncStatus,
     );
 

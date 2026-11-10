@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/currency_symbols.dart';
 
 class CurrencyFilter extends StatelessWidget {
   final Set<String> availableCurrencies;
@@ -11,29 +12,6 @@ class CurrencyFilter extends StatelessWidget {
     required this.selectedCurrencies,
     required this.onSelectionChanged,
   });
-
-  String _getCurrencySymbol(String currency) {
-    switch (currency.toUpperCase()) {
-      case 'USD':
-        return '\$';
-      case 'TWD':
-        return 'NT\$';
-      case 'BTC':
-        return '₿';
-      case 'ETH':
-        return 'Ξ';
-      case 'EUR':
-        return '€';
-      case 'GBP':
-        return '£';
-      case 'JPY':
-        return '¥';
-      case 'CNY':
-        return '¥';
-      default:
-        return '';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +61,7 @@ class CurrencyFilter extends StatelessWidget {
           ...sortedCurrencies.map((currency) {
             final isSelected =
                 selectedCurrencies.contains(currency) && !isAllSelected;
-            final symbol = _getCurrencySymbol(currency);
+            final symbol = currencySymbol(currency);
             final displayText = symbol.isNotEmpty ? '$currency ($symbol)' : currency;
 
             return Padding(

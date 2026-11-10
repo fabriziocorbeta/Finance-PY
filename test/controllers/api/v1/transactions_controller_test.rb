@@ -179,6 +179,50 @@ class Api::V1::TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal @account.id, response_data["account"]["id"]
   end
 
+  test "should create transaction with exchange_rate" do
+    transaction_params = {
+      transaction: {
+        account_id: @account.id,
+        name: "FX test",
+        amount: 100,
+        date: Date.current,
+        currency: "EUR",
+        nature: "expense",
+        exchange_rate: "1.0823"
+      }
+    }
+
+    post api_v1_transactions_url,
+         params: transaction_params,
+         headers: api_headers(@api_key)
+
+    assert_response :created
+    response_data = JSON.parse(response.body)
+    assert_equal "1.0823", response_data["exchange_rate"]
+
+    created_entry = @account.entries.find_by!(name: "FX test")
+    assert_equal "1.0823", created_entry.transaction.exchange_rate
+  end
+
+  test "should reject invalid exchange_rate" do
+    transaction_params = {
+      transaction: {
+        account_id: @account.id,
+        name: "Bad FX",
+        amount: 100,
+        date: Date.current,
+        nature: "expense",
+        exchange_rate: "-5"
+      }
+    }
+
+    post api_v1_transactions_url,
+         params: transaction_params,
+         headers: api_headers(@api_key)
+
+    assert_response :unprocessable_entity
+  end
+
   test "should reject create with read-only API key" do
     transaction_params = {
       transaction: {

@@ -8,6 +8,7 @@ import '../providers/categories_provider.dart';
 import '../providers/transactions_provider.dart';
 import '../services/log_service.dart';
 import '../services/connectivity_service.dart';
+import '../widgets/exchange_rate_entry.dart';
 
 class TransactionFormScreen extends StatefulWidget {
   final Account account;
@@ -32,6 +33,8 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
   bool _showMoreFields = false;
   bool _isSubmitting = false;
   models.Category? _selectedCategory;
+  late String _selectedCurrency;
+  String? _exchangeRate;
 
   @override
   void initState() {
@@ -41,6 +44,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
     final formattedDate = DateFormat('yyyy/MM/dd').format(now);
     _dateController.text = formattedDate;
     _nameController.text = 'SureApp';
+    _selectedCurrency = widget.account.currency;
     _fetchCategories();
   }
 
@@ -78,6 +82,16 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
     return null;
   }
 
+  static const List<String> _commonCurrencies = [
+    'USD', 'EUR', 'GBP', 'JPY', 'CNY', 'PYG', 'BTC', 'ETH', 'TWD',
+  ];
+
+  List<String> _availableCurrencies() {
+    final currencies = {widget.account.currency, ..._commonCurrencies}.toList();
+    currencies.sort();
+    return currencies;
+  }
+
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -95,6 +109,17 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
 
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (_selectedCurrency != widget.account.currency &&
+        (_exchangeRate == null || _exchangeRate!.trim().isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter an exchange rate'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
@@ -136,11 +161,12 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
         name: _nameController.text.trim(),
         date: apiDate,
         amount: _amountController.text.trim(),
-        currency: widget.account.currency,
+        currency: _selectedCurrency,
         nature: _nature,
         notes: 'This transaction via mobile app.',
         categoryId: _selectedCategory?.id,
         categoryName: _selectedCategory?.name,
+        exchangeRate: _selectedCurrency == widget.account.currency ? null : _exchangeRate,
       );
 
       if (mounted) {
@@ -374,6 +400,46 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                               helperText: 'Optional (default: SureApp)',
                             ),
                           ),
+                          const SizedBox(height: 16),
+
+                          // Currency picker
+                          DropdownButtonFormField<String>(
+                            value: _selectedCurrency,
+                            decoration: const InputDecoration(
+                              labelText: 'Currency',
+                              prefixIcon: Icon(Icons.attach_money),
+                              helperText: 'Optional (default: account currency)',
+                            ),
+                            items: _availableCurrencies().map((currency) {
+                              return DropdownMenuItem<String>(
+                                value: currency,
+                                child: Text(currency),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setState(() {
+                                _selectedCurrency = value;
+                                _exchangeRate = null;
+                              });
+                            },
+                          ),
+
+                          if (_selectedCurrency != widget.account.currency) ...[
+                            const SizedBox(height: 16),
+                            ExchangeRateEntry(
+                              sourceAmount: _amountController.text.trim(),
+                              fromCurrency: _selectedCurrency,
+                              toCurrency: widget.account.currency,
+                              date: DateFormat('yyyy-MM-dd').format(
+                                DateFormat('yyyy/MM/dd').parse(_dateController.text),
+                              ),
+                              onRateChanged: (rate) {
+                                _exchangeRate = rate;
+                              },
+                            ),
+                          ],
+
                           const SizedBox(height: 16),
 
                           // Category picker

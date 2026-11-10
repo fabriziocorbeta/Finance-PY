@@ -63,7 +63,7 @@ class DatabaseHelper {
 
       return await openDatabase(
         path,
-        version: 2,
+        version: 3,
         onCreate: _createDB,
         onUpgrade: _upgradeDB,
       );
@@ -97,6 +97,7 @@ class DatabaseHelper {
           notes TEXT,
           category_id TEXT,
           category_name TEXT,
+          exchange_rate TEXT,
           sync_status TEXT NOT NULL,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
@@ -160,6 +161,13 @@ class DatabaseHelper {
       }
       if (!columnNames.contains('category_name')) {
         await db.execute('ALTER TABLE transactions ADD COLUMN category_name TEXT');
+      }
+    }
+    if (oldVersion < 3) {
+      final columns = await db.rawQuery('PRAGMA table_info(transactions)');
+      final columnNames = columns.map((c) => c['name'] as String).toSet();
+      if (!columnNames.contains('exchange_rate')) {
+        await db.execute('ALTER TABLE transactions ADD COLUMN exchange_rate TEXT');
       }
     }
   }

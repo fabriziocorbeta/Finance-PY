@@ -21,6 +21,7 @@ json.currency entry.currency
 json.name entry.name
 json.notes entry.notes
 json.classification entry.classification
+json.exchange_rate transaction.exchange_rate
 
 # Account information
 account = entry.account

@@ -289,7 +289,7 @@ class Api::V1::TransactionsController < Api::V1::BaseController
     def transaction_params
       params.require(:transaction).permit(
         :account_id, :date, :amount, :name, :description, :notes, :currency,
-        :category_id, :merchant_id, :nature, tag_ids: []
+        :category_id, :merchant_id, :nature, :exchange_rate, tag_ids: []
       )
     end
 
@@ -304,6 +304,7 @@ class Api::V1::TransactionsController < Api::V1::BaseController
         entryable_attributes: {
           category_id: transaction_params[:category_id],
           merchant_id: transaction_params[:merchant_id],
+          exchange_rate: transaction_params[:exchange_rate],
           tag_ids: transaction_params[:tag_ids] || []
         }
       }
@@ -319,7 +320,8 @@ class Api::V1::TransactionsController < Api::V1::BaseController
         entryable_attributes: {
           id: @entry.entryable_id,
           category_id: transaction_params[:category_id],
-          merchant_id: transaction_params[:merchant_id]
+          merchant_id: transaction_params[:merchant_id],
+          exchange_rate: transaction_params[:exchange_rate]
           # Note: tag_ids handled separately in update action to distinguish
           # "not provided" from "explicitly set to empty"
         }.compact_blank

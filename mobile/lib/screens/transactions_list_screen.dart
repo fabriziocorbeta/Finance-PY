@@ -6,9 +6,9 @@ import '../models/offline_transaction.dart';
 import '../providers/auth_provider.dart';
 import '../providers/categories_provider.dart';
 import '../providers/transactions_provider.dart';
-import '../screens/transaction_form_screen.dart';
 import '../widgets/category_filter.dart';
 import '../widgets/sync_status_badge.dart';
+import '../widgets/add_entry_chooser.dart';
 import '../services/log_service.dart';
 
 class TransactionsListScreen extends StatefulWidget {
@@ -330,12 +330,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
   }
 
   void _showAddTransactionForm() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => TransactionFormScreen(account: widget.account),
-    ).then((_) {
+    showAddEntryChooser(context, account: widget.account).then((_) {
       if (mounted) {
         _loadTransactions();
       }

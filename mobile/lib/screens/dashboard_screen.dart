@@ -11,7 +11,7 @@ import '../widgets/account_card.dart';
 import '../widgets/connectivity_banner.dart';
 import '../widgets/net_worth_card.dart';
 import '../widgets/currency_filter.dart';
-import 'transaction_form_screen.dart';
+import '../widgets/add_entry_chooser.dart';
 import 'transactions_list_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -280,12 +280,7 @@ class DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _handleAccountTap(Account account) async {
-    final result = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => TransactionFormScreen(account: account),
-    );
+    final result = await showAddEntryChooser(context, account: account);
 
     // Refresh accounts if transaction was created successfully
     if (result == true && mounted) {

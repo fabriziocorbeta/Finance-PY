@@ -11,6 +11,10 @@ class Transaction {
   final String? categoryName;
   final int? amountCents;
   final int? signedAmountCents;
+  // Opaque decimal string, never a double/num -- a binary float can't
+  // exactly represent every rate, so the exact decimal is preserved
+  // end-to-end instead of being rounded at this boundary.
+  final String? exchangeRate;
 
   Transaction({
     this.id,
@@ -25,6 +29,7 @@ class Transaction {
     this.categoryName,
     this.amountCents,
     this.signedAmountCents,
+    this.exchangeRate,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
@@ -71,6 +76,7 @@ class Transaction {
       categoryName: categoryName,
       amountCents: json['amount_cents'] as int?,
       signedAmountCents: json['signed_amount_cents'] as int?,
+      exchangeRate: json['exchange_rate']?.toString(),
     );
   }
 
@@ -88,6 +94,7 @@ class Transaction {
       if (categoryName != null) 'category_name': categoryName,
       if (amountCents != null) 'amount_cents': amountCents,
       if (signedAmountCents != null) 'signed_amount_cents': signedAmountCents,
+      if (exchangeRate != null) 'exchange_rate': exchangeRate,
     };
   }
 

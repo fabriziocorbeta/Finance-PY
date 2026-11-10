@@ -530,6 +530,7 @@ Rails.application.routes.draw do
       end
       resource :usage, only: [ :show ], controller: :usage
       resource :balance_sheet, only: [ :show ], controller: :balance_sheet
+      resource :exchange_rate, only: [ :show ], controller: :exchange_rates
       resource :dashboard, only: [ :show ], controller: :dashboard
       get "reports/summary", to: "reports#summary"
       get "reports/export_transactions", to: "reports#export_transactions"
