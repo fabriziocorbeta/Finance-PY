@@ -13,6 +13,9 @@ es:
       destination_amount: Importe de destino
       exchange_rate: Tasa de cambio
       exchange_rate_help: Elige cómo introducir el importe.
+      rate_hint_current: Tasa del %{date}.
+      rate_hint_stale: Tasa del %{date} (el dato más reciente disponible; puede no coincidir con la de hoy). Si conocés la tasa real, ingresala.
+      rate_hint_unavailable: No encontramos una tasa automática. Ingresá la tasa real.
     money_field:
       label: Importe
     require_admin: Solo los administradores pueden realizar esta acción

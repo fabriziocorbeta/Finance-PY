@@ -106,7 +106,7 @@ class TransfersControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     json_response = JSON.parse(response.body)
-    assert_equal 0.92, json_response["rate"]
+    assert_equal "0.92", json_response["rate"]
   end
 
   test "exchange_rate endpoint returns error when exchange rate unavailable" do
@@ -159,7 +159,7 @@ class TransfersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     json_response = JSON.parse(response.body)
     assert_equal true, json_response["same_currency"]
-    assert_equal 1.0, json_response["rate"]
+    assert_equal "1.0", json_response["rate"]
   end
 
   test "soft deletes transfer" do

@@ -13,6 +13,8 @@
       <div class="space-y-2 mb-3">
         <%= convert_input %>
 
+        <p class="hidden text-xs text-subdued" data-<%= controller_id %>-target="rateSourceHint"></p>
+
         <div class="flex items-center justify-between p-2 bg-container-inset rounded text-sm">
           <span class="text-secondary"><%= destination_amount_label %></span>
           <span class="font-medium text-primary" data-<%= controller_id %>-target="convertDestinationDisplay">-</span>

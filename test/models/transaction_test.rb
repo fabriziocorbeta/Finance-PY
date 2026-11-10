@@ -98,7 +98,17 @@ class TransactionTest < ActiveSupport::TestCase
     transaction = Transaction.new
     transaction.exchange_rate = "1.5"
 
-    assert_equal 1.5, transaction.exchange_rate
+    assert_equal "1.5", transaction.exchange_rate
+  end
+
+  test "exchange_rate setter preserves full decimal precision instead of rounding to a binary float" do
+    transaction = Transaction.new
+    # 16 significant digits -- enough that Float(value) would round this to
+    # a different double than the exact decimal the user/provider sent.
+    transaction.exchange_rate = "0.0001572730861279"
+
+    assert_equal "0.0001572730861279", transaction.exchange_rate
+    assert_equal BigDecimal("0.0001572730861279"), transaction.exchange_rate.to_d
   end
 
   test "exchange_rate setter marks invalid input" do
