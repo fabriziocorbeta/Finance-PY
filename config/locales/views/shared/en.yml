@@ -14,6 +14,9 @@ en:
       destination_amount: Destination amount
       exchange_rate: Exchange rate
       exchange_rate_help: Choose how to enter the amount.
+      rate_hint_current: Rate as of %{date}.
+      rate_hint_stale: Rate as of %{date} (most recent one available; may not match today's). Enter the real rate if you know it.
+      rate_hint_unavailable: We couldn't find an automatic rate. Enter the real rate.
     syncing_notice:
       syncing: Syncing accounts data...
     require_admin: "Only admins can perform this action"

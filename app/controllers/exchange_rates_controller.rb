@@ -10,7 +10,7 @@ class ExchangeRatesController < ApplicationController
 
     # Same currency returns 1.0
     if from_currency == to_currency
-      return render json: { rate: 1.0, same_currency: true }
+      return render json: { rate: "1.0", same_currency: true }
     end
 
     # Parse date
@@ -27,10 +27,33 @@ class ExchangeRatesController < ApplicationController
     end
 
     if rate_obj.nil?
-      return render json: { error: "Exchange rate not found" }, status: :not_found
+      return render json: {
+        error: "Exchange rate not found",
+        rate_hint: t("shared.exchange_rate_tabs.rate_hint_unavailable")
+      }, status: :not_found
     end
 
-    rate_value = rate_obj.is_a?(Numeric) ? rate_obj : rate_obj.rate
-    render json: { rate: rate_value.to_f }
+    # BigDecimal end-to-end (never Float) so a rate like 6358.47021484375 or a
+    # tiny inverse rate like 0.00015727... round-trips to the client, into the
+    # form field, and back into the saved transaction with no precision lost
+    # to binary floating point.
+    rate_value = rate_obj.is_a?(Numeric) ? BigDecimal(rate_obj.to_s) : rate_obj.rate.to_d
+
+    # find_or_fetch_rate can silently return a rate from an earlier date
+    # (weekend/holiday carry-forward, or the nearest cached rate within its
+    # lookback window) -- surface that explicitly instead of letting the
+    # client assume it's today's rate.
+    rate_date = rate_obj.respond_to?(:date) ? rate_obj.date : date
+    stale = rate_date != date
+
+    render json: {
+      rate: rate_value.to_s("F"),
+      rate_date: rate_date.to_s,
+      stale: stale,
+      rate_hint: t(
+        stale ? "shared.exchange_rate_tabs.rate_hint_stale" : "shared.exchange_rate_tabs.rate_hint_current",
+        date: rate_date.to_s
+      )
+    }
   end
 end

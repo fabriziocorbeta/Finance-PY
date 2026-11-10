@@ -8,7 +8,8 @@ export default class extends Controller {
     "exchangeRateContainer",
     "exchangeRateField",
     "convertDestinationDisplay",
-    "calculateRateDisplay"
+    "calculateRateDisplay",
+    "rateSourceHint"
   ];
 
   static values = {
@@ -154,13 +155,15 @@ export default class extends Controller {
     let formattedRate = rate.toFixed(14);
     formattedRate = formattedRate.replace(/(\.\d{2}\d*?)0+$/, "$1");
 
-    if (!formattedRate.includes(".")) {
-      formattedRate += ".00";
-    } else if (formattedRate.match(/\.\d$/)) {
-      formattedRate += "0";
-    }
+    return this.padMinDecimals(formattedRate);
+  }
 
-    return formattedRate;
+  // Pads a decimal string to at least `minDecimals` digits using plain
+  // string manipulation -- never Number/toFixed, which would reintroduce
+  // the binary-float rounding this feature exists to avoid.
+  padMinDecimals(decimalString, minDecimals = 2) {
+    const [integerPart, decimalPart = ""] = String(decimalString).split(".");
+    return `${integerPart}.${decimalPart.padEnd(minDecimals, "0")}`;
   }
 
   clearConvertFields() {
@@ -170,6 +173,7 @@ export default class extends Controller {
     if (this.hasConvertDestinationDisplayTarget) {
       this.convertDestinationDisplayTarget.textContent = "-";
     }
+    this.updateRateSourceHint(null);
   }
 
   clearCalculateRateFields() {
@@ -209,7 +213,7 @@ export default class extends Controller {
 
       if (!response.ok) {
         if (this.shouldShowManualExchangeRate(data)) {
-          this.showManualExchangeRateField();
+          this.showManualExchangeRateField(data.rate_hint);
         } else {
           this.hideExchangeRateField();
         }
@@ -221,7 +225,7 @@ export default class extends Controller {
       } else {
         this.sourceCurrency = fromCurrency;
         this.destinationCurrency = toCurrency;
-        this.showExchangeRateField(data.rate);
+        this.showExchangeRateField(data.rate, data.rate_hint);
       }
     } catch (error) {
       if (error.name === "AbortError") {
@@ -233,18 +237,24 @@ export default class extends Controller {
     }
   }
 
-  showExchangeRateField(rate) {
+  showExchangeRateField(rate, hint = null) {
     if (this.hasExchangeRateFieldTarget) {
-      this.exchangeRateFieldTarget.value = this.formatExchangeRate(rate);
+      // Pad as a string, never re-parse through a JS Number: the server
+      // already sends the exact decimal digits (BigDecimal#to_s("F")), and
+      // routing that through toFixed()/parseFloat() is exactly what risked
+      // losing precision for rates with many significant digits (e.g. small
+      // inverse rates like PYG -> USD).
+      this.exchangeRateFieldTarget.value = this.padMinDecimals(rate);
     }
     if (this.hasExchangeRateContainerTarget) {
       this.exchangeRateContainerTarget.classList.remove("hidden");
     }
+    this.updateRateSourceHint(hint);
 
     this.calculateConvertDestination();
   }
 
-  showManualExchangeRateField() {
+  showManualExchangeRateField(hint = null) {
     const context = this.getExchangeRateContext();
     this.sourceCurrency = context?.fromCurrency || null;
     this.destinationCurrency = context?.toCurrency || null;
@@ -255,8 +265,26 @@ export default class extends Controller {
     if (this.hasExchangeRateContainerTarget) {
       this.exchangeRateContainerTarget.classList.remove("hidden");
     }
+    this.updateRateSourceHint(hint);
 
     this.calculateConvertDestination();
+  }
+
+  // Tells the user exactly which rate the system is about to use (and its
+  // date) before they save -- e.g. the lookup can silently fall back to a
+  // weekend/holiday's last available rate, which is otherwise invisible.
+  updateRateSourceHint(hint) {
+    if (!this.hasRateSourceHintTarget) {
+      return;
+    }
+
+    if (hint) {
+      this.rateSourceHintTarget.textContent = hint;
+      this.rateSourceHintTarget.classList.remove("hidden");
+    } else {
+      this.rateSourceHintTarget.textContent = "";
+      this.rateSourceHintTarget.classList.add("hidden");
+    }
   }
 
   shouldShowManualExchangeRate(data) {
@@ -283,6 +311,7 @@ export default class extends Controller {
     if (this.hasDestinationAmountTarget) {
       this.destinationAmountTarget.value = "";
     }
+    this.updateRateSourceHint(null);
 
     this.sourceCurrency = null;
     this.destinationCurrency = null;

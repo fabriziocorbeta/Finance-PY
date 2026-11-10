@@ -73,8 +73,14 @@ class Transaction < ApplicationRecord
       self.extra = (extra || {}).merge("exchange_rate" => nil)
     else
       begin
-        normalized_value = Float(value)
-        self.extra = (extra || {}).merge("exchange_rate" => normalized_value)
+        # BigDecimal, not Float: a calculated rate can arrive with up to 14
+        # decimal places (see exchange_rate_form_controller#formatExchangeRate),
+        # more than a binary float can represent exactly. Storing it as the
+        # canonical decimal string it parses to keeps the exact value the
+        # user saw, instead of the nearest double -- which is what actually
+        # caused amounts to drift when converting between currencies.
+        normalized_value = BigDecimal(value.to_s)
+        self.extra = (extra || {}).merge("exchange_rate" => normalized_value.to_s("F"))
       rescue ArgumentError, TypeError
         # Store the raw value for validation error reporting
         self.extra = (extra || {}).merge("exchange_rate" => value, "exchange_rate_invalid" => true)
@@ -90,7 +96,6 @@ class Transaction < ApplicationRecord
       if extra&.dig("exchange_rate_invalid")
         errors.add(:exchange_rate, "must be a number")
       elsif exchange_rate.present?
-        # Convert to float for comparison
         numeric_rate = exchange_rate.to_d rescue nil
         if numeric_rate.nil? || numeric_rate <= 0
           errors.add(:exchange_rate, "must be greater than 0")

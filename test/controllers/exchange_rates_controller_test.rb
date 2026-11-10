@@ -22,7 +22,7 @@ class ExchangeRatesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     json_response = JSON.parse(response.body)
-    assert_equal 1.2, json_response["rate"]
+    assert_equal "1.2", json_response["rate"]
   end
 
   test "returns same_currency flag for matching currencies" do
@@ -34,7 +34,7 @@ class ExchangeRatesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     json_response = JSON.parse(response.body)
     assert json_response["same_currency"]
-    assert_equal 1.0, json_response["rate"]
+    assert_equal "1.0", json_response["rate"]
   end
 
   test "uses provided date for rate lookup" do
@@ -54,7 +54,7 @@ class ExchangeRatesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     json_response = JSON.parse(response.body)
-    assert_equal 1.25, json_response["rate"]
+    assert_equal "1.25", json_response["rate"]
   end
 
   test "defaults to current date when not provided" do
@@ -72,7 +72,7 @@ class ExchangeRatesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     json_response = JSON.parse(response.body)
-    assert_equal 1.2, json_response["rate"]
+    assert_equal "1.2", json_response["rate"]
   end
 
   test "returns 400 when from currency is missing" do
@@ -117,6 +117,7 @@ class ExchangeRatesControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
     json_response = JSON.parse(response.body)
     assert_equal "Exchange rate not found", json_response["error"]
+    assert json_response["rate_hint"].present?
   end
 
   test "handles uppercase and lowercase currency codes" do
@@ -134,10 +135,10 @@ class ExchangeRatesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     json_response = JSON.parse(response.body)
-    assert_equal 1.2, json_response["rate"]
+    assert_equal "1.2", json_response["rate"]
   end
 
-  test "returns numeric rate even when object has rate method" do
+  test "returns the precise rate as a string even when object has rate method" do
     # Create mock object that returns a rate
     rate_obj = OpenStruct.new(rate: 1.2)
 
@@ -152,8 +153,66 @@ class ExchangeRatesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     json_response = JSON.parse(response.body)
-    assert_equal 1.2, json_response["rate"]
-    assert_instance_of Float, json_response["rate"]
+    # Sent as a string, not a Float -- a binary float can't exactly represent
+    # every rate (e.g. small inverse rates), so the exact decimal is
+    # preserved end-to-end instead of being rounded at this boundary.
+    assert_equal "1.2", json_response["rate"]
+    assert_instance_of String, json_response["rate"]
+  end
+
+  test "returns a high-precision rate without losing significant digits" do
+    rate_obj = OpenStruct.new(rate: BigDecimal("0.0001572730861279"))
+
+    ExchangeRate.expects(:find_or_fetch_rate)
+                .with(from: "USD", to: "PYG", date: Date.current)
+                .returns(rate_obj)
+
+    get exchange_rate_url, params: {
+      from: "USD",
+      to: "PYG"
+    }
+
+    assert_response :success
+    json_response = JSON.parse(response.body)
+    assert_equal "0.0001572730861279", json_response["rate"]
+  end
+
+  test "flags a carried-forward rate as stale and surfaces its real date" do
+    older_date = 2.days.ago.to_date
+    rate_obj = ExchangeRate.new(from_currency: "EUR", to_currency: "USD", date: older_date, rate: 1.2)
+
+    ExchangeRate.expects(:find_or_fetch_rate)
+                .with(from: "EUR", to: "USD", date: Date.current)
+                .returns(rate_obj)
+
+    get exchange_rate_url, params: {
+      from: "EUR",
+      to: "USD"
+    }
+
+    assert_response :success
+    json_response = JSON.parse(response.body)
+    assert_equal older_date.to_s, json_response["rate_date"]
+    assert json_response["stale"]
+    assert json_response["rate_hint"].present?
+  end
+
+  test "does not flag a same-date rate as stale" do
+    rate_obj = ExchangeRate.new(from_currency: "EUR", to_currency: "USD", date: Date.current, rate: 1.2)
+
+    ExchangeRate.expects(:find_or_fetch_rate)
+                .with(from: "EUR", to: "USD", date: Date.current)
+                .returns(rate_obj)
+
+    get exchange_rate_url, params: {
+      from: "EUR",
+      to: "USD"
+    }
+
+    assert_response :success
+    json_response = JSON.parse(response.body)
+    assert_equal Date.current.to_s, json_response["rate_date"]
+    assert_not json_response["stale"]
   end
 
   test "returns error when find_or_fetch_rate raises exception" do
