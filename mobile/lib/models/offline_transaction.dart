@@ -25,6 +25,7 @@ class OfflineTransaction extends Transaction {
     super.notes,
     super.categoryId,
     super.categoryName,
+    super.exchangeRate,
     this.syncStatus = SyncStatus.pending,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -48,6 +49,7 @@ class OfflineTransaction extends Transaction {
       notes: transaction.notes,
       categoryId: transaction.categoryId,
       categoryName: transaction.categoryName,
+      exchangeRate: transaction.exchangeRate,
       syncStatus: syncStatus,
     );
   }
@@ -65,6 +67,7 @@ class OfflineTransaction extends Transaction {
       notes: map['notes'] as String?,
       categoryId: map['category_id'] as String?,
       categoryName: map['category_name'] as String?,
+      exchangeRate: map['exchange_rate'] as String?,
       syncStatus: _parseSyncStatus(map['sync_status'] as String),
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
@@ -84,6 +87,7 @@ class OfflineTransaction extends Transaction {
       'notes': notes,
       'category_id': categoryId,
       'category_name': categoryName,
+      'exchange_rate': exchangeRate,
       'sync_status': _syncStatusToString(syncStatus),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -102,6 +106,7 @@ class OfflineTransaction extends Transaction {
       notes: notes,
       categoryId: categoryId,
       categoryName: categoryName,
+      exchangeRate: exchangeRate,
     );
   }
 
@@ -117,6 +122,7 @@ class OfflineTransaction extends Transaction {
     String? notes,
     String? categoryId,
     String? categoryName,
+    String? exchangeRate,
     SyncStatus? syncStatus,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -133,6 +139,7 @@ class OfflineTransaction extends Transaction {
       notes: notes ?? this.notes,
       categoryId: categoryId ?? this.categoryId,
       categoryName: categoryName ?? this.categoryName,
+      exchangeRate: exchangeRate ?? this.exchangeRate,
       syncStatus: syncStatus ?? this.syncStatus,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

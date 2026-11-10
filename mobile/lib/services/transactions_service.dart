@@ -14,6 +14,7 @@ class TransactionsService {
     required String nature,
     String? notes,
     String? categoryId,
+    String? exchangeRate,
   }) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/api/v1/transactions');
 
@@ -27,6 +28,7 @@ class TransactionsService {
         'nature': nature,
         if (notes != null) 'notes': notes,
         if (categoryId != null) 'category_id': categoryId,
+        if (exchangeRate != null) 'exchange_rate': exchangeRate,
       }
     };
 
