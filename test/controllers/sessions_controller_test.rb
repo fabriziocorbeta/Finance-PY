@@ -47,6 +47,32 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "session_token cookie sets HttpOnly, SameSite=Lax, and Secure in production" do
+    sign_in @user
+
+    set_cookie_lines = Array(response.headers["Set-Cookie"]).flat_map { |header| header.split("\n") }
+    session_cookie = set_cookie_lines.find { |line| line.start_with?("session_token=") }
+
+    assert session_cookie.present?, "Expected Set-Cookie header for session_token"
+    assert_match(/httponly/i, session_cookie)
+    assert_match(/samesite=lax/i, session_cookie)
+
+    prod_options = Authentication.session_cookie_options(env: ActiveSupport::StringInquirer.new("production"))
+    assert_equal({ httponly: true, same_site: :lax, secure: true }, prod_options)
+
+    test_options = Authentication.session_cookie_options(env: ActiveSupport::StringInquirer.new("test"))
+    assert_equal({ httponly: true, same_site: :lax, secure: false }, test_options)
+
+    session_record = @user.sessions.order(:created_at).last
+    delete session_url(session_record)
+
+    delete_cookie_lines = Array(response.headers["Set-Cookie"]).flat_map { |header| header.split("\n") }
+    deleted_session_cookie = delete_cookie_lines.find { |line| line.start_with?("session_token=") }
+    assert deleted_session_cookie.present?, "Expected Set-Cookie deletion header for session_token"
+    assert_match(/httponly/i, deleted_session_cookie)
+    assert_match(/samesite=lax/i, deleted_session_cookie)
+  end
+
   test "fails to sign in with bad password" do
     post sessions_url, params: { email: @user.email, password: "bad" }
     assert_response :unprocessable_entity
