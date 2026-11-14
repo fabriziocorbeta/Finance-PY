@@ -6,6 +6,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -22,6 +23,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -35,6 +37,7 @@ import py.com.cdco.financespy.navigation.Routes
 import py.com.cdco.financespy.screens.NavCustomizationScreen
 import py.com.cdco.financespy.screens.NavCustomizationViewModel
 import py.com.cdco.financespy.theme.components.AppBottomNav
+import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
 import py.com.cdco.financespy.theme.components.AppHamburgerMenu
 import py.com.cdco.financespy.screens.AccountDetailScreen
 import py.com.cdco.financespy.screens.AccountDetailViewModel
@@ -107,6 +110,7 @@ import py.com.cdco.financespy.screens.ChatScreen
 import py.com.cdco.financespy.screens.ChatViewModel
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.FinancePyTheme
+import py.com.cdco.financespy.theme.LocalUiVariant
 import py.com.cdco.financespy.theme.UiVariant
 import py.com.cdco.financespy.theme.UiVariantPreferences
 
@@ -600,6 +604,31 @@ fun App(
                 }
 
                     if (isTopLevelRoute) {
+                        // Blurred backdrop strip behind the floating dock, for
+                        // the IOS variant only. iOS 26's tab bar lets content
+                        // through but blurs it; Compose has no backdrop blur,
+                        // so without this the rows behind the dock render sharp
+                        // and compete with the tab labels (measured luminance
+                        // spread ~88 against the reference's ~18). This draws
+                        // the app background over that strip with a soft edge,
+                        // standing in for the blur: the dock keeps its
+                        // translucency against a quiet surface instead of
+                        // against live text.
+                        if (LocalUiVariant.current == UiVariant.IOS) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .fillMaxWidth()
+                                    .height(AppBottomNavOverlayClearance)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            0f to FinancePyColors.surface().copy(alpha = 0f),
+                                            0.18f to FinancePyColors.surface().copy(alpha = 0.92f),
+                                            1f to FinancePyColors.surface()
+                                        )
+                                    )
+                            )
+                        }
                         AppBottomNav(
                             items = barItems,
                             currentRoute = currentRoute,
