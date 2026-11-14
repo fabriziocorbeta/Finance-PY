@@ -270,6 +270,71 @@ class McpControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  # -- API key scopes and user active state (M4) --
+
+  test "read-scoped API key omits write tools from tools/list" do
+    read_key = api_keys(:one)
+
+    post "/mcp", params: jsonrpc_request("tools/list").to_json,
+         headers: mcp_headers(read_key.display_key)
+
+    assert_response :ok
+    body = JSON.parse(response.body)
+    tool_names = body.dig("result", "tools").map { |t| t["name"] }
+
+    assert_includes tool_names, "get_balance_sheet"
+    assert_not_includes tool_names, "import_bank_statement"
+  end
+
+  test "read-scoped API key receives JSON-RPC error when calling write tool" do
+    read_key = api_keys(:one)
+    Assistant::Function::ImportBankStatement.any_instance.expects(:call).never
+
+    post "/mcp", params: jsonrpc_request("tools/call", {
+      name: "import_bank_statement",
+      arguments: {}
+    }).to_json, headers: mcp_headers(read_key.display_key)
+
+    assert_response :ok
+    body = JSON.parse(response.body)
+    assert_nil body["result"]
+    assert body["error"].present?, "Expected JSON-RPC error for write tool with read-only key"
+    assert_equal(-32602, body.dig("error", "code"))
+  end
+
+  test "read_write API key lists and can invoke write tools" do
+    rw_key = api_keys(:active_key)
+    Assistant::Function::ImportBankStatement.any_instance.expects(:call).once.returns({ status: "queued" })
+
+    post "/mcp", params: jsonrpc_request("tools/list").to_json,
+         headers: mcp_headers(rw_key.display_key)
+
+    assert_response :ok
+    tool_names = JSON.parse(response.body).dig("result", "tools").map { |t| t["name"] }
+    assert_includes tool_names, "import_bank_statement"
+
+    post "/mcp", params: jsonrpc_request("tools/call", {
+      name: "import_bank_statement",
+      arguments: {}
+    }).to_json, headers: mcp_headers(rw_key.display_key)
+
+    assert_response :ok
+    body = JSON.parse(response.body)
+    assert_nil body["error"]
+    inner = JSON.parse(body.dig("result", "content", 0, "text"))
+    assert_equal "queued", inner["status"]
+  end
+
+  test "deactivated user API key is rejected with 401" do
+    rw_key = api_keys(:active_key)
+    rw_key.user.update!(active: false)
+
+    post "/mcp", params: jsonrpc_request("tools/list").to_json,
+         headers: mcp_headers(rw_key.display_key)
+
+    assert_response :unauthorized
+  end
+
   private
 
     def with_mcp_env(&block)

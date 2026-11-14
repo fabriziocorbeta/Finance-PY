@@ -5930,7 +5930,8 @@ paths:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
         '403':
-          description: forbidden - requires read_write scope and admin role
+          description: forbidden - requires read_write scope, admin role, and valid
+            current_password
           content:
             application/json:
               schema:
@@ -5941,6 +5942,18 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                current_password:
+                  type: string
+                  description: Current account password for step-up verification
+              required:
+              - current_password
   "/api/v1/users/reset/status":
     get:
       summary: Retrieve reset status
@@ -5990,13 +6003,29 @@ paths:
         '401':
           description: unauthorized
         '403':
-          description: insufficient scope
+          description: insufficient scope or invalid current_password
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
         '422':
           description: deactivation failed
           content:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                current_password:
+                  type: string
+                  description: Current account password for step-up verification
+              required:
+              - current_password
   "/api/v1/valuations":
     get:
       summary: List valuations

@@ -16,3 +16,6 @@ en:
       unauthorized: You are not authorized to perform this action
     reset_with_sample_data:
       success: Your account has been reset and sample data is being prepared. You’ll see demo data shortly.
+    api:
+      password_required: current_password is required and must be correct to perform this action
+      sso_only_step_up: Accounts signed in with SSO do not have a local password. Please perform this action from the web app.

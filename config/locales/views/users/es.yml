@@ -20,3 +20,6 @@ es:
       email_change_initiated: Por favor, revisa tu nueva dirección de correo electrónico
         para obtener instrucciones de confirmación.
       success: Tu perfil ha sido actualizado.
+    api:
+      password_required: Se requiere current_password válido para realizar esta acción.
+      sso_only_step_up: Las cuentas que usan SSO no tienen una contraseña local. Por favor, realiza esta acción desde la aplicación web.

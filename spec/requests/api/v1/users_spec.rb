@@ -45,7 +45,17 @@ RSpec.describe 'API V1 Users', type: :request do
                   'The returned job_id is informational only; reset status is family-scoped, not job-scoped. ' \
                   'Requires admin role.'
       security [ { apiKeyAuth: [] } ]
+      consumes 'application/json'
       produces 'application/json'
+      parameter name: :body, in: :body, required: true, schema: {
+        type: :object,
+        properties: {
+          current_password: { type: :string, description: 'Current account password for step-up verification' }
+        },
+        required: %w[current_password]
+      }
+
+      let(:body) { { current_password: 'password123' } }
 
       response '200', 'account reset initiated' do
         schema '$ref' => '#/components/schemas/ResetInitiatedResponse'
@@ -61,7 +71,7 @@ RSpec.describe 'API V1 Users', type: :request do
         run_test!
       end
 
-      response '403', 'forbidden - requires read_write scope and admin role' do
+      response '403', 'forbidden - requires read_write scope, admin role, and valid current_password' do
         schema '$ref' => '#/components/schemas/ErrorResponse'
 
         let(:api_key) do
@@ -129,7 +139,17 @@ RSpec.describe 'API V1 Users', type: :request do
       description 'Permanently deactivates the current user account and all associated data. ' \
                   'This action cannot be undone.'
       security [ { apiKeyAuth: [] } ]
+      consumes 'application/json'
       produces 'application/json'
+      parameter name: :body, in: :body, required: true, schema: {
+        type: :object,
+        properties: {
+          current_password: { type: :string, description: 'Current account password for step-up verification' }
+        },
+        required: %w[current_password]
+      }
+
+      let(:body) { { current_password: 'password123' } }
 
       response '200', 'account deleted' do
         schema '$ref' => '#/components/schemas/SuccessMessage'
@@ -143,7 +163,9 @@ RSpec.describe 'API V1 Users', type: :request do
         run_test!
       end
 
-      response '403', 'insufficient scope' do
+      response '403', 'insufficient scope or invalid current_password' do
+        schema '$ref' => '#/components/schemas/ErrorResponse'
+
         let(:api_key) do
           key = ApiKey.generate_secure_key
           ApiKey.create!(

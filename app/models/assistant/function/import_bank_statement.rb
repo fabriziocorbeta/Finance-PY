@@ -6,6 +6,10 @@ class Assistant::Function::ImportBankStatement < Assistant::Function
       "import_bank_statement"
     end
 
+    def write?
+      true
+    end
+
     def description
       <<~INSTRUCTIONS
         Use this to import transactions from a bank statement PDF that has already been uploaded.

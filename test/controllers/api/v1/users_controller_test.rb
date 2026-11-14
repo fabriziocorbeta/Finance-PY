@@ -82,7 +82,10 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
 
   test "reset enqueues FamilyResetJob and returns 200" do
     assert_enqueued_with(job: FamilyResetJob, args: [ @user.family ]) do
-      delete "/api/v1/users/reset", headers: api_headers(@api_key)
+      delete "/api/v1/users/reset",
+             params: { current_password: user_password_test },
+             headers: api_headers(@api_key),
+             as: :json
     end
 
     assert_response :ok
@@ -96,7 +99,10 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
 
   test "reset returns controlled error when enqueue fails" do
     FamilyResetJob.stub(:perform_later, ->(_family) { raise StandardError, "queue down" }) do
-      delete "/api/v1/users/reset", headers: api_headers(@api_key)
+      delete "/api/v1/users/reset",
+             params: { current_password: user_password_test },
+             headers: api_headers(@api_key),
+             as: :json
     end
 
     assert_response :internal_server_error
@@ -104,6 +110,41 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_equal "reset_enqueue_failed", body["error"]
     assert_equal "Account reset could not be queued", body["message"]
     assert_not_includes response.body, "queue down"
+  end
+
+  test "reset requires valid current_password" do
+    assert_no_enqueued_jobs do
+      delete "/api/v1/users/reset", headers: api_headers(@api_key), as: :json
+    end
+    assert_response :forbidden
+    assert_equal "password_required", JSON.parse(response.body)["error"]
+
+    assert_no_enqueued_jobs do
+      delete "/api/v1/users/reset",
+             params: { current_password: "wrong" },
+             headers: api_headers(@api_key),
+             as: :json
+    end
+    assert_response :forbidden
+    assert_equal "password_required", JSON.parse(response.body)["error"]
+  end
+
+  test "reset rejects SSO-only account with 403" do
+    sso_user = users(:sso_only)
+    sso_key = ApiKey.create!(
+      user: sso_user,
+      name: "SSO Key",
+      scopes: [ "read_write" ],
+      source: "web",
+      display_key: "test_sso_reset_#{SecureRandom.hex(8)}"
+    )
+
+    assert_no_enqueued_jobs do
+      delete "/api/v1/users/reset", headers: api_headers(sso_key), as: :json
+    end
+
+    assert_response :forbidden
+    assert_equal "sso_only_account", JSON.parse(response.body)["error"]
   end
 
   test "reset status requires authentication" do
@@ -240,7 +281,10 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
       display_key: "test_solo_#{SecureRandom.hex(8)}"
     )
 
-    delete "/api/v1/users/me", headers: api_headers(solo_api_key)
+    delete "/api/v1/users/me",
+           params: { current_password: "password123" },
+           headers: api_headers(solo_api_key),
+           as: :json
     assert_response :ok
 
     body = JSON.parse(response.body)
@@ -251,8 +295,57 @@ class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
     assert_not_equal "solo@example.com", solo_user.email
   end
 
+  test "destroy requires valid current_password" do
+    solo_family = Family.create!(name: "Solo Guard Family", currency: "USD", locale: "en", date_format: "%m-%d-%Y")
+    solo_user = solo_family.users.create!(
+      email: "solo-guard@example.com",
+      password: "password123",
+      password_confirmation: "password123",
+      role: :admin
+    )
+    solo_api_key = ApiKey.create!(
+      user: solo_user,
+      name: "Solo Guard Key",
+      scopes: [ "read_write" ],
+      source: "web",
+      display_key: "test_solo_guard_#{SecureRandom.hex(8)}"
+    )
+
+    delete "/api/v1/users/me", headers: api_headers(solo_api_key), as: :json
+    assert_response :forbidden
+    assert_equal "password_required", JSON.parse(response.body)["error"]
+    assert solo_user.reload.active?
+
+    delete "/api/v1/users/me",
+           params: { current_password: "wrong" },
+           headers: api_headers(solo_api_key),
+           as: :json
+    assert_response :forbidden
+    assert_equal "password_required", JSON.parse(response.body)["error"]
+    assert solo_user.reload.active?
+  end
+
+  test "destroy rejects SSO-only account with 403" do
+    sso_user = users(:sso_only)
+    sso_key = ApiKey.create!(
+      user: sso_user,
+      name: "SSO Delete Key",
+      scopes: [ "read_write" ],
+      source: "web",
+      display_key: "test_sso_delete_#{SecureRandom.hex(8)}"
+    )
+
+    delete "/api/v1/users/me", headers: api_headers(sso_key), as: :json
+    assert_response :forbidden
+    assert_equal "sso_only_account", JSON.parse(response.body)["error"]
+    assert sso_user.reload.active?
+  end
+
   test "destroy returns 422 when admin has other family members" do
-    delete "/api/v1/users/me", headers: api_headers(@api_key)
+    delete "/api/v1/users/me",
+           params: { current_password: user_password_test },
+           headers: api_headers(@api_key),
+           as: :json
     assert_response :unprocessable_entity
 
     body = JSON.parse(response.body)
