@@ -183,6 +183,19 @@ class RackAttackTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "repeated CSP report submissions from one IP are rejected with 429" do
+    freeze_time
+    with_rack_attack do
+      payload = { "csp-report" => { "violated-directive" => "script-src" } }.to_json
+      headers = { "CONTENT_TYPE" => "application/csp-report", "REMOTE_ADDR" => "10.3.0.1" }
+
+      30.times { post "/csp_reports", params: payload, headers: headers }
+      post "/csp_reports", params: payload, headers: headers
+
+      assert_response :too_many_requests
+    end
+  end
+
   private
 
     def with_rack_attack

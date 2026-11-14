@@ -83,6 +83,11 @@ class Rack::Attack
     request.ip if request.path.start_with?("/admin/")
   end
 
+  # Bound unauthenticated browser CSP violation reports per IP
+  throttle("csp_reports/ip", limit: 30, period: 1.minute) do |request|
+    request.ip if request.post? && request.path == "/csp_reports"
+  end
+
   # Cheap, DB-free identifier for the actor behind a request, for throttles below.
   # We can't resolve user/family here without a query (the session cookie only
   # holds a Session#id; family lives on session.user.family), so we group by the

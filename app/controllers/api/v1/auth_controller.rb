@@ -292,6 +292,13 @@ module Api
             next
           end
 
+          user = User.auth_find_by_id(access_token.resource_owner_id)
+          if user.nil? || !user.active?
+            access_token.revoke
+            render json: { error: "invalid_grant" }, status: :unauthorized
+            next
+          end
+
           # Create new access token
           created = Doorkeeper::AccessToken.create!(
             application: access_token.application,
@@ -306,7 +313,6 @@ module Api
           access_token.revoke
 
           # Update device last seen
-          user = User.auth_find_by_id(access_token.resource_owner_id)
           device_id = params.dig(:device, :device_id)
           device = user.mobile_devices.find_by(device_id: device_id) if device_id.present?
           device&.update_last_seen!
