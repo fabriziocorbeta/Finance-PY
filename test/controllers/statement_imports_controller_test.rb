@@ -186,4 +186,41 @@ class StatementImportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 2, @import.imported_count
     assert_not Entry.exists?(name: "Too old row")
   end
+
+  test "confirm rejects read-only shared account for family member" do
+    sign_in users(:family_member)
+
+    assert_no_difference -> { Entry.count } do
+      post confirm_statement_import_url(@import), params: { account_id: accounts(:credit_card).id }
+    end
+
+    assert_redirected_to @import
+    assert @import.reload.review?
+  end
+
+  test "confirm succeeds on writable shared account for family member" do
+    sign_in users(:family_member)
+
+    assert_difference -> { Entry.count }, 2 do
+      post confirm_statement_import_url(@import), params: { account_id: accounts(:depository).id }
+    end
+
+    assert @import.reload.completed?
+    assert_equal 2, @import.imported_count
+  end
+
+  test "show sets confirm account_id only from writable accounts" do
+    sign_in users(:family_member)
+
+    get statement_import_url(@import)
+    assert_response :success
+    assert_includes response.body, accounts(:depository).id.to_s
+
+    account_shares(:depository_shared_with_member).update!(permission: "read_only")
+
+    get statement_import_url(@import)
+    assert_response :success
+    assert_not_includes response.body, accounts(:depository).id.to_s
+    assert_not_includes response.body, accounts(:credit_card).id.to_s
+  end
 end

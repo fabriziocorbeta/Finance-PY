@@ -165,4 +165,75 @@ class PurchaseOrdersControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
     assert_equal "Other Supplier", other_purchase_order.reload.supplier_name
   end
+
+  test "family member cannot create purchase order on read-only account" do
+    sign_in users(:family_member)
+
+    assert_no_difference "PurchaseOrder.count" do
+      post purchase_orders_url, params: {
+        purchase_order: {
+          supplier_name: "Read Only PO",
+          account_id: accounts(:credit_card).id,
+          purchase_order_items_attributes: {
+            "0" => { product_id: @product.id, quantity: 1, unit_cost: 10 }
+          }
+        }
+      }
+    end
+    assert_response :unprocessable_entity
+  end
+
+  test "family member can create purchase order on writable shared account" do
+    sign_in users(:family_member)
+
+    assert_difference("PurchaseOrder.count", 1) do
+      post purchase_orders_url, params: {
+        purchase_order: {
+          supplier_name: "Writable Share PO",
+          account_id: accounts(:depository).id,
+          purchase_order_items_attributes: {
+            "0" => { product_id: @product.id, quantity: 1, unit_cost: 10 }
+          }
+        }
+      }
+    end
+    assert_redirected_to purchase_order_url(PurchaseOrder.order(:created_at).last)
+  end
+
+  test "family member cannot mutate purchase order on read-only account" do
+    read_only_po = @dylan_family.purchase_orders.create!(
+      supplier_name: "Locked PO",
+      status: "draft",
+      account: accounts(:credit_card)
+    )
+    read_only_po.purchase_order_items.create!(product: @product, quantity: 1, unit_cost: 10)
+
+    sign_in users(:family_member)
+
+    patch purchase_order_url(read_only_po), params: { purchase_order: { supplier_name: "Tampered" } }
+    assert_response :forbidden
+    assert_equal "Locked PO", read_only_po.reload.supplier_name
+
+    patch receive_purchase_order_url(read_only_po)
+    assert_response :forbidden
+    assert_equal "draft", read_only_po.reload.status
+
+    patch cancel_purchase_order_url(read_only_po)
+    assert_response :forbidden
+    assert_equal "draft", read_only_po.reload.status
+
+    assert_no_difference "PurchaseOrder.count" do
+      delete purchase_order_url(read_only_po)
+    end
+    assert_response :forbidden
+  end
+
+  test "new purchase order form only lists writable accounts for family member" do
+    sign_in users(:family_member)
+
+    get new_purchase_order_url
+    assert_response :success
+    assert_includes response.body, accounts(:depository).id.to_s
+    assert_not_includes response.body, accounts(:credit_card).id.to_s
+  end
 end

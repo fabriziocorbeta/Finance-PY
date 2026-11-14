@@ -51,7 +51,7 @@ class StatementImportsController < ApplicationController
   end
 
   def confirm
-    account = Current.family.accounts.find_by(id: params[:account_id])
+    account = Current.family.accounts.writable_by(Current.user).find_by(id: params[:account_id])
     return redirect_to @import, alert: t(".account_not_found") unless account
 
     imported_count = 0

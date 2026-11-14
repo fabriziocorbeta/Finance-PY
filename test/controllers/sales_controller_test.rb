@@ -225,4 +225,75 @@ class SalesControllerTest < ActionDispatch::IntegrationTest
       post sales_url, params: { sale: { client_name: "X", account_id: foreign.id } }
     end
   end
+
+  test "family member cannot create sale on read-only account" do
+    sign_in users(:family_member)
+
+    assert_no_difference "Sale.count" do
+      post sales_url, params: {
+        sale: {
+          client_name: "Read Only Sale",
+          account_id: accounts(:credit_card).id,
+          sale_items_attributes: {
+            "0" => { product_id: @product.id, quantity: 1, unit_price: 20 }
+          }
+        }
+      }
+    end
+    assert_response :unprocessable_entity
+  end
+
+  test "family member can create sale on writable shared account" do
+    sign_in users(:family_member)
+
+    assert_difference("Sale.count", 1) do
+      post sales_url, params: {
+        sale: {
+          client_name: "Writable Share Sale",
+          account_id: accounts(:depository).id,
+          sale_items_attributes: {
+            "0" => { product_id: @product.id, quantity: 1, unit_price: 20 }
+          }
+        }
+      }
+    end
+    assert_redirected_to sale_url(Sale.order(:created_at).last)
+  end
+
+  test "family member cannot mutate sale on read-only account" do
+    read_only_sale = @dylan_family.sales.create!(
+      client_name: "Locked Sale",
+      status: "draft",
+      account: accounts(:credit_card)
+    )
+    read_only_sale.sale_items.create!(product: @product, quantity: 1, unit_price: 20)
+
+    sign_in users(:family_member)
+
+    patch sale_url(read_only_sale), params: { sale: { client_name: "Tampered" } }
+    assert_response :forbidden
+    assert_equal "Locked Sale", read_only_sale.reload.client_name
+
+    patch complete_sale_url(read_only_sale)
+    assert_response :forbidden
+    assert_equal "draft", read_only_sale.reload.status
+
+    patch cancel_sale_url(read_only_sale)
+    assert_response :forbidden
+    assert_equal "draft", read_only_sale.reload.status
+
+    assert_no_difference "Sale.count" do
+      delete sale_url(read_only_sale)
+    end
+    assert_response :forbidden
+  end
+
+  test "new sale form only lists writable accounts for family member" do
+    sign_in users(:family_member)
+
+    get new_sale_url
+    assert_response :success
+    assert_includes response.body, accounts(:depository).id.to_s
+    assert_not_includes response.body, accounts(:credit_card).id.to_s
+  end
 end

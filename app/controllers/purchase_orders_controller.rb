@@ -2,6 +2,7 @@ class PurchaseOrdersController < ApplicationController
   include RequireBusinessMode
 
   before_action :set_purchase_order, only: %i[show edit update destroy receive cancel]
+  before_action :ensure_writable_purchase_order!, only: %i[update destroy receive cancel]
 
   def index
     @purchase_orders = Current.family.purchase_orders.includes(:purchase_order_items).order(created_at: :desc)
@@ -71,16 +72,23 @@ class PurchaseOrdersController < ApplicationController
       @purchase_order = Current.family.purchase_orders.includes(purchase_order_items: :product).find(params[:id])
     end
 
+    def ensure_writable_purchase_order!
+      return if Current.family.accounts.writable_by(Current.user).exists?(id: @purchase_order.account_id)
+
+      head :forbidden
+    end
+
     def purchase_order_params
       permitted = params.require(:purchase_order).permit(
         :supplier_name, :currency, :expected_date, :notes,
         purchase_order_items_attributes: [ :id, :product_id, :quantity, :unit_cost, :_destroy ]
       )
 
-      # account_id is deliberately NOT mass-assigned: resolve it inside the caller's
-      # own family so a foreign account id can never be attached.
+      # account_id is deliberately NOT mass-assigned: resolve it inside the
+      # accounts the caller can write to so neither foreign nor read-only shared
+      # accounts can be attached.
       if params[:purchase_order].respond_to?(:key?) && params[:purchase_order].key?(:account_id)
-        permitted[:account_id] = Current.family.accounts.find_by(id: params[:purchase_order][:account_id])&.id
+        permitted[:account_id] = Current.family.accounts.writable_by(Current.user).find_by(id: params[:purchase_order][:account_id])&.id
       end
       permitted
     end
