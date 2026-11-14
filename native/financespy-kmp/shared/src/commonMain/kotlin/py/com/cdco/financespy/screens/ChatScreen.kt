@@ -194,7 +194,8 @@ fun MessageBubble(message: MessageDto) {
                     .padding(12.dp)
             ) {
                 Text(
-                    text = message.content ?: (if (message.ai_response_status == "pending") "Pensando..." else ""),
+                    // The server's placeholder reply arrives with content "" (not null) until text streams in.
+                    text = message.content?.takeIf { it.isNotBlank() } ?: (if (!isUser) "Pensando..." else ""),
                     color = if (isUser) surface else textPrimary,
                     style = MaterialTheme.typography.bodyLarge
                 )
