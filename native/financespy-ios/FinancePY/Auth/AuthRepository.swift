@@ -305,7 +305,9 @@ final class AuthRepository: ObservableObject {
         do {
             _ = try await URLSession.shared.data(for: request)
         } catch {
+            #if DEBUG
             print("Failed to revoke token (\(tokenTypeHint)): \(error.localizedDescription)")
+            #endif
         }
     }
 }

@@ -1,45 +1,197 @@
 import SwiftUI
 import SwiftData
+import LocalAuthentication
+
+enum ModelContainerFactory {
+    static let schema = Schema([
+        AccountEntity.self,
+        EntryEntity.self,
+        TransactionEntity.self,
+        ReceivableEntity.self
+    ])
+
+    static func makeContainer() -> ModelContainer {
+        let persistentConfig = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        do {
+            return try ModelContainer(for: schema, configurations: [persistentConfig])
+        } catch {
+            #if DEBUG
+            print("Failed to open SwiftData container, resetting store: \(error.localizedDescription)")
+            #endif
+            removeStoreFiles(at: persistentConfig.url)
+
+            do {
+                return try ModelContainer(for: schema, configurations: [persistentConfig])
+            } catch {
+                #if DEBUG
+                print("Failed to recreate persistent SwiftData container, falling back to in-memory: \(error.localizedDescription)")
+                #endif
+                let inMemoryConfig = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+                do {
+                    return try ModelContainer(for: schema, configurations: [inMemoryConfig])
+                } catch {
+                    preconditionFailure("Unable to initialize SwiftData in-memory container: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    static func removeStoreFiles(at storeURL: URL) {
+        let fileManager = FileManager.default
+        let candidateURLs = [
+            storeURL,
+            URL(fileURLWithPath: storeURL.path + "-wal"),
+            URL(fileURLWithPath: storeURL.path + "-shm")
+        ]
+        for url in candidateURLs where fileManager.fileExists(atPath: url.path) {
+            try? fileManager.removeItem(at: url)
+        }
+    }
+}
+
+@MainActor
+final class AppLockManager: ObservableObject {
+    @Published var isLocked = false
+    @Published var isAuthenticating = false
+    @Published var errorMessage: String?
+
+    private var shouldPromptOnForeground = false
+
+    func lock() {
+        isLocked = true
+        shouldPromptOnForeground = true
+        errorMessage = nil
+    }
+
+    func unlock() {
+        isLocked = false
+        shouldPromptOnForeground = false
+        errorMessage = nil
+    }
+
+    func authenticateIfNeeded() async {
+        guard isLocked, shouldPromptOnForeground else { return }
+        await authenticate()
+    }
+
+    func authenticate() async {
+        guard !isAuthenticating else { return }
+        shouldPromptOnForeground = false
+        isAuthenticating = true
+        errorMessage = nil
+        defer { isAuthenticating = false }
+
+        let context = LAContext()
+        context.localizedCancelTitle = "Cancelar"
+        let reason = "Desbloquea FinancePY para acceder a tus finanzas."
+
+        var authError: NSError?
+        let policy: LAPolicy
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &authError) {
+            policy = .deviceOwnerAuthenticationWithBiometrics
+        } else if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &authError) {
+            policy = .deviceOwnerAuthentication
+        } else {
+            errorMessage = authError?.localizedDescription ?? "Configura Face ID, Touch ID o código en el dispositivo."
+            return
+        }
+
+        do {
+            let success = try await context.evaluatePolicy(policy, localizedReason: reason)
+            if success {
+                unlock()
+            }
+        } catch let laError as LAError where
+            laError.code == .biometryNotAvailable ||
+            laError.code == .biometryNotEnrolled ||
+            laError.code == .biometryLockout ||
+            laError.code == .userFallback
+        {
+            let fallbackContext = LAContext()
+            var fallbackError: NSError?
+            if fallbackContext.canEvaluatePolicy(.deviceOwnerAuthentication, error: &fallbackError) {
+                do {
+                    let fallbackSuccess = try await fallbackContext.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)
+                    if fallbackSuccess {
+                        unlock()
+                    }
+                } catch {
+                    errorMessage = error.localizedDescription
+                }
+            } else {
+                errorMessage = fallbackError?.localizedDescription ?? laError.localizedDescription
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
 
 @main
 struct FinancePYApp: App {
     @StateObject private var authRepository = AuthRepository.shared
+    @StateObject private var appLockManager = AppLockManager()
+    @AppStorage("appLockEnabled") private var appLockEnabled = false
+    @Environment(\.scenePhase) private var scenePhase
     @State private var isLoggedIn = false
     @State private var isCheckingAuth = true
 
     let container: ModelContainer
 
     init() {
-        do {
-            let schema = Schema([
-                AccountEntity.self,
-                EntryEntity.self,
-                TransactionEntity.self,
-                ReceivableEntity.self
-            ])
-            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-            self.container = try ModelContainer(for: schema, configurations: [config])
-        } catch {
-            fatalError("Failed to initialize SwiftData container: \(error.localizedDescription)")
-        }
+        self.container = ModelContainerFactory.makeContainer()
     }
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if isCheckingAuth {
-                    ProgressView("Cargando...")
-                } else if isLoggedIn {
-                    MainTabView(isLoggedIn: $isLoggedIn, container: container)
-                } else {
-                    LoginView(isLoggedIn: $isLoggedIn)
+            ZStack {
+                Group {
+                    if isCheckingAuth {
+                        ProgressView("Cargando...")
+                    } else if isLoggedIn {
+                        MainTabView(isLoggedIn: $isLoggedIn, container: container)
+                    } else {
+                        LoginView(isLoggedIn: $isLoggedIn)
+                    }
+                }
+
+                if isLoggedIn && appLockEnabled && appLockManager.isLocked {
+                    AppLockView(appLockManager: appLockManager)
+                        .transition(.opacity)
+                }
+
+                if isLoggedIn && scenePhase != .active && !appLockManager.isAuthenticating {
+                    PrivacyOverlayView()
+                        .transition(.opacity)
                 }
             }
             .task {
                 // As the unit-test host, a logged-in simulator would otherwise sync against production.
                 guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
-                self.isLoggedIn = await authRepository.isLoggedIn()
+                let loggedIn = await authRepository.isLoggedIn()
+                if loggedIn && appLockEnabled {
+                    appLockManager.lock()
+                }
+                self.isLoggedIn = loggedIn
                 self.isCheckingAuth = false
+                if loggedIn && appLockEnabled {
+                    await appLockManager.authenticateIfNeeded()
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard isLoggedIn else { return }
+                if newPhase == .background && appLockEnabled {
+                    appLockManager.lock()
+                } else if newPhase == .active && appLockEnabled {
+                    Task {
+                        await appLockManager.authenticateIfNeeded()
+                    }
+                }
+            }
+            .onChange(of: isLoggedIn) { _, newValue in
+                if !newValue {
+                    appLockManager.unlock()
+                }
             }
             .onOpenURL { url in
                 Task {
@@ -47,7 +199,9 @@ struct FinancePYApp: App {
                         try await authRepository.handleCallbackUrl(url)
                         self.isLoggedIn = true
                     } catch {
+                        #if DEBUG
                         print("OAuth callback error: \(error.localizedDescription)")
+                        #endif
                     }
                 }
             }
@@ -210,14 +364,18 @@ struct MainTabView: View {
                 self.navItemOrder = order
             }
         } catch {
+            #if DEBUG
             print("Failed to fetch nav preferences: \(error)")
+            #endif
         }
 
         do {
             let settings = try await FinancePyApi.shared.fetchFamilySettings()
             self.businessModeEnabled = settings.businessModeEnabled
         } catch {
+            #if DEBUG
             print("Failed to fetch family settings: \(error)")
+            #endif
         }
 
         isCheckingAccounts = false
@@ -233,7 +391,61 @@ struct MainTabView: View {
             try context.delete(model: ReceivableEntity.self)
             try context.save()
         } catch {
+            #if DEBUG
             print("Failed to clear local cache on logout: \(error.localizedDescription)")
+            #endif
+        }
+    }
+}
+
+struct PrivacyOverlayView: View {
+    var body: some View {
+        ZStack {
+            Color(uiColor: .systemBackground)
+                .ignoresSafeArea()
+            VStack(spacing: 12) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 48))
+                    .foregroundColor(.accentColor)
+                Text("FinancePY")
+                    .font(.title2.bold())
+            }
+        }
+    }
+}
+
+struct AppLockView: View {
+    @ObservedObject var appLockManager: AppLockManager
+
+    var body: some View {
+        ZStack {
+            Color(uiColor: .systemBackground)
+                .ignoresSafeArea()
+            VStack(spacing: 20) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 48))
+                    .foregroundColor(.accentColor)
+
+                Text("FinancePY está bloqueado")
+                    .font(.title3.bold())
+
+                if let errorMessage = appLockManager.errorMessage {
+                    Text(errorMessage)
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+
+                Button("Desbloquear") {
+                    Task {
+                        await appLockManager.authenticate()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(appLockManager.isAuthenticating)
+            }
+            .padding()
         }
     }
 }

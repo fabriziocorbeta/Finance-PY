@@ -17,6 +17,7 @@ struct SettingsView: View {
     @State private var showDeleteAccountErrorAlert = false
     @State private var deleteAccountError: String? = nil
     @State private var showLogoutAlert = false
+    @AppStorage("appLockEnabled") private var appLockEnabled = false
 
     // We could add state here for pendingOutboxCount if we implemented a sync engine connection
 
@@ -88,6 +89,10 @@ struct SettingsView: View {
                             NavigationLink(destination: NavCustomizationView()) {
                                 Label("Personalizar navegación", systemImage: "slider.horizontal.3")
                             }
+                        }
+
+                        Section(header: Text("Seguridad")) {
+                            Toggle("Bloqueo con Face ID / código", isOn: $appLockEnabled)
                         }
 
                         if let usage = usage {

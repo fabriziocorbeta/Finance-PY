@@ -111,7 +111,9 @@ struct NavCustomizationView: View {
             let familySettings = try await FinancePyApi.shared.fetchFamilySettings()
             self.businessModeEnabled = familySettings.businessModeEnabled
         } catch {
+            #if DEBUG
             print("Failed to fetch family settings: \(error)")
+            #endif
         }
 
         isLoading = false
@@ -123,7 +125,9 @@ struct NavCustomizationView: View {
             do {
                 _ = try await FinancePyApi.shared.updateNavPreferences(itemIds: currentIds)
             } catch {
+                #if DEBUG
                 print("Error saving nav preferences: \(error)")
+                #endif
             }
         }
     }

@@ -143,12 +143,16 @@ struct TransactionFormView: View {
                 do {
                     categories = try await FinancePyApi.shared.fetchCategories()
                 } catch {
+                    #if DEBUG
                     print("Error fetching categories: \(error)")
+                    #endif
                 }
                 do {
                     merchants = try await FinancePyApi.shared.fetchMerchants()
                 } catch {
+                    #if DEBUG
                     print("Error fetching merchants: \(error)")
+                    #endif
                 }
             }
         }
