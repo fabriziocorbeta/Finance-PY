@@ -31,6 +31,8 @@ import py.com.cdco.financespy.screens.components.BudgetMonthNavigator
 import py.com.cdco.financespy.screens.components.BudgetSummaryCard
 import py.com.cdco.financespy.sync.endOfMonthDate
 import py.com.cdco.financespy.theme.FinancePyColors
+import py.com.cdco.financespy.theme.LocalUiVariant
+import py.com.cdco.financespy.theme.UiVariant
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppCard
 import py.com.cdco.financespy.theme.components.ButtonVariant
@@ -42,6 +44,17 @@ fun BudgetDashboardScreen(
     onNavigateToCategoryTransactions: (categoryId: String, startDate: String, endDate: String) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier
 ) {
+    val variant = LocalUiVariant.current
+    if (variant == UiVariant.IOS) {
+        IosBudgetDashboardScreen(
+            viewModel = viewModel,
+            onNavigateToEditor = onNavigateToEditor,
+            onNavigateToCategoryTransactions = onNavigateToCategoryTransactions,
+            modifier = modifier
+        )
+        return
+    }
+
     val uiState by viewModel.uiState.collectAsState()
 
     Column(

@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.navigation.NavItem
+import py.com.cdco.financespy.navigation.Routes
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.LocalUiVariant
 import py.com.cdco.financespy.theme.UiVariant
@@ -215,8 +216,13 @@ private fun IosTabBar(
                 .background(FinancePyColors.container(), shape)
                 .iosLiquidGlass(shape = shape, contrastBoost = 1.5f)
         ) {
-            val centers = remember(items) { mutableStateListOf<Float>().apply { repeat(items.size) { add(0f) } } }
-            val activeIndex = items.indexOfFirst { it.route == currentRoute }.let { if (it < 0) null else it }
+            val totalSlots = items.size + (if (onMoreClick != null) 1 else 0)
+            val centers = remember(items, onMoreClick) { mutableStateListOf<Float>().apply { repeat(totalSlots) { add(0f) } } }
+            val moreIndex = if (onMoreClick != null) items.size else null
+            val activeIndex = when (currentRoute) {
+                Routes.MORE -> moreIndex
+                else -> items.indexOfFirst { it.route == currentRoute }.let { if (it < 0) null else it }
+            }
 
             Box(
                 modifier = Modifier
@@ -249,10 +255,17 @@ private fun IosTabBar(
                                 }
                         )
                     }
-                    if (onMoreClick != null) {
+                    if (onMoreClick != null && moreIndex != null) {
+                        val isMoreActive = currentRoute == Routes.MORE
                         IosTabBarMoreItem(
+                            active = isMoreActive,
                             onClick = onMoreClick,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier
+                                .weight(1f)
+                                .onGloballyPositioned { coords ->
+                                    val centerX = coords.positionInParent().x + coords.size.width / 2f
+                                    if (moreIndex < centers.size) centers[moreIndex] = centerX
+                                }
                         )
                     }
                 }
@@ -312,15 +325,18 @@ private fun IosTabBarItem(
 
 @Composable
 private fun IosTabBarMoreItem(
+    active: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val activeTint = FinancePyColors.buttonBgPrimary()
+    val inactiveTint = FinancePyColors.textSecondary()
     val interactionSource = remember { MutableInteractionSource() }
 
     Column(
         modifier = modifier
             .selectable(
-                selected = false,
+                selected = active,
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick
@@ -337,7 +353,7 @@ private fun IosTabBarMoreItem(
             Icon(
                 imageVector = Icons.Filled.MoreHoriz,
                 contentDescription = "Más",
-                tint = FinancePyColors.textSecondary(),
+                tint = if (active) Color.White else inactiveTint,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -346,9 +362,9 @@ private fun IosTabBarMoreItem(
             text = "Más",
             style = MaterialTheme.typography.labelSmall.copy(
                 fontSize = 10.sp,
-                fontWeight = FontWeight.Normal
+                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal
             ),
-            color = FinancePyColors.textSecondary(),
+            color = if (active) activeTint else inactiveTint,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )

@@ -36,6 +36,7 @@ object Routes {
     const val UPAY_IMPORT = "upay_import"
     const val PDF_STATEMENT_IMPORT = "pdf_statement_import"
     const val ACCOUNT_FORM = "account_form"
+    const val MORE = "more"
 
     fun chatDetail(chatId: String) = "chat/$chatId"
     fun accountDetail(accountId: String) = "account/$accountId"

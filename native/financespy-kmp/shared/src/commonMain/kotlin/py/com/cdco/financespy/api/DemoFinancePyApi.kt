@@ -5,6 +5,8 @@ import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.AccountGroupDto
 import py.com.cdco.financespy.api.dto.AccountItemDto
 import py.com.cdco.financespy.api.dto.AccountRefDto
+import py.com.cdco.financespy.api.dto.BudgetCategoryDto
+import py.com.cdco.financespy.api.dto.BudgetDto
 import py.com.cdco.financespy.api.dto.CashflowSankeyDto
 import py.com.cdco.financespy.api.dto.CategoryRefDto
 import py.com.cdco.financespy.api.dto.ClassificationGroupDto
@@ -286,6 +288,287 @@ class DemoFinancePyApi : FinancePyApi(HttpClient()) {
             merchant = MerchantRefDto("mer-5", "ANDE"),
             created_at = "2026-10-16T11:00:00Z",
             updated_at = "2026-10-16T11:00:00Z"
+        )
+    )
+
+    override suspend fun fetchAllBudgets(): List<BudgetDto> = listOf(demoBudgetOct2026)
+
+    override suspend fun fetchBudget(idOrParam: String): BudgetDto = demoBudgetOct2026
+
+    private val demoBudgetOct2026 = BudgetDto(
+        id = "b-2026-10",
+        name = "octubre 2026",
+        param = "2026-10",
+        start_date = "2026-10-01",
+        end_date = "2026-10-31",
+        currency = "USD",
+        initialized = true,
+        current = true,
+        previous_budget_param = "2026-09",
+        next_budget_param = "2026-11",
+        allocations_valid = true,
+        budgeted_spending = 4_117_700.0,
+        actual_spending = 54_480_442.08,
+        available_to_spend = -50_362_742.08,
+        expected_income = 58_598_142.08,
+        actual_income = 58_598_142.08,
+        allocated_spending = 4_117_700.0,
+        available_to_allocate = 4_113_375.0,
+        allocated_percent = 100.0,
+        percent_of_budget_spent = 1323.0,
+        categories = listOf(
+            BudgetCategoryDto(
+                id = "bc-1",
+                budget_id = "b-2026-10",
+                category_id = "cat-1",
+                category_name = "Shopping",
+                category_color = "#10B981",
+                budgeted_spending = 675.0,
+                actual_spending = 983998.4349,
+                available_to_spend = -983323.4349,
+                over_budget = true,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-2",
+                budget_id = "b-2026-10",
+                category_id = "cat-2",
+                category_name = "Entertainment",
+                category_color = "#8B5CF6",
+                budgeted_spending = 450.0,
+                actual_spending = 633202.8111,
+                available_to_spend = -632752.8111,
+                over_budget = true,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-3",
+                budget_id = "b-2026-10",
+                category_id = "cat-3",
+                category_name = "Travel",
+                category_color = "#06B6D4",
+                budgeted_spending = 500.0,
+                actual_spending = 116687.7988,
+                available_to_spend = -116187.7988,
+                over_budget = true,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-4",
+                budget_id = "b-2026-10",
+                category_id = "cat-4",
+                category_name = "Food & Dining",
+                category_color = "#F59E0B",
+                budgeted_spending = 1200.0,
+                actual_spending = 697693.4771,
+                available_to_spend = -696493.4771,
+                over_budget = true,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-5",
+                budget_id = "b-2026-10",
+                category_id = "cat-5",
+                category_name = "Groceries",
+                category_color = "#D97706",
+                budgeted_spending = 800.0,
+                actual_spending = 1595061.3033,
+                available_to_spend = -1594261.3033,
+                over_budget = true,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-6",
+                budget_id = "b-2026-10",
+                category_id = "cat-6",
+                category_name = "Housing",
+                category_color = "#3B82F6",
+                budgeted_spending = 2200.0,
+                actual_spending = 2200.0,
+                available_to_spend = 0.0,
+                over_budget = false,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-7",
+                budget_id = "b-2026-10",
+                category_id = "cat-7",
+                category_name = "Utilities",
+                category_color = "#EAB308",
+                budgeted_spending = 400.0,
+                actual_spending = 350.0,
+                available_to_spend = 50.0,
+                over_budget = false,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-8",
+                budget_id = "b-2026-10",
+                category_id = "cat-8",
+                category_name = "Health & Fitness",
+                category_color = "#059669",
+                budgeted_spending = 200.0,
+                actual_spending = 180.0,
+                available_to_spend = 20.0,
+                over_budget = false,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-9",
+                budget_id = "b-2026-10",
+                category_id = "cat-9",
+                category_name = "Personal Care",
+                category_color = "#EC4899",
+                budgeted_spending = 150.0,
+                actual_spending = 120.0,
+                available_to_spend = 30.0,
+                over_budget = false,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-10",
+                budget_id = "b-2026-10",
+                category_id = "cat-10",
+                category_name = "Education",
+                category_color = "#6366F1",
+                budgeted_spending = 300.0,
+                actual_spending = 300.0,
+                available_to_spend = 0.0,
+                over_budget = false,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-11",
+                budget_id = "b-2026-10",
+                category_id = "cat-11",
+                category_name = "Transportation",
+                category_color = "#F43F5E",
+                budgeted_spending = 300.0,
+                actual_spending = 250.0,
+                available_to_spend = 50.0,
+                over_budget = false,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-12",
+                budget_id = "b-2026-10",
+                category_id = "cat-12",
+                category_name = "Subscriptions",
+                category_color = "#7C3AED",
+                budgeted_spending = 100.0,
+                actual_spending = 85.0,
+                available_to_spend = 15.0,
+                over_budget = false,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-13",
+                budget_id = "b-2026-10",
+                category_id = "cat-13",
+                category_name = "Insurance",
+                category_color = "#0284C7",
+                budgeted_spending = 450.0,
+                actual_spending = 450.0,
+                available_to_spend = 0.0,
+                over_budget = false,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-14",
+                budget_id = "b-2026-10",
+                category_id = "cat-14",
+                category_name = "Gifts & Donations",
+                category_color = "#EF4444",
+                budgeted_spending = 100.0,
+                actual_spending = 50.0,
+                available_to_spend = 50.0,
+                over_budget = false,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-15",
+                budget_id = "b-2026-10",
+                category_id = "cat-15",
+                category_name = "Pets",
+                category_color = "#84CC16",
+                budgeted_spending = 100.0,
+                actual_spending = 95.0,
+                available_to_spend = 5.0,
+                over_budget = false,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-16",
+                budget_id = "b-2026-10",
+                category_id = "cat-16",
+                category_name = "Kids",
+                category_color = "#14B8A6",
+                budgeted_spending = 250.0,
+                actual_spending = 200.0,
+                available_to_spend = 50.0,
+                over_budget = false,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-17",
+                budget_id = "b-2026-10",
+                category_id = "cat-17",
+                category_name = "Home Improvement",
+                category_color = "#64748B",
+                budgeted_spending = 300.0,
+                actual_spending = 150.0,
+                available_to_spend = 150.0,
+                over_budget = false,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-18",
+                budget_id = "b-2026-10",
+                category_id = "cat-18",
+                category_name = "Electronics",
+                category_color = "#71717A",
+                budgeted_spending = 400.0,
+                actual_spending = 400.0,
+                available_to_spend = 0.0,
+                over_budget = false,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-19",
+                budget_id = "b-2026-10",
+                category_id = "cat-19",
+                category_name = "Clothing",
+                category_color = "#78716C",
+                budgeted_spending = 200.0,
+                actual_spending = 180.0,
+                available_to_spend = 20.0,
+                over_budget = false,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-20",
+                budget_id = "b-2026-10",
+                category_id = "cat-20",
+                category_name = "Office Supplies",
+                category_color = "#2563EB",
+                budgeted_spending = 50.0,
+                actual_spending = 45.0,
+                available_to_spend = 5.0,
+                over_budget = false,
+                budgeted = true
+            ),
+            BudgetCategoryDto(
+                id = "bc-21",
+                budget_id = "b-2026-10",
+                category_id = "cat-21",
+                category_name = "Miscellaneous",
+                category_color = "#9CA3AF",
+                budgeted_spending = 100.0,
+                actual_spending = 50.0,
+                available_to_spend = 50.0,
+                over_budget = false,
+                budgeted = true
+            )
         )
     )
 }
