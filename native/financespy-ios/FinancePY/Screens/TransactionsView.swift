@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 
 struct TransactionsView: View {
+    @Environment(\.modelContext) private var modelContext
+
     @Query(sort: \AccountEntity.name)
     private var accounts: [AccountEntity]
 
@@ -9,6 +11,10 @@ struct TransactionsView: View {
     private var entries: [EntryEntity]
 
     @State private var selectedAccountId: String = "ALL"
+    @State private var showingCreate = false
+    @State private var editingEntry: EntryEntity?
+    @State private var entryPendingDelete: EntryEntity?
+    @State private var deleteError: String?
 
     private var filteredEntries: [EntryEntity] {
         if selectedAccountId == "ALL" {
@@ -73,11 +79,66 @@ struct TransactionsView: View {
                                 .fontWeight(.semibold)
                                 .foregroundColor(signedCents < 0 ? .red : .primary)
                         }
+                        .contentShape(Rectangle())
+                        .onTapGesture { editingEntry = entry }
+                        .accessibilityAddTraits(.isButton)
+                        .swipeActions(edge: .trailing) {
+                            Button {
+                                entryPendingDelete = entry
+                            } label: {
+                                Label("Eliminar", systemImage: "trash")
+                            }
+                            .tint(.red)
+                        }
                     }
                     .listStyle(.plain)
                 }
             }
             .navigationTitle("Transacciones")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingCreate = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("Nueva transacción")
+                }
+            }
+            .sheet(isPresented: $showingCreate) {
+                TransactionFormView()
+            }
+            .sheet(item: $editingEntry) { entry in
+                TransactionFormView(transactionToEdit: entry)
+            }
+            .confirmationDialog(
+                "¿Eliminar transacción?",
+                isPresented: Binding(get: { entryPendingDelete != nil }, set: { if !$0 { entryPendingDelete = nil } }),
+                titleVisibility: .visible,
+                presenting: entryPendingDelete
+            ) { entry in
+                Button("Eliminar", role: .destructive) {
+                    Task { await delete(entry) }
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: { entry in
+                Text("\(entry.name) se eliminará de forma permanente.")
+            }
+            .alert("No se pudo eliminar", isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(deleteError ?? "")
+            }
+        }
+    }
+
+    private func delete(_ entry: EntryEntity) async {
+        do {
+            _ = try await FinancePyApi.shared.deleteTransaction(id: entry.transaction?.id ?? entry.id)
+            modelContext.delete(entry)
+            try? modelContext.save()
+        } catch {
+            deleteError = TransactionFormView.message(for: error)
         }
     }
 

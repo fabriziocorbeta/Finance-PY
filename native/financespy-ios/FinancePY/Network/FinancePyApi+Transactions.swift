@@ -68,6 +68,10 @@ struct UpdateTransactionBody: Encodable {
 }
 
 extension FinancePyApi {
+    func fetchTransaction(id: String) async throws -> TransactionDetailDto {
+        return try await ApiClient.shared.request(path: "/api/v1/transactions/\(id)")
+    }
+
     func createTransaction(body: CreateTransactionBody) async throws -> TransactionDetailDto {
         let request = CreateTransactionRequest(transaction: body)
         return try await ApiClient.shared.request(method: "POST", path: "/api/v1/transactions", body: request)

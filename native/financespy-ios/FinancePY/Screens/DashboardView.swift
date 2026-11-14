@@ -84,24 +84,32 @@ struct DashboardView: View {
                         } else {
                             VStack(spacing: 0) {
                                 ForEach(accounts) { account in
-                                    HStack {
-                                        VStack(alignment: .leading) {
-                                            Text(account.name)
+                                    NavigationLink(destination: AccountDetailView(accountId: account.id)) {
+                                        HStack {
+                                            VStack(alignment: .leading) {
+                                                Text(account.name)
+                                                    .font(.body)
+                                                    .fontWeight(.medium)
+                                                Text(Formatters.accountTypeLabel(account.accountType))
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+
+                                            Spacer()
+
+                                            Text(formatCents(account.balanceCents, currency: account.currency))
                                                 .font(.body)
-                                                .fontWeight(.medium)
-                                            Text(Formatters.accountTypeLabel(account.accountType))
+                                                .fontWeight(.semibold)
+
+                                            Image(systemName: "chevron.right")
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
                                         }
-
-                                        Spacer()
-
-                                        Text(formatCents(account.balanceCents, currency: account.currency))
-                                            .font(.body)
-                                            .fontWeight(.semibold)
+                                        .padding(.vertical, 12)
+                                        .padding(.horizontal)
+                                        .contentShape(Rectangle())
                                     }
-                                    .padding(.vertical, 12)
-                                    .padding(.horizontal)
+                                    .buttonStyle(.plain)
 
                                     Divider()
                                 }

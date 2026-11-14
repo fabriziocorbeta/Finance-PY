@@ -19,6 +19,43 @@ enum Formatters {
         return Int64(round(amount * multiplier))
     }
 
+    private static func fractionDigits(for currency: String) -> Int {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = currency
+        return formatter.maximumFractionDigits
+    }
+
+    /// Plain, parse-safe amount for a form field ("150000" for PYG, "12.50" for USD).
+    static func centsToAmountText(_ cents: Int64, currency: String) -> String {
+        let digits = fractionDigits(for: currency)
+        let absCents = abs(cents)
+        guard digits > 0 else { return String(absCents) }
+        let divisor = Int64(pow(10.0, Double(digits)))
+        let fraction = String(absCents % divisor)
+        return "\(absCents / divisor).\(String(repeating: "0", count: digits - fraction.count))\(fraction)"
+    }
+
+    /// Normalizes what the user typed into the dot-decimal string the API's
+    /// `amount.to_f` expects; nil unless it is a number greater than zero.
+    static func normalizedAmountInput(_ text: String, currency: String) -> String? {
+        let s = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "")
+        guard !s.isEmpty else { return nil }
+        let normalized: String
+        if fractionDigits(for: currency) == 0 {
+            // Zero-decimal currencies (PYG): "150.000" is how a Paraguayan writes 150000.
+            normalized = s.replacingOccurrences(of: ".", with: "").replacingOccurrences(of: ",", with: "")
+        } else if let comma = s.lastIndex(of: ","), let dot = s.lastIndex(of: ".") {
+            normalized = comma > dot
+                ? s.replacingOccurrences(of: ".", with: "").replacingOccurrences(of: ",", with: ".")
+                : s.replacingOccurrences(of: ",", with: "")
+        } else {
+            normalized = s.replacingOccurrences(of: ",", with: ".")
+        }
+        guard let value = Double(normalized), value.isFinite, value > 0 else { return nil }
+        return normalized
+    }
+
     static func formatCents(_ cents: Int64, currency: String) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
