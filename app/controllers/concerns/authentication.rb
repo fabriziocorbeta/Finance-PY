@@ -1,8 +1,16 @@
 module Authentication
   extend ActiveSupport::Concern
 
-  INACTIVITY_TIMEOUT = (ENV["SESSION_INACTIVITY_TIMEOUT_SECONDS"]&.to_i || 30.minutes.to_i).seconds
-  ABSOLUTE_TIMEOUT = (ENV["SESSION_ABSOLUTE_TIMEOUT_SECONDS"]&.to_i || 14.days.to_i).seconds
+  INACTIVITY_TIMEOUT = Session::INACTIVITY_TIMEOUT
+  ABSOLUTE_TIMEOUT = Session::ABSOLUTE_TIMEOUT
+
+  def self.session_cookie_options(env: Rails.env)
+    {
+      httponly: true,
+      same_site: :lax,
+      secure: env.production?
+    }
+  end
 
   included do
     before_action :set_request_details
@@ -24,7 +32,7 @@ module Authentication
           RlsContext.with_auth_bypass(reason: "destroy_expired_session") do
             session_record.destroy
           end
-          cookies.delete(:session_token)
+          cookies.delete(:session_token, **Authentication.session_cookie_options)
           redirect_to new_session_url, alert: "Tu sesión ha expirado por inactividad."
           return
         end
@@ -48,9 +56,7 @@ module Authentication
     end
 
     def session_expired?(session_record)
-      inactivity_expired = session_record.updated_at < INACTIVITY_TIMEOUT.ago
-      absolute_expired = session_record.created_at < ABSOLUTE_TIMEOUT.ago
-      inactivity_expired || absolute_expired
+      session_record.expired?
     end
 
     def find_session_by_cookie
@@ -69,7 +75,7 @@ module Authentication
       session = RlsContext.with_auth_bypass(reason: "create_session") do
         user.sessions.create!
       end
-      cookies.signed.permanent[:session_token] = { value: session.id, httponly: true }
+      cookies.signed.permanent[:session_token] = Authentication.session_cookie_options.merge(value: session.id)
       session
     end
 

@@ -13,10 +13,18 @@ Doorkeeper.configure do
       session_record = RlsContext.with_auth_bypass(reason: "doorkeeper_auth") do
         Session.includes(:user).find_by(id: session_id)
       end
+      if session_record&.expired?
+        RlsContext.with_auth_bypass(reason: "destroy_expired_session") do
+          session_record.destroy
+        end
+        cookies.delete(:session_token, **Authentication.session_cookie_options)
+        session_record = nil
+      end
       if session_record
         # Set Current.session so downstream code expecting it behaves normally.
         Current.session = session_record
         RlsContext.set_family(session_record.user&.family_id)
+        session_record.touch
         # Return the authenticated user object as the resource owner.
         session_record.user
       else
@@ -49,9 +57,17 @@ Doorkeeper.configure do
       session_record = RlsContext.with_auth_bypass(reason: "doorkeeper_admin_auth") do
         Session.includes(:user).find_by(id: session_id)
       end
+      if session_record&.expired?
+        RlsContext.with_auth_bypass(reason: "destroy_expired_session") do
+          session_record.destroy
+        end
+        cookies.delete(:session_token, **Authentication.session_cookie_options)
+        session_record = nil
+      end
       if session_record
         Current.session = session_record
         RlsContext.set_family(session_record.user&.family_id)
+        session_record.touch
         head :forbidden unless session_record.user&.super_admin?
       else
         redirect_to new_session_url
