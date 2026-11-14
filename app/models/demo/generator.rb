@@ -185,6 +185,8 @@ class Demo::Generator
     end
 
     def create_monitoring_api_key!(family)
+      return if Rails.env.production? && !demo_host_configured?
+
       admin_user = family.users.find_by(role: "admin")
       return unless admin_user
 
@@ -209,6 +211,17 @@ class Demo::Generator
 
       puts "  → Created monitoring API key: #{ApiKey::DEMO_MONITORING_KEY}"
       api_key
+    end
+
+    def demo_host_configured?
+      app_host = ENV["APP_DOMAIN"].presence
+      return false unless app_host
+
+      demo = Rails.application.config_for(:demo)
+      hosts = demo.respond_to?(:with_indifferent_access) ? demo.with_indifferent_access[:hosts] : nil
+      Array(hosts).include?(app_host)
+    rescue RuntimeError, Errno::ENOENT, Psych::SyntaxError
+      false
     end
 
     def create_realistic_categories!(family)

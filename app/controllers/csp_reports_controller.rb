@@ -3,11 +3,16 @@
 # config/initializers/content_security_policy.rb). Used to build up evidence
 # before flipping CSP_REPORT_ONLY=false to actually enforce the policy.
 class CspReportsController < ApplicationController
+  MAX_REPORT_BYTES = 16.kilobytes
+
   skip_authentication
   skip_forgery_protection
 
   def create
-    report = JSON.parse(request.body.read)["csp-report"]
+    raw_body = request.body.read(MAX_REPORT_BYTES + 1)
+    return if raw_body.blank? || raw_body.bytesize > MAX_REPORT_BYTES
+
+    report = JSON.parse(raw_body)["csp-report"]
     Rails.logger.warn("[CSP Violation] #{report.to_json}") if report.present?
   rescue JSON::ParserError
     # Malformed report body — nothing to log, still 204 so the browser doesn't retry
