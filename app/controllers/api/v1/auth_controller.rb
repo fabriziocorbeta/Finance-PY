@@ -12,6 +12,11 @@ module Api
       before_action :log_api_access, only: :enable_ai
 
       def signup
+        if self_hosted? && Setting.onboarding_state == "closed"
+          render json: { error: I18n.t("registrations.closed") }, status: :forbidden
+          return
+        end
+
         # Check if invite code is required
         if invite_code_required? && params[:invite_code].blank?
           render json: { error: "Invite code is required" }, status: :forbidden
@@ -200,8 +205,9 @@ module Api
 
         # Check for a pending invitation for this email
         invitation = Invitation.pending.find_by(email: email)
+        signup_open = !self_hosted? || Setting.onboarding_state != "closed"
 
-        unless invitation.present? || cached[:allow_account_creation]
+        unless invitation.present? || (signup_open && cached[:allow_account_creation])
           render json: { error: "SSO account creation is disabled. Please contact an administrator." }, status: :forbidden
           return
         end
@@ -431,6 +437,13 @@ module Api
 
         def ensure_write_scope
           authorize_scope!(:write)
+        end
+
+        # API signup never auto-joins invite_only_default_family_id; a valid invite_code is always required in invite_only mode.
+        def invite_code_required?
+          return Setting.onboarding_state == "invite_only" if self_hosted?
+
+          super
         end
     end
   end

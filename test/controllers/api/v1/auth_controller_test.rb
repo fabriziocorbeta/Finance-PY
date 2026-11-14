@@ -236,6 +236,85 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Invalid invite code", response_data["error"]
   end
 
+  test "signup returns 403 and creates nothing when self-hosted onboarding_state is closed" do
+    Rails.application.config.app_mode.stubs(:self_hosted?).returns(true)
+    Setting.stubs(:onboarding_state).returns("closed")
+
+    assert_no_difference([ "User.count", "Family.count", "Doorkeeper::AccessToken.count" ]) do
+      post "/api/v1/auth/signup", params: {
+        user: {
+          email: "closeduser@example.com",
+          password: "SecurePass123!",
+          first_name: "Closed",
+          last_name: "User"
+        },
+        device: @device_info
+      }
+    end
+
+    assert_response :forbidden
+    assert_equal I18n.t("registrations.closed"), JSON.parse(response.body)["error"]
+  end
+
+  test "signup returns 403 before password or device validation when self-hosted onboarding_state is closed" do
+    Rails.application.config.app_mode.stubs(:self_hosted?).returns(true)
+    Setting.stubs(:onboarding_state).returns("closed")
+
+    assert_no_difference([ "User.count", "Family.count", "Doorkeeper::AccessToken.count" ]) do
+      post "/api/v1/auth/signup", params: {
+        user: {
+          email: "closedweak@example.com",
+          password: "weak"
+        }
+      }
+    end
+
+    assert_response :forbidden
+  end
+
+  test "signup returns 403 in invite_only mode with default family when invite_code is missing" do
+    Rails.application.config.app_mode.stubs(:self_hosted?).returns(true)
+    Setting.stubs(:onboarding_state).returns("invite_only")
+    Setting.stubs(:invite_only_default_family_id).returns(families(:dylan_family).id)
+
+    assert_no_difference([ "User.count", "Family.count", "Doorkeeper::AccessToken.count" ]) do
+      post "/api/v1/auth/signup", params: {
+        user: {
+          email: "inviteonlydefault@example.com",
+          password: "SecurePass123!",
+          first_name: "Invite",
+          last_name: "Only"
+        },
+        device: @device_info
+      }
+    end
+
+    assert_response :forbidden
+    assert_equal "Invite code is required", JSON.parse(response.body)["error"]
+  end
+
+  test "signup succeeds in invite_only mode with default family when valid invite_code is provided" do
+    invite_code = InviteCode.create!
+    Rails.application.config.app_mode.stubs(:self_hosted?).returns(true)
+    Setting.stubs(:onboarding_state).returns("invite_only")
+    Setting.stubs(:invite_only_default_family_id).returns(families(:dylan_family).id)
+
+    assert_difference([ "User.count", "Family.count", "Doorkeeper::AccessToken.count" ], 1) do
+      post "/api/v1/auth/signup", params: {
+        user: {
+          email: "invitedwithdefault@example.com",
+          password: "SecurePass123!",
+          first_name: "Invited",
+          last_name: "User"
+        },
+        device: @device_info,
+        invite_code: invite_code.token
+      }
+    end
+
+    assert_response :created
+  end
+
   test "should login existing user and return OAuth tokens" do
     user = users(:family_admin)
     password = user_password_test
@@ -840,6 +919,34 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
     assert_response :unauthorized
     assert_equal "Linking code is invalid or expired", JSON.parse(response.body)["error"]
     assert_nil Rails.cache.read("mobile_sso_link:#{linking_code}")
+  end
+
+  test "sso_create_account returns 403 when self-hosted onboarding_state is closed and no pending invitation" do
+    Rails.application.config.app_mode.stubs(:self_hosted?).returns(true)
+    Setting.stubs(:onboarding_state).returns("closed")
+
+    linking_code = SecureRandom.urlsafe_base64(32)
+    Rails.cache.write("mobile_sso_link:#{linking_code}", {
+      provider: "google_oauth2",
+      uid: "google-uid-closed",
+      email: "ssoclosed@example.com",
+      first_name: "SSO",
+      last_name: "Closed",
+      name: "SSO Closed",
+      device_info: @device_info.stringify_keys,
+      allow_account_creation: true
+    }, expires_in: 10.minutes)
+
+    assert_no_difference([ "User.count", "Family.count", "Doorkeeper::AccessToken.count" ]) do
+      post "/api/v1/auth/sso_create_account", params: {
+        linking_code: linking_code,
+        first_name: "SSO",
+        last_name: "Closed"
+      }
+    end
+
+    assert_response :forbidden
+    assert_match(/disabled/, JSON.parse(response.body)["error"])
   end
 
   test "should return forbidden when ai is not available" do
