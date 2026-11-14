@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Api::V1::FamilyExportsController < Api::V1::BaseController
+  include ActiveStorage::Streaming
   include Pagy::Backend
 
   before_action :ensure_read_scope, only: [ :index, :show, :download ]
@@ -68,11 +69,7 @@ class Api::V1::FamilyExportsController < Api::V1::BaseController
       return
     end
 
-    blob = @family_export.export_file.blob
-    send_data blob.download,
-              filename: blob.filename.to_s,
-              type: blob.content_type,
-              disposition: "attachment"
+    send_blob_stream @family_export.export_file.blob, disposition: "attachment"
   rescue StandardError => e
     Rails.logger.error "FamilyExportsController#download error: #{e.message}"
     Rails.logger.error e.backtrace.join("\n")

@@ -176,8 +176,8 @@ class Api::V1::FamilyExportsControllerTest < ActionDispatch::IntegrationTest
       content_type: "application/zip"
     )
 
-    ActiveStorage::Blob.any_instance
-      .stubs(:download)
+    Api::V1::FamilyExportsController.any_instance
+      .stubs(:send_blob_stream)
       .raises(StandardError, "storage down")
 
     get download_api_v1_family_export_url(export), headers: api_headers(@read_only_api_key)
