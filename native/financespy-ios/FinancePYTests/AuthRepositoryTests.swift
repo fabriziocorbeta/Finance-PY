@@ -1,5 +1,7 @@
 import XCTest
 import Security
+import SwiftUI
+import UIKit
 @testable import FinancePY
 
 extension TokenResponse: Encodable {
@@ -109,7 +111,7 @@ final class AuthRepositoryTests: XCTestCase {
         }
     }
 
-    func testKeychainStoresTokensWithWhenUnlockedThisDeviceOnly() {
+    func testKeychainStoresTokensWithAfterFirstUnlockThisDeviceOnly() {
         let storage = KeychainTokenStorage.shared
         storage.clear()
         defer { storage.clear() }
@@ -118,8 +120,8 @@ final class AuthRepositoryTests: XCTestCase {
 
         XCTAssertEqual(storage.accessToken(), "new-access")
         XCTAssertEqual(storage.refreshToken(), "new-refresh")
-        XCTAssertEqual(storage.accessibility(forAccessToken: true), kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
-        XCTAssertEqual(storage.accessibility(forAccessToken: false), kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
+        XCTAssertEqual(storage.accessibility(forAccessToken: true), kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String)
+        XCTAssertEqual(storage.accessibility(forAccessToken: false), kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String)
     }
 
     func testKeychainMigratesLegacyAfterFirstUnlockTokensOnRead() {
@@ -133,8 +135,42 @@ final class AuthRepositoryTests: XCTestCase {
 
         XCTAssertEqual(storage.accessToken(), "legacy-access")
         XCTAssertEqual(storage.refreshToken(), "legacy-refresh")
-        XCTAssertEqual(storage.accessibility(forAccessToken: true), kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
-        XCTAssertEqual(storage.accessibility(forAccessToken: false), kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
+        XCTAssertEqual(storage.accessibility(forAccessToken: true), kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String)
+        XCTAssertEqual(storage.accessibility(forAccessToken: false), kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String)
+    }
+
+    func testSecurityOverlayWindowManagerStateAndLevel() {
+        XCTAssertGreaterThan(SecurityOverlayWindowManager.overlayWindowLevel, UIWindow.Level.alert)
+
+        let activeLocked = SecurityOverlayWindowManager.overlayState(
+            isLoggedIn: true,
+            appLockEnabled: true,
+            isLocked: true,
+            scenePhase: .active,
+            isAuthenticating: false
+        )
+        XCTAssertTrue(activeLocked.showLock)
+        XCTAssertFalse(activeLocked.showPrivacy)
+
+        let inactiveUnlocked = SecurityOverlayWindowManager.overlayState(
+            isLoggedIn: true,
+            appLockEnabled: false,
+            isLocked: false,
+            scenePhase: .inactive,
+            isAuthenticating: false
+        )
+        XCTAssertFalse(inactiveUnlocked.showLock)
+        XCTAssertTrue(inactiveUnlocked.showPrivacy)
+
+        let inactiveDuringBiometrics = SecurityOverlayWindowManager.overlayState(
+            isLoggedIn: true,
+            appLockEnabled: true,
+            isLocked: true,
+            scenePhase: .inactive,
+            isAuthenticating: true
+        )
+        XCTAssertTrue(inactiveDuringBiometrics.showLock)
+        XCTAssertFalse(inactiveDuringBiometrics.showPrivacy)
     }
 
     func testModelContainerFactoryRemovesStoreWalAndShmFiles() throws {

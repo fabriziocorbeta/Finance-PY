@@ -16,9 +16,11 @@ final class KeychainTokenStorage {
     }
 
     func save(accessToken: String, refreshToken: String) {
-        save(key: Keys.accessToken, value: accessToken)
-        save(key: Keys.refreshToken, value: refreshToken)
-        UserDefaults.standard.set(true, forKey: Self.migrationKey)
+        let accessStatus = save(key: Keys.accessToken, value: accessToken)
+        let refreshStatus = save(key: Keys.refreshToken, value: refreshToken)
+        if accessStatus == errSecSuccess && refreshStatus == errSecSuccess {
+            UserDefaults.standard.set(true, forKey: Self.migrationKey)
+        }
     }
 
     func accessToken() -> String? {
@@ -39,15 +41,31 @@ final class KeychainTokenStorage {
     func migrateIfNeeded() {
         guard !UserDefaults.standard.bool(forKey: Self.migrationKey) else { return }
 
+        var canMarkMigrated = true
         for key in [Keys.accessToken, Keys.refreshToken] {
-            if let existingValue = readRaw(key: key) {
-                save(key: key, value: existingValue)
+            let result = readRawWithStatus(key: key)
+            switch result.status {
+            case errSecSuccess:
+                if let existingValue = result.value {
+                    if save(key: key, value: existingValue) != errSecSuccess {
+                        canMarkMigrated = false
+                    }
+                } else {
+                    canMarkMigrated = false
+                }
+            case errSecItemNotFound:
+                continue
+            default:
+                canMarkMigrated = false
             }
         }
 
-        UserDefaults.standard.set(true, forKey: Self.migrationKey)
+        if canMarkMigrated {
+            UserDefaults.standard.set(true, forKey: Self.migrationKey)
+        }
     }
 
+    #if DEBUG
     func saveLegacyForTesting(accessToken: String, refreshToken: String) {
         UserDefaults.standard.removeObject(forKey: Self.migrationKey)
         save(key: Keys.accessToken, value: accessToken, accessible: kSecAttrAccessibleAfterFirstUnlock)
@@ -72,13 +90,15 @@ final class KeychainTokenStorage {
 
         return attributes[kSecAttrAccessible as String] as? String
     }
+    #endif
 
+    @discardableResult
     private func save(
         key: String,
         value: String,
-        accessible: CFString = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-    ) {
-        guard let data = value.data(using: .utf8) else { return }
+        accessible: CFString = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+    ) -> OSStatus {
+        guard let data = value.data(using: .utf8) else { return errSecParam }
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -96,10 +116,14 @@ final class KeychainTokenStorage {
             kSecAttrAccessible as String: accessible
         ]
 
-        SecItemAdd(attributes as CFDictionary, nil)
+        return SecItemAdd(attributes as CFDictionary, nil)
     }
 
     private func readRaw(key: String) -> String? {
+        readRawWithStatus(key: key).value
+    }
+
+    private func readRawWithStatus(key: String) -> (status: OSStatus, value: String?) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -111,11 +135,16 @@ final class KeychainTokenStorage {
         var dataTypeRef: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &dataTypeRef)
 
-        guard status == errSecSuccess, let data = dataTypeRef as? Data else {
-            return nil
+        guard status == errSecSuccess else {
+            return (status, nil)
         }
 
-        return String(data: data, encoding: .utf8)
+        guard let data = dataTypeRef as? Data,
+              let value = String(data: data, encoding: .utf8) else {
+            return (errSecDecode, nil)
+        }
+
+        return (errSecSuccess, value)
     }
 
     private func delete(key: String) {

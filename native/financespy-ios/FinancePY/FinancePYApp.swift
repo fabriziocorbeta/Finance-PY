@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import LocalAuthentication
+import UIKit
 
 enum ModelContainerFactory {
     static let schema = Schema([
@@ -46,6 +47,118 @@ enum ModelContainerFactory {
         for url in candidateURLs where fileManager.fileExists(atPath: url.path) {
             try? fileManager.removeItem(at: url)
         }
+    }
+
+    @MainActor
+    static func clearCache(in container: ModelContainer) {
+        UserDefaults.standard.removeObject(forKey: "hasCompletedOnboarding")
+        let context = container.mainContext
+        do {
+            try context.delete(model: TransactionEntity.self)
+            try context.delete(model: EntryEntity.self)
+            try context.delete(model: AccountEntity.self)
+            try context.delete(model: ReceivableEntity.self)
+            try context.save()
+        } catch {
+            #if DEBUG
+            print("Failed to clear local cache on logout: \(error.localizedDescription)")
+            #endif
+        }
+    }
+}
+
+@MainActor
+final class SecurityOverlayWindowManager: ObservableObject {
+    static let overlayWindowLevel = UIWindow.Level(rawValue: UIWindow.Level.alert.rawValue + 1)
+
+    private var overlayWindow: UIWindow?
+    private var hostingController: UIHostingController<AnyView>?
+
+    static func overlayState(
+        isLoggedIn: Bool,
+        appLockEnabled: Bool,
+        isLocked: Bool,
+        scenePhase: ScenePhase,
+        isAuthenticating: Bool
+    ) -> (showLock: Bool, showPrivacy: Bool) {
+        guard isLoggedIn else { return (false, false) }
+        let showLock = appLockEnabled && isLocked
+        let showPrivacy = scenePhase != .active && !isAuthenticating
+        return (showLock, showPrivacy)
+    }
+
+    func update(
+        isLoggedIn: Bool,
+        appLockEnabled: Bool,
+        isLocked: Bool,
+        scenePhase: ScenePhase,
+        isAuthenticating: Bool,
+        appLockManager: AppLockManager,
+        onLogout: @escaping () -> Void
+    ) {
+        let state = Self.overlayState(
+            isLoggedIn: isLoggedIn,
+            appLockEnabled: appLockEnabled,
+            isLocked: isLocked,
+            scenePhase: scenePhase,
+            isAuthenticating: isAuthenticating
+        )
+
+        guard state.showLock || state.showPrivacy else {
+            hide()
+            return
+        }
+
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+
+        let windowScene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState != .unattached }
+            ?? UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+
+        guard let scene = windowScene else { return }
+
+        if overlayWindow == nil || overlayWindow?.windowScene !== scene {
+            let window = UIWindow(windowScene: scene)
+            window.windowLevel = Self.overlayWindowLevel
+            window.backgroundColor = .systemBackground
+            overlayWindow = window
+            hostingController = nil
+        }
+
+        let rootView = AnyView(
+            ZStack {
+                if state.showLock {
+                    AppLockView(appLockManager: appLockManager, onLogout: onLogout)
+                }
+                if state.showPrivacy {
+                    PrivacyOverlayView()
+                }
+            }
+        )
+
+        if let hostingController {
+            hostingController.rootView = rootView
+        } else {
+            let controller = UIHostingController(rootView: rootView)
+            controller.view.backgroundColor = .systemBackground
+            hostingController = controller
+            overlayWindow?.rootViewController = controller
+        }
+
+        overlayWindow?.isHidden = false
+    }
+
+    func hide() {
+        overlayWindow?.isHidden = true
+        overlayWindow?.rootViewController = nil
+        overlayWindow = nil
+        hostingController = nil
     }
 }
 
@@ -131,6 +244,7 @@ final class AppLockManager: ObservableObject {
 struct FinancePYApp: App {
     @StateObject private var authRepository = AuthRepository.shared
     @StateObject private var appLockManager = AppLockManager()
+    @StateObject private var overlayWindowManager = SecurityOverlayWindowManager()
     @AppStorage("appLockEnabled") private var appLockEnabled = false
     @Environment(\.scenePhase) private var scenePhase
     @State private var isLoggedIn = false
@@ -144,25 +258,13 @@ struct FinancePYApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ZStack {
-                Group {
-                    if isCheckingAuth {
-                        ProgressView("Cargando...")
-                    } else if isLoggedIn {
-                        MainTabView(isLoggedIn: $isLoggedIn, container: container)
-                    } else {
-                        LoginView(isLoggedIn: $isLoggedIn)
-                    }
-                }
-
-                if isLoggedIn && appLockEnabled && appLockManager.isLocked {
-                    AppLockView(appLockManager: appLockManager)
-                        .transition(.opacity)
-                }
-
-                if isLoggedIn && scenePhase != .active && !appLockManager.isAuthenticating {
-                    PrivacyOverlayView()
-                        .transition(.opacity)
+            Group {
+                if isCheckingAuth {
+                    ProgressView("Cargando...")
+                } else if isLoggedIn {
+                    MainTabView(isLoggedIn: $isLoggedIn, container: container)
+                } else {
+                    LoginView(isLoggedIn: $isLoggedIn)
                 }
             }
             .task {
@@ -174,24 +276,43 @@ struct FinancePYApp: App {
                 }
                 self.isLoggedIn = loggedIn
                 self.isCheckingAuth = false
+                syncSecurityOverlay()
                 if loggedIn && appLockEnabled {
                     await appLockManager.authenticateIfNeeded()
                 }
             }
             .onChange(of: scenePhase) { _, newPhase in
-                guard isLoggedIn else { return }
+                guard isLoggedIn else {
+                    syncSecurityOverlay()
+                    return
+                }
                 if newPhase == .background && appLockEnabled {
                     appLockManager.lock()
-                } else if newPhase == .active && appLockEnabled {
+                }
+                syncSecurityOverlay()
+                if newPhase == .active && appLockEnabled {
                     Task {
                         await appLockManager.authenticateIfNeeded()
                     }
                 }
             }
+            .onChange(of: appLockManager.isLocked) { _, _ in
+                syncSecurityOverlay()
+            }
+            .onChange(of: appLockManager.isAuthenticating) { _, _ in
+                syncSecurityOverlay()
+            }
+            .onChange(of: appLockEnabled) { _, newValue in
+                if !newValue {
+                    appLockManager.unlock()
+                }
+                syncSecurityOverlay()
+            }
             .onChange(of: isLoggedIn) { _, newValue in
                 if !newValue {
                     appLockManager.unlock()
                 }
+                syncSecurityOverlay()
             }
             .onOpenURL { url in
                 Task {
@@ -207,6 +328,28 @@ struct FinancePYApp: App {
             }
         }
         .modelContainer(container)
+    }
+
+    private func syncSecurityOverlay() {
+        overlayWindowManager.update(
+            isLoggedIn: isLoggedIn,
+            appLockEnabled: appLockEnabled,
+            isLocked: appLockManager.isLocked,
+            scenePhase: scenePhase,
+            isAuthenticating: appLockManager.isAuthenticating,
+            appLockManager: appLockManager,
+            onLogout: performLogoutFromLockScreen
+        )
+    }
+
+    private func performLogoutFromLockScreen() {
+        Task {
+            await authRepository.logout()
+            ModelContainerFactory.clearCache(in: container)
+            appLockManager.unlock()
+            isLoggedIn = false
+            syncSecurityOverlay()
+        }
     }
 }
 
@@ -382,19 +525,7 @@ struct MainTabView: View {
     }
 
     private func clearLocalCache() {
-        UserDefaults.standard.removeObject(forKey: "hasCompletedOnboarding")
-        let context = container.mainContext
-        do {
-            try context.delete(model: TransactionEntity.self)
-            try context.delete(model: EntryEntity.self)
-            try context.delete(model: AccountEntity.self)
-            try context.delete(model: ReceivableEntity.self)
-            try context.save()
-        } catch {
-            #if DEBUG
-            print("Failed to clear local cache on logout: \(error.localizedDescription)")
-            #endif
-        }
+        ModelContainerFactory.clearCache(in: container)
     }
 }
 
@@ -416,6 +547,7 @@ struct PrivacyOverlayView: View {
 
 struct AppLockView: View {
     @ObservedObject var appLockManager: AppLockManager
+    var onLogout: () -> Void = {}
 
     var body: some View {
         ZStack {
@@ -443,6 +575,12 @@ struct AppLockView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .disabled(appLockManager.isAuthenticating)
+
+                Button("Cerrar sesión", role: .destructive) {
+                    onLogout()
+                }
+                .font(.footnote)
                 .disabled(appLockManager.isAuthenticating)
             }
             .padding()
