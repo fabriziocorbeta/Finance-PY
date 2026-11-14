@@ -78,6 +78,19 @@ class ApiKeyTest < ActiveSupport::TestCase
     assert_not @api_key.key_matches?("wrong_key")
   end
 
+  # The comparison is constant-time (secure_compare), which rejects nil
+  # rather than comparing against it, and a key of a different length must
+  # fail on its own rather than raising.
+  test "key_matches? rejects blank and mismatched-length keys" do
+    plain_key = @api_key.key
+    @api_key.save!
+
+    assert_not @api_key.key_matches?(nil)
+    assert_not @api_key.key_matches?("")
+    assert_not @api_key.key_matches?(plain_key + "x")
+    assert_not @api_key.key_matches?(plain_key[0..-2])
+  end
+
   test "should be active when not revoked and not expired" do
     @api_key.save!
 
