@@ -1,7 +1,7 @@
 require "test_helper"
 
 class ArchivedExportsControllerTest < ActionDispatch::IntegrationTest
-  test "redirects to file with valid token" do
+  test "streams file download with valid token" do
     archive = ArchivedExport.create!(
       email: "test@example.com",
       family_name: "Test",
@@ -14,7 +14,10 @@ class ArchivedExportsControllerTest < ActionDispatch::IntegrationTest
     )
 
     get archived_export_path(token: archive.download_token)
-    assert_response :redirect
+    assert_response :ok
+    assert_includes response.headers["Content-Disposition"], "attachment"
+    assert_includes response.headers["Content-Disposition"], "test.zip"
+    assert_equal "test zip content", response.body
   end
 
   test "returns 410 gone for expired token" do
@@ -52,6 +55,7 @@ class ArchivedExportsControllerTest < ActionDispatch::IntegrationTest
 
     # No sign_in call - should still work
     get archived_export_path(token: archive.download_token)
-    assert_response :redirect
+    assert_response :ok
+    assert_equal "test zip content", response.body
   end
 end

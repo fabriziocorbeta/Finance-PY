@@ -68,7 +68,11 @@ class Api::V1::FamilyExportsController < Api::V1::BaseController
       return
     end
 
-    redirect_to rails_blob_url(@family_export.export_file, disposition: "attachment"), allow_other_host: true
+    blob = @family_export.export_file.blob
+    send_data blob.download,
+              filename: blob.filename.to_s,
+              type: blob.content_type,
+              disposition: "attachment"
   rescue StandardError => e
     Rails.logger.error "FamilyExportsController#download error: #{e.message}"
     Rails.logger.error e.backtrace.join("\n")
