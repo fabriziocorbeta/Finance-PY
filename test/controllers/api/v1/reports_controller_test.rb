@@ -27,6 +27,10 @@ class Api::V1::ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "monthly", json_response.dig("period", "type")
     assert_not_nil json_response["summary"]
     assert_not_nil json_response["trends"]
+    assert_not_nil json_response["cashflow_projections"]
+    assert_equal 6, json_response.dig("cashflow_projections", "horizon_months")
+    assert_equal 12, json_response.dig("cashflow_projections", "historical_series")&.size
+    assert_equal 6, json_response.dig("cashflow_projections", "projected_series")&.size
     assert_not_nil json_response["net_worth"]
     assert_not_nil json_response["transactions_breakdown"]
     assert_not_nil json_response["investment_metrics"]

@@ -231,3 +231,54 @@ es:
       transactions: Transacciones
       weekday_spending: Gasto entre semana
       weekend_spending: Gasto en fin de semana
+    cashflow_projections:
+      title: Evolución y Proyecciones a Futuro
+      subtitle: "Evolución histórica de 12 meses y proyección híbrida a %{months} meses (recurrentes + tendencia histórica + presupuestos)"
+      horizon_label: Horizonte
+      horizons:
+        months_3: 3M
+        months_6: 6M
+        months_12: 12M
+      metrics:
+        projected_income: "Ingresos Est. (%{months}M)"
+        projected_expenses: "Gastos Est. (%{months}M)"
+        projected_net: "Ahorro Neto Est. (%{months}M)"
+        monthly_avg: "Prom: %{amount}/mes"
+        savings_rate: "Tasa de ahorro proyectada: %{rate}%"
+        net_scenarios: Escenarios Netos
+        optimistic: Optimista
+        conservative: Conservador
+      chart:
+        title: Evolución Histórica vs. Proyección a Futuro
+        income: Ingresos
+        expenses: Gastos
+        net: Ahorro Neto
+        actual: Real
+        projected: Proyectado
+        scenario_range: Rango de escenarios
+      drivers:
+        recurring_title: Base Recurrente
+        items_count:
+          one: "%{count} activo"
+          other: "%{count} activos"
+        fixed_income: Ingresos recurrentes
+        fixed_expenses: Gastos recurrentes
+        historical_title: Tendencia Histórica
+        months_analyzed:
+          one: "%{count} mes"
+          other: "%{count} meses"
+        weighted_income: Ingreso ponderado
+        weighted_expenses: Gasto ponderado
+        targets_title: Presupuesto y Cobros
+        budget_active: Activo
+        budget_target: Presupuesto mensual
+        scheduled_receivables: Cuotas por cobrar
+      table:
+        title: "Desglose Mensual Proyectado (Próximos %{months} Meses)"
+        month: Mes
+        projected_income: Ingresos Est.
+        projected_expenses: Gastos Est.
+        projected_net: Neto Est.
+        savings_rate: Tasa de Ahorro
+        scenario_range: Rango Neto (Cons. → Opt.)
+        receivables_short: cobros

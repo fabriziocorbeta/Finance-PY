@@ -1,0 +1,309 @@
+<%# locals: (cashflow_projections:, period_type:, start_date:, end_date:) %>
+<%
+  currency = cashflow_projections[:currency]
+  horizon = cashflow_projections[:horizon_months]
+  hist_series = cashflow_projections[:historical_series] || []
+  proj_series = cashflow_projections[:projected_series] || []
+  drivers = cashflow_projections[:drivers] || {}
+  summary = cashflow_projections[:summary] || {}
+
+  chart_payload = cashflow_projections.merge(
+    labels: {
+      income: t("reports.cashflow_projections.chart.income"),
+      expenses: t("reports.cashflow_projections.chart.expenses"),
+      net: t("reports.cashflow_projections.chart.net"),
+      actual: t("reports.cashflow_projections.chart.actual"),
+      projected: t("reports.cashflow_projections.chart.projected"),
+      range: t("reports.cashflow_projections.chart.scenario_range")
+    }
+  )
+%>
+
+<div class="space-y-6" id="cashflow-projections-section">
+  <%# Header & Horizon Selector %>
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <p class="text-sm text-secondary">
+        <%= t("reports.cashflow_projections.subtitle", months: horizon) %>
+      </p>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-medium text-secondary uppercase tracking-wide">
+        <%= t("reports.cashflow_projections.horizon_label") %>:
+      </span>
+      <div class="inline-flex rounded-lg bg-surface-inset p-1 gap-1">
+        <% Reports::CashflowProjectionsBuilder::ALLOWED_HORIZONS.each do |h| %>
+          <%= link_to t("reports.cashflow_projections.horizons.months_#{h}", default: "#{h}M"),
+                reports_path(
+                  period_type: period_type,
+                  start_date: start_date,
+                  end_date: end_date,
+                  projection_months: h
+                ),
+                class: "px-2.5 py-1 rounded-md text-xs font-medium transition-colors #{horizon == h ? 'bg-container text-primary shadow-xs' : 'text-secondary hover:text-primary'}" %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# KPI Summary Cards for Projected Horizon %>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <%# Projected Income %>
+    <div class="p-4 bg-surface-inset rounded-xl">
+      <div class="flex items-center justify-between mb-1">
+        <p class="text-xs font-medium text-secondary uppercase">
+          <%= t("reports.cashflow_projections.metrics.projected_income", months: horizon) %>
+        </p>
+        <%= icon("trending-up", size: "sm", class: "text-success") %>
+      </div>
+      <p class="text-xl font-semibold text-success privacy-sensitive">
+        <%= Money.new(summary[:total_projected_income] || 0, currency).format %>
+      </p>
+      <p class="text-xs text-subdued mt-1 privacy-sensitive">
+        <%= t("reports.cashflow_projections.metrics.monthly_avg", amount: Money.new(summary[:avg_monthly_projected_income] || 0, currency).format) %>
+      </p>
+    </div>
+
+    <%# Projected Expenses %>
+    <div class="p-4 bg-surface-inset rounded-xl">
+      <div class="flex items-center justify-between mb-1">
+        <p class="text-xs font-medium text-secondary uppercase">
+          <%= t("reports.cashflow_projections.metrics.projected_expenses", months: horizon) %>
+        </p>
+        <%= icon("trending-down", size: "sm", class: "text-destructive") %>
+      </div>
+      <p class="text-xl font-semibold text-destructive privacy-sensitive">
+        <%= Money.new(summary[:total_projected_expenses] || 0, currency).format %>
+      </p>
+      <p class="text-xs text-subdued mt-1 privacy-sensitive">
+        <%= t("reports.cashflow_projections.metrics.monthly_avg", amount: Money.new(summary[:avg_monthly_projected_expenses] || 0, currency).format) %>
+      </p>
+    </div>
+
+    <%# Projected Net Savings %>
+    <% total_net = summary[:total_projected_net] || 0 %>
+    <div class="p-4 bg-surface-inset rounded-xl">
+      <div class="flex items-center justify-between mb-1">
+        <p class="text-xs font-medium text-secondary uppercase">
+          <%= t("reports.cashflow_projections.metrics.projected_net", months: horizon) %>
+        </p>
+        <%= icon("piggy-bank", size: "sm", class: total_net >= 0 ? "text-success" : "text-destructive") %>
+      </div>
+      <p class="text-xl font-semibold privacy-sensitive <%= total_net >= 0 ? 'text-success' : 'text-destructive' %>">
+        <%= Money.new(total_net, currency).format %>
+      </p>
+      <p class="text-xs text-subdued mt-1">
+        <%= t("reports.cashflow_projections.metrics.savings_rate", rate: summary[:projected_savings_rate] || 0) %>
+      </p>
+    </div>
+
+    <%# Scenario Range (Conservative to Optimistic) %>
+    <div class="p-4 bg-surface-inset rounded-xl">
+      <div class="flex items-center justify-between mb-1">
+        <p class="text-xs font-medium text-secondary uppercase">
+          <%= t("reports.cashflow_projections.metrics.net_scenarios") %>
+        </p>
+        <%= icon("sliders-horizontal", size: "sm", class: "text-secondary") %>
+      </div>
+      <div class="space-y-1 mt-1 text-xs">
+        <div class="flex justify-between items-center">
+          <span class="text-secondary"><%= t("reports.cashflow_projections.metrics.optimistic") %>:</span>
+          <span class="font-semibold text-success privacy-sensitive">
+            <%= Money.new(summary[:optimistic_total_net] || 0, currency).format %>
+          </span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-secondary"><%= t("reports.cashflow_projections.metrics.conservative") %>:</span>
+          <% cons_net = summary[:conservative_total_net] || 0 %>
+          <span class="font-semibold privacy-sensitive <%= cons_net >= 0 ? 'text-primary' : 'text-destructive' %>">
+            <%= Money.new(cons_net, currency).format %>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Interactive D3 Evolution & Projection Chart %>
+  <div class="bg-container-inset rounded-xl p-4">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+      <h3 class="text-sm font-medium text-primary">
+        <%= t("reports.cashflow_projections.chart.title") %>
+      </h3>
+      <div class="flex flex-wrap items-center gap-4 text-xs text-secondary">
+        <span class="inline-flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-xs bg-success inline-block"></span>
+          <%= t("reports.cashflow_projections.chart.income") %>
+        </span>
+        <span class="inline-flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-xs bg-destructive inline-block"></span>
+          <%= t("reports.cashflow_projections.chart.expenses") %>
+        </span>
+        <span class="inline-flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full inline-block" style="background: #6366f1;"></span>
+          <%= t("reports.cashflow_projections.chart.net") %>
+        </span>
+        <span class="inline-flex items-center gap-1.5">
+          <span class="w-3 h-0.5 border-t-2 border-dashed inline-block" style="border-color: #6366f1;"></span>
+          <%= t("reports.cashflow_projections.chart.projected") %>
+        </span>
+      </div>
+    </div>
+
+    <div
+      id="cashflowProjectionsChart"
+      class="w-full h-80 relative privacy-sensitive"
+      data-controller="cashflow-projections-chart"
+      data-cashflow-projections-chart-data-value="<%= chart_payload.to_json %>">
+    </div>
+  </div>
+
+  <%# Hybrid Model Drivers Breakdown %>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <%# Driver 1: Active Recurring Transactions %>
+    <div class="p-4 border border-secondary rounded-xl bg-container space-y-2">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold uppercase text-secondary flex items-center gap-1.5">
+          <%= icon("repeat", size: "sm") %>
+          <%= t("reports.cashflow_projections.drivers.recurring_title") %>
+        </span>
+        <span class="text-xs px-2 py-0.5 rounded-full bg-surface-inset text-secondary">
+          <%= t("reports.cashflow_projections.drivers.items_count", count: drivers[:recurring_items_count] || 0) %>
+        </span>
+      </div>
+      <div class="space-y-1 text-sm pt-1">
+        <div class="flex justify-between">
+          <span class="text-secondary"><%= t("reports.cashflow_projections.drivers.fixed_income") %>:</span>
+          <span class="font-medium text-success privacy-sensitive">
+            <%= Money.new(drivers[:recurring_income_monthly] || 0, currency).format %>/m
+          </span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-secondary"><%= t("reports.cashflow_projections.drivers.fixed_expenses") %>:</span>
+          <span class="font-medium text-destructive privacy-sensitive">
+            <%= Money.new(drivers[:recurring_expenses_monthly] || 0, currency).format %>/m
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <%# Driver 2: Historical Weighted Moving Average & Slope %>
+    <div class="p-4 border border-secondary rounded-xl bg-container space-y-2">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold uppercase text-secondary flex items-center gap-1.5">
+          <%= icon("activity", size: "sm") %>
+          <%= t("reports.cashflow_projections.drivers.historical_title") %>
+        </span>
+        <span class="text-xs px-2 py-0.5 rounded-full bg-surface-inset text-secondary">
+          <%= t("reports.cashflow_projections.drivers.months_analyzed", count: drivers[:sample_months] || 0) %>
+        </span>
+      </div>
+      <div class="space-y-1 text-sm pt-1">
+        <div class="flex justify-between">
+          <span class="text-secondary"><%= t("reports.cashflow_projections.drivers.weighted_income") %>:</span>
+          <span class="font-medium text-primary privacy-sensitive">
+            <%= Money.new(drivers[:historical_avg_income] || 0, currency).format %>/m
+          </span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-secondary"><%= t("reports.cashflow_projections.drivers.weighted_expenses") %>:</span>
+          <span class="font-medium text-primary privacy-sensitive">
+            <%= Money.new(drivers[:historical_avg_expenses] || 0, currency).format %>/m
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <%# Driver 3: Budget & Scheduled Receivables %>
+    <div class="p-4 border border-secondary rounded-xl bg-container space-y-2">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold uppercase text-secondary flex items-center gap-1.5">
+          <%= icon("target", size: "sm") %>
+          <%= t("reports.cashflow_projections.drivers.targets_title") %>
+        </span>
+        <% if drivers[:has_budget] %>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-green-50 text-success">
+            <%= t("reports.cashflow_projections.drivers.budget_active") %>
+          </span>
+        <% end %>
+      </div>
+      <div class="space-y-1 text-sm pt-1">
+        <div class="flex justify-between">
+          <span class="text-secondary"><%= t("reports.cashflow_projections.drivers.budget_target") %>:</span>
+          <span class="font-medium text-primary privacy-sensitive">
+            <%= drivers[:has_budget] ? "#{Money.new(drivers[:budgeted_spending] || 0, currency).format}/m" : "—" %>
+          </span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-secondary"><%= t("reports.cashflow_projections.drivers.scheduled_receivables") %>:</span>
+          <span class="font-medium text-success privacy-sensitive">
+            <%= Money.new(drivers[:scheduled_receivables_total] || 0, currency).format %>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Projected Monthly Schedule Table %>
+  <% if proj_series.any? %>
+    <div>
+      <h3 class="text-base font-medium mb-3">
+        <%= t("reports.cashflow_projections.table.title", months: horizon) %>
+      </h3>
+      <div class="bg-container-inset rounded-xl p-1 overflow-x-auto">
+        <div class="w-max sm:w-full">
+          <div class="rounded-lg shadow-border-xs bg-container overflow-hidden">
+            <table class="w-full">
+              <thead class="bg-container-inset">
+                <tr class="uppercase text-xs font-medium text-secondary">
+                  <th class="px-4 py-2.5 text-left font-medium"><%= t("reports.cashflow_projections.table.month") %></th>
+                  <th class="px-4 py-2.5 text-right font-medium"><%= t("reports.cashflow_projections.table.projected_income") %></th>
+                  <th class="px-4 py-2.5 text-right font-medium"><%= t("reports.cashflow_projections.table.projected_expenses") %></th>
+                  <th class="px-4 py-2.5 text-right font-medium"><%= t("reports.cashflow_projections.table.projected_net") %></th>
+                  <th class="px-4 py-2.5 text-right font-medium"><%= t("reports.cashflow_projections.table.savings_rate") %></th>
+                  <th class="px-4 py-2.5 text-right font-medium"><%= t("reports.cashflow_projections.table.scenario_range") %></th>
+                </tr>
+              </thead>
+              <tbody class="text-secondary text-sm">
+                <% proj_series.each_with_index do |row, idx| %>
+                  <tr class="<%= idx < proj_series.size - 1 ? 'table-divider' : '' %> hover:bg-surface-hover">
+                    <td class="py-3 px-4 font-medium text-primary">
+                      <div class="flex items-center gap-2">
+                        <span><%= row[:month_label] %></span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-inset text-secondary">
+                          <%= t("reports.cashflow_projections.chart.projected") %>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="py-3 px-4 text-right text-success font-medium privacy-sensitive">
+                      <%= Money.new(row[:income], currency).format %>
+                      <% if row[:receivables_income].to_f > 0 %>
+                        <span class="block text-xs text-subdued">
+                          +<%= Money.new(row[:receivables_income], currency).format %> (<%= t("reports.cashflow_projections.table.receivables_short") %>)
+                        </span>
+                      <% end %>
+                    </td>
+                    <td class="py-3 px-4 text-right text-destructive font-medium privacy-sensitive">
+                      <%= Money.new(row[:expenses], currency).format %>
+                    </td>
+                    <td class="py-3 px-4 text-right font-semibold privacy-sensitive <%= row[:net] >= 0 ? 'text-success' : 'text-destructive' %>">
+                      <%= Money.new(row[:net], currency).format %>
+                    </td>
+                    <td class="py-3 px-4 text-right <%= row[:net] >= 0 ? 'text-success' : 'text-destructive' %>">
+                      <%= row[:savings_rate] %>%
+                    </td>
+                    <td class="py-3 px-4 text-right text-xs text-subdued privacy-sensitive">
+                      <%= Money.new(row.dig(:conservative, :net) || 0, currency).format %>
+                      <span class="mx-1">→</span>
+                      <%= Money.new(row.dig(:optimistic, :net) || 0, currency).format %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
