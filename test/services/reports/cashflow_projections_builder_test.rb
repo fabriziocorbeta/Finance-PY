@@ -100,6 +100,17 @@ module Reports
     end
 
     test "includes pending receivable installments in projected months" do
+      # The family fixtures already carry receivables with pending installments,
+      # so measure what this test's receivable adds on top of that baseline
+      # instead of asserting absolute totals.
+      baseline = Reports::CashflowProjectionsBuilder.new(
+        family: @family,
+        user: @user,
+        horizon_months: 6
+      ).call
+      baseline_total = baseline[:drivers][:scheduled_receivables_total]
+      baseline_first_month = baseline[:projected_series].first[:receivables_income]
+
       receivable = Receivable.new(
         family: @family,
         total_amount: 600.0,
@@ -120,9 +131,9 @@ module Reports
         horizon_months: 6
       ).call
 
-      assert_equal 600.0, result[:drivers][:scheduled_receivables_total]
+      assert_in_delta 600.0, result[:drivers][:scheduled_receivables_total] - baseline_total, 0.01
       first_proj = result[:projected_series].first
-      assert_equal 200.0, first_proj[:receivables_income]
+      assert_in_delta 200.0, first_proj[:receivables_income] - baseline_first_month, 0.01
     end
   end
 end
