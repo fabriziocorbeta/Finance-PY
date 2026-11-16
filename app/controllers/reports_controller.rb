@@ -109,6 +109,14 @@ class ReportsController < ApplicationController
       # Build trend data (last 6 months)
       @trends_data = build_trends_data
 
+      # Cashflow evolution & future projections (3, 6, or 12 months)
+      @projection_months = params[:projection_months]
+      @cashflow_projections = Reports::CashflowProjectionsBuilder.new(
+        family: Current.family,
+        user: Current.user,
+        horizon_months: @projection_months
+      ).call
+
       # Net worth metrics
       @net_worth_metrics = build_net_worth_metrics
 
@@ -148,6 +156,19 @@ class ReportsController < ApplicationController
           title: "reports.trends.title",
           partial: "reports/trends_insights",
           locals: { trends_data: @trends_data },
+          visible: @has_accounts,
+          collapsible: true
+        },
+        {
+          key: "cashflow_projections",
+          title: "reports.cashflow_projections.title",
+          partial: "reports/cashflow_projections",
+          locals: {
+            cashflow_projections: @cashflow_projections,
+            period_type: @period_type,
+            start_date: @start_date,
+            end_date: @end_date
+          },
           visible: @has_accounts,
           collapsible: true
         },
