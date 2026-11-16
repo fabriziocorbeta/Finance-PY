@@ -10,7 +10,8 @@ class Api::V1::ReportsController < Api::V1::BaseController
       user: current_resource_owner,
       period_type: params[:period_type],
       start_date: params[:start_date],
-      end_date: params[:end_date]
+      end_date: params[:end_date],
+      projection_months: params[:projection_months]
     )
 
     render json: builder.build_all

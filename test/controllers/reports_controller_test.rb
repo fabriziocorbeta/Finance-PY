@@ -87,6 +87,14 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "index renders cashflow projections section with selectable horizon" do
+    get reports_path(period_type: :monthly, projection_months: 12)
+    assert_response :ok
+    assert_select "h2", text: I18n.t("reports.cashflow_projections.title")
+    assert_select "#cashflow-projections-section"
+    assert_select "#cashflowProjectionsChart[data-controller='cashflow-projections-chart']"
+  end
+
   test "index handles invalid date parameters gracefully" do
     get reports_path(
       period_type: :custom,
