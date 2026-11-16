@@ -233,7 +233,9 @@ class PurchaseOrdersControllerTest < ActionDispatch::IntegrationTest
 
     get new_purchase_order_url
     assert_response :success
-    assert_includes response.body, accounts(:depository).id.to_s
-    assert_not_includes response.body, accounts(:credit_card).id.to_s
+    # Scope to the form control: the layout sidebar also links every account
+    # the member can see (read-only ones included), so a whole-body match is wrong.
+    assert_select "select[name='purchase_order[account_id]'] option[value=?]", accounts(:depository).id.to_s, count: 1
+    assert_select "select[name='purchase_order[account_id]'] option[value=?]", accounts(:credit_card).id.to_s, count: 0
   end
 end

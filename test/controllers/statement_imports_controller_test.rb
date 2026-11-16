@@ -214,13 +214,15 @@ class StatementImportsControllerTest < ActionDispatch::IntegrationTest
 
     get statement_import_url(@import)
     assert_response :success
-    assert_includes response.body, accounts(:depository).id.to_s
+    # Scope to the form control: the layout sidebar also links every account
+    # the member can see (read-only ones included), so a whole-body match is wrong.
+    assert_select "input[type='hidden'][name*='account_id'][value=?]", accounts(:depository).id.to_s, count: 1
 
     account_shares(:depository_shared_with_member).update!(permission: "read_only")
 
     get statement_import_url(@import)
     assert_response :success
-    assert_not_includes response.body, accounts(:depository).id.to_s
-    assert_not_includes response.body, accounts(:credit_card).id.to_s
+    assert_select "input[type='hidden'][name*='account_id'][value=?]", accounts(:depository).id.to_s, count: 0
+    assert_select "input[type='hidden'][name*='account_id'][value=?]", accounts(:credit_card).id.to_s, count: 0
   end
 end
