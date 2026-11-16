@@ -65,6 +65,57 @@ en:
       insight_higher_weekday: "You spend %{percent}% more per transaction on weekdays than weekends"
       insight_similar: "Your spending per transaction is similar on weekdays and weekends"
       no_spending_data: No spending data available for this period
+    cashflow_projections:
+      title: Evolution & Future Projections
+      subtitle: "Historical 12-month evolution and %{months}-month hybrid projection (recurring items + historical trend + budgets)"
+      horizon_label: Horizon
+      horizons:
+        months_3: 3M
+        months_6: 6M
+        months_12: 12M
+      metrics:
+        projected_income: "Est. Income (%{months}M)"
+        projected_expenses: "Est. Expenses (%{months}M)"
+        projected_net: "Est. Net Savings (%{months}M)"
+        monthly_avg: "Avg: %{amount}/mo"
+        savings_rate: "Projected savings rate: %{rate}%"
+        net_scenarios: Net Scenarios
+        optimistic: Optimistic
+        conservative: Conservative
+      chart:
+        title: Historical Evolution vs. Future Projection
+        income: Income
+        expenses: Expenses
+        net: Net Savings
+        actual: Actual
+        projected: Projected
+        scenario_range: Scenario range
+      drivers:
+        recurring_title: Recurring Base
+        items_count:
+          one: "%{count} active item"
+          other: "%{count} active items"
+        fixed_income: Recurring income
+        fixed_expenses: Recurring expenses
+        historical_title: Historical Trend
+        months_analyzed:
+          one: "%{count} month"
+          other: "%{count} months"
+        weighted_income: Weighted income
+        weighted_expenses: Weighted expenses
+        targets_title: Budget & Receivables
+        budget_active: Active
+        budget_target: Monthly budget
+        scheduled_receivables: Scheduled receivables
+      table:
+        title: "Monthly Projection Breakdown (Next %{months} Months)"
+        month: Month
+        projected_income: Est. Income
+        projected_expenses: Est. Expenses
+        projected_net: Est. Net
+        savings_rate: Savings Rate
+        scenario_range: Net Range (Cons. → Opt.)
+        receivables_short: receivables
     empty_state:
       title: No Data Available
       description: Start tracking your finances by adding transactions or connecting your accounts to see comprehensive reports

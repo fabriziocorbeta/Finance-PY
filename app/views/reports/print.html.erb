@@ -185,6 +185,35 @@
     </section>
   <% end %>
 
+  <%# Cashflow Projections %>
+  <% if @cashflow_projections && @cashflow_projections[:projected_series].present? %>
+    <section class="tufte-section">
+      <h2 class="tufte-section-title"><%= t("reports.cashflow_projections.title") %> (<%= @cashflow_projections[:horizon_months] %>M)</h2>
+      <table class="tufte-table">
+        <thead>
+          <tr>
+            <th><%= t("reports.cashflow_projections.table.month") %></th>
+            <th class="tufte-right"><%= t("reports.cashflow_projections.table.projected_income") %></th>
+            <th class="tufte-right"><%= t("reports.cashflow_projections.table.projected_expenses") %></th>
+            <th class="tufte-right"><%= t("reports.cashflow_projections.table.projected_net") %></th>
+            <th class="tufte-right"><%= t("reports.cashflow_projections.table.savings_rate") %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @cashflow_projections[:projected_series].each do |row| %>
+            <tr>
+              <td><%= row[:month_label] %></td>
+              <td class="tufte-right tufte-income"><%= Money.new(row[:income], Current.family.currency).format %></td>
+              <td class="tufte-right tufte-expense"><%= Money.new(row[:expenses], Current.family.currency).format %></td>
+              <td class="tufte-right <%= row[:net] >= 0 ? "tufte-income" : "tufte-expense" %>"><%= Money.new(row[:net], Current.family.currency).format %></td>
+              <td class="tufte-right"><%= row[:savings_rate] %>%</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </section>
+  <% end %>
+
   <%# Investments %>
   <% if @investment_metrics[:has_investments] %>
     <section class="tufte-section">
