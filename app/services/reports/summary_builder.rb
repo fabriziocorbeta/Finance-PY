@@ -4,12 +4,13 @@ module Reports
   class SummaryBuilder
     ALLOWED_PERIOD_TYPES = %w[monthly quarterly ytd last_6_months custom].freeze
 
-    attr_reader :family, :user, :period_type, :start_date, :end_date, :period, :previous_period
+    attr_reader :family, :user, :period_type, :start_date, :end_date, :period, :previous_period, :projection_months
 
-    def initialize(family:, user: nil, period_type: "monthly", start_date: nil, end_date: nil)
+    def initialize(family:, user: nil, period_type: "monthly", start_date: nil, end_date: nil, projection_months: nil)
       @family = family
       @user = user
       @period_type = (period_type.presence_in(ALLOWED_PERIOD_TYPES) || "monthly").to_sym
+      @projection_months = projection_months
       parse_dates(start_date, end_date)
 
       # Build periods
@@ -27,6 +28,7 @@ module Reports
         currency: family.currency,
         summary: build_summary_metrics,
         trends: build_trends_data,
+        cashflow_projections: build_cashflow_projections,
         net_worth: build_net_worth_metrics,
         transactions_breakdown: build_transactions_breakdown,
         investment_metrics: build_investment_metrics,
@@ -177,6 +179,14 @@ module Reports
         end
 
         trends
+      end
+
+      def build_cashflow_projections
+        Reports::CashflowProjectionsBuilder.new(
+          family: family,
+          user: user,
+          horizon_months: projection_months
+        ).call
       end
 
       def build_net_worth_metrics
