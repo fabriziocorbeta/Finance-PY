@@ -6,6 +6,7 @@ import 'imports_screen.dart';
 import 'investments_screen.dart';
 import 'recent_transactions_screen.dart';
 import 'recurring_transactions_screen.dart';
+import 'reports_screen.dart';
 import 'products_screen.dart';
 import 'fleet_vehicles_screen.dart';
 import 'purchase_orders_screen.dart';
@@ -94,6 +95,21 @@ class MoreScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const BudgetScreen(),
+                ),
+              );
+            },
+          ),
+          Divider(height: 1, color: colorScheme.outlineVariant),
+          _buildMenuItem(
+            context: context,
+            icon: Icons.bar_chart_outlined,
+            title: 'Reports',
+            subtitle: 'Income, spending, and net worth summary',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ReportsScreen(),
                 ),
               );
             },
