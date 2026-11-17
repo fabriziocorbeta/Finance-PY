@@ -39,6 +39,71 @@ class FleetVehiclesProvider with ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> createFleetVehicle({
+    required String accessToken,
+    String? plate,
+    String? brand,
+    String? model,
+    int? year,
+    String? status,
+    String? notes,
+  }) async {
+    final result = await _service.createFleetVehicle(
+      accessToken: accessToken,
+      plate: plate,
+      brand: brand,
+      model: model,
+      year: year,
+      status: status,
+      notes: notes,
+    );
+    if (result['success'] == true) {
+      _vehicles = [..._vehicles, result['vehicle'] as FleetVehicle];
+      notifyListeners();
+    }
+    return result;
+  }
+
+  Future<Map<String, dynamic>> updateFleetVehicle({
+    required String accessToken,
+    required String vehicleId,
+    String? plate,
+    String? brand,
+    String? model,
+    int? year,
+    String? status,
+    String? notes,
+  }) async {
+    final result = await _service.updateFleetVehicle(
+      accessToken: accessToken,
+      vehicleId: vehicleId,
+      plate: plate,
+      brand: brand,
+      model: model,
+      year: year,
+      status: status,
+      notes: notes,
+    );
+    if (result['success'] == true) {
+      final updated = result['vehicle'] as FleetVehicle;
+      _vehicles = _vehicles.map((v) => v.id == vehicleId ? updated : v).toList();
+      notifyListeners();
+    }
+    return result;
+  }
+
+  Future<Map<String, dynamic>> deleteFleetVehicle({
+    required String accessToken,
+    required String vehicleId,
+  }) async {
+    final result = await _service.deleteFleetVehicle(accessToken: accessToken, vehicleId: vehicleId);
+    if (result['success'] == true) {
+      _vehicles = _vehicles.where((v) => v.id != vehicleId).toList();
+      notifyListeners();
+    }
+    return result;
+  }
+
   void clear() {
     _vehicles = [];
     _errorMessage = null;
