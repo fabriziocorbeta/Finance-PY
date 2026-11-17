@@ -39,6 +39,86 @@ class ProductsProvider with ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> createProduct({
+    required String accessToken,
+    required String name,
+    String? sku,
+    String? category,
+    String? supplier,
+    required double buyPrice,
+    required double sellPrice,
+    required String currency,
+    int? minStock,
+    String? description,
+    int initialStock = 0,
+  }) async {
+    final result = await _service.createProduct(
+      accessToken: accessToken,
+      name: name,
+      sku: sku,
+      category: category,
+      supplier: supplier,
+      buyPrice: buyPrice,
+      sellPrice: sellPrice,
+      currency: currency,
+      minStock: minStock,
+      description: description,
+      initialStock: initialStock,
+    );
+    if (result['success'] == true) {
+      _products = [..._products, result['product'] as Product]..sort((a, b) => a.name.compareTo(b.name));
+      notifyListeners();
+    }
+    return result;
+  }
+
+  Future<Map<String, dynamic>> updateProduct({
+    required String accessToken,
+    required String productId,
+    required String name,
+    String? sku,
+    String? category,
+    String? supplier,
+    required double buyPrice,
+    required double sellPrice,
+    required String currency,
+    int? minStock,
+    String? description,
+  }) async {
+    final result = await _service.updateProduct(
+      accessToken: accessToken,
+      productId: productId,
+      name: name,
+      sku: sku,
+      category: category,
+      supplier: supplier,
+      buyPrice: buyPrice,
+      sellPrice: sellPrice,
+      currency: currency,
+      minStock: minStock,
+      description: description,
+    );
+    if (result['success'] == true) {
+      final updated = result['product'] as Product;
+      _products = _products.map((p) => p.id == productId ? updated : p).toList()
+        ..sort((a, b) => a.name.compareTo(b.name));
+      notifyListeners();
+    }
+    return result;
+  }
+
+  Future<Map<String, dynamic>> deleteProduct({
+    required String accessToken,
+    required String productId,
+  }) async {
+    final result = await _service.deleteProduct(accessToken: accessToken, productId: productId);
+    if (result['success'] == true) {
+      _products = _products.where((p) => p.id != productId).toList();
+      notifyListeners();
+    }
+    return result;
+  }
+
   void clear() {
     _products = [];
     _errorMessage = null;
