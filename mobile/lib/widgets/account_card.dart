@@ -5,12 +5,14 @@ class AccountCard extends StatelessWidget {
   final Account account;
   final VoidCallback? onTap;
   final VoidCallback? onSwipe;
+  final VoidCallback? onLongPress;
 
   const AccountCard({
     super.key,
     required this.account,
     this.onTap,
     this.onSwipe,
+    this.onLongPress,
   });
 
   IconData _getAccountIcon() {
@@ -58,6 +60,7 @@ class AccountCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),

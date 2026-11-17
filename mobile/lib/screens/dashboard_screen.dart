@@ -12,6 +12,7 @@ import '../widgets/connectivity_banner.dart';
 import '../widgets/net_worth_card.dart';
 import '../widgets/currency_filter.dart';
 import '../widgets/add_entry_chooser.dart';
+import 'account_detail_screen.dart';
 import 'transactions_list_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -277,6 +278,15 @@ class DashboardScreenState extends State<DashboardScreen> {
       default:
         return ' ';
     }
+  }
+
+  void _openAccountDetail(Account account) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AccountDetailScreen(accountId: account.id, accountName: account.name),
+      ),
+    );
   }
 
   Future<void> _handleAccountTap(Account account) async {
@@ -575,6 +585,7 @@ class DashboardScreenState extends State<DashboardScreen> {
                 account: account,
                 onTap: () => _handleAccountTap(account),
                 onSwipe: () => _handleAccountSwipe(account),
+                onLongPress: () => _openAccountDetail(account),
               );
             },
             childCount: accounts.length,
@@ -632,6 +643,7 @@ class DashboardScreenState extends State<DashboardScreen> {
                     account: account,
                     onTap: () => _handleAccountTap(account),
                     onSwipe: () => _handleAccountSwipe(account),
+                    onLongPress: () => _openAccountDetail(account),
                   );
                 },
                 childCount: groupAccounts.length,
