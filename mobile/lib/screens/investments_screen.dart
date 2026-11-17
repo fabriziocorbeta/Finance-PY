@@ -207,7 +207,7 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        '${holding.qty} ${holding.security.ticker} @ ${holding.price}',
+        '${holding.formattedQty} ${holding.security.ticker} @ ${holding.price}',
         style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
       ),
       trailing: Column(

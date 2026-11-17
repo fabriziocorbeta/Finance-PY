@@ -81,4 +81,32 @@ class Holding {
     final cleaned = amount.replaceAll(RegExp(r'[^\d.-]'), '');
     return double.tryParse(cleaned) ?? 0.0;
   }
+
+  /// Mirrors ApplicationHelper#format_quantity on the web: the API returns
+  /// qty as a raw decimal, which can print with long floating-point noise
+  /// (e.g. "382.1899999999999996"), so round to a precision that scales
+  /// with magnitude rather than showing every raw digit.
+  String get formattedQty {
+    final value = qtyAsDouble;
+    if (value == 0) return '0';
+
+    final absValue = value.abs();
+    final int precision;
+    if (absValue >= 1) {
+      precision = 1;
+    } else if (absValue >= 0.01) {
+      precision = 2;
+    } else if (absValue >= 0.0001) {
+      precision = 4;
+    } else {
+      precision = 8;
+    }
+
+    var formatted = value.toStringAsFixed(precision);
+    if (formatted.contains('.')) {
+      formatted = formatted.replaceFirst(RegExp(r'0+$'), '');
+      formatted = formatted.replaceFirst(RegExp(r'\.$'), '');
+    }
+    return formatted;
+  }
 }

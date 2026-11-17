@@ -15,10 +15,22 @@ class HoldingsProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  /// Holdings grouped by account id, each account's list sorted by value desc.
+  /// Current holdings grouped by account id: only the latest dated snapshot
+  /// per security (mirrors Account#current_holdings on the web), excluding
+  /// zeroed-out positions, sorted by value desc within each account.
   Map<String, List<Holding>> get holdingsByAccount {
-    final grouped = <String, List<Holding>>{};
+    final latestBySecurity = <String, Holding>{};
     for (final holding in _holdings) {
+      if (holding.qtyAsDouble == 0) continue;
+      final key = '${holding.account.id}:${holding.security.id}';
+      final current = latestBySecurity[key];
+      if (current == null || holding.date.compareTo(current.date) > 0) {
+        latestBySecurity[key] = holding;
+      }
+    }
+
+    final grouped = <String, List<Holding>>{};
+    for (final holding in latestBySecurity.values) {
       grouped.putIfAbsent(holding.account.id, () => []).add(holding);
     }
     for (final list in grouped.values) {
@@ -27,11 +39,10 @@ class HoldingsProvider with ChangeNotifier {
     return grouped;
   }
 
-  double totalValueForAccount(String accountId) {
-    return _holdings
-        .where((h) => h.account.id == accountId)
-        .fold(0.0, (sum, h) => sum + h.amountAsDouble);
-  }
+  /// The holdings endpoint returns every dated snapshot, not just current
+  /// positions, so a family with a long history can span several pages.
+  /// Caps at 20 pages (2000 rows) as a sane ceiling against a runaway loop.
+  static const int _maxPages = 20;
 
   Future<void> fetchHoldings({required String accessToken}) async {
     _isLoading = true;
@@ -39,14 +50,32 @@ class HoldingsProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final result = await _holdingsService.getHoldings(accessToken: accessToken);
+      final allHoldings = <Holding>[];
+      var page = 1;
+      var totalPages = 1;
 
-      if (result['success'] == true) {
-        _holdings = result['holdings'] as List<Holding>;
-        _errorMessage = null;
-      } else {
-        _errorMessage = result['error'] as String? ?? 'Failed to fetch holdings';
-        _log.error('HoldingsProvider', 'Failed to fetch holdings: $_errorMessage');
+      do {
+        final result = await _holdingsService.getHoldings(
+          accessToken: accessToken,
+          page: page,
+        );
+
+        if (result['success'] != true) {
+          _errorMessage = result['error'] as String? ?? 'Failed to fetch holdings';
+          _log.error('HoldingsProvider', 'Failed to fetch holdings: $_errorMessage');
+          break;
+        }
+
+        allHoldings.addAll(result['holdings'] as List<Holding>);
+        final pagination = result['pagination'] as Map<String, dynamic>?;
+        totalPages = (pagination?['total_pages'] as num?)?.toInt() ?? 1;
+        page++;
+      } while (_errorMessage == null && page <= totalPages && page <= _maxPages);
+
+      // Keep whatever pages loaded successfully even if a later page failed,
+      // but leave the error message in place so the UI can still surface it.
+      if (allHoldings.isNotEmpty) {
+        _holdings = allHoldings;
       }
     } catch (e) {
       _errorMessage = 'Failed to load holdings';
