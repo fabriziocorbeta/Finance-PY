@@ -5,6 +5,7 @@ import 'goals_screen.dart';
 import 'investments_screen.dart';
 import 'recent_transactions_screen.dart';
 import 'recurring_transactions_screen.dart';
+import 'tags_merchants_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
@@ -101,6 +102,21 @@ class MoreScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const RecurringTransactionsScreen(),
+                ),
+              );
+            },
+          ),
+          Divider(height: 1, color: colorScheme.outlineVariant),
+          _buildMenuItem(
+            context: context,
+            icon: Icons.label_outline,
+            title: 'Tags & Merchants',
+            subtitle: 'Browse your family\'s tags and merchants',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TagsMerchantsScreen(),
                 ),
               );
             },
