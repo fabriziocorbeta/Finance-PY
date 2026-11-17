@@ -4,6 +4,7 @@ import 'calendar_screen.dart';
 import 'goals_screen.dart';
 import 'investments_screen.dart';
 import 'recent_transactions_screen.dart';
+import 'recurring_transactions_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
@@ -85,6 +86,21 @@ class MoreScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const GoalsScreen(),
+                ),
+              );
+            },
+          ),
+          Divider(height: 1, color: colorScheme.outlineVariant),
+          _buildMenuItem(
+            context: context,
+            icon: Icons.repeat,
+            title: 'Recurring Transactions',
+            subtitle: 'View detected subscriptions and recurring bills',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const RecurringTransactionsScreen(),
                 ),
               );
             },
