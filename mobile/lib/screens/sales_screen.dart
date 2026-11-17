@@ -5,6 +5,7 @@ import '../models/sale.dart';
 import '../providers/sales_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/business_mode_gate.dart';
+import 'sale_form_screen.dart';
 
 class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key});
@@ -43,6 +44,87 @@ class _SalesScreenState extends State<SalesScreen> {
     }
   }
 
+  Future<void> _createSale() async {
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => const SaleFormScreen()),
+    );
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sale created.')));
+    }
+  }
+
+  Future<void> _completeSale(Sale sale) async {
+    final authProvider = context.read<AuthProvider>();
+    final provider = context.read<SalesProvider>();
+    final accessToken = await authProvider.getValidAccessToken();
+    if (accessToken == null || !mounted) return;
+
+    final result = await provider.completeSale(accessToken: accessToken, saleId: sale.id);
+    if (!mounted) return;
+    if (result['success'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['error']?.toString() ?? 'Failed to complete sale')),
+      );
+    }
+  }
+
+  Future<void> _cancelSale(Sale sale) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Sale'),
+        content: const Text('This will cancel the sale. Continue?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Cancel Sale')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final provider = context.read<SalesProvider>();
+    final accessToken = await authProvider.getValidAccessToken();
+    if (accessToken == null || !mounted) return;
+
+    final result = await provider.cancelSale(accessToken: accessToken, saleId: sale.id);
+    if (!mounted) return;
+    if (result['success'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['error']?.toString() ?? 'Failed to cancel sale')),
+      );
+    }
+  }
+
+  Future<void> _deleteSale(Sale sale) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Sale'),
+        content: const Text('Delete this draft sale? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final provider = context.read<SalesProvider>();
+    final accessToken = await authProvider.getValidAccessToken();
+    if (accessToken == null || !mounted) return;
+
+    final result = await provider.deleteSale(accessToken: accessToken, saleId: sale.id);
+    if (!mounted) return;
+    if (result['success'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['error']?.toString() ?? 'Failed to delete sale')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -51,6 +133,9 @@ class _SalesScreenState extends State<SalesScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Sales')),
+      floatingActionButton: provider.errorMessage == BusinessModeGate.errorCode
+          ? null
+          : FloatingActionButton(onPressed: _createSale, child: const Icon(Icons.add)),
       body: RefreshIndicator(
         onRefresh: _load,
         child: provider.isLoading && sales.isEmpty
@@ -62,6 +147,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     : sales.isEmpty
                         ? _buildEmptyState(colorScheme)
                         : ListView.separated(
+                            padding: const EdgeInsets.only(bottom: 80),
                             itemCount: sales.length,
                             separatorBuilder: (context, index) => Divider(height: 1, color: colorScheme.outlineVariant),
                             itemBuilder: (context, index) => _buildItem(colorScheme, sales[index]),
@@ -136,9 +222,28 @@ class _SalesScreenState extends State<SalesScreen> {
         '${sale.saleItems.length} item${sale.saleItems.length == 1 ? '' : 's'} • ${sale.status}',
         style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
       ),
-      trailing: Text(
-        format.format(sale.total),
-        style: const TextStyle(fontWeight: FontWeight.bold),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            format.format(sale.total),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          if (sale.status == 'draft')
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert, color: colorScheme.onSurfaceVariant, size: 18),
+              onSelected: (value) {
+                if (value == 'complete') _completeSale(sale);
+                if (value == 'cancel') _cancelSale(sale);
+                if (value == 'delete') _deleteSale(sale);
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'complete', child: Text('Mark completed')),
+                PopupMenuItem(value: 'cancel', child: Text('Cancel')),
+                PopupMenuItem(value: 'delete', child: Text('Delete')),
+              ],
+            ),
+        ],
       ),
     );
   }
