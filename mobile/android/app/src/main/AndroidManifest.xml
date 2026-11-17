@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
 
     <application
-        android:label="Sure Finances"
+        android:label="FinancePY"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -29,7 +29,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="sureapp" android:host="oauth" android:pathPrefix="/callback" />
+                <data android:scheme="financepy" android:host="oauth" android:pathPrefix="/callback" />
             </intent-filter>
         </activity>
         <meta-data

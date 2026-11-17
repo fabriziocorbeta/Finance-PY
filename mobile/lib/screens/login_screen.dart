@@ -454,7 +454,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Column(
                           children: [
                             Text(
-                              'Sure server URL:',
+                              'FinancePY server URL:',
                               style:
                                   Theme.of(context).textTheme.bodySmall?.copyWith(
                                         color: colorScheme.onSurfaceVariant,

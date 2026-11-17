@@ -30,7 +30,7 @@ class BiometricService {
   }
 
   /// Triggers the OS biometric prompt. Returns true if authentication succeeds.
-  Future<bool> authenticate({String reason = 'Unlock Sure to continue'}) async {
+  Future<bool> authenticate({String reason = 'Unlock FinancePY to continue'}) async {
     try {
       return await _auth.authenticate(
         localizedReason: reason,

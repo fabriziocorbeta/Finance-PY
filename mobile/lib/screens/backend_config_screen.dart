@@ -62,7 +62,7 @@ class _BackendConfigScreenState extends State<BackendConfigScreen> {
         '',
       );
 
-      // Check /sessions/new page to verify it's a Sure backend
+      // Check /sessions/new page to verify it's a FinancePY backend
       final sessionsUrl = Uri.parse('$normalizedUrl/sessions/new');
       final sessionsResponse = await http
           .get(sessionsUrl, headers: {'Accept': 'text/html'})
@@ -87,7 +87,7 @@ class _BackendConfigScreenState extends State<BackendConfigScreen> {
         if (mounted) {
           setState(() {
             _errorMessage =
-                'Server responded with status ${sessionsResponse.statusCode}. Please check if this is a Sure backend server.';
+                'Server responded with status ${sessionsResponse.statusCode}. Please check if this is a FinancePY backend server.';
           });
         }
       }
@@ -204,7 +204,7 @@ class _BackendConfigScreenState extends State<BackendConfigScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Update your Sure server URL',
+                  'Update your FinancePY server URL',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -237,7 +237,7 @@ class _BackendConfigScreenState extends State<BackendConfigScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        '• https://demo.sure.am\n'
+                        '• https://finance.cd-co.com.py\n'
                         '• https://your-domain.com\n'
                         '• http://localhost:3000',
                         style: TextStyle(
@@ -327,9 +327,9 @@ class _BackendConfigScreenState extends State<BackendConfigScreen> {
                   autocorrect: false,
                   textInputAction: TextInputAction.done,
                   decoration: const InputDecoration(
-                    labelText: 'Sure server URL',
+                    labelText: 'FinancePY server URL',
                     prefixIcon: Icon(Icons.cloud_outlined),
-                    hintText: 'https://app.sure.am',
+                    hintText: 'https://finance.cd-co.com.py',
                   ),
                   validator: _validateUrl,
                   onFieldSubmitted: (_) => _saveAndContinue(),

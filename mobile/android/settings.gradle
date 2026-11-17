@@ -23,5 +23,5 @@ plugins {
     id "org.jetbrains.kotlin.android" version "1.9.24" apply false
 }
 
-rootProject.name = 'sure_mobile'
+rootProject.name = 'financepy_mobile'
 include ':app'

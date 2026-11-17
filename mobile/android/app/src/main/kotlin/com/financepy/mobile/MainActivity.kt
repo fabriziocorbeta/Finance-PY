@@ -1,4 +1,4 @@
-package am.sure.mobile
+package com.financepy.mobile
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 

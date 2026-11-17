@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'api_config.dart';
 
 /// Service for fetching balance sheet data (net worth, assets, liabilities)
-/// from the Sure API.
+/// from the FinancePY API.
 class BalanceSheetService {
   /// Fetches the family's balance sheet from GET /api/v1/balance_sheet.
   ///

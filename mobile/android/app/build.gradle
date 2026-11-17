@@ -52,7 +52,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace "am.sure.mobile"
+    namespace "com.financepy.mobile"
     compileSdk = 36
     ndkVersion flutter.ndkVersion
 
@@ -77,7 +77,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "am.sure.mobile"
+        applicationId "com.financepy.mobile"
         minSdkVersion 24
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()

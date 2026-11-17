@@ -43,7 +43,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
     final now = DateTime.now();
     final formattedDate = DateFormat('yyyy/MM/dd').format(now);
     _dateController.text = formattedDate;
-    _nameController.text = 'SureApp';
+    _nameController.text = 'FinancePY';
     _selectedCurrency = widget.account.currency;
     _fetchCategories();
   }
@@ -397,7 +397,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                             decoration: const InputDecoration(
                               labelText: 'Name',
                               prefixIcon: Icon(Icons.label),
-                              helperText: 'Optional (default: SureApp)',
+                              helperText: 'Optional (default: FinancePY)',
                             ),
                           ),
                           const SizedBox(height: 16),

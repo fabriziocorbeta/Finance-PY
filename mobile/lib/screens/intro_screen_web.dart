@@ -232,7 +232,7 @@ const String _introHtmlContent = '''
         <div class="bg-container shadow-border-xs rounded-2xl p-8 text-center space-y-4">
           <h2 class="text-xl font-semibold text-primary">Intro experience coming soon</h2>
           <p class="text-secondary">
-            We're building a richer onboarding journey to learn about your goals, milestones, and day-to-day needs. For now, head over to the chat sidebar to start a conversation with Sure and let us know where you are in your financial journey.
+            We're building a richer onboarding journey to learn about your goals, milestones, and day-to-day needs. For now, head over to the chat sidebar to start a conversation with FinancePY and let us know where you are in your financial journey.
           </p>
         </div>
       </div>

@@ -40,16 +40,16 @@ class DatabaseHelper {
     if (_database != null) return _database!;
     
     try {
-      _database = await _initDB('sure_offline.db');
+      _database = await _initDB('financepy_offline.db');
       return _database!;
     } catch (e, stackTrace) {
-      _log.error('DatabaseHelper', 'Error initializing local database sure_offline.db: $e');
+      _log.error('DatabaseHelper', 'Error initializing local database financepy_offline.db: $e');
       FlutterError.reportError(
         FlutterErrorDetails(
           exception: e,
           stack: stackTrace,
           library: 'database_helper',
-          context: ErrorDescription('while opening sure_offline.db'),
+          context: ErrorDescription('while opening financepy_offline.db'),
         ),
       );
       rethrow;

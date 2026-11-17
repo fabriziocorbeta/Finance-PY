@@ -30,7 +30,7 @@ class DeviceService {
     // Generate a unique device ID
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final random = timestamp.toString().hashCode.abs();
-    return 'sure_mobile_${timestamp}_$random';
+    return 'financepy_mobile_${timestamp}_$random';
   }
 
   String _getDeviceName() {

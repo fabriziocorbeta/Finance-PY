@@ -37,13 +37,13 @@ void main() async {
   await ApiConfig.initialize();
 
   // Add initial log entry
-  LogService.instance.info('App', 'Sure app starting...');
+  LogService.instance.info('App', 'FinancePY app starting...');
 
-  runApp(const SureApp());
+  runApp(const FinancePyApp());
 }
 
-class SureApp extends StatelessWidget {
-  const SureApp({super.key});
+class FinancePyApp extends StatelessWidget {
+  const FinancePyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +98,7 @@ class SureApp extends StatelessWidget {
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) => MaterialApp(
-        title: 'Sure Finances',
+        title: 'FinancePY',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           fontFamily: 'Geist',
@@ -263,7 +263,7 @@ class _AppWrapperState extends State<AppWrapper> with WidgetsBindingObserver {
   }
 
   void _handleDeepLink(Uri uri) {
-    if (uri.scheme == 'sureapp' && uri.host == 'oauth') {
+    if (uri.scheme == 'financepy' && uri.host == 'oauth') {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       authProvider.handleSsoCallback(uri);
     }

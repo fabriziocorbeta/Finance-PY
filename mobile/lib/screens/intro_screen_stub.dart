@@ -25,7 +25,7 @@ class IntroScreenPlatform extends StatelessWidget {
                   SizedBox(height: 12),
                   Text(
                     "We're building a richer onboarding journey to learn about your goals, milestones, and day-to-day needs. "
-                    'For now, head over to the chat sidebar to start a conversation with Sure and let us know where you are in your financial journey.',
+                    'For now, head over to the chat sidebar to start a conversation with FinancePY and let us know where you are in your financial journey.',
                     textAlign: TextAlign.center,
                   ),
                 ],

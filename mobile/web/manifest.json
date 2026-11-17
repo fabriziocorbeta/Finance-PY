@@ -1,6 +1,6 @@
 {
-    "name": "Sure",
-    "short_name": "Sure",
+    "name": "FinancePY",
+    "short_name": "FinancePY",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
