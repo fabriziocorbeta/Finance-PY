@@ -471,8 +471,12 @@ class Provider::YahooFinance < Provider
       "#{@cache_prefix}_rate_limited_until"
     end
 
+    def rate_limited?
+      Rails.cache.read(rate_limit_cache_key).present?
+    end
+
     def check_rate_limit!
-      raise RateLimitError, "Yahoo Finance rate limit exceeded (cooling down, retry later)" if Rails.cache.read(rate_limit_cache_key)
+      raise RateLimitError, "Yahoo Finance rate limit exceeded (cooling down, retry later)" if rate_limited?
     end
 
     def mark_rate_limited!
