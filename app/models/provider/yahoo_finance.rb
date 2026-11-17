@@ -15,6 +15,13 @@ class Provider::YahooFinance < Provider
   # Cache duration for repeated requests (5 minutes)
   CACHE_DURATION = 5.minutes
 
+  # Once Yahoo returns a 429, further requests fail fast for this long instead
+  # of each burning a full 5-retry exponential backoff against an endpoint
+  # we already know is blocked. Without this, a nightly import over many
+  # securities would retry-storm Yahoo security-by-security, taking far
+  # longer and likely extending the block.
+  RATE_LIMIT_COOLDOWN = 10.minutes
+
   # Maximum cache duration for cookie/crumb authentication
   # Even if cookie has longer expiry, cap it to avoid stale crumbs
   MAX_CRUMB_CACHE_DURATION = 1.hour
@@ -81,6 +88,7 @@ class Provider::YahooFinance < Provider
         if cached_result = get_cached_result(cache_key)
           cached_result
         else
+          check_rate_limit!
           # For a single date, we'll fetch a range and find the closest match
           end_date = date
           start_date = date - 10.days # Extended range for better coverage
@@ -123,6 +131,7 @@ class Provider::YahooFinance < Provider
         if cached_result = get_cached_result(cache_key)
           cached_result
         else
+          check_rate_limit!
           # Try both direct and inverse currency pairs
           rates = fetch_currency_pair_data(from, to, start_date, end_date) ||
                   fetch_inverse_currency_pair_data(from, to, start_date, end_date)
@@ -148,6 +157,7 @@ class Provider::YahooFinance < Provider
       if cached_result = get_cached_result(cache_key)
         cached_result
       else
+        check_rate_limit!
         throttle_request
         response = client.get("#{base_url}/v1/finance/search") do |req|
           req.params["q"] = symbol.strip.upcase
@@ -182,6 +192,7 @@ class Provider::YahooFinance < Provider
       symbol = normalize_symbol(symbol, exchange_operating_mic)
 
       # quoteSummary endpoint requires cookie/crumb authentication
+      check_rate_limit!
       throttle_request
       cookie, crumb = fetch_cookie_and_crumb
 
@@ -272,6 +283,7 @@ class Provider::YahooFinance < Provider
     with_provider_response do
       symbol = normalize_symbol(symbol, exchange_operating_mic)
       validate_date_params!(start_date, end_date)
+      check_rate_limit!
       # Convert dates to Unix timestamps using UTC to ensure consistent epoch boundaries across timezones
       period1 = start_date.to_time.utc.to_i
       period2 = end_date.end_of_day.to_time.utc.to_i
@@ -454,6 +466,18 @@ class Provider::YahooFinance < Provider
     # ================================
     #           Caching
     # ================================
+
+    def rate_limit_cache_key
+      "#{@cache_prefix}_rate_limited_until"
+    end
+
+    def check_rate_limit!
+      raise RateLimitError, "Yahoo Finance rate limit exceeded (cooling down, retry later)" if Rails.cache.read(rate_limit_cache_key)
+    end
+
+    def mark_rate_limited!
+      Rails.cache.write(rate_limit_cache_key, true, expires_in: RATE_LIMIT_COOLDOWN)
+    end
 
     def get_cached_result(key)
       full_key = "#{@cache_prefix}_#{key}"
@@ -859,6 +883,7 @@ class Provider::YahooFinance < Provider
     def default_error_transformer(error)
       case error
       when Faraday::TooManyRequestsError
+        mark_rate_limited!
         RateLimitError.new("Yahoo Finance rate limit exceeded", details: error.response&.dig(:body))
       when Faraday::UnauthorizedError
         # 401 indicates missing or invalid crumb/cookie authentication

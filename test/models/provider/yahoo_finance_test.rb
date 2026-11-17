@@ -182,6 +182,21 @@ class Provider::YahooFinanceTest < ActiveSupport::TestCase
     end
   end
 
+  test "a 429 starts a cooldown that fails fast on subsequent calls" do
+    rate_limit_error = Faraday::TooManyRequestsError.new("Rate limit exceeded", { body: "Too many requests" })
+
+    Rails.cache.expects(:write).with("yahoo_finance_rate_limited_until", true, expires_in: Provider::YahooFinance::RATE_LIMIT_COOLDOWN)
+    @provider.send(:with_provider_response) { raise rate_limit_error }
+
+    Rails.cache.stubs(:read).with("yahoo_finance_rate_limited_until").returns(true)
+    @provider.expects(:throttle_request).never
+
+    response = @provider.fetch_security_price(symbol: "AAPL", date: Date.current)
+
+    assert_not response.success?
+    assert_instance_of Provider::YahooFinance::RateLimitError, response.error
+  end
+
   test "handles 401 unauthorized as authentication error" do
     unauthorized_error = Faraday::UnauthorizedError.new("Unauthorized", { body: "Invalid Crumb" })
 
