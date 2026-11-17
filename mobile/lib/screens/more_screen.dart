@@ -5,6 +5,7 @@ import 'goals_screen.dart';
 import 'investments_screen.dart';
 import 'recent_transactions_screen.dart';
 import 'recurring_transactions_screen.dart';
+import 'receivables_screen.dart';
 import 'rules_screen.dart';
 import 'tags_merchants_screen.dart';
 
@@ -133,6 +134,21 @@ class MoreScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const RulesScreen(),
+                ),
+              );
+            },
+          ),
+          Divider(height: 1, color: colorScheme.outlineVariant),
+          _buildMenuItem(
+            context: context,
+            icon: Icons.request_quote_outlined,
+            title: 'Receivables',
+            subtitle: 'Track money owed to you',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ReceivablesScreen(),
                 ),
               );
             },
