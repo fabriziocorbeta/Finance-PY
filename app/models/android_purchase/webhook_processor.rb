@@ -38,6 +38,16 @@ class AndroidPurchase::WebhookProcessor
       raise Error, "Unknown account_id: #{@account_id}"
     end
 
+    # Content-level deduplication: Android notification reposts (e.g. grouped
+    # SMS threads in Samsung/Google Messages or delayed PendingCaptureStore
+    # flushes) can re-send an already-recorded purchase with a fresh client
+    # capture timestamp, producing a different `external_id` hash. If an entry
+    # from google_play already exists on the same account with the same date,
+    # amount, and description, treat it as idempotent (:duplicate).
+    if duplicate_entry_exists?(account)
+      return :duplicate
+    end
+
     # Built from Entry's side (not Transaction.new(entry: Entry.new(...)))
     # so that Entry -- the record whose uniqueness validation matters for
     # idempotency -- is the object we call save! on directly. Building the
@@ -81,6 +91,15 @@ class AndroidPurchase::WebhookProcessor
 
       def final_amount
         @nature == "income" ? -numeric_amount.abs : numeric_amount.abs
+      end
+
+      def duplicate_entry_exists?(account)
+        account.entries.exists?(
+          source: "google_play",
+          date: parsed_date,
+          amount: final_amount,
+          name: description
+        )
       end
 
       # A restricted family member's writable_by scope is empty of any account

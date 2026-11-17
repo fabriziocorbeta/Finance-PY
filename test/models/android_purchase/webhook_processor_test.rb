@@ -66,6 +66,29 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
     end
   end
 
+  test "is idempotent on the same day even when re-sent hours later with a different capture timestamp" do
+    first_params = {
+      account_id: @account.id,
+      amount: "150.808",
+      merchant: "PETROBRAS AEROPUERTO",
+      item: "DINELCO CLASICA 2744",
+      timestamp: "2026-11-07T10:15:00-03:00",
+      raw_text: "TRANS. APROBADA..."
+    }
+
+    repost_params = first_params.merge(
+      timestamp: "2026-11-07T18:42:11-03:00",
+      raw_text: ""
+    )
+
+    assert_equal :created, AndroidPurchase::WebhookProcessor.new(first_params, family: @family).process
+
+    assert_no_difference -> { Entry.count } do
+      second_result = AndroidPurchase::WebhookProcessor.new(repost_params, family: @family).process
+      assert_equal :duplicate, second_result
+    end
+  end
+
   test "raises Error when the requesting user cannot write to the account (IDOR)" do
     restricted_user = users(:family_member)
     # credit_card is shared with family_member read_only (see

@@ -331,6 +331,10 @@ class ReportsController < ApplicationController
       # Generate list of months within the period
       current_month = @start_date.beginning_of_month
       end_of_period = @end_date.end_of_month
+      operating_scope = Current.family.transactions
+        .visible
+        .excluding_pending
+        .where.not(kind: Reports::CashflowProjectionsBuilder::EXCLUDED_TRANSACTION_KINDS)
 
       while current_month <= end_of_period
         month_start = current_month
@@ -340,9 +344,13 @@ class ReportsController < ApplicationController
         month_end = @end_date if month_end > @end_date
 
         period = Period.custom(start_date: month_start, end_date: month_end)
+        scope_totals = Current.family.income_statement.totals(
+          transactions_scope: operating_scope.in_period(period),
+          date_range: period.date_range
+        )
 
-        income = Current.family.income_statement.income_totals(period: period).total
-        expenses = Current.family.income_statement.expense_totals(period: period).total
+        income = scope_totals.income_money.amount
+        expenses = scope_totals.expense_money.amount
 
         trends << {
           month: month_start.strftime("%b %Y"),

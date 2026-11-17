@@ -5,6 +5,11 @@ module Reports
     ALLOWED_HORIZONS = [ 3, 6, 12 ].freeze
     DEFAULT_HORIZON = 6
     HISTORICAL_LOOKBACK_MONTHS = 12
+    # Exclude internal fund movements, credit card payments, one-time items,
+    # receivable collections, and investment contributions/withdrawals so
+    # operating cashflow evolution and projections reflect real income and
+    # operating expenses (standard + loan_payment).
+    EXCLUDED_TRANSACTION_KINDS = (Transaction::BUDGET_EXCLUDED_KINDS + [ "investment_contribution" ]).uniq.freeze
 
     attr_reader :family, :user, :horizon_months, :reference_date
 
@@ -41,6 +46,13 @@ module Reports
         @income_statement ||= IncomeStatement.new(family, user: user)
       end
 
+      def operating_transactions_scope
+        family.transactions
+          .visible
+          .excluding_pending
+          .where.not(kind: EXCLUDED_TRANSACTION_KINDS)
+      end
+
       def historical_series
         @historical_series ||= begin
           series = []
@@ -54,8 +66,13 @@ module Reports
             is_current = (month_start.year == reference_date.year && month_start.month == reference_date.month)
 
             period = Period.custom(start_date: month_start, end_date: month_end)
-            inc = ensure_numeric(income_statement.income_totals(period: period).total)
-            exp = ensure_numeric(income_statement.expense_totals(period: period).total)
+            scope_totals = income_statement.totals(
+              transactions_scope: operating_transactions_scope.in_period(period),
+              date_range: period.date_range
+            )
+
+            inc = ensure_numeric(scope_totals.income_money)
+            exp = ensure_numeric(scope_totals.expense_money)
             net = inc - exp
             savings_rate = inc > 0 ? ((net / inc) * 100.0).round(1) : 0.0
 
@@ -114,14 +131,15 @@ module Reports
             avg_inc = incomes.sum / incomes.size.to_f
             avg_exp = expenses.sum / expenses.size.to_f
 
-            w_inc = weighted_moving_average(incomes)
-            w_exp = weighted_moving_average(expenses)
+            # Use outlier-resistant baseline (blend of median and winsorized weighted moving average)
+            w_inc = robust_baseline(incomes)
+            w_exp = robust_baseline(expenses)
 
-            inc_slope = linear_slope(incomes)
-            exp_slope = linear_slope(expenses)
+            inc_slope = linear_slope(winsorize(incomes))
+            exp_slope = linear_slope(winsorize(expenses))
 
-            inc_std = standard_deviation(incomes, avg_inc)
-            exp_std = standard_deviation(expenses, avg_exp)
+            inc_std = standard_deviation(winsorize(incomes), w_inc)
+            exp_std = standard_deviation(winsorize(expenses), w_exp)
 
             {
               avg_income: avg_inc.round(2),
@@ -136,6 +154,43 @@ module Reports
             }
           end
         end
+      end
+
+      def median(values)
+        return 0.0 if values.empty?
+
+        sorted = values.sort
+        mid = sorted.size / 2
+        if sorted.size.odd?
+          sorted[mid].to_f
+        else
+          (sorted[mid - 1] + sorted[mid]) / 2.0
+        end
+      end
+
+      # Caps extreme spikes at 1.6x the median (when median > 0) so a single
+      # extraordinary month does not distort the 6-month projection.
+      def winsorize(values)
+        return [] if values.empty?
+        return values if values.size < 3
+
+        med = median(values)
+        return values if med <= 0
+
+        upper_cap = med * 1.6
+        lower_cap = med * 0.4
+        values.map { |v| v.clamp(lower_cap, upper_cap) }
+      end
+
+      def robust_baseline(values)
+        return 0.0 if values.empty?
+
+        cleaned = winsorize(values)
+        med = median(cleaned)
+        wma = weighted_moving_average(cleaned)
+
+        # Blend 50% median + 50% winsorized weighted moving average
+        (med * 0.5) + (wma * 0.5)
       end
 
       def weighted_moving_average(values)
@@ -161,8 +216,8 @@ module Reports
         return 0.0 if denominator.zero?
 
         slope = numerator / denominator
-        # Dampen slope to avoid runaway projections (cap at +/- 5% of mean per month)
-        max_slope = y_mean.abs * 0.05
+        # Dampen slope to avoid runaway projections (cap at +/- 4% of mean per month)
+        max_slope = y_mean.abs * 0.04
         slope.clamp(-max_slope, max_slope)
       end
 

@@ -124,5 +124,26 @@ module Reports
       first_proj = result[:projected_series].first
       assert_equal 200.0, first_proj[:receivables_income]
     end
+
+    test "excludes investment_contribution transfers from operating expense evolution and projections" do
+      create_transaction(
+        account: @account,
+        name: "Transfer to Brokerage",
+        amount: 10_000_000,
+        date: 1.month.ago.to_date,
+        kind: "investment_contribution"
+      )
+
+      result = Reports::CashflowProjectionsBuilder.new(
+        family: @family,
+        user: @user,
+        horizon_months: 3
+      ).call
+
+      last_closed_month = 1.month.ago.strftime("%Y-%m")
+      hist_month = result[:historical_series].find { |m| m[:month] == last_closed_month }
+      assert_not_nil hist_month
+      assert_operator hist_month[:expenses], :<, 10_000_000
+    end
   end
 end
