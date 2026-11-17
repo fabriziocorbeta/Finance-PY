@@ -39,6 +39,58 @@ class PurchaseOrdersProvider with ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> createPurchaseOrder({
+    required String accessToken,
+    required String accountId,
+    String? supplierName,
+    String? currency,
+    String? notes,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    final result = await _service.createPurchaseOrder(
+      accessToken: accessToken,
+      accountId: accountId,
+      supplierName: supplierName,
+      currency: currency,
+      notes: notes,
+      items: items,
+    );
+    if (result['success'] == true) {
+      _orders = [result['purchase_order'] as PurchaseOrder, ..._orders];
+      notifyListeners();
+    }
+    return result;
+  }
+
+  Future<Map<String, dynamic>> deletePurchaseOrder({required String accessToken, required String purchaseOrderId}) async {
+    final result = await _service.deletePurchaseOrder(accessToken: accessToken, purchaseOrderId: purchaseOrderId);
+    if (result['success'] == true) {
+      _orders = _orders.where((o) => o.id != purchaseOrderId).toList();
+      notifyListeners();
+    }
+    return result;
+  }
+
+  Future<Map<String, dynamic>> receivePurchaseOrder({required String accessToken, required String purchaseOrderId}) async {
+    final result = await _service.receivePurchaseOrder(accessToken: accessToken, purchaseOrderId: purchaseOrderId);
+    if (result['success'] == true) {
+      final updated = result['purchase_order'] as PurchaseOrder;
+      _orders = _orders.map((o) => o.id == purchaseOrderId ? updated : o).toList();
+      notifyListeners();
+    }
+    return result;
+  }
+
+  Future<Map<String, dynamic>> cancelPurchaseOrder({required String accessToken, required String purchaseOrderId}) async {
+    final result = await _service.cancelPurchaseOrder(accessToken: accessToken, purchaseOrderId: purchaseOrderId);
+    if (result['success'] == true) {
+      final updated = result['purchase_order'] as PurchaseOrder;
+      _orders = _orders.map((o) => o.id == purchaseOrderId ? updated : o).toList();
+      notifyListeners();
+    }
+    return result;
+  }
+
   void clear() {
     _orders = [];
     _errorMessage = null;

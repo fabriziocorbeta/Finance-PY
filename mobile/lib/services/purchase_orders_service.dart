@@ -37,4 +37,106 @@ class PurchaseOrdersService {
       return {'success': false, 'error': 'Network error: ${e.toString()}'};
     }
   }
+
+  Future<Map<String, dynamic>> createPurchaseOrder({
+    required String accessToken,
+    required String accountId,
+    String? supplierName,
+    String? currency,
+    String? notes,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/api/v1/purchase_orders');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          ...ApiConfig.getAuthHeaders(accessToken),
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'purchase_order': {
+            'account_id': accountId,
+            if (supplierName != null) 'supplier_name': supplierName,
+            if (currency != null) 'currency': currency,
+            if (notes != null) 'notes': notes,
+            'purchase_order_items_attributes': items,
+          },
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        return {'success': true, 'purchase_order': PurchaseOrder.fromJson(responseData['data'] as Map<String, dynamic>)};
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {'success': false, 'error': responseData['message'] ?? responseData['error'] ?? 'Failed to create purchase order'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: ${e.toString()}'};
+    }
+  }
+
+  Future<Map<String, dynamic>> deletePurchaseOrder({
+    required String accessToken,
+    required String purchaseOrderId,
+  }) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/api/v1/purchase_orders/$purchaseOrderId');
+
+    try {
+      final response = await http.delete(
+        url,
+        headers: ApiConfig.getAuthHeaders(accessToken),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 204) {
+        return {'success': true};
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {'success': false, 'error': responseData['message'] ?? responseData['error'] ?? 'Failed to delete purchase order'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: ${e.toString()}'};
+    }
+  }
+
+  Future<Map<String, dynamic>> receivePurchaseOrder({
+    required String accessToken,
+    required String purchaseOrderId,
+  }) async {
+    return _transition(accessToken: accessToken, purchaseOrderId: purchaseOrderId, action: 'receive');
+  }
+
+  Future<Map<String, dynamic>> cancelPurchaseOrder({
+    required String accessToken,
+    required String purchaseOrderId,
+  }) async {
+    return _transition(accessToken: accessToken, purchaseOrderId: purchaseOrderId, action: 'cancel');
+  }
+
+  Future<Map<String, dynamic>> _transition({
+    required String accessToken,
+    required String purchaseOrderId,
+    required String action,
+  }) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/api/v1/purchase_orders/$purchaseOrderId/$action');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: ApiConfig.getAuthHeaders(accessToken),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        return {'success': true, 'purchase_order': PurchaseOrder.fromJson(responseData['data'] as Map<String, dynamic>)};
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {'success': false, 'error': responseData['message'] ?? responseData['error'] ?? 'Failed to $action purchase order'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: ${e.toString()}'};
+    }
+  }
 }

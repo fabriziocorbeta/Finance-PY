@@ -5,6 +5,7 @@ import '../models/purchase_order.dart';
 import '../providers/purchase_orders_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/business_mode_gate.dart';
+import 'purchase_order_form_screen.dart';
 
 class PurchaseOrdersScreen extends StatefulWidget {
   const PurchaseOrdersScreen({super.key});
@@ -43,6 +44,87 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     }
   }
 
+  Future<void> _createOrder() async {
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => const PurchaseOrderFormScreen()),
+    );
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Purchase order created.')));
+    }
+  }
+
+  Future<void> _receiveOrder(PurchaseOrder order) async {
+    final authProvider = context.read<AuthProvider>();
+    final provider = context.read<PurchaseOrdersProvider>();
+    final accessToken = await authProvider.getValidAccessToken();
+    if (accessToken == null || !mounted) return;
+
+    final result = await provider.receivePurchaseOrder(accessToken: accessToken, purchaseOrderId: order.id);
+    if (!mounted) return;
+    if (result['success'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['error']?.toString() ?? 'Failed to mark as received')),
+      );
+    }
+  }
+
+  Future<void> _cancelOrder(PurchaseOrder order) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Purchase Order'),
+        content: const Text('This will cancel the purchase order. Continue?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Cancel Order')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final provider = context.read<PurchaseOrdersProvider>();
+    final accessToken = await authProvider.getValidAccessToken();
+    if (accessToken == null || !mounted) return;
+
+    final result = await provider.cancelPurchaseOrder(accessToken: accessToken, purchaseOrderId: order.id);
+    if (!mounted) return;
+    if (result['success'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['error']?.toString() ?? 'Failed to cancel order')),
+      );
+    }
+  }
+
+  Future<void> _deleteOrder(PurchaseOrder order) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Purchase Order'),
+        content: const Text('Delete this draft purchase order? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final provider = context.read<PurchaseOrdersProvider>();
+    final accessToken = await authProvider.getValidAccessToken();
+    if (accessToken == null || !mounted) return;
+
+    final result = await provider.deletePurchaseOrder(accessToken: accessToken, purchaseOrderId: order.id);
+    if (!mounted) return;
+    if (result['success'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['error']?.toString() ?? 'Failed to delete order')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -51,6 +133,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Purchase Orders')),
+      floatingActionButton: provider.errorMessage == BusinessModeGate.errorCode
+          ? null
+          : FloatingActionButton(onPressed: _createOrder, child: const Icon(Icons.add)),
       body: RefreshIndicator(
         onRefresh: _load,
         child: provider.isLoading && orders.isEmpty
@@ -62,6 +147,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                     : orders.isEmpty
                         ? _buildEmptyState(colorScheme)
                         : ListView.separated(
+                            padding: const EdgeInsets.only(bottom: 80),
                             itemCount: orders.length,
                             separatorBuilder: (context, index) => Divider(height: 1, color: colorScheme.outlineVariant),
                             itemBuilder: (context, index) => _buildItem(colorScheme, orders[index]),
@@ -136,9 +222,28 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
         '${order.items.length} item${order.items.length == 1 ? '' : 's'} • ${order.status}',
         style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
       ),
-      trailing: Text(
-        format.format(order.total),
-        style: const TextStyle(fontWeight: FontWeight.bold),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            format.format(order.total),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          if (order.status == 'draft')
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert, color: colorScheme.onSurfaceVariant, size: 18),
+              onSelected: (value) {
+                if (value == 'receive') _receiveOrder(order);
+                if (value == 'cancel') _cancelOrder(order);
+                if (value == 'delete') _deleteOrder(order);
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'receive', child: Text('Mark received')),
+                PopupMenuItem(value: 'cancel', child: Text('Cancel')),
+                PopupMenuItem(value: 'delete', child: Text('Delete')),
+              ],
+            ),
+        ],
       ),
     );
   }
