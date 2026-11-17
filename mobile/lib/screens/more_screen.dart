@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'calendar_screen.dart';
+import 'investments_screen.dart';
 import 'recent_transactions_screen.dart';
 
 class MoreScreen extends StatelessWidget {
@@ -37,6 +38,21 @@ class MoreScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const RecentTransactionsScreen(),
+                ),
+              );
+            },
+          ),
+          Divider(height: 1, color: colorScheme.outlineVariant),
+          _buildMenuItem(
+            context: context,
+            icon: Icons.trending_up,
+            title: 'Investments',
+            subtitle: 'View holdings across your investment accounts',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const InvestmentsScreen(),
                 ),
               );
             },
