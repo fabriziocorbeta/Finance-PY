@@ -44,6 +44,42 @@ class ReceivablesProvider with ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> createReceivable({
+    required String accessToken,
+    required String name,
+    required double totalAmount,
+    String? currency,
+    int? installmentCount,
+    int? dueDay,
+    String? firstDueDate,
+    String? notes,
+  }) async {
+    final result = await _service.createReceivable(
+      accessToken: accessToken,
+      name: name,
+      totalAmount: totalAmount,
+      currency: currency,
+      installmentCount: installmentCount,
+      dueDay: dueDay,
+      firstDueDate: firstDueDate,
+      notes: notes,
+    );
+    if (result['success'] == true) {
+      _items = [..._items, result['receivable'] as Receivable];
+      notifyListeners();
+    }
+    return result;
+  }
+
+  Future<Map<String, dynamic>> deleteReceivable({required String accessToken, required String receivableId}) async {
+    final result = await _service.deleteReceivable(accessToken: accessToken, receivableId: receivableId);
+    if (result['success'] == true) {
+      _items = _items.where((r) => r.id != receivableId).toList();
+      notifyListeners();
+    }
+    return result;
+  }
+
   void clear() {
     _items = [];
     _errorMessage = null;

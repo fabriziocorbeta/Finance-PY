@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/receivable.dart';
 import '../providers/receivables_provider.dart';
 import '../providers/auth_provider.dart';
+import 'receivable_form_screen.dart';
 
 class ReceivablesScreen extends StatefulWidget {
   const ReceivablesScreen({super.key});
@@ -31,6 +32,44 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
     }
   }
 
+  Future<void> _createReceivable() async {
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => const ReceivableFormScreen()),
+    );
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Receivable created.')));
+    }
+  }
+
+  Future<void> _deleteReceivable(Receivable r) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Receivable'),
+        content: Text('Delete "${r.name}"? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final provider = context.read<ReceivablesProvider>();
+    final accessToken = await authProvider.getValidAccessToken();
+    if (accessToken == null || !mounted) return;
+
+    final result = await provider.deleteReceivable(accessToken: accessToken, receivableId: r.id);
+    if (!mounted) return;
+    if (result['success'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['error']?.toString() ?? 'Failed to delete receivable')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -39,6 +78,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Receivables')),
+      floatingActionButton: FloatingActionButton(onPressed: _createReceivable, child: const Icon(Icons.add)),
       body: RefreshIndicator(
         onRefresh: _load,
         child: provider.isLoading && items.isEmpty
@@ -48,7 +88,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
                 : items.isEmpty
                     ? _buildEmptyState(colorScheme)
                     : ListView(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
                         children: [
                           _buildTotalCard(colorScheme, provider),
                           const SizedBox(height: 16),
@@ -142,9 +182,23 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            r.name,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  r.name,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_outline, size: 20, color: colorScheme.onSurfaceVariant),
+                onPressed: () => _deleteReceivable(r),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Row(

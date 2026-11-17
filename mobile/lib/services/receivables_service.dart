@@ -37,4 +37,71 @@ class ReceivablesService {
       return {'success': false, 'error': 'Network error: ${e.toString()}'};
     }
   }
+
+  Future<Map<String, dynamic>> createReceivable({
+    required String accessToken,
+    required String name,
+    required double totalAmount,
+    String? currency,
+    int? installmentCount,
+    int? dueDay,
+    String? firstDueDate,
+    String? notes,
+  }) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/api/v1/receivables');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          ...ApiConfig.getAuthHeaders(accessToken),
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'receivable': {
+            'name': name,
+            'total_amount': totalAmount,
+            if (currency != null) 'currency': currency,
+            if (installmentCount != null) 'installment_count': installmentCount,
+            if (dueDay != null) 'due_day': dueDay,
+            if (firstDueDate != null) 'first_due_date': firstDueDate,
+            if (notes != null) 'notes': notes,
+          },
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        return {'success': true, 'receivable': Receivable.fromJson(responseData['data'] as Map<String, dynamic>)};
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {'success': false, 'error': responseData['message'] ?? responseData['error'] ?? 'Failed to create receivable'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: ${e.toString()}'};
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteReceivable({
+    required String accessToken,
+    required String receivableId,
+  }) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/api/v1/receivables/$receivableId');
+
+    try {
+      final response = await http.delete(
+        url,
+        headers: ApiConfig.getAuthHeaders(accessToken),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return {'success': true};
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {'success': false, 'error': responseData['message'] ?? responseData['error'] ?? 'Failed to delete receivable'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: ${e.toString()}'};
+    }
+  }
 }
