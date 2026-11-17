@@ -41,6 +41,68 @@ class GoalsProvider with ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> createGoal({
+    required String accessToken,
+    required String name,
+    required double targetAmount,
+    String? currency,
+    String? targetDate,
+    required List<String> accountIds,
+  }) async {
+    final result = await _goalsService.createGoal(
+      accessToken: accessToken,
+      name: name,
+      targetAmount: targetAmount,
+      currency: currency,
+      targetDate: targetDate,
+      accountIds: accountIds,
+    );
+    if (result['success'] == true) {
+      _goals = [..._goals, result['goal'] as Goal];
+      notifyListeners();
+    }
+    return result;
+  }
+
+  Future<Map<String, dynamic>> updateGoal({
+    required String accessToken,
+    required String goalId,
+    String? name,
+    double? targetAmount,
+    String? targetDate,
+  }) async {
+    final result = await _goalsService.updateGoal(
+      accessToken: accessToken,
+      goalId: goalId,
+      name: name,
+      targetAmount: targetAmount,
+      targetDate: targetDate,
+    );
+    if (result['success'] == true) {
+      final updated = result['goal'] as Goal;
+      _goals = _goals.map((g) => g.id == goalId ? updated : g).toList();
+      notifyListeners();
+    }
+    return result;
+  }
+
+  /// Archiving (not a hard delete) is the only remove path exposed here:
+  /// the API refuses DELETE on a goal that isn't archived? yet, which would
+  /// mean two confirmations for one action anyway -- archiving alone already
+  /// drops it from `goals` since that getter filters isArchived out.
+  Future<Map<String, dynamic>> archiveGoal({
+    required String accessToken,
+    required String goalId,
+  }) async {
+    final result = await _goalsService.updateGoal(accessToken: accessToken, goalId: goalId, state: 'archived');
+    if (result['success'] == true) {
+      final updated = result['goal'] as Goal;
+      _goals = _goals.map((g) => g.id == goalId ? updated : g).toList();
+      notifyListeners();
+    }
+    return result;
+  }
+
   void clear() {
     _goals = [];
     _errorMessage = null;

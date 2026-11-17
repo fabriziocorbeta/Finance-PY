@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/goal.dart';
 import '../providers/goals_provider.dart';
 import '../providers/auth_provider.dart';
+import 'goal_form_screen.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -58,6 +59,47 @@ class _GoalsScreenState extends State<GoalsScreen> {
     }
   }
 
+  Future<void> _openForm({Goal? goal}) async {
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => GoalFormScreen(goal: goal)),
+    );
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(goal == null ? 'Goal created.' : 'Goal updated.')),
+      );
+    }
+  }
+
+  Future<void> _archiveGoal(Goal goal) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Archive Goal'),
+        content: Text('Archive "${goal.name}"? You can still see it on the web.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Archive')),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final provider = context.read<GoalsProvider>();
+    final accessToken = await authProvider.getValidAccessToken();
+    if (accessToken == null || !mounted) return;
+
+    final result = await provider.archiveGoal(accessToken: accessToken, goalId: goal.id);
+    if (!mounted) return;
+    if (result['success'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['error']?.toString() ?? 'Failed to archive goal')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -66,6 +108,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Goals')),
+      floatingActionButton: FloatingActionButton(onPressed: () => _openForm(), child: const Icon(Icons.add)),
       body: RefreshIndicator(
         onRefresh: _loadGoals,
         child: goalsProvider.isLoading && goals.isEmpty
@@ -131,7 +174,10 @@ class _GoalsScreenState extends State<GoalsScreen> {
     final (statusColor, statusLabel) = _statusDisplay(goal.status, colorScheme);
     final progress = (goal.progressPercent.clamp(0, 100) / 100).toDouble();
 
-    return Container(
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => _openForm(goal: goal),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -169,6 +215,15 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600),
                 ),
               ),
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, color: colorScheme.onSurfaceVariant, size: 18),
+                onSelected: (value) {
+                  if (value == 'archive') _archiveGoal(goal);
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(value: 'archive', child: Text('Archive')),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -203,6 +258,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
             ),
           ],
         ],
+      ),
       ),
     );
   }
