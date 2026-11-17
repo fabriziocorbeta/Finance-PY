@@ -124,6 +124,14 @@ RSpec.describe 'API V1 Accounts', type: :request do
         run_test!
       end
 
+      response '200', 'account retrieved with type-specific details (credit card)' do
+        schema '$ref' => '#/components/schemas/AccountDetail'
+
+        let(:id) { credit_card.id }
+
+        run_test!
+      end
+
       response '401', 'unauthorized' do
         schema '$ref' => '#/components/schemas/ErrorResponse'
 

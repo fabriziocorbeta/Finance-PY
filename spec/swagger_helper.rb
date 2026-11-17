@@ -344,7 +344,51 @@ RSpec.configure do |config|
               institution_name: { type: :string, nullable: true },
               institution_domain: { type: :string, nullable: true },
               created_at: { type: :string, format: :'date-time' },
-              updated_at: { type: :string, format: :'date-time' }
+              updated_at: { type: :string, format: :'date-time' },
+              loan_details: {
+                type: :object,
+                nullable: true,
+                description: 'Present only when account_type is "loan"',
+                properties: {
+                  rate_type: { type: :string, nullable: true },
+                  interest_rate: { type: :number, nullable: true },
+                  term_months: { type: :integer, nullable: true },
+                  initial_balance: { type: :number, nullable: true },
+                  amortization_method: { type: :string, nullable: true }
+                }
+              },
+              credit_card_details: {
+                type: :object,
+                nullable: true,
+                description: 'Present only when account_type is "credit_card"',
+                properties: {
+                  available_credit: { type: :number, nullable: true },
+                  minimum_payment: { type: :number, nullable: true },
+                  apr: { type: :number, nullable: true },
+                  annual_fee: { type: :number, nullable: true },
+                  expiration_date: { type: :string, format: :date, nullable: true }
+                }
+              },
+              vehicle_details: {
+                type: :object,
+                nullable: true,
+                description: 'Present only when account_type is "vehicle"',
+                properties: {
+                  make: { type: :string, nullable: true },
+                  model: { type: :string, nullable: true },
+                  year: { type: :integer, nullable: true },
+                  mileage_value: { type: :integer, nullable: true },
+                  mileage_unit: { type: :string, nullable: true }
+                }
+              },
+              crypto_details: {
+                type: :object,
+                nullable: true,
+                description: 'Present only when account_type is "crypto"',
+                properties: {
+                  tax_treatment: { type: :string, nullable: true }
+                }
+              }
             }
           },
           AccountCollection: {

@@ -141,6 +141,70 @@ class Api::V1::AccountsControllerTest < ActionDispatch::IntegrationTest
     assert_equal account.updated_at.iso8601, response_body["updated_at"]
   end
 
+  test "should include loan_details on show for a loan account" do
+    account = accounts(:loan)
+    loan = account.accountable
+
+    get "/api/v1/accounts/#{account.id}", headers: api_headers(@api_key)
+
+    assert_response :success
+    response_body = JSON.parse(response.body)
+    details = response_body["loan_details"]
+    assert_not_nil details
+    assert_equal loan.rate_type, details["rate_type"]
+    assert_equal loan.interest_rate.to_f, details["interest_rate"]
+    assert_equal loan.term_months, details["term_months"]
+    assert_equal loan.amortization_method, details["amortization_method"]
+    assert_nil response_body["credit_card_details"]
+    assert_nil response_body["vehicle_details"]
+    assert_nil response_body["crypto_details"]
+  end
+
+  test "should include credit_card_details on show for a credit card account" do
+    account = accounts(:credit_card)
+    credit_card = account.accountable
+
+    get "/api/v1/accounts/#{account.id}", headers: api_headers(@api_key)
+
+    assert_response :success
+    response_body = JSON.parse(response.body)
+    details = response_body["credit_card_details"]
+    assert_not_nil details
+    assert_equal credit_card.available_credit.to_f, details["available_credit"]
+    assert_equal credit_card.minimum_payment.to_f, details["minimum_payment"]
+    assert_equal credit_card.apr.to_f, details["apr"]
+    assert_equal credit_card.annual_fee.to_f, details["annual_fee"]
+    assert_equal credit_card.expiration_date.to_s, details["expiration_date"]
+  end
+
+  test "should include vehicle_details on show for a vehicle account" do
+    account = accounts(:vehicle)
+    vehicle = account.accountable
+
+    get "/api/v1/accounts/#{account.id}", headers: api_headers(@api_key)
+
+    assert_response :success
+    response_body = JSON.parse(response.body)
+    details = response_body["vehicle_details"]
+    assert_not_nil details
+    assert_nullable_equal vehicle.make, details["make"]
+    assert_nullable_equal vehicle.model, details["model"]
+    assert_nullable_equal vehicle.year, details["year"]
+  end
+
+  test "should include crypto_details on show for a crypto account" do
+    account = accounts(:crypto)
+    crypto = account.accountable
+
+    get "/api/v1/accounts/#{account.id}", headers: api_headers(@api_key)
+
+    assert_response :success
+    response_body = JSON.parse(response.body)
+    details = response_body["crypto_details"]
+    assert_not_nil details
+    assert_equal crypto.tax_treatment, details["tax_treatment"]
+  end
+
   test "should return 404 for unknown account on show" do
     get "/api/v1/accounts/#{SecureRandom.uuid}", headers: api_headers(@api_key)
 
