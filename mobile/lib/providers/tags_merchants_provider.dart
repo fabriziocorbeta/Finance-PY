@@ -56,6 +56,31 @@ class TagsMerchantsProvider with ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> createTag({
+    required String accessToken,
+    required String name,
+    String? color,
+  }) async {
+    final result = await _tagsService.createTag(accessToken: accessToken, name: name, color: color);
+    if (result['success'] == true) {
+      _tags = [..._tags, result['tag'] as Tag]..sort((a, b) => a.name.compareTo(b.name));
+      notifyListeners();
+    }
+    return result;
+  }
+
+  Future<Map<String, dynamic>> deleteTag({
+    required String accessToken,
+    required String tagId,
+  }) async {
+    final result = await _tagsService.deleteTag(accessToken: accessToken, tagId: tagId);
+    if (result['success'] == true) {
+      _tags = _tags.where((t) => t.id != tagId).toList();
+      notifyListeners();
+    }
+    return result;
+  }
+
   void clear() {
     _tags = [];
     _merchants = [];

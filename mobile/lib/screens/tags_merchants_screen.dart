@@ -48,6 +48,56 @@ class _TagsMerchantsScreenState extends State<TagsMerchantsScreen> with SingleTi
     return Color(cleaned.length == 6 ? 0xFF000000 | value : value);
   }
 
+  Future<void> _createTag() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('New Tag'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Name'),
+          onSubmitted: (value) => Navigator.pop(context, value),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text('Create')),
+        ],
+      ),
+    );
+
+    if (name == null || name.trim().isEmpty || !mounted) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final provider = context.read<TagsMerchantsProvider>();
+    final accessToken = await authProvider.getValidAccessToken();
+    if (accessToken == null || !mounted) return;
+
+    final result = await provider.createTag(accessToken: accessToken, name: name.trim());
+    if (!mounted) return;
+    if (result['success'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['error']?.toString() ?? 'Failed to create tag')),
+      );
+    }
+  }
+
+  Future<void> _deleteTag(Tag tag) async {
+    final authProvider = context.read<AuthProvider>();
+    final provider = context.read<TagsMerchantsProvider>();
+    final accessToken = await authProvider.getValidAccessToken();
+    if (accessToken == null || !mounted) return;
+
+    final result = await provider.deleteTag(accessToken: accessToken, tagId: tag.id);
+    if (!mounted) return;
+    if (result['success'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['error']?.toString() ?? 'Failed to delete tag')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -63,6 +113,10 @@ class _TagsMerchantsScreenState extends State<TagsMerchantsScreen> with SingleTi
             Tab(text: 'Merchants'),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _createTag,
+        child: const Icon(Icons.add),
       ),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -80,23 +134,35 @@ class _TagsMerchantsScreenState extends State<TagsMerchantsScreen> with SingleTi
   }
 
   Widget _buildTagsList(ColorScheme colorScheme, List<Tag> tags) {
-    if (tags.isEmpty) return _buildEmpty(colorScheme, 'No tags yet.');
+    if (tags.isEmpty) return _buildEmpty(colorScheme, 'No tags yet. Tap + to add one.');
 
     return ListView.separated(
+      padding: const EdgeInsets.only(bottom: 80),
       itemCount: tags.length,
       separatorBuilder: (context, index) => Divider(height: 1, color: colorScheme.outlineVariant),
       itemBuilder: (context, index) {
         final tag = tags[index];
-        return ListTile(
-          leading: Container(
-            width: 14,
-            height: 14,
-            decoration: BoxDecoration(
-              color: _parseColor(tag.color, colorScheme.primary),
-              shape: BoxShape.circle,
-            ),
+        return Dismissible(
+          key: Key('tag_${tag.id}'),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            color: colorScheme.errorContainer,
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            child: Icon(Icons.delete_outline, color: colorScheme.onErrorContainer),
           ),
-          title: Text(tag.name),
+          onDismissed: (_) => _deleteTag(tag),
+          child: ListTile(
+            leading: Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                color: _parseColor(tag.color, colorScheme.primary),
+                shape: BoxShape.circle,
+              ),
+            ),
+            title: Text(tag.name),
+          ),
         );
       },
     );
