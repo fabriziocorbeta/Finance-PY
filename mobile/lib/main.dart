@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/accounts_provider.dart';
+import 'providers/budgets_provider.dart';
 import 'providers/categories_provider.dart';
 import 'providers/transactions_provider.dart';
 import 'providers/chat_provider.dart';
@@ -42,6 +43,7 @@ class SureApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => CategoriesProvider()),
         ChangeNotifierProvider(create: (_) => HoldingsProvider()),
+        ChangeNotifierProvider(create: (_) => BudgetsProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProxyProvider<ConnectivityService, AccountsProvider>(
           create: (_) => AccountsProvider(),
