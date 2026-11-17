@@ -6,6 +6,7 @@ import 'investments_screen.dart';
 import 'recent_transactions_screen.dart';
 import 'recurring_transactions_screen.dart';
 import 'products_screen.dart';
+import 'sales_screen.dart';
 import 'receivables_screen.dart';
 import 'rules_screen.dart';
 import 'tags_merchants_screen.dart';
@@ -165,6 +166,21 @@ class MoreScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const ProductsScreen(),
+                ),
+              );
+            },
+          ),
+          Divider(height: 1, color: colorScheme.outlineVariant),
+          _buildMenuItem(
+            context: context,
+            icon: Icons.point_of_sale_outlined,
+            title: 'Sales',
+            subtitle: 'View recorded sales',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SalesScreen(),
                 ),
               );
             },
