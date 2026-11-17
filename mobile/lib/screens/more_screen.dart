@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'budget_screen.dart';
 import 'calendar_screen.dart';
+import 'goals_screen.dart';
 import 'investments_screen.dart';
 import 'recent_transactions_screen.dart';
 
@@ -69,6 +70,21 @@ class MoreScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const BudgetScreen(),
+                ),
+              );
+            },
+          ),
+          Divider(height: 1, color: colorScheme.outlineVariant),
+          _buildMenuItem(
+            context: context,
+            icon: Icons.flag_outlined,
+            title: 'Goals',
+            subtitle: 'Track progress toward your savings goals',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const GoalsScreen(),
                 ),
               );
             },
