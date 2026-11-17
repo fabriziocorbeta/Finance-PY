@@ -6,6 +6,7 @@ import 'investments_screen.dart';
 import 'recent_transactions_screen.dart';
 import 'recurring_transactions_screen.dart';
 import 'products_screen.dart';
+import 'fleet_vehicles_screen.dart';
 import 'purchase_orders_screen.dart';
 import 'sales_screen.dart';
 import 'receivables_screen.dart';
@@ -197,6 +198,21 @@ class MoreScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const PurchaseOrdersScreen(),
+                ),
+              );
+            },
+          ),
+          Divider(height: 1, color: colorScheme.outlineVariant),
+          _buildMenuItem(
+            context: context,
+            icon: Icons.local_shipping_outlined,
+            title: 'Fleet Vehicles',
+            subtitle: 'View fleet vehicles and fuel efficiency',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const FleetVehiclesScreen(),
                 ),
               );
             },
