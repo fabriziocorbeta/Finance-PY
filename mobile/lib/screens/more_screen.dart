@@ -6,6 +6,7 @@ import 'investments_screen.dart';
 import 'recent_transactions_screen.dart';
 import 'recurring_transactions_screen.dart';
 import 'products_screen.dart';
+import 'purchase_orders_screen.dart';
 import 'sales_screen.dart';
 import 'receivables_screen.dart';
 import 'rules_screen.dart';
@@ -181,6 +182,21 @@ class MoreScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const SalesScreen(),
+                ),
+              );
+            },
+          ),
+          Divider(height: 1, color: colorScheme.outlineVariant),
+          _buildMenuItem(
+            context: context,
+            icon: Icons.local_shipping_outlined,
+            title: 'Purchase Orders',
+            subtitle: 'View orders placed with suppliers',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PurchaseOrdersScreen(),
                 ),
               );
             },
