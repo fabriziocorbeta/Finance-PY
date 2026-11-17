@@ -8,6 +8,7 @@ import 'providers/budgets_provider.dart';
 import 'providers/categories_provider.dart';
 import 'providers/goals_provider.dart';
 import 'providers/recurring_transactions_provider.dart';
+import 'providers/products_provider.dart';
 import 'providers/receivables_provider.dart';
 import 'providers/rules_provider.dart';
 import 'providers/tags_merchants_provider.dart';
@@ -54,6 +55,7 @@ class SureApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TagsMerchantsProvider()),
         ChangeNotifierProvider(create: (_) => RulesProvider()),
         ChangeNotifierProvider(create: (_) => ReceivablesProvider()),
+        ChangeNotifierProvider(create: (_) => ProductsProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProxyProvider<ConnectivityService, AccountsProvider>(
           create: (_) => AccountsProvider(),
