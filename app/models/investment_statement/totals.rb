@@ -44,8 +44,8 @@ class InvestmentStatement::Totals
     def aggregation_sql
       <<~SQL
         SELECT
-          COALESCE(SUM(CASE WHEN t.qty > 0 AND #{not_income_sql} THEN ABS(ae.amount * COALESCE(er.rate, 1)) ELSE 0 END), 0) as contributions,
-          COALESCE(SUM(CASE WHEN t.qty < 0 AND #{not_income_sql} THEN ABS(ae.amount * COALESCE(er.rate, 1)) ELSE 0 END), 0) as withdrawals,
+          COALESCE(SUM(CASE WHEN t.qty > 0 AND #{plain_trade_sql} THEN ABS(ae.amount * COALESCE(er.rate, 1)) ELSE 0 END), 0) as contributions,
+          COALESCE(SUM(CASE WHEN t.qty < 0 AND #{plain_trade_sql} THEN ABS(ae.amount * COALESCE(er.rate, 1)) ELSE 0 END), 0) as withdrawals,
           COALESCE(SUM(CASE WHEN t.investment_activity_label = 'Interest' THEN ABS(ae.amount * COALESCE(er.rate, 1)) ELSE 0 END), 0) as interest,
           COALESCE(SUM(CASE WHEN t.investment_activity_label = 'Dividend' THEN ABS(ae.amount * COALESCE(er.rate, 1)) ELSE 0 END), 0) as dividends,
           COUNT(t.id) as trades_count
@@ -61,8 +61,13 @@ class InvestmentStatement::Totals
 
     # Income credits (interest/dividends) must not also land in the buy/sell
     # buckets. NULL-safe because every pre-existing trade has a NULL label.
-    def not_income_sql
-      "COALESCE(t.investment_activity_label, '') NOT IN ('Interest', 'Dividend')"
+    #
+    # Trades explicitly labelled Contribution/Withdrawal are left out too:
+    # InvestmentFlowStatement already sums those, and InvestmentStatement#totals
+    # adds both results together, so counting them here as a buy/sell as well
+    # reported the same money twice.
+    def plain_trade_sql
+      "COALESCE(t.investment_activity_label, '') NOT IN ('Interest', 'Dividend', 'Contribution', 'Withdrawal')"
     end
 
     # An exact-date join silently fell back to a 1:1 rate (via the outer
