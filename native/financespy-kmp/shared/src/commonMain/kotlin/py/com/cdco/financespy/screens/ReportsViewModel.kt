@@ -17,6 +17,7 @@ import kotlinx.serialization.json.Json
 data class ReportsState(
     val reportsSummary: ReportsSummaryDto? = null,
     val selectedPeriodType: String = "monthly",
+    val selectedProjectionMonths: Int = 6,
     val isLoading: Boolean = false,
     val isExportingCsv: Boolean = false,
     val error: String? = null,
@@ -56,6 +57,12 @@ class ReportsViewModel(
         if (_state.value.selectedPeriodType == periodType) return
         _state.update { it.copy(selectedPeriodType = periodType, reportsSummary = null, isShowingSavedData = false) }
         showSavedReport()
+        loadReports()
+    }
+
+    fun selectProjectionMonths(months: Int) {
+        if (_state.value.selectedProjectionMonths == months) return
+        _state.update { it.copy(selectedProjectionMonths = months) }
         loadReports()
     }
 
@@ -113,8 +120,9 @@ class ReportsViewModel(
 
     private suspend fun loadReportsInternal() {
         val periodType = _state.value.selectedPeriodType
+        val projectionMonths = _state.value.selectedProjectionMonths
         runCatching {
-            withTimeout(35_000L) { api.fetchReportsSummary(periodType = periodType) }
+            withTimeout(35_000L) { api.fetchReportsSummary(periodType = periodType, projectionMonths = projectionMonths) }
         }.onSuccess { dto ->
             runCatching {
                 store?.put(cacheKey(dto.period.type), reportsJson.encodeToString(ReportsSummaryDto.serializer(), dto))

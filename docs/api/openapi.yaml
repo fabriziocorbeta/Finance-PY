@@ -1786,8 +1786,14 @@ components:
         price:
           type: string
           description: Formatted price per share
+        price_cents:
+          type: integer
+          description: Price per share in minor currency units
         amount:
           type: string
+        amount_cents:
+          type: integer
+          description: Amount in minor currency units
         currency:
           type: string
         cost_basis_source:
@@ -1813,6 +1819,10 @@ components:
         avg_cost:
           type: string
           nullable: true
+        avg_cost_cents:
+          type: integer
+          nullable: true
+          description: Average cost per share in minor currency units
         created_at:
           type: string
           format: date-time

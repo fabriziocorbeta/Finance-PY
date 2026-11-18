@@ -85,6 +85,10 @@ import py.com.cdco.financespy.api.dto.SaleResponseDto
 import py.com.cdco.financespy.api.dto.SalesResponseDto
 import py.com.cdco.financespy.api.dto.ReceivableDto
 import py.com.cdco.financespy.api.dto.ReportsSummaryDto
+import py.com.cdco.financespy.api.dto.PortfolioHoldingDto
+import py.com.cdco.financespy.api.dto.PortfolioHoldingsResponse
+import py.com.cdco.financespy.api.dto.SecurityPriceDto
+import py.com.cdco.financespy.api.dto.SecurityPricesResponse
 import py.com.cdco.financespy.api.dto.ReceivableEnvelope
 import py.com.cdco.financespy.api.dto.ReceivablesEnvelope
 import py.com.cdco.financespy.api.dto.RuleDto
@@ -644,13 +648,61 @@ open class FinancePyApi(private val http: HttpClient) {
     open suspend fun fetchReportsSummary(
         periodType: String = "monthly",
         startDate: String? = null,
-        endDate: String? = null
+        endDate: String? = null,
+        projectionMonths: Int? = null
     ): ReportsSummaryDto {
         return http.get("/api/v1/reports/summary") {
             parameter("period_type", periodType)
             if (startDate != null) parameter("start_date", startDate)
             if (endDate != null) parameter("end_date", endDate)
+            if (projectionMonths != null) parameter("projection_months", projectionMonths)
         }.body()
+    }
+
+    open suspend fun fetchHoldings(accountId: String? = null, page: Int = 1, perPage: Int = 100): PortfolioHoldingsResponse {
+        return http.get("/api/v1/holdings") {
+            parameter("page", page)
+            parameter("per_page", perPage)
+            if (accountId != null) parameter("account_id", accountId)
+        }.body()
+    }
+
+    open suspend fun fetchAllHoldings(accountId: String? = null): List<PortfolioHoldingDto> {
+        val all = mutableListOf<PortfolioHoldingDto>()
+        var page = 1
+        while (true) {
+            val response = fetchHoldings(accountId = accountId, page = page, perPage = 100)
+            all += response.holdings
+            if (page >= response.pagination.total_pages) break
+            page++
+        }
+        return all
+    }
+
+    open suspend fun fetchSecurityPrices(
+        securityId: String,
+        page: Int = 1,
+        perPage: Int = 100
+    ): SecurityPricesResponse {
+        return http.get("/api/v1/security_prices") {
+            parameter("security_id", securityId)
+            parameter("page", page)
+            parameter("per_page", perPage)
+        }.body()
+    }
+
+    // Prices are returned date desc; capped at 5 pages (~500 points) -- plenty
+    // for a 1Y+ price history chart without risking an unbounded fetch.
+    open suspend fun fetchAllSecurityPrices(securityId: String): List<SecurityPriceDto> {
+        val all = mutableListOf<SecurityPriceDto>()
+        var page = 1
+        while (page <= 5) {
+            val response = fetchSecurityPrices(securityId = securityId, page = page, perPage = 100)
+            all += response.security_prices
+            if (page >= response.pagination.total_pages) break
+            page++
+        }
+        return all
     }
 
     open suspend fun fetchFleetVehicles(): List<FleetVehicleDto> {
