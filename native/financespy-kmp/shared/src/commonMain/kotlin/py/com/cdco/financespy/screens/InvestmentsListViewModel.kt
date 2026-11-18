@@ -64,16 +64,28 @@ class InvestmentsListViewModel(
                     }
                     .sortedByDescending { it.amountCents }
 
-                val currency = investmentAccounts.firstOrNull()?.currency
+                // The holdings-based total is only accurate when every investment
+                // account has real security/trade records synced -- accounts with
+                // just placeholder CASH holdings would show ₲0 here otherwise.
+                // The dashboard's investment_summary already aggregates portfolio
+                // value by account balance (with FX conversion across currencies),
+                // so reuse that instead of summing holdings ourselves.
+                val investmentSummary = api.fetchDashboard().investment_summary
+
+                val currency = investmentSummary?.currency
+                    ?: investmentAccounts.firstOrNull()?.currency
                     ?: bySecurity.firstOrNull()?.currency
                     ?: "PYG"
+
+                val totalPortfolioValueCents = investmentSummary?.portfolio_value_cents
+                    ?: bySecurity.sumOf { h -> h.amountCents }
 
                 _state.update {
                     it.copy(
                         isLoading = false,
                         investmentAccounts = investmentAccounts,
                         holdingsBySecurity = bySecurity,
-                        totalPortfolioValueCents = bySecurity.sumOf { h -> h.amountCents },
+                        totalPortfolioValueCents = totalPortfolioValueCents,
                         currency = currency
                     )
                 }
