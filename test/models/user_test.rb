@@ -621,7 +621,7 @@ class UserTest < ActiveSupport::TestCase
       "Should return false when reports_collapsed_sections key is missing"
 
     # reports_section_order should return default order when key is missing
-    assert_equal %w[trends_insights transactions_breakdown],
+    assert_equal %w[trends_insights cashflow_projections transactions_breakdown],
       @user.reports_section_order,
       "Should return default order when reports_section_order key is missing"
 
