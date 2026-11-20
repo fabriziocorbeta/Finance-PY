@@ -8,12 +8,19 @@ import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.CreateFleetVehicleBody
 import py.com.cdco.financespy.api.dto.FleetVehicleDto
+import py.com.cdco.financespy.sync.OfflineCache
+import py.com.cdco.financespy.sync.OfflineCacheKeys
+import py.com.cdco.financespy.sync.OfflineStore
 
 class FleetListViewModel(
     private val scope: CoroutineScope,
-    private val api: FinancePyApi
+    private val api: FinancePyApi,
+    store: OfflineStore? = null
 ) {
-    private val _vehicles = MutableStateFlow<List<FleetVehicleDto>>(emptyList())
+    private val cache = OfflineCache(store)
+    private val _vehicles = MutableStateFlow(
+        cache.getList(OfflineCacheKeys.FLEET_VEHICLES_LIST, FleetVehicleDto.serializer()) ?: emptyList()
+    )
     val vehicles: StateFlow<List<FleetVehicleDto>> = _vehicles.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
@@ -34,8 +41,11 @@ class FleetListViewModel(
                 api.fetchFleetVehicles()
             }.onSuccess { list ->
                 _vehicles.value = list
+                cache.putList(OfflineCacheKeys.FLEET_VEHICLES_LIST, FleetVehicleDto.serializer(), list)
             }.onFailure { throwable ->
-                _error.value = throwable.message ?: "Error al cargar los vehículos"
+                if (_vehicles.value.isEmpty()) {
+                    _error.value = throwable.message ?: "Error al cargar los vehículos"
+                }
             }
             _isLoading.value = false
         }

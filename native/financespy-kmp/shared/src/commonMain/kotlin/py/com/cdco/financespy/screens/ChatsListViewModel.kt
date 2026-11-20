@@ -7,6 +7,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.ChatDto
+import py.com.cdco.financespy.sync.OfflineCache
+import py.com.cdco.financespy.sync.OfflineCacheKeys
+import py.com.cdco.financespy.sync.OfflineStore
 
 data class ChatsListUiState(
     val chats: List<ChatDto> = emptyList(),
@@ -16,9 +19,15 @@ data class ChatsListUiState(
 
 class ChatsListViewModel(
     private val scope: CoroutineScope,
-    private val api: FinancePyApi
+    private val api: FinancePyApi,
+    store: OfflineStore? = null
 ) {
-    private val _state = MutableStateFlow(ChatsListUiState())
+    private val cache = OfflineCache(store)
+    private val _state = MutableStateFlow(
+        ChatsListUiState(
+            chats = cache.getList(OfflineCacheKeys.CHATS_LIST, ChatDto.serializer()) ?: emptyList()
+        )
+    )
     val state: StateFlow<ChatsListUiState> = _state.asStateFlow()
 
     init {
@@ -29,12 +38,14 @@ class ChatsListViewModel(
         scope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
             try {
-                // For simplicity we just fetch the first page.
-                // Could expand with full pagination logic if desired.
                 val response = api.fetchChats(page = 1)
+                cache.putList(OfflineCacheKeys.CHATS_LIST, ChatDto.serializer(), response.chats)
                 _state.value = _state.value.copy(chats = response.chats, isLoading = false)
             } catch (e: Exception) {
-                _state.value = _state.value.copy(isLoading = false, error = e.message ?: "Error al cargar chats")
+                _state.value = _state.value.copy(
+                    isLoading = false,
+                    error = if (_state.value.chats.isEmpty()) (e.message ?: "Error al cargar chats") else null
+                )
             }
         }
     }

@@ -16,7 +16,12 @@ import py.com.cdco.financespy.api.dto.CreateGoalPledgeBody
 import py.com.cdco.financespy.api.dto.CreateReceivableBody
 import py.com.cdco.financespy.api.dto.CreateTransactionBody
 import py.com.cdco.financespy.api.dto.CreateTransferBody
+import py.com.cdco.financespy.api.dto.ProductDto
+import py.com.cdco.financespy.api.dto.PurchaseOrderRequestDto
+import py.com.cdco.financespy.api.dto.SaleRequestDto
 import py.com.cdco.financespy.api.dto.UpdateTransactionBody
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
@@ -44,6 +49,25 @@ private data class TransactionUpdateJob(val id: String, val body: UpdateTransact
 
 @Serializable
 private data class GoalPledgeJob(val goalId: String, val body: CreateGoalPledgeBody)
+
+@Serializable
+private data class SaleCreateJob(
+    val payload: SaleRequestDto,
+    val photoBase64: String? = null,
+    val photoName: String? = null,
+    val photoContentType: String? = null
+)
+
+@Serializable
+private data class PurchaseOrderCreateJob(
+    val payload: PurchaseOrderRequestDto,
+    val photoBase64: String? = null,
+    val photoName: String? = null,
+    val photoContentType: String? = null
+)
+
+@Serializable
+private data class ProductUpdateJob(val id: String, val dto: ProductDto)
 
 const val OUTBOX_MAX_ATTEMPTS = 3
 
@@ -114,6 +138,46 @@ class OfflineOutbox(
     suspend fun enqueueGoal(body: CreateGoalBody, label: String) =
         enqueue("goal", json.encodeToString(CreateGoalBody.serializer(), body), label)
 
+    @OptIn(ExperimentalEncodingApi::class)
+    suspend fun enqueueSale(
+        payload: SaleRequestDto,
+        label: String,
+        photoBytes: ByteArray? = null,
+        photoName: String? = null,
+        photoContentType: String? = null
+    ) {
+        val job = SaleCreateJob(
+            payload = payload,
+            photoBase64 = photoBytes?.let { Base64.encode(it) },
+            photoName = photoName,
+            photoContentType = photoContentType
+        )
+        enqueue("sale", json.encodeToString(SaleCreateJob.serializer(), job), label)
+    }
+
+    @OptIn(ExperimentalEncodingApi::class)
+    suspend fun enqueuePurchaseOrder(
+        payload: PurchaseOrderRequestDto,
+        label: String,
+        photoBytes: ByteArray? = null,
+        photoName: String? = null,
+        photoContentType: String? = null
+    ) {
+        val job = PurchaseOrderCreateJob(
+            payload = payload,
+            photoBase64 = photoBytes?.let { Base64.encode(it) },
+            photoName = photoName,
+            photoContentType = photoContentType
+        )
+        enqueue("purchase_order", json.encodeToString(PurchaseOrderCreateJob.serializer(), job), label)
+    }
+
+    suspend fun enqueueProduct(dto: ProductDto, label: String) =
+        enqueue("product", json.encodeToString(ProductDto.serializer(), dto), label)
+
+    suspend fun enqueueProductUpdate(id: String, dto: ProductDto, label: String) =
+        enqueue("product_update", json.encodeToString(ProductUpdateJob.serializer(), ProductUpdateJob(id, dto)), label)
+
     private suspend fun enqueue(kind: String, payload: String, label: String) = mutex.withLock {
         val t = now()
         persist(items + OutboxItem(id = "$t-${items.size}", kind = kind, payload = payload, label = label, createdAt = t))
@@ -162,6 +226,40 @@ class OfflineOutbox(
             }
             "receivable" -> api.createReceivable(json.decodeFromString(CreateReceivableBody.serializer(), item.payload))
             "goal" -> api.createGoal(json.decodeFromString(CreateGoalBody.serializer(), item.payload))
+            "sale" -> {
+                @OptIn(ExperimentalEncodingApi::class)
+                val job = json.decodeFromString(SaleCreateJob.serializer(), item.payload)
+                val created = api.createSale(job.payload)
+                if (job.photoBase64 != null) {
+                    @OptIn(ExperimentalEncodingApi::class)
+                    val bytes = Base64.decode(job.photoBase64)
+                    api.uploadSaleInvoicePhoto(
+                        saleId = created.id,
+                        fileBytes = bytes,
+                        fileName = job.photoName ?: "factura_venta.jpg",
+                        contentType = job.photoContentType ?: "image/jpeg"
+                    )
+                }
+            }
+            "purchase_order" -> {
+                @OptIn(ExperimentalEncodingApi::class)
+                val job = json.decodeFromString(PurchaseOrderCreateJob.serializer(), item.payload)
+                val created = api.createPurchaseOrder(job.payload)
+                if (job.photoBase64 != null) {
+                    @OptIn(ExperimentalEncodingApi::class)
+                    val bytes = Base64.decode(job.photoBase64)
+                    api.uploadPurchaseOrderInvoicePhoto(
+                        poId = created.id,
+                        fileBytes = bytes,
+                        fileName = job.photoName ?: "factura_compra.jpg",
+                        contentType = job.photoContentType ?: "image/jpeg"
+                    )
+                }
+            }
+            "product" -> api.createProduct(json.decodeFromString(ProductDto.serializer(), item.payload))
+            "product_update" -> json.decodeFromString(ProductUpdateJob.serializer(), item.payload).let {
+                api.updateProduct(it.id, it.dto)
+            }
             else -> error("unknown outbox kind ${item.kind}")
         }
     }

@@ -9,8 +9,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
+import py.com.cdco.financespy.api.dto.ChatResponseDto
 import py.com.cdco.financespy.api.dto.MessageDto
 import py.com.cdco.financespy.api.dto.ChatDto
+import py.com.cdco.financespy.sync.OfflineCache
+import py.com.cdco.financespy.sync.OfflineCacheKeys
+import py.com.cdco.financespy.sync.OfflineStore
 
 data class ChatUiState(
     val title: String = "",
@@ -24,8 +28,10 @@ data class ChatUiState(
 class ChatViewModel(
     private val scope: CoroutineScope,
     private val api: FinancePyApi,
-    val chatId: String?
+    val chatId: String?,
+    store: OfflineStore? = null
 ) {
+    private val cache = OfflineCache(store)
     // `scope` is MainActivity's Activity-lifetime lifecycleScope, shared by
     // every ChatViewModel instance (a new one is created per chat screen
     // visit via `remember(chatId) { ... }`, but none of them own a scope
@@ -50,6 +56,12 @@ class ChatViewModel(
 
     init {
         if (actualChatId != null) {
+            cache.get(OfflineCacheKeys.chatDetail(actualChatId!!), ChatResponseDto.serializer())?.let { cached ->
+                _state.value = _state.value.copy(
+                    title = cached.title ?: "",
+                    messages = cached.messages ?: emptyList()
+                )
+            }
             refresh()
         }
     }
@@ -60,13 +72,7 @@ class ChatViewModel(
             _state.value = _state.value.copy(isLoading = true, error = null)
             try {
                 val response = api.fetchChat(id, page = 1)
-                // Server returns oldest-first (`ordered` scope); ChatScreen's
-                // LazyColumn is a plain (non-reversed) list that auto-scrolls to
-                // the LAST index on new messages, so oldest-first is what it
-                // needs. Reversing here (as this used to) put the newest message
-                // at index 0 -- rendered at the TOP, away from the input, and
-                // the auto-scroll (aimed at the last index) landed on the
-                // oldest message instead. Confirmed live on device.
+                cache.put(OfflineCacheKeys.chatDetail(id), ChatResponseDto.serializer(), response)
                 _state.value = _state.value.copy(
                     title = response.title ?: "",
                     messages = response.messages ?: emptyList(),
@@ -74,7 +80,11 @@ class ChatViewModel(
                 )
                 checkAndPoll(response.messages)
             } catch (e: Exception) {
-                _state.value = _state.value.copy(isLoading = false, error = e.message ?: "Error al cargar chat")
+                val hasCached = _state.value.messages.isNotEmpty()
+                _state.value = _state.value.copy(
+                    isLoading = false,
+                    error = if (!hasCached) (e.message ?: "Error al cargar chat") else null
+                )
             }
         }
     }

@@ -7,7 +7,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
+import py.com.cdco.financespy.api.dto.BudgetDto
 import py.com.cdco.financespy.api.dto.TransactionListItemDto
+import py.com.cdco.financespy.sync.OfflineCache
+import py.com.cdco.financespy.sync.OfflineCacheKeys
+import py.com.cdco.financespy.sync.OfflineStore
 import py.com.cdco.financespy.sync.currentIsoDate
 
 enum class BudgetCategoryStatus {
@@ -111,8 +115,10 @@ class BudgetDashboardViewModel(
     private val scope: CoroutineScope,
     private val api: FinancePyApi,
     initialYear: Int? = null,
-    initialMonth: Int? = null
+    initialMonth: Int? = null,
+    store: OfflineStore? = null
 ) {
+    private val cache = OfflineCache(store)
     private val defaultYear: Int
     private val defaultMonth: Int
 
@@ -305,11 +311,15 @@ class BudgetDashboardViewModel(
                     budget.start_date?.startsWith(targetPrefix) == true || budget.param == targetPrefix
                 }
 
-                val found = if (foundSummary?.id != null) {
+                val foundRemote = if (foundSummary?.id != null) {
                     try { api.fetchBudget(foundSummary.id) } catch (_: Exception) { foundSummary }
                 } else {
                     try { api.fetchBudget(targetPrefix) } catch (_: Exception) { foundSummary }
                 }
+                if (foundRemote != null) {
+                    cache.put(OfflineCacheKeys.budget(targetPrefix), BudgetDto.serializer(), foundRemote)
+                }
+                val found = foundRemote ?: cache.get(OfflineCacheKeys.budget(targetPrefix), BudgetDto.serializer())
 
                 if (found != null) {
                     val budgeted = found.budgeted_spending ?: 0.0
