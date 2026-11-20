@@ -216,14 +216,13 @@ class Api::V1::TransactionsController < Api::V1::BaseController
       proxy = @transaction.attachments.attach(file)
 
       if @transaction.valid?
-        @transaction.attachments.where(id: existing_ids).each(&:purge) if existing_ids.any?
-        @transaction.attachments.reload
+        @transaction.attachments.select { |a| existing_ids.include?(a.id) }.each(&:purge) if existing_ids.any?
+        @transaction.reload
         render :show, status: :ok
       else
         errors = @transaction.errors.full_messages
-        Array(proxy).select { |a| a.respond_to?(:id) && !existing_ids.include?(a.id) }.each(&:purge)
-        @transaction.attachments.where.not(id: existing_ids).each(&:purge)
-        @transaction.attachments.reload
+        Array(proxy).reject { |a| existing_ids.include?(a.id) }.each(&:purge)
+        @transaction.reload
         render json: {
           error: "validation_failed",
           message: errors.first || "Invoice photo could not be uploaded",
@@ -248,7 +247,7 @@ class Api::V1::TransactionsController < Api::V1::BaseController
     end
 
     @transaction.attachments.purge if @transaction.attachments.attached?
-    @transaction.attachments.reload
+    @transaction.reload
     render :show, status: :ok
   rescue => e
     Rails.logger.error "TransactionsController#delete_invoice_photo error: #{e.message}"
