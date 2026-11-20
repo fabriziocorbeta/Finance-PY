@@ -1,6 +1,9 @@
 class Session < ApplicationRecord
   include Encryptable
 
+  INACTIVITY_TIMEOUT = (ENV["SESSION_INACTIVITY_TIMEOUT_SECONDS"]&.to_i || 30.minutes.to_i).seconds
+  ABSOLUTE_TIMEOUT = (ENV["SESSION_ABSOLUTE_TIMEOUT_SECONDS"]&.to_i || 14.days.to_i).seconds
+
   # Encrypt user_agent if ActiveRecord encryption is configured
   if encryption_ready?
     encrypts :user_agent
@@ -22,6 +25,10 @@ class Session < ApplicationRecord
     data["tab_preferences"] ||= {}
     data["tab_preferences"][tab_key] = tab_value
     save!
+  end
+
+  def expired?
+    updated_at < INACTIVITY_TIMEOUT.ago || created_at < ABSOLUTE_TIMEOUT.ago
   end
 
   private

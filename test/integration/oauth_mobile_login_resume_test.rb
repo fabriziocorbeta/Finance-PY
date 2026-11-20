@@ -106,4 +106,42 @@ class OauthMobileLoginResumeTest < ActionDispatch::IntegrationTest
       "MFA verification dropped the user on the dashboard instead of resuming the pending OAuth authorization"
     assert_match %r{/oauth/authorize\?}, response.location
   end
+
+  test "expired session due to inactivity redirects /oauth/authorize to login without issuing grant" do
+    post "/sessions", params: { email: @user.email, password: user_password_test }
+    session_record = RlsContext.with_auth_bypass(reason: "test_session_expiry") { @user.sessions.order(:created_at).last }
+    RlsContext.with_auth_bypass(reason: "test_session_expiry") do
+      session_record.update_columns(updated_at: 31.minutes.ago)
+    end
+
+    assert_no_difference "Doorkeeper::AccessGrant.count" do
+      get "/oauth/authorize", params: @authorize_params
+    end
+
+    assert_response :redirect
+    redirect_uri = URI.parse(response.location)
+    assert_equal new_session_path, redirect_uri.path
+    assert_match %r{/oauth/authorize\?}, CGI.parse(redirect_uri.query)["return_to"]&.first.to_s
+    RlsContext.with_auth_bypass(reason: "test_session_expiry") do
+      assert_nil Session.find_by(id: session_record.id), "Expected expired session to be destroyed"
+    end
+  end
+
+  test "expired session due to absolute timeout redirects /oauth/authorize to login without issuing grant" do
+    post "/sessions", params: { email: @user.email, password: user_password_test }
+    session_record = RlsContext.with_auth_bypass(reason: "test_session_expiry") { @user.sessions.order(:created_at).last }
+    RlsContext.with_auth_bypass(reason: "test_session_expiry") do
+      session_record.update_columns(created_at: 15.days.ago)
+    end
+
+    assert_no_difference "Doorkeeper::AccessGrant.count" do
+      get "/oauth/authorize", params: @authorize_params
+    end
+
+    assert_response :redirect
+    assert_equal new_session_path, URI.parse(response.location).path
+    RlsContext.with_auth_bypass(reason: "test_session_expiry") do
+      assert_nil Session.find_by(id: session_record.id), "Expected expired session to be destroyed"
+    end
+  end
 end

@@ -97,6 +97,7 @@ class SessionsController < ApplicationController
 
     # Destroy local session
     @session.destroy
+    cookies.delete(:session_token, **Authentication.session_cookie_options) if @session == Current.session
     session.delete(:id_token_hint)
     session.delete(:sso_login_provider)
 
