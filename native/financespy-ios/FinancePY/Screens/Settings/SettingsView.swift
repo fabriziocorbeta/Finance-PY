@@ -1,4 +1,5 @@
 import SwiftUI
+import LocalAuthentication
 
 struct SettingsView: View {
     // Clears the local SwiftData cache and flips the app back to LoginView --
@@ -17,6 +18,31 @@ struct SettingsView: View {
     @State private var showDeleteAccountErrorAlert = false
     @State private var deleteAccountError: String? = nil
     @State private var showLogoutAlert = false
+    @AppStorage("appLockEnabled") private var appLockEnabled = false
+    @State private var showAppLockUnavailableAlert = false
+    @State private var appLockUnavailableMessage: String? = nil
+
+    private var appLockEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { appLockEnabled },
+            set: { newValue in
+                if newValue {
+                    let context = LAContext()
+                    var authError: NSError?
+                    if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &authError) {
+                        appLockEnabled = true
+                    } else {
+                        appLockEnabled = false
+                        appLockUnavailableMessage = authError?.localizedDescription
+                            ?? "Configura Face ID, Touch ID o un código en el dispositivo antes de activar el bloqueo."
+                        showAppLockUnavailableAlert = true
+                    }
+                } else {
+                    appLockEnabled = false
+                }
+            }
+        )
+    }
 
     // We could add state here for pendingOutboxCount if we implemented a sync engine connection
 
@@ -90,6 +116,10 @@ struct SettingsView: View {
                             }
                         }
 
+                        Section(header: Text("Seguridad")) {
+                            Toggle("Bloqueo con Face ID / código", isOn: appLockEnabledBinding)
+                        }
+
                         if let usage = usage {
                             Section(header: Text("Uso y API")) {
                                 ProfileRow(label: "Método de autenticación", value: usage.authenticationMethod ?? "N/A")
@@ -135,6 +165,11 @@ struct SettingsView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(deleteAccountError ?? "Ocurrió un error inesperado al eliminar la cuenta.")
+            }
+            .alert("No se puede activar el bloqueo", isPresented: $showAppLockUnavailableAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(appLockUnavailableMessage ?? "Configura Face ID, Touch ID o un código en el dispositivo antes de activar el bloqueo.")
             }
 
             .alert("¿Eliminar cuenta?", isPresented: $showDeleteAccountAlert) {

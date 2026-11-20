@@ -1,4 +1,7 @@
 import XCTest
+import Security
+import SwiftUI
+import UIKit
 @testable import FinancePY
 
 extension TokenResponse: Encodable {
@@ -106,5 +109,99 @@ final class AuthRepositoryTests: XCTestCase {
         } catch {
             XCTFail("Unexpected error: \(error)")
         }
+    }
+
+    func testKeychainStoresTokensWithAfterFirstUnlockThisDeviceOnly() {
+        let storage = KeychainTokenStorage.shared
+        storage.clear()
+        defer { storage.clear() }
+
+        storage.save(accessToken: "new-access", refreshToken: "new-refresh")
+
+        XCTAssertEqual(storage.accessToken(), "new-access")
+        XCTAssertEqual(storage.refreshToken(), "new-refresh")
+        XCTAssertEqual(storage.accessibility(forAccessToken: true), kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String)
+        XCTAssertEqual(storage.accessibility(forAccessToken: false), kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String)
+    }
+
+    func testKeychainMigratesLegacyAfterFirstUnlockTokensOnRead() {
+        let storage = KeychainTokenStorage.shared
+        storage.clear()
+        defer { storage.clear() }
+
+        storage.saveLegacyForTesting(accessToken: "legacy-access", refreshToken: "legacy-refresh")
+        XCTAssertEqual(storage.accessibility(forAccessToken: true), kSecAttrAccessibleAfterFirstUnlock as String)
+        XCTAssertEqual(storage.accessibility(forAccessToken: false), kSecAttrAccessibleAfterFirstUnlock as String)
+
+        XCTAssertEqual(storage.accessToken(), "legacy-access")
+        XCTAssertEqual(storage.refreshToken(), "legacy-refresh")
+        XCTAssertEqual(storage.accessibility(forAccessToken: true), kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String)
+        XCTAssertEqual(storage.accessibility(forAccessToken: false), kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String)
+    }
+
+    func testSecurityOverlayWindowManagerStateAndLevel() {
+        XCTAssertGreaterThan(SecurityOverlayWindowManager.overlayWindowLevel, UIWindow.Level.alert)
+
+        let activeLocked = SecurityOverlayWindowManager.overlayState(
+            isLoggedIn: true,
+            appLockEnabled: true,
+            isLocked: true,
+            scenePhase: .active,
+            isAuthenticating: false
+        )
+        XCTAssertTrue(activeLocked.showLock)
+        XCTAssertFalse(activeLocked.showPrivacy)
+
+        let inactiveUnlocked = SecurityOverlayWindowManager.overlayState(
+            isLoggedIn: true,
+            appLockEnabled: false,
+            isLocked: false,
+            scenePhase: .inactive,
+            isAuthenticating: false
+        )
+        XCTAssertFalse(inactiveUnlocked.showLock)
+        XCTAssertTrue(inactiveUnlocked.showPrivacy)
+
+        let inactiveDuringBiometrics = SecurityOverlayWindowManager.overlayState(
+            isLoggedIn: true,
+            appLockEnabled: true,
+            isLocked: true,
+            scenePhase: .inactive,
+            isAuthenticating: true
+        )
+        XCTAssertTrue(inactiveDuringBiometrics.showLock)
+        XCTAssertFalse(inactiveDuringBiometrics.showPrivacy)
+    }
+
+    func testModelContainerFactoryRemovesStoreWalAndShmFiles() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let storeURL = tempDir.appendingPathComponent("default.store")
+        let walURL = URL(fileURLWithPath: storeURL.path + "-wal")
+        let shmURL = URL(fileURLWithPath: storeURL.path + "-shm")
+
+        for url in [storeURL, walURL, shmURL] {
+            try Data("corrupt".utf8).write(to: url)
+            XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+        }
+
+        ModelContainerFactory.removeStoreFiles(at: storeURL)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: storeURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: walURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: shmURL.path))
+    }
+
+    func testAppLockManagerLockAndUnlockTransitions() {
+        let manager = AppLockManager()
+        XCTAssertFalse(manager.isLocked)
+
+        manager.lock()
+        XCTAssertTrue(manager.isLocked)
+
+        manager.unlock()
+        XCTAssertFalse(manager.isLocked)
     }
 }
