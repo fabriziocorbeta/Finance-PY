@@ -170,7 +170,6 @@ class InvestmentStatement
     end
 
     interest_earned = all_time_totals.interest&.amount || 0
-    contributed = all_time_totals.contributions&.amount || 0
 
     # A withdrawal draws down against interest already earned before it draws
     # down against principal -- so money the user actually took out of the
@@ -181,9 +180,19 @@ class InvestmentStatement
     # rule out. Floored at zero per account, then summed: a withdrawal from
     # one investment account must only draw down interest earned in THAT
     # account, not interest sitting untouched in a different one.
-    remaining_interest = investment_accounts.sum do |account|
+    #
+    # Capital contributed is only taken from accounts WITHOUT priced holdings.
+    # In an account that has them, the money that bought those holdings is
+    # already in holdings_cost above; adding its contributions again counted
+    # the same capital twice in the baseline and understated the return.
+    priced_account_ids = holdings_with_cost_basis.map(&:account_id).to_set
+    remaining_interest = 0
+    contributed = 0
+
+    investment_accounts.each do |account|
       account_totals = totals(period: Period.all_time, account: account)
-      [ (account_totals.interest&.amount || 0) - (account_totals.withdrawals&.amount || 0), 0 ].max
+      remaining_interest += [ (account_totals.interest&.amount || 0) - (account_totals.withdrawals&.amount || 0), 0 ].max
+      contributed += (account_totals.contributions&.amount || 0) unless priced_account_ids.include?(account.id)
     end
 
     # Nothing to report on: no priced holdings and no income credited.

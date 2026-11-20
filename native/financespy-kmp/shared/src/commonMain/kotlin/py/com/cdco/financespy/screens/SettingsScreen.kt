@@ -35,6 +35,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -79,6 +80,13 @@ fun SettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val pendingOutboxCount by viewModel.pendingOutboxCount.collectAsState()
+
+    // The view model outlives this screen and only loads in its init, so a
+    // failure from an earlier visit stayed on screen (with an empty profile)
+    // every time Ajustes was reopened. Retry when entering with a stale error.
+    LaunchedEffect(Unit) {
+        if (viewModel.uiState.value.error != null) viewModel.loadSettings()
+    }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showPendingOutboxWarning by remember { mutableStateOf(false) }
 
@@ -220,11 +228,16 @@ fun SettingsScreen(
             ) {
                 state.error?.let { err ->
                     item {
-                        Text(
-                            text = err,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = FinancePyColors.destructive()
-                        )
+                        Column {
+                            Text(
+                                text = err,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = FinancePyColors.destructive()
+                            )
+                            TextButton(onClick = { viewModel.loadSettings() }) {
+                                Text("Reintentar")
+                            }
+                        }
                     }
                 }
 
@@ -571,7 +584,7 @@ fun SettingsScreen(
                                             )
                                         }
                                         Text(
-                                            text = "Guarda la ubicación aproximada del dispositivo (no la del comercio) al detectar una notificación bancaria. Desactivado por defecto; pedirá permiso de ubicación la primera vez.",
+                                            text = "Guarda la ubicación aproximada del dispositivo (no la del comercio) al detectar una notificación bancaria. Desactivado por defecto; pedirá permiso de ubicación la primera vez. Para que funcione, elegí \"Permitir todo el tiempo\" cuando el sistema lo pregunte: la notificación llega con la app en segundo plano.",
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = FinancePyColors.textSecondary()
                                         )

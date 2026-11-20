@@ -269,6 +269,42 @@ class Balance::ChartSeriesBuilderTest < ActiveSupport::TestCase
     assert_equal [ 0, 5000, 5500 ], series.map { |v| v.value.amount }
   end
 
+  # Regression test: the exchange-rate LATERAL now carries an
+  # `accounts.currency <> :target_currency` guard so it short-circuits
+  # (returns zero rows, rate defaults to 1 via the outer COALESCE) for an
+  # account already in the chart's target currency, instead of always
+  # running the two nested exchange_rates lookups. A family mixing an
+  # already-matching account with a foreign-currency one is exactly the
+  # case that would break if the guard filtered the wrong side or the
+  # short-circuited account silently dropped out of the SUM.
+  test "combines a same-currency account (short-circuited) with a converted one" do
+    family = families(:dylan_family)
+    usd_account = accounts(:depository) # USD, same as target currency below
+    usd_account.balances.destroy_all
+
+    eur_account = family.accounts.create!(
+      name: "EUR Account", balance: 1000, currency: "EUR", accountable: Depository.new
+    )
+    eur_account.balances.destroy_all
+
+    create_balance(account: usd_account, date: 1.day.ago.to_date, balance: 1000)
+    create_balance(account: usd_account, date: Date.current, balance: 1000)
+    create_balance(account: eur_account, date: 1.day.ago.to_date, balance: 1000)
+    create_balance(account: eur_account, date: Date.current, balance: 1000)
+
+    ExchangeRate.create!(date: 1.day.ago.to_date, from_currency: "EUR", to_currency: "USD", rate: 1.1)
+
+    builder = Balance::ChartSeriesBuilder.new(
+      account_ids: [ usd_account.id, eur_account.id ],
+      currency: "USD",
+      period: Period.custom(start_date: 1.day.ago.to_date, end_date: Date.current),
+      interval: "1 day"
+    )
+
+    # 1000 USD (rate 1, short-circuited) + 1000 EUR * 1.1 (converted) = 2100
+    assert_equal [ 2100, 2100 ], builder.balance_series.map { |v| v.value.amount }
+  end
+
   test "chart ignores orphaned currency balances via currency filter" do
     # This test verifies the currency filter correctly ignores orphaned balances.
     # The filter `b.currency = accounts.currency` ensures only valid balances are used.

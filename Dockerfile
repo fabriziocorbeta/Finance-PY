@@ -16,12 +16,10 @@ RUN apt-get update -qq \
     && rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
 # Set production environment
-ARG BUILD_COMMIT_SHA
 ENV RAILS_ENV="production" \
     BUNDLE_DEPLOYMENT="1" \
     BUNDLE_PATH="/usr/local/bundle" \
-    BUNDLE_WITHOUT="development" \
-    BUILD_COMMIT_SHA=${BUILD_COMMIT_SHA}
+    BUNDLE_WITHOUT="development"
     
 # Throw-away build stage to reduce size of final image
 FROM base AS build
@@ -59,6 +57,12 @@ COPY --chown=rails:rails --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --chown=rails:rails --from=build /rails /rails
 
 # Entrypoint prepares the database.
+# Commit SHA al final y solo en la imagen final: declarado en `base` cambiaba
+# en cada commit e invalidaba la caché de todas las capas siguientes
+# (bundle install incluido). Solo se lee en runtime (/internal/version).
+ARG BUILD_COMMIT_SHA
+ENV BUILD_COMMIT_SHA=${BUILD_COMMIT_SHA}
+
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]
 
 # Start the server by default, this can be overwritten at runtime

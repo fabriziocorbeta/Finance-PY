@@ -90,6 +90,10 @@ services:
     cpu_shares: 256
 
   web:
+    # APP_IMAGE lo fija bin/deploy_notebook.sh en .env.local con la imagen
+    # compilada en GitHub (ghcr.io/fabriziocorbeta/finance-py:<sha>). Sin
+    # APP_IMAGE se sigue compilando localmente con `build: .` como antes.
+    image: ${APP_IMAGE:-financespy-app:local}
     build: .
     volumes:
       - app-storage:/rails/storage
@@ -122,6 +126,7 @@ services:
     cpu_shares: 512
 
   worker:
+    image: ${APP_IMAGE:-financespy-app:local}
     build: .
     command: bundle exec sidekiq -c 5
     volumes:

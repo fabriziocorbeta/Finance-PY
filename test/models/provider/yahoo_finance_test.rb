@@ -182,6 +182,25 @@ class Provider::YahooFinanceTest < ActiveSupport::TestCase
     end
   end
 
+  test "a 429 marks the provider as rate-limited" do
+    rate_limit_error = Faraday::TooManyRequestsError.new("Rate limit exceeded", { body: "Too many requests" })
+
+    @provider.expects(:mark_rate_limited!).once
+    result = @provider.send(:with_provider_response) { raise rate_limit_error }
+
+    assert_instance_of Provider::YahooFinance::RateLimitError, result.error
+  end
+
+  test "fails fast without making a request while rate-limited" do
+    @provider.stubs(:rate_limited?).returns(true)
+    @provider.expects(:throttle_request).never
+
+    response = @provider.fetch_security_prices(symbol: "AAPL", start_date: Date.current - 1, end_date: Date.current)
+
+    assert_not response.success?
+    assert_instance_of Provider::YahooFinance::RateLimitError, response.error
+  end
+
   test "handles 401 unauthorized as authentication error" do
     unauthorized_error = Faraday::UnauthorizedError.new("Unauthorized", { body: "Invalid Crumb" })
 
