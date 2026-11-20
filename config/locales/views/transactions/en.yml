@@ -21,6 +21,7 @@ en:
       details: Details
       expense: Expense
       income: Income
+      invoice_photo_label: Invoice / receipt photo
       merchant_label: Merchant
       none: (none)
       note_label: Notes

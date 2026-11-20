@@ -45,6 +45,20 @@ class PurchaseOrderFormViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _pendingPhotoBytes = MutableStateFlow<ByteArray?>(null)
+    val pendingPhotoBytes: StateFlow<ByteArray?> = _pendingPhotoBytes.asStateFlow()
+
+    private val _pendingPhotoName = MutableStateFlow<String?>(null)
+    val pendingPhotoName: StateFlow<String?> = _pendingPhotoName.asStateFlow()
+
+    private val _pendingPhotoContentType = MutableStateFlow<String?>(null)
+    val pendingPhotoContentType: StateFlow<String?> = _pendingPhotoContentType.asStateFlow()
+
+    private val _removeExistingPhoto = MutableStateFlow(false)
+    val removeExistingPhoto: StateFlow<Boolean> = _removeExistingPhoto.asStateFlow()
+
+    private var hasNewLocalPhoto = false
+
     init {
         loadProducts()
         loadAccounts()
@@ -76,12 +90,43 @@ class PurchaseOrderFormViewModel(
             _isLoading.value = true
             _error.value = null
             try {
-                _purchaseOrder.value = api.fetchPurchaseOrder(id)
+                val po = api.fetchPurchaseOrder(id)
+                _purchaseOrder.value = po
+                val existingPhoto = po.invoice_photo
+                if (po.has_invoice_photo || existingPhoto != null) {
+                    _pendingPhotoName.value = existingPhoto?.filename ?: "factura_compra"
+                    _pendingPhotoContentType.value = existingPhoto?.content_type ?: "image/jpeg"
+                    if (existingPhoto == null || existingPhoto.content_type.startsWith("image/")) {
+                        viewModelScope.launch {
+                            runCatching { api.downloadPurchaseOrderInvoicePhoto(id) }
+                                .onSuccess { bytes -> _pendingPhotoBytes.value = bytes }
+                        }
+                    }
+                }
             } catch (e: Exception) {
                 _error.value = e.message ?: "Error al cargar orden de compra"
             } finally {
                 _isLoading.value = false
             }
+        }
+    }
+
+    fun onPhotoSelected(bytes: ByteArray, fileName: String, contentType: String) {
+        _pendingPhotoBytes.value = bytes
+        _pendingPhotoName.value = fileName
+        _pendingPhotoContentType.value = contentType
+        hasNewLocalPhoto = true
+        _removeExistingPhoto.value = false
+    }
+
+    fun onRemovePhoto() {
+        _pendingPhotoBytes.value = null
+        _pendingPhotoName.value = null
+        _pendingPhotoContentType.value = null
+        hasNewLocalPhoto = false
+        val po = _purchaseOrder.value
+        if (po != null && (po.has_invoice_photo || po.invoice_photo != null)) {
+            _removeExistingPhoto.value = true
         }
     }
 
@@ -120,10 +165,21 @@ class PurchaseOrderFormViewModel(
                     )
                 )
 
-                if (purchaseOrderId == null) {
+                val savedPo = if (purchaseOrderId == null) {
                     api.createPurchaseOrder(payload)
                 } else {
                     api.updatePurchaseOrder(purchaseOrderId, payload)
+                }
+                val photoBytes = _pendingPhotoBytes.value
+                if (hasNewLocalPhoto && photoBytes != null) {
+                    api.uploadPurchaseOrderInvoicePhoto(
+                        poId = savedPo.id,
+                        fileBytes = photoBytes,
+                        fileName = _pendingPhotoName.value ?: "factura_compra.jpg",
+                        contentType = _pendingPhotoContentType.value ?: "image/jpeg"
+                    )
+                } else if (_removeExistingPhoto.value && purchaseOrderId != null) {
+                    api.deletePurchaseOrderInvoicePhoto(savedPo.id)
                 }
                 onSaved()
             } catch (e: Exception) {

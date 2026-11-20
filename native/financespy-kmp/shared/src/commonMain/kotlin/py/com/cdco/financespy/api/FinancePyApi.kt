@@ -253,6 +253,31 @@ open class FinancePyApi(private val http: HttpClient) {
         http.delete("/api/v1/transactions/$id")
     }
 
+    open suspend fun uploadTransactionInvoicePhoto(
+        transactionId: String,
+        fileBytes: ByteArray,
+        fileName: String,
+        contentType: String = "image/jpeg"
+    ): TransactionDetailDto {
+        return http.submitFormWithBinaryData(
+            url = "/api/v1/transactions/$transactionId/invoice_photo",
+            formData = formData {
+                append("invoice_photo", fileBytes, Headers.build {
+                    append(HttpHeaders.ContentType, contentType)
+                    append(HttpHeaders.ContentDisposition, "form-data; name=\"invoice_photo\"; filename=\"$fileName\"")
+                })
+            }
+        ).body()
+    }
+
+    open suspend fun deleteTransactionInvoicePhoto(transactionId: String): TransactionDetailDto {
+        return http.delete("/api/v1/transactions/$transactionId/invoice_photo").body()
+    }
+
+    open suspend fun downloadTransactionInvoicePhoto(transactionId: String): ByteArray {
+        return http.get("/api/v1/transactions/$transactionId/invoice_photo").bodyAsBytes()
+    }
+
     open suspend fun fetchBalanceSheet(): BalanceSheetResponse = http.get("/api/v1/balance_sheet").body()
 
     open suspend fun fetchDashboard(period: String? = null): DashboardDto {

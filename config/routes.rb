@@ -525,7 +525,13 @@ Rails.application.routes.draw do
       end
 
       resources :android_purchases, only: [ :create ]
-      resources :transactions, only: [ :index, :show, :create, :update, :destroy ]
+      resources :transactions, only: [ :index, :show, :create, :update, :destroy ] do
+        member do
+          get :invoice_photo
+          post :upload_invoice_photo, path: "invoice_photo"
+          delete :delete_invoice_photo, path: "invoice_photo"
+        end
+      end
       resources :transfers, only: [ :create ]
       resources :trades, only: [ :index, :show, :create, :update, :destroy ]
       resources :holdings, only: [ :index, :show ]

@@ -1186,6 +1186,7 @@ components:
       - classification
       - account
       - tags
+      - has_invoice_photo
       - created_at
       - updated_at
       properties:
@@ -1220,6 +1221,11 @@ components:
             "$ref": "#/components/schemas/Tag"
         transfer:
           "$ref": "#/components/schemas/Transfer"
+          nullable: true
+        has_invoice_photo:
+          type: boolean
+        invoice_photo:
+          "$ref": "#/components/schemas/InvoicePhotoMetadata"
           nullable: true
         created_at:
           type: string
@@ -6217,6 +6223,119 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/DeleteResponse"
+        '404':
+          description: transaction not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/api/v1/transactions/{id}/invoice_photo":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Transaction ID
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Download or view transaction invoice photo
+      tags:
+      - Transactions
+      security:
+      - apiKeyAuth: []
+      parameters:
+      - name: disposition
+        in: query
+        required: false
+        description: Content-Disposition mode (inline or attachment)
+        schema:
+          type: string
+      responses:
+        '200':
+          description: invoice photo streamed
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: invoice photo or transaction not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    post:
+      summary: Upload or replace transaction invoice photo
+      tags:
+      - Transactions
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: invoice photo uploaded
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Transaction"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: invalid or missing file
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                invoice_photo:
+                  type: string
+                  format: binary
+                  description: Invoice photo file (JPEG, PNG, GIF, WebP or PDF up to 10MB)
+              required:
+              - invoice_photo
+        required: true
+    delete:
+      summary: Delete transaction invoice photo
+      tags:
+      - Transactions
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: invoice photo deleted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Transaction"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
         '404':
           description: transaction not found
           content:

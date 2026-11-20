@@ -2,11 +2,12 @@
 
 class Api::V1::TransactionsController < Api::V1::BaseController
   include Pagy::Backend
+  include ActiveStorage::Streaming
 
   # Ensure proper scope authorization for read vs write access
-  before_action :ensure_read_scope, only: [ :index, :show ]
-  before_action :ensure_write_scope, only: [ :create, :update, :destroy ]
-  before_action :set_transaction, only: [ :show, :update, :destroy ]
+  before_action :ensure_read_scope, only: [ :index, :show, :invoice_photo ]
+  before_action :ensure_write_scope, only: [ :create, :update, :destroy, :upload_invoice_photo, :delete_invoice_photo ]
+  before_action :set_transaction, only: [ :show, :update, :destroy, :invoice_photo, :upload_invoice_photo, :delete_invoice_photo ]
 
   def index
     family = current_family
@@ -21,7 +22,7 @@ class Api::V1::TransactionsController < Api::V1::BaseController
     transactions_query = apply_search(transactions_query) if params[:search].present?
 
     # Include necessary associations for efficient queries
-    transactions_query = transactions_query.includes(
+    transactions_query = transactions_query.with_attached_attachments.includes(
       { entry: :account },
       :category, :merchant, :tags,
       transfer_as_outflow: {
@@ -173,6 +174,84 @@ class Api::V1::TransactionsController < Api::V1::BaseController
 
   rescue => e
     Rails.logger.error "TransactionsController#destroy error: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
+
+    render json: {
+      error: "internal_server_error",
+      message: "An unexpected error occurred"
+    }, status: :internal_server_error
+  end
+
+  def invoice_photo
+    if @transaction.attachments.attached?
+      disposition = params[:disposition] == "attachment" ? "attachment" : "inline"
+      send_blob_stream @transaction.attachments.first.blob, disposition: disposition
+    else
+      render json: {
+        error: "not_found",
+        message: "Invoice photo not found"
+      }, status: :not_found
+    end
+  end
+
+  def upload_invoice_photo
+    unless current_family.accounts.writable_by(current_resource_owner).exists?(id: @entry.account_id)
+      render json: { error: "forbidden", message: "You do not have write access to this account" }, status: :forbidden
+      return
+    end
+
+    file = params[:invoice_photo] || params[:file] || params[:attachment] || params.dig(:transaction, :invoice_photo)
+
+    if file.blank?
+      render json: {
+        error: "validation_failed",
+        message: "Invoice photo file is required",
+        errors: [ "Invoice photo file is required" ]
+      }, status: :unprocessable_entity
+      return
+    end
+
+    @transaction.with_lock do
+      existing_ids = @transaction.attachments.pluck(:id)
+      proxy = @transaction.attachments.attach(file)
+
+      if @transaction.valid?
+        @transaction.attachments.where(id: existing_ids).each(&:purge) if existing_ids.any?
+        @transaction.attachments.reload
+        render :show, status: :ok
+      else
+        errors = @transaction.errors.full_messages
+        Array(proxy).select { |a| a.respond_to?(:id) && !existing_ids.include?(a.id) }.each(&:purge)
+        @transaction.attachments.where.not(id: existing_ids).each(&:purge)
+        @transaction.attachments.reload
+        render json: {
+          error: "validation_failed",
+          message: errors.first || "Invoice photo could not be uploaded",
+          errors: errors
+        }, status: :unprocessable_entity
+      end
+    end
+  rescue => e
+    Rails.logger.error "TransactionsController#upload_invoice_photo error: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
+
+    render json: {
+      error: "internal_server_error",
+      message: "An unexpected error occurred"
+    }, status: :internal_server_error
+  end
+
+  def delete_invoice_photo
+    unless current_family.accounts.writable_by(current_resource_owner).exists?(id: @entry.account_id)
+      render json: { error: "forbidden", message: "You do not have write access to this account" }, status: :forbidden
+      return
+    end
+
+    @transaction.attachments.purge if @transaction.attachments.attached?
+    @transaction.attachments.reload
+    render :show, status: :ok
+  rescue => e
+    Rails.logger.error "TransactionsController#delete_invoice_photo error: #{e.message}"
     Rails.logger.error e.backtrace.join("\n")
 
     render json: {

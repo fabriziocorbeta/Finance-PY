@@ -1,7 +1,7 @@
 <%# locals: (entry:, categories:) %>
 
 <% account_currencies = Current.family.accounts.map { |a| [a.id, a.currency] }.to_h.to_json %>
-<%= styled_form_with model: entry, url: entry.persisted? ? transaction_path(entry) : transactions_path, class: "space-y-4", data: { controller: "transaction-form", transaction_form_exchange_rate_url_value: exchange_rate_path, transaction_form_account_currencies_value: account_currencies } do |f| %>
+<%= styled_form_with model: entry, url: entry.persisted? ? transaction_path(entry) : transactions_path, multipart: true, class: "space-y-4", data: { controller: "transaction-form", transaction_form_exchange_rate_url_value: exchange_rate_path, transaction_form_account_currencies_value: account_currencies } do |f| %>
   <% if entry.errors.any? %>
     <%= render "shared/form_errors", model: entry %>
   <% end %>
@@ -104,6 +104,13 @@
                       label:    t(".tags_label")
                     },
                     { "data-controller": "multi-select" } %>
+      <div>
+        <%= ef.label :attachments, t(".invoice_photo_label", default: "Foto de factura / comprobante"), class: "text-xs font-medium text-secondary uppercase tracking-wide block mb-1" %>
+        <%= ef.file_field :attachments,
+              multiple: true,
+              accept: Transaction::ALLOWED_CONTENT_TYPES.join(","),
+              class: "form-field__input border border-secondary rounded-md px-2.5 py-1.5 w-full text-sm text-primary bg-container" %>
+      </div>
     <% end %>
     <%= f.text_area :notes,
                     label: t(".note_label"),

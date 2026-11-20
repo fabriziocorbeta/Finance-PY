@@ -19,6 +19,8 @@ data class TransactionListItemDto(
     val merchant: MerchantRefDto? = null,
     val created_at: String,
     val updated_at: String,
+    val has_invoice_photo: Boolean = false,
+    val invoice_photo: InvoicePhotoDto? = null,
     // Local-only: a create still waiting in the offline outbox (never sent by the server).
     val pending: Boolean = false
 )
@@ -71,6 +73,8 @@ data class TransactionDetailDto(
     val tags: List<TagRefDto> = emptyList(),
     val transfer: TransferInfoDto? = null,
     val location: TransactionLocationDto? = null,
+    val has_invoice_photo: Boolean = false,
+    val invoice_photo: InvoicePhotoDto? = null,
     val created_at: String,
     val updated_at: String
 )

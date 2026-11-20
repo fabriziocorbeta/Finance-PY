@@ -31,6 +31,17 @@ RSpec.describe 'API V1 Transactions', type: :request do
     )
   end
 
+  let(:api_key_without_write_scope) do
+    key = ApiKey.generate_secure_key
+    ApiKey.create!(
+      user: user,
+      name: 'Read Only Docs Key',
+      key: key,
+      scopes: %w[read],
+      source: 'web'
+    )
+  end
+
   let(:'X-Api-Key') { api_key.plain_key }
 
   let(:account) do
@@ -333,6 +344,127 @@ RSpec.describe 'API V1 Transactions', type: :request do
 
         let(:id) { SecureRandom.uuid }
 
+        run_test!
+      end
+    end
+  end
+
+  path '/api/v1/transactions/{id}/invoice_photo' do
+    parameter name: :id, in: :path, type: :string, required: true, description: 'Transaction ID',
+              schema: { type: :string, format: :uuid }
+
+    get 'Download or view transaction invoice photo' do
+      tags 'Transactions'
+      security [ { apiKeyAuth: [] } ]
+      produces 'image/jpeg', 'image/png', 'application/pdf', 'application/json'
+      parameter name: :disposition, in: :query, type: :string, required: false,
+                description: 'Content-Disposition mode (inline or attachment)'
+
+      let(:id) { transaction.id }
+
+      response '200', 'invoice photo streamed' do
+        before do
+          transaction.attachments.attach(
+            io: StringIO.new('fake-jpeg-bytes'),
+            filename: 'receipt.jpg',
+            content_type: 'image/jpeg'
+          )
+        end
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        schema '$ref' => '#/components/schemas/ErrorResponse'
+        let(:'X-Api-Key') { nil }
+        run_test!
+      end
+
+      response '404', 'invoice photo or transaction not found' do
+        schema '$ref' => '#/components/schemas/ErrorResponse'
+        run_test!
+      end
+    end
+
+    post 'Upload or replace transaction invoice photo' do
+      tags 'Transactions'
+      security [ { apiKeyAuth: [] } ]
+      consumes 'multipart/form-data'
+      produces 'application/json'
+      parameter name: :invoice_photo, in: :formData, type: :file, required: true,
+                description: 'Invoice photo file (JPEG, PNG, GIF, WebP or PDF up to 10MB)'
+
+      let(:id) { transaction.id }
+      let(:invoice_photo) do
+        Rack::Test::UploadedFile.new(
+          Rails.root.join('test/fixtures/files/receipt.jpg'),
+          'image/jpeg'
+        )
+      end
+
+      response '200', 'invoice photo uploaded' do
+        schema '$ref' => '#/components/schemas/Transaction'
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        schema '$ref' => '#/components/schemas/ErrorResponse'
+        let(:'X-Api-Key') { nil }
+        run_test!
+      end
+
+      response '403', 'forbidden - requires write scope' do
+        schema '$ref' => '#/components/schemas/ErrorResponse'
+        let(:'X-Api-Key') { api_key_without_write_scope.plain_key }
+        run_test!
+      end
+
+      response '422', 'invalid or missing file' do
+        schema '$ref' => '#/components/schemas/ErrorResponse'
+        let(:invoice_photo) do
+          Rack::Test::UploadedFile.new(
+            Rails.root.join('test/fixtures/files/test.txt'),
+            'text/plain'
+          )
+        end
+        run_test!
+      end
+    end
+
+    delete 'Delete transaction invoice photo' do
+      tags 'Transactions'
+      security [ { apiKeyAuth: [] } ]
+      produces 'application/json'
+
+      let(:id) { transaction.id }
+
+      response '200', 'invoice photo deleted' do
+        schema '$ref' => '#/components/schemas/Transaction'
+        before do
+          transaction.attachments.attach(
+            io: StringIO.new('fake-jpeg-bytes'),
+            filename: 'receipt.jpg',
+            content_type: 'image/jpeg'
+          )
+        end
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        schema '$ref' => '#/components/schemas/ErrorResponse'
+        let(:'X-Api-Key') { nil }
+        run_test!
+      end
+
+      response '403', 'forbidden - requires write scope' do
+        schema '$ref' => '#/components/schemas/ErrorResponse'
+        let(:'X-Api-Key') { api_key_without_write_scope.plain_key }
+        run_test!
+      end
+
+      response '404', 'transaction not found' do
+        schema '$ref' => '#/components/schemas/ErrorResponse'
+        let(:id) { SecureRandom.uuid }
         run_test!
       end
     end
