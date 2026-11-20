@@ -16,6 +16,7 @@ import py.com.cdco.financespy.db.AccountDao
 import py.com.cdco.financespy.db.AccountEntity
 
 data class SaleFormItemState(
+    val existingId: String? = null,
     val productId: String = "",
     val quantity: Int = 1,
     val unitPrice: Double = 0.0
@@ -133,7 +134,13 @@ class SaleFormViewModel(
     fun saveSale(
         clientName: String?,
         currency: String,
+        paymentMethod: String?,
+        invoiceNumber: String?,
+        condition: String?,
         notes: String?,
+        deliveryAddress: String?,
+        deliveryDate: String?,
+        carrier: String?,
         accountId: String,
         items: List<SaleFormItemState>,
         onSaved: () -> Unit
@@ -147,8 +154,23 @@ class SaleFormViewModel(
             _isSaving.value = true
             _error.value = null
             try {
-                val itemsAttributes = items.map { item ->
+                val keptExistingIds = items.mapNotNull { it.existingId }.toSet()
+                val destroyedItems = _sale.value?.sale_items
+                    ?.filter { it.id != null && it.id !in keptExistingIds }
+                    ?.map { removed ->
+                        SaleItemRequestDto(
+                            id = removed.id,
+                            product_id = removed.product_id,
+                            quantity = removed.quantity,
+                            unit_price = removed.unit_price,
+                            _destroy = true
+                        )
+                    }
+                    ?: emptyList()
+
+                val activeItems = items.map { item ->
                     SaleItemRequestDto(
+                        id = item.existingId,
                         product_id = item.productId,
                         quantity = item.quantity,
                         unit_price = item.unitPrice
@@ -159,9 +181,15 @@ class SaleFormViewModel(
                     sale = SalePayloadDto(
                         client_name = clientName.takeIf { !it.isNullOrBlank() },
                         currency = currency.lowercase(),
+                        payment_method = paymentMethod.takeIf { !it.isNullOrBlank() },
+                        invoice_number = invoiceNumber.takeIf { !it.isNullOrBlank() },
+                        condition = condition.takeIf { !it.isNullOrBlank() },
                         notes = notes.takeIf { !it.isNullOrBlank() },
+                        delivery_address = deliveryAddress.takeIf { !it.isNullOrBlank() },
+                        delivery_date = deliveryDate.takeIf { !it.isNullOrBlank() },
+                        carrier = carrier.takeIf { !it.isNullOrBlank() },
                         account_id = accountId,
-                        sale_items_attributes = itemsAttributes
+                        sale_items_attributes = activeItems + destroyedItems
                     )
                 )
 

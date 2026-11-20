@@ -131,11 +131,12 @@ class MainActivity : FragmentActivity() {
         uri?.let { handlePdfFilePicked(it) }
     }
     private var invoicePhotoPickedCallback: ((ByteArray, String, String) -> Unit)? = null
+    private var pendingCameraPhotoFile: java.io.File? = null
     private val invoicePhotoPickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { handleInvoicePhotoPicked(it) }
+        uri?.let { handleInvoicePhotoPicked(it) } ?: run { invoicePhotoPickedCallback = null }
     }
-    private val invoiceCameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-        bitmap?.let { handleInvoiceCameraCaptured(it) }
+    private val invoiceCameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        handleInvoiceCameraCaptured(success)
     }
 
     // User turning the Settings toggle on is the trigger for the runtime
@@ -975,7 +976,21 @@ class MainActivity : FragmentActivity() {
 
     private fun takeInvoicePhoto(onPicked: (ByteArray, String, String) -> Unit) {
         invoicePhotoPickedCallback = onPicked
-        invoiceCameraLauncher.launch(null)
+        try {
+            val photoFile = java.io.File.createTempFile("factura_cam_", ".jpg", cacheDir)
+            pendingCameraPhotoFile = photoFile
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                this,
+                "$packageName.fileprovider",
+                photoFile
+            )
+            invoiceCameraLauncher.launch(uri)
+        } catch (e: Exception) {
+            Log.e("FinancePYInvoicePhoto", "Error launching camera for invoice photo", e)
+            pendingCameraPhotoFile?.delete()
+            pendingCameraPhotoFile = null
+            invoicePhotoPickedCallback = null
+        }
     }
 
     private fun handleInvoicePhotoPicked(uri: Uri) {
@@ -1003,20 +1018,72 @@ class MainActivity : FragmentActivity() {
         }
     }
 
-    private fun handleInvoiceCameraCaptured(bitmap: android.graphics.Bitmap) {
-        val callback = invoicePhotoPickedCallback ?: return
+    private fun handleInvoiceCameraCaptured(success: Boolean) {
+        val callback = invoicePhotoPickedCallback
+        val photoFile = pendingCameraPhotoFile
+        pendingCameraPhotoFile = null
+        if (!success || callback == null || photoFile == null || !photoFile.exists()) {
+            photoFile?.delete()
+            invoicePhotoPickedCallback = null
+            return
+        }
         lifecycleScope.launch(Dispatchers.IO) {
             try {
+                val maxDimension = 2048
+                val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, bounds)
+                var sampleSize = 1
+                val rawMax = maxOf(bounds.outWidth, bounds.outHeight)
+                if (rawMax > maxDimension) {
+                    while (rawMax / sampleSize > maxDimension * 2) {
+                        sampleSize *= 2
+                    }
+                }
+                val decodeOpts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sampleSize }
+                val sampled = android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, decodeOpts)
+                    ?: throw IllegalStateException("No se pudo decodificar la foto capturada")
+
+                val orientation = try {
+                    android.media.ExifInterface(photoFile.absolutePath).getAttributeInt(
+                        android.media.ExifInterface.TAG_ORIENTATION,
+                        android.media.ExifInterface.ORIENTATION_NORMAL
+                    )
+                } catch (_: Exception) {
+                    android.media.ExifInterface.ORIENTATION_NORMAL
+                }
+                val rotationDegrees = when (orientation) {
+                    android.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                    android.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                    android.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                    else -> 0f
+                }
+
+                val currentMax = maxOf(sampled.width, sampled.height)
+                val scale = if (currentMax > maxDimension) maxDimension.toFloat() / currentMax.toFloat() else 1f
+                val finalBitmap = if (scale < 1f || rotationDegrees != 0f) {
+                    val matrix = android.graphics.Matrix().apply {
+                        if (scale < 1f) postScale(scale, scale)
+                        if (rotationDegrees != 0f) postRotate(rotationDegrees)
+                    }
+                    android.graphics.Bitmap.createBitmap(sampled, 0, 0, sampled.width, sampled.height, matrix, true).also {
+                        if (it !== sampled) sampled.recycle()
+                    }
+                } else {
+                    sampled
+                }
+
                 val out = java.io.ByteArrayOutputStream()
-                bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
+                finalBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
+                finalBitmap.recycle()
                 val bytes = out.toByteArray()
                 val fileName = "factura_${System.currentTimeMillis()}.jpg"
                 withContext(Dispatchers.Main) {
                     callback(bytes, fileName, "image/jpeg")
                 }
             } catch (e: Exception) {
-                Log.e("FinancePYInvoicePhoto", "Error compressing captured invoice photo", e)
+                Log.e("FinancePYInvoicePhoto", "Error processing captured invoice photo", e)
             } finally {
+                photoFile.delete()
                 invoicePhotoPickedCallback = null
             }
         }

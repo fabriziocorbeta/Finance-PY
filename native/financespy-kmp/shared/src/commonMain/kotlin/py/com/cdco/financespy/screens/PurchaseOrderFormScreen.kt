@@ -1,31 +1,27 @@
 package py.com.cdco.financespy.screens
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import py.com.cdco.financespy.sync.currentIsoDate
 import py.com.cdco.financespy.theme.FinancePyColors
+import py.com.cdco.financespy.theme.components.InvoicePhotoSectionCard
+import py.com.cdco.financespy.theme.components.ZoomableInvoicePhotoDialog
 import py.com.cdco.financespy.utils.decodeByteArrayToImageBitmap
+import py.com.cdco.financespy.utils.formatMoney
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +40,7 @@ fun PurchaseOrderFormScreen(
     val error by viewModel.error.collectAsState()
     val pendingPhotoBytes by viewModel.pendingPhotoBytes.collectAsState()
     val pendingPhotoName by viewModel.pendingPhotoName.collectAsState()
+    val pendingPhotoContentType by viewModel.pendingPhotoContentType.collectAsState()
     var showPhotoPreviewDialog by remember { mutableStateOf(false) }
 
     val decodedBitmap = remember(pendingPhotoBytes) {
@@ -52,6 +49,7 @@ fun PurchaseOrderFormScreen(
 
     var supplierName by remember { mutableStateOf("") }
     var currency by remember { mutableStateOf("pyg") }
+    var expectedDate by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     var accountId by remember { mutableStateOf("") }
     val items = remember { mutableStateListOf<PurchaseOrderFormItemState>() }
@@ -60,12 +58,14 @@ fun PurchaseOrderFormScreen(
         existingPo?.let { po ->
             supplierName = po.supplier_name ?: ""
             currency = po.currency
+            expectedDate = po.expected_date ?: ""
             notes = po.notes ?: ""
             accountId = po.account_id ?: accountId
             items.clear()
             po.purchase_order_items.forEach { item ->
                 items.add(
                     PurchaseOrderFormItemState(
+                        existingId = item.id,
                         productId = item.product_id,
                         quantity = item.quantity,
                         unitCost = item.unit_cost
@@ -80,6 +80,21 @@ fun PurchaseOrderFormScreen(
             availableAccounts.firstOrNull()?.let { accountId = it.id }
         }
     }
+
+    LaunchedEffect(availableProducts, existingPo) {
+        if (existingPo == null && items.isEmpty() && availableProducts.isNotEmpty()) {
+            val firstProduct = availableProducts.first()
+            items.add(
+                PurchaseOrderFormItemState(
+                    productId = firstProduct.id,
+                    quantity = 1,
+                    unitCost = firstProduct.buy_price
+                )
+            )
+        }
+    }
+
+    val orderTotal = items.sumOf { it.quantity.coerceAtLeast(0) * it.unitCost }
 
     Scaffold(
         topBar = {
@@ -117,11 +132,18 @@ fun PurchaseOrderFormScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 if (error != null) {
-                    Text(
-                        text = error ?: "",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = error ?: "",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
                 }
 
                 OutlinedTextField(
@@ -132,13 +154,40 @@ fun PurchaseOrderFormScreen(
                     singleLine = true
                 )
 
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("Notas") },
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "Moneda",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = FinancePyColors.textSecondary()
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("pyg" to "PYG (Guaraníes)", "usd" to "USD (Dólares)").forEach { (code, label) ->
+                            FilterChip(
+                                selected = currency.equals(code, ignoreCase = true),
+                                onClick = { currency = code },
+                                label = { Text(label) }
+                            )
+                        }
+                    }
+                }
+
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    minLines = 2
-                )
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = expectedDate,
+                        onValueChange = { expectedDate = it },
+                        label = { Text("Fecha esperada (YYYY-MM-DD)") },
+                        placeholder = { Text("2026-11-20") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    OutlinedButton(onClick = { expectedDate = currentIsoDate() }) {
+                        Text("Hoy")
+                    }
+                }
 
                 run {
                     var accountExpanded by remember { mutableStateOf(false) }
@@ -173,6 +222,14 @@ fun PurchaseOrderFormScreen(
                     }
                 }
 
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("Notas") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2
+                )
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -181,10 +238,11 @@ fun PurchaseOrderFormScreen(
                     Text(
                         text = "Ítems de Orden",
                         style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
                         color = FinancePyColors.textPrimary()
                     )
 
-                    IconButton(
+                    FilledTonalButton(
                         onClick = {
                             val firstProduct = availableProducts.firstOrNull()
                             items.add(
@@ -196,13 +254,16 @@ fun PurchaseOrderFormScreen(
                             )
                         }
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Agregar ítem")
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Agregar ítem")
                     }
                 }
 
                 items.forEachIndexed { index, itemState ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = FinancePyColors.container())
                     ) {
                         Column(
@@ -214,9 +275,21 @@ fun PurchaseOrderFormScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Ítem ${index + 1}", style = MaterialTheme.typography.bodySmall, color = FinancePyColors.textSecondary())
-                                IconButton(onClick = { items.removeAt(index) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Quitar ítem", tint = MaterialTheme.colorScheme.error)
+                                Text(
+                                    text = "Ítem ${index + 1}",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = FinancePyColors.textSecondary()
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = formatMoney(itemState.quantity.coerceAtLeast(0) * itemState.unitCost, currency.uppercase()),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = FinancePyColors.textPrimary()
+                                    )
+                                    IconButton(onClick = { items.removeAt(index) }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Quitar ítem", tint = MaterialTheme.colorScheme.error)
+                                    }
                                 }
                             }
 
@@ -240,7 +313,7 @@ fun PurchaseOrderFormScreen(
                                 ) {
                                     availableProducts.forEach { p ->
                                         DropdownMenuItem(
-                                            text = { Text(p.name) },
+                                            text = { Text("${p.name} (Stock: ${p.stock})") },
                                             onClick = {
                                                 items[index] = itemState.copy(
                                                     productId = p.id,
@@ -260,7 +333,7 @@ fun PurchaseOrderFormScreen(
                                 OutlinedTextField(
                                     value = itemState.quantity.toString(),
                                     onValueChange = { qStr ->
-                                        val q = qStr.toIntOrNull() ?: 1
+                                        val q = qStr.toIntOrNull()?.coerceAtLeast(1) ?: 1
                                         items[index] = itemState.copy(quantity = q)
                                     },
                                     label = { Text("Cantidad") },
@@ -270,18 +343,43 @@ fun PurchaseOrderFormScreen(
                                 )
 
                                 OutlinedTextField(
-                                    value = itemState.unitCost.toString(),
+                                    value = if (itemState.unitCost == 0.0) "" else itemState.unitCost.toString(),
                                     onValueChange = { cStr ->
                                         val c = cStr.toDoubleOrNull() ?: 0.0
                                         items[index] = itemState.copy(unitCost = c)
                                     },
                                     label = { Text("Costo Unitario") },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                     modifier = Modifier.weight(1f),
                                     singleLine = true
                                 )
                             }
                         }
+                    }
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = FinancePyColors.container())
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Total de la Orden",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = FinancePyColors.textSecondary()
+                        )
+                        Text(
+                            text = formatMoney(orderTotal, currency.uppercase()),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = FinancePyColors.textPrimary()
+                        )
                     }
                 }
 
@@ -292,114 +390,42 @@ fun PurchaseOrderFormScreen(
                     color = FinancePyColors.textPrimary()
                 )
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = FinancePyColors.container())
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        val hasPhoto = pendingPhotoName != null || pendingPhotoBytes != null
-                        if (hasPhoto) {
-                            if (decodedBitmap != null) {
-                                Image(
-                                    bitmap = decodedBitmap,
-                                    contentDescription = "Vista previa de factura de compra",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(180.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable { showPhotoPreviewDialog = true }
-                                )
-                            }
-                            if (pendingPhotoName != null) {
-                                Text(
-                                    text = pendingPhotoName ?: "",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = FinancePyColors.textSecondary()
-                                )
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                OutlinedButton(
-                                    onClick = {
-                                        onTakeInvoicePhoto?.invoke { bytes, name, mime ->
-                                            viewModel.onPhotoSelected(bytes, name, mime)
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    enabled = !isSaving
-                                ) {
-                                    Text("Tomar otra foto")
-                                }
-                                OutlinedButton(
-                                    onClick = {
-                                        onPickInvoicePhoto?.invoke { bytes, name, mime ->
-                                            viewModel.onPhotoSelected(bytes, name, mime)
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    enabled = !isSaving
-                                ) {
-                                    Text("Cambiar archivo")
-                                }
-                            }
-                            TextButton(
-                                onClick = { viewModel.onRemovePhoto() },
-                                enabled = !isSaving,
-                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                            ) {
-                                Text("Quitar factura")
-                            }
-                        } else {
-                            Text(
-                                text = "Adjuntá una foto o PDF de la factura de compra",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = FinancePyColors.textSecondary()
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Button(
-                                    onClick = {
-                                        onTakeInvoicePhoto?.invoke { bytes, name, mime ->
-                                            viewModel.onPhotoSelected(bytes, name, mime)
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    enabled = !isSaving
-                                ) {
-                                    Text("Tomar foto")
-                                }
-                                OutlinedButton(
-                                    onClick = {
-                                        onPickInvoicePhoto?.invoke { bytes, name, mime ->
-                                            viewModel.onPhotoSelected(bytes, name, mime)
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    enabled = !isSaving
-                                ) {
-                                    Text("Elegir archivo")
-                                }
+                val hasPhoto = pendingPhotoName != null || pendingPhotoBytes != null
+                InvoicePhotoSectionCard(
+                    hasAttachment = hasPhoto,
+                    decodedBitmap = decodedBitmap,
+                    fileName = pendingPhotoName,
+                    contentType = pendingPhotoContentType,
+                    byteSize = pendingPhotoBytes?.size?.toLong(),
+                    isProcessing = isSaving,
+                    emptyPrompt = "Adjuntá una foto o PDF de la factura de compra",
+                    removeLabel = "Quitar factura",
+                    onTakePhoto = onTakeInvoicePhoto?.let { launcher ->
+                        {
+                            launcher { bytes, name, mime ->
+                                viewModel.onPhotoSelected(bytes, name, mime)
                             }
                         }
-                    }
-                }
+                    },
+                    onPickFile = onPickInvoicePhoto?.let { launcher ->
+                        {
+                            launcher { bytes, name, mime ->
+                                viewModel.onPhotoSelected(bytes, name, mime)
+                            }
+                        }
+                    },
+                    onRemove = { viewModel.onRemovePhoto() },
+                    onPreviewClick = { if (decodedBitmap != null) showPhotoPreviewDialog = true }
+                )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Button(
                     onClick = {
                         viewModel.savePurchaseOrder(
                             supplierName = supplierName,
                             currency = currency,
+                            expectedDate = expectedDate,
                             notes = notes,
                             accountId = accountId,
                             items = items,
@@ -420,25 +446,10 @@ fun PurchaseOrderFormScreen(
     }
 
     if (showPhotoPreviewDialog && decodedBitmap != null) {
-        Dialog(
-            onDismissRequest = { showPhotoPreviewDialog = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.9f))
-                    .clickable { showPhotoPreviewDialog = false }
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    bitmap = decodedBitmap,
-                    contentDescription = "Factura en pantalla completa",
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-        }
+        ZoomableInvoicePhotoDialog(
+            bitmap = decodedBitmap,
+            title = pendingPhotoName ?: "Factura de compra",
+            onDismiss = { showPhotoPreviewDialog = false }
+        )
     }
 }

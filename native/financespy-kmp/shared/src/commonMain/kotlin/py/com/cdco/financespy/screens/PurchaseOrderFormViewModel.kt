@@ -16,6 +16,7 @@ import py.com.cdco.financespy.db.AccountDao
 import py.com.cdco.financespy.db.AccountEntity
 
 data class PurchaseOrderFormItemState(
+    val existingId: String? = null,
     val productId: String = "",
     val quantity: Int = 1,
     val unitCost: Double = 0.0
@@ -133,6 +134,7 @@ class PurchaseOrderFormViewModel(
     fun savePurchaseOrder(
         supplierName: String?,
         currency: String,
+        expectedDate: String?,
         notes: String?,
         accountId: String,
         items: List<PurchaseOrderFormItemState>,
@@ -147,8 +149,23 @@ class PurchaseOrderFormViewModel(
             _isSaving.value = true
             _error.value = null
             try {
-                val itemsAttributes = items.map { item ->
+                val keptExistingIds = items.mapNotNull { it.existingId }.toSet()
+                val destroyedItems = _purchaseOrder.value?.purchase_order_items
+                    ?.filter { it.id != null && it.id !in keptExistingIds }
+                    ?.map { removed ->
+                        PurchaseOrderItemRequestDto(
+                            id = removed.id,
+                            product_id = removed.product_id,
+                            quantity = removed.quantity,
+                            unit_cost = removed.unit_cost,
+                            _destroy = true
+                        )
+                    }
+                    ?: emptyList()
+
+                val activeItems = items.map { item ->
                     PurchaseOrderItemRequestDto(
+                        id = item.existingId,
                         product_id = item.productId,
                         quantity = item.quantity,
                         unit_cost = item.unitCost
@@ -159,9 +176,10 @@ class PurchaseOrderFormViewModel(
                     purchase_order = PurchaseOrderPayloadDto(
                         supplier_name = supplierName.takeIf { !it.isNullOrBlank() },
                         currency = currency.lowercase(),
+                        expected_date = expectedDate.takeIf { !it.isNullOrBlank() },
                         notes = notes.takeIf { !it.isNullOrBlank() },
                         account_id = accountId,
-                        purchase_order_items_attributes = itemsAttributes
+                        purchase_order_items_attributes = activeItems + destroyedItems
                     )
                 )
 
