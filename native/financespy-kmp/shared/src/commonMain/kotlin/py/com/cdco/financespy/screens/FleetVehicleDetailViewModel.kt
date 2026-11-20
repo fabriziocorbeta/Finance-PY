@@ -12,13 +12,15 @@ import py.com.cdco.financespy.api.dto.CreateFuelLogLineBody
 import py.com.cdco.financespy.api.dto.FleetVehicleDto
 import py.com.cdco.financespy.sync.OfflineCache
 import py.com.cdco.financespy.sync.OfflineCacheKeys
+import py.com.cdco.financespy.sync.OfflineOutbox
 import py.com.cdco.financespy.sync.OfflineStore
 
 class FleetVehicleDetailViewModel(
     private val scope: CoroutineScope,
     private val vehicleId: String,
     private val api: FinancePyApi,
-    store: OfflineStore? = null
+    store: OfflineStore? = null,
+    private val outbox: OfflineOutbox? = null
 ) {
     private val cache = OfflineCache(store)
     private val _vehicle = MutableStateFlow<FleetVehicleDto?>(
@@ -86,30 +88,34 @@ class FleetVehicleDetailViewModel(
         scope.launch {
             _isLoading.value = true
             _error.value = null
-            runCatching {
-                api.createFuelLog(
-                    vehicleId = vehicleId,
-                    body = CreateFuelLogBody(
-                        account_id = accountId,
-                        logged_at = loggedAt,
-                        odometer = odometer,
-                        notes = notes,
-                        fuel_log_lines = listOf(
-                            CreateFuelLogLineBody(
-                                fuel_type = fuelType,
-                                brand = brand,
-                                liters = liters,
-                                cost = cost
-                            )
-                        )
+            val body = CreateFuelLogBody(
+                account_id = accountId,
+                logged_at = loggedAt,
+                odometer = odometer,
+                notes = notes,
+                fuel_log_lines = listOf(
+                    CreateFuelLogLineBody(
+                        fuel_type = fuelType,
+                        brand = brand,
+                        liters = liters,
+                        cost = cost
                     )
                 )
+            )
+            runCatching {
+                api.createFuelLog(vehicleId = vehicleId, body = body)
             }.onSuccess {
                 refresh()
                 onSuccess()
             }.onFailure { throwable ->
-                _error.value = throwable.message ?: "Error al guardar el registro de combustible"
-                _isLoading.value = false
+                if (outbox != null && outbox.shouldQueue(throwable)) {
+                    outbox.enqueueFuelLog(vehicleId, body, "Combustible: ${_vehicle.value?.plate ?: vehicleId}")
+                    _isLoading.value = false
+                    onSuccess()
+                } else {
+                    _error.value = throwable.message ?: "Error al guardar el registro de combustible"
+                    _isLoading.value = false
+                }
             }
         }
     }

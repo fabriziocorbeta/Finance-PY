@@ -110,6 +110,8 @@ class MainActivity : FragmentActivity() {
     private val walletLocationCaptureEnabled = mutableStateOf(false)
     private val uiVariantPreferences by lazy { AndroidUiVariantPreferences(applicationContext) }
     private val uiVariant = mutableStateOf(UiVariant.DEFAULT)
+    private val isOffline = mutableStateOf(false)
+    private var networkCallback: android.net.ConnectivityManager.NetworkCallback? = null
 
     // App-level (not Activity-level) observer: fires only when the whole app
     // truly leaves the foreground, not on rotation/config-change recreation
@@ -386,6 +388,7 @@ class MainActivity : FragmentActivity() {
             requestBackgroundLocationIfNeeded()
         }
         uiVariant.value = uiVariantPreferences.getUiVariant()
+        registerConnectivityObserver()
 
         initDatabaseBuilder(applicationContext)
 
@@ -549,14 +552,14 @@ class MainActivity : FragmentActivity() {
                 },
                 salesListViewModelFactory = { salesListViewModel },
                 saleDetailViewModelFactory = { saleId ->
-                    SaleDetailViewModel(saleId = saleId, api = api, store = offlineStore)
+                    SaleDetailViewModel(saleId = saleId, api = api, store = offlineStore, outbox = outbox)
                 },
                 saleFormViewModelFactory = { saleId ->
                     SaleFormViewModel(saleId = saleId, api = api, accountDao = database.accountDao(), store = offlineStore, outbox = outbox)
                 },
                 purchaseOrdersListViewModelFactory = { purchaseOrdersListViewModel },
                 purchaseOrderDetailViewModelFactory = { poId ->
-                    PurchaseOrderDetailViewModel(purchaseOrderId = poId, api = api, store = offlineStore)
+                    PurchaseOrderDetailViewModel(purchaseOrderId = poId, api = api, store = offlineStore, outbox = outbox)
                 },
                 purchaseOrderFormViewModelFactory = { poId ->
                     PurchaseOrderFormViewModel(purchaseOrderId = poId, api = api, accountDao = database.accountDao(), store = offlineStore, outbox = outbox)
@@ -567,7 +570,8 @@ class MainActivity : FragmentActivity() {
                         scope = lifecycleScope,
                         vehicleId = vehicleId,
                         api = api,
-                        store = offlineStore
+                        store = offlineStore,
+                        outbox = outbox
                     )
                 },
                 accountDetailViewModelFactory = { accountId ->
@@ -588,6 +592,7 @@ class MainActivity : FragmentActivity() {
                     if (enabled) armBiometricRefreshTokenLock() else disarmBiometricRefreshTokenLock()
                 },
                 isScreenCaptureBlockEnabled = screenCaptureBlockEnabled.value,
+                isOffline = isOffline.value,
                 onToggleScreenCaptureBlock = { enabled ->
                     securityPreferences.setScreenCaptureBlockEnabled(enabled)
                     screenCaptureBlockEnabled.value = enabled
@@ -1113,7 +1118,34 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    private fun registerConnectivityObserver() {
+        val cm = getSystemService(android.net.ConnectivityManager::class.java) ?: return
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork)
+        isOffline.value = caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) != true
+        val cb = object : android.net.ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                runOnUiThread { isOffline.value = false }
+                if (isLoggedIn.value == true) {
+                    lifecycleScope.launch(Dispatchers.IO) { runCatching { outbox.flush() } }
+                }
+            }
+
+            override fun onLost(network: android.net.Network) {
+                val activeCaps = cm.getNetworkCapabilities(cm.activeNetwork)
+                val stillOnline = activeCaps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+                runOnUiThread { isOffline.value = !stillOnline }
+            }
+        }
+        networkCallback = cb
+        runCatching { cm.registerDefaultNetworkCallback(cb) }
+    }
+
     override fun onDestroy() {
+        networkCallback?.let { cb ->
+            runCatching {
+                getSystemService(android.net.ConnectivityManager::class.java)?.unregisterNetworkCallback(cb)
+            }
+        }
         ProcessLifecycleOwner.get().lifecycle.removeObserver(processLifecycleObserver)
         ProcessLifecycleOwner.get().lifecycle.removeObserver(appLifecycleObserver)
         appLifecycleObserver.cleanUp()

@@ -135,7 +135,12 @@ class ProductFormViewModel(
                 api.deleteProduct(id)
                 onDeleted()
             } catch (e: Exception) {
-                _error.value = e.message ?: "Error al eliminar producto"
+                if (outbox != null && outbox.shouldQueue(e)) {
+                    outbox.enqueueProductDelete(id, "Eliminar producto: ${_product.value?.name ?: id}")
+                    onDeleted()
+                } else {
+                    _error.value = e.message ?: "Error al eliminar producto"
+                }
             } finally {
                 _isSaving.value = false
             }

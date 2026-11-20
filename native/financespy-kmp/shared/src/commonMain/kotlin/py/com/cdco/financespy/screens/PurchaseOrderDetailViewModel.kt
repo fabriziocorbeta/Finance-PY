@@ -7,15 +7,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
+import py.com.cdco.financespy.api.dto.InvoicePhotoDto
 import py.com.cdco.financespy.api.dto.PurchaseOrderDto
 import py.com.cdco.financespy.sync.OfflineCache
 import py.com.cdco.financespy.sync.OfflineCacheKeys
+import py.com.cdco.financespy.sync.OfflineOutbox
 import py.com.cdco.financespy.sync.OfflineStore
 
 class PurchaseOrderDetailViewModel(
     private val purchaseOrderId: String,
     private val api: FinancePyApi,
-    store: OfflineStore? = null
+    store: OfflineStore? = null,
+    private val outbox: OfflineOutbox? = null
 ) : ViewModel() {
 
     private val cache = OfflineCache(store)
@@ -70,11 +73,21 @@ class PurchaseOrderDetailViewModel(
                 try {
                     _invoicePhotoBytes.value = api.downloadPurchaseOrderInvoicePhoto(purchaseOrderId)
                 } catch (_: Exception) {
-                    _invoicePhotoBytes.value = null
+                    // Keep whatever is already on screen (e.g. the photo just taken offline).
                 }
             }
         } else {
             _invoicePhotoBytes.value = null
+        }
+    }
+
+    /** Applies a change locally (screen + cached copies) so the UI reflects it before the server does. */
+    private fun applyLocal(transform: (PurchaseOrderDto) -> PurchaseOrderDto) {
+        val updated = _purchaseOrder.value?.let(transform) ?: return
+        _purchaseOrder.value = updated
+        cache.put(OfflineCacheKeys.purchaseOrderDetail(purchaseOrderId), PurchaseOrderDto.serializer(), updated)
+        cache.updateList(OfflineCacheKeys.PURCHASE_ORDERS_LIST, PurchaseOrderDto.serializer()) { list ->
+            list.map { if (it.id == purchaseOrderId) updated else it }
         }
     }
 
@@ -85,13 +98,28 @@ class PurchaseOrderDetailViewModel(
             try {
                 val updated = api.uploadPurchaseOrderInvoicePhoto(purchaseOrderId, fileBytes, fileName, contentType)
                 _purchaseOrder.value = updated
+                cache.put(OfflineCacheKeys.purchaseOrderDetail(purchaseOrderId), PurchaseOrderDto.serializer(), updated)
                 if (contentType.startsWith("image/") || updated.invoice_photo?.content_type?.startsWith("image/") == true) {
                     _invoicePhotoBytes.value = fileBytes
                 } else {
                     _invoicePhotoBytes.value = null
                 }
             } catch (e: Exception) {
-                _error.value = e.message ?: "Error al subir factura"
+                if (outbox != null && outbox.shouldQueue(e)) {
+                    outbox.enqueuePurchaseOrderPhoto(
+                        purchaseOrderId, fileBytes, fileName, contentType,
+                        "Factura de orden #${_purchaseOrder.value?.order_number ?: ""}"
+                    )
+                    applyLocal {
+                        it.copy(
+                            has_invoice_photo = true,
+                            invoice_photo = InvoicePhotoDto(fileName, contentType, fileBytes.size.toLong(), "")
+                        )
+                    }
+                    _invoicePhotoBytes.value = if (contentType.startsWith("image/")) fileBytes else null
+                } else {
+                    _error.value = e.message ?: "Error al subir factura"
+                }
             } finally {
                 _isUploadingPhoto.value = false
             }
@@ -105,37 +133,50 @@ class PurchaseOrderDetailViewModel(
             try {
                 val updated = api.deletePurchaseOrderInvoicePhoto(purchaseOrderId)
                 _purchaseOrder.value = updated
+                cache.put(OfflineCacheKeys.purchaseOrderDetail(purchaseOrderId), PurchaseOrderDto.serializer(), updated)
                 _invoicePhotoBytes.value = null
             } catch (e: Exception) {
-                _error.value = e.message ?: "Error al eliminar factura"
+                if (outbox != null && outbox.shouldQueue(e)) {
+                    outbox.enqueuePurchaseOrderPhotoDelete(purchaseOrderId, "Quitar factura de orden #${_purchaseOrder.value?.order_number ?: ""}")
+                    applyLocal { it.copy(has_invoice_photo = false, invoice_photo = null) }
+                    _invoicePhotoBytes.value = null
+                } else {
+                    _error.value = e.message ?: "Error al eliminar factura"
+                }
             } finally {
                 _isUploadingPhoto.value = false
             }
         }
     }
 
-    fun receivePurchaseOrder() {
-        viewModelScope.launch {
-            _isActioning.value = true
-            _error.value = null
-            try {
-                _purchaseOrder.value = api.receivePurchaseOrder(purchaseOrderId)
-            } catch (e: Exception) {
-                _error.value = e.message ?: "Error al recibir orden"
-            } finally {
-                _isActioning.value = false
-            }
-        }
-    }
+    fun receivePurchaseOrder() = runStatusAction(
+        action = "receive", newStatus = "received", errorMessage = "Error al recibir orden"
+    ) { api.receivePurchaseOrder(purchaseOrderId) }
 
-    fun cancelPurchaseOrder() {
+    fun cancelPurchaseOrder() = runStatusAction(
+        action = "cancel", newStatus = "cancelled", errorMessage = "Error al cancelar orden"
+    ) { api.cancelPurchaseOrder(purchaseOrderId) }
+
+    private fun runStatusAction(
+        action: String,
+        newStatus: String,
+        errorMessage: String,
+        call: suspend () -> PurchaseOrderDto
+    ) {
         viewModelScope.launch {
             _isActioning.value = true
             _error.value = null
             try {
-                _purchaseOrder.value = api.cancelPurchaseOrder(purchaseOrderId)
+                val updated = call()
+                _purchaseOrder.value = updated
+                cache.put(OfflineCacheKeys.purchaseOrderDetail(purchaseOrderId), PurchaseOrderDto.serializer(), updated)
             } catch (e: Exception) {
-                _error.value = e.message ?: "Error al cancelar orden"
+                if (outbox != null && outbox.shouldQueue(e)) {
+                    outbox.enqueuePurchaseOrderAction(action, purchaseOrderId, "Orden #${_purchaseOrder.value?.order_number ?: ""}: $action")
+                    applyLocal { it.copy(status = newStatus) }
+                } else {
+                    _error.value = e.message ?: errorMessage
+                }
             } finally {
                 _isActioning.value = false
             }
@@ -148,12 +189,26 @@ class PurchaseOrderDetailViewModel(
             _error.value = null
             try {
                 api.deletePurchaseOrder(purchaseOrderId)
+                removeFromCaches()
                 onDeleted()
             } catch (e: Exception) {
-                _error.value = e.message ?: "Error al eliminar orden"
+                if (outbox != null && outbox.shouldQueue(e)) {
+                    outbox.enqueuePurchaseOrderAction("delete", purchaseOrderId, "Eliminar orden #${_purchaseOrder.value?.order_number ?: ""}")
+                    removeFromCaches()
+                    onDeleted()
+                } else {
+                    _error.value = e.message ?: "Error al eliminar orden"
+                }
             } finally {
                 _isActioning.value = false
             }
+        }
+    }
+
+    private fun removeFromCaches() {
+        cache.remove(OfflineCacheKeys.purchaseOrderDetail(purchaseOrderId))
+        cache.updateList(OfflineCacheKeys.PURCHASE_ORDERS_LIST, PurchaseOrderDto.serializer()) { list ->
+            list.filter { it.id != purchaseOrderId }
         }
     }
 }

@@ -231,9 +231,23 @@ class SaleFormViewModel(
                 }
                 onSaved()
             } catch (e: Exception) {
-                if (saleId == null && outbox != null && outbox.shouldQueue(e)) {
-                    val itemsAttributes = items.map { item ->
+                if (outbox != null && outbox.shouldQueue(e)) {
+                    val keptExistingIds = items.mapNotNull { it.existingId }.toSet()
+                    val destroyedItems = _sale.value?.sale_items
+                        ?.filter { it.id != null && it.id !in keptExistingIds }
+                        ?.map { removed ->
+                            SaleItemRequestDto(
+                                id = removed.id,
+                                product_id = removed.product_id,
+                                quantity = removed.quantity,
+                                unit_price = removed.unit_price,
+                                _destroy = true
+                            )
+                        }
+                        ?: emptyList()
+                    val activeItems = items.map { item ->
                         SaleItemRequestDto(
+                            id = item.existingId,
                             product_id = item.productId,
                             quantity = item.quantity,
                             unit_price = item.unitPrice
@@ -251,17 +265,29 @@ class SaleFormViewModel(
                             delivery_date = deliveryDate.takeIf { !it.isNullOrBlank() },
                             carrier = carrier.takeIf { !it.isNullOrBlank() },
                             account_id = accountId,
-                            sale_items_attributes = itemsAttributes
+                            sale_items_attributes = activeItems + destroyedItems
                         )
                     )
                     val label = "Venta: ${clientName?.takeIf { it.isNotBlank() } ?: "${items.size} ítems"}"
-                    outbox.enqueueSale(
-                        payload = payload,
-                        label = label,
-                        photoBytes = if (hasNewLocalPhoto) _pendingPhotoBytes.value else null,
-                        photoName = _pendingPhotoName.value,
-                        photoContentType = _pendingPhotoContentType.value
-                    )
+                    if (saleId == null) {
+                        outbox.enqueueSale(
+                            payload = payload,
+                            label = label,
+                            photoBytes = if (hasNewLocalPhoto) _pendingPhotoBytes.value else null,
+                            photoName = _pendingPhotoName.value,
+                            photoContentType = _pendingPhotoContentType.value
+                        )
+                    } else {
+                        outbox.enqueueSaleUpdate(
+                            id = saleId,
+                            payload = payload,
+                            label = "Actualizar $label",
+                            photoBytes = if (hasNewLocalPhoto) _pendingPhotoBytes.value else null,
+                            photoName = _pendingPhotoName.value,
+                            photoContentType = _pendingPhotoContentType.value,
+                            removePhoto = _removeExistingPhoto.value
+                        )
+                    }
                     onSaved()
                 } else {
                     _error.value = e.message ?: "Error al guardar venta"
