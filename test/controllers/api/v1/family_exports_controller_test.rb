@@ -143,7 +143,7 @@ class Api::V1::FamilyExportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "record_not_found", JSON.parse(response.body)["error"]
   end
 
-  test "redirects completed export downloads to the attached file" do
+  test "streams completed export downloads directly" do
     export = @family.family_exports.create!(status: "completed")
     export.export_file.attach(
       io: StringIO.new("test zip content"),
@@ -152,9 +152,10 @@ class Api::V1::FamilyExportsControllerTest < ActionDispatch::IntegrationTest
     )
 
     get download_api_v1_family_export_url(export), headers: api_headers(@read_only_api_key)
-    assert_response :redirect
-    assert_includes response.location, "/rails/active_storage/blobs/redirect/"
-    assert_includes response.location, "test.zip"
+    assert_response :ok
+    assert_includes response.headers["Content-Disposition"], "attachment"
+    assert_includes response.headers["Content-Disposition"], "test.zip"
+    assert_equal "test zip content", response.body
   end
 
   test "download returns conflict when export is not ready" do
@@ -167,7 +168,7 @@ class Api::V1::FamilyExportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "export_not_ready", json_response["error"]
   end
 
-  test "download handles storage URL failures without leaking details" do
+  test "download handles storage download failures without leaking details" do
     export = @family.family_exports.create!(status: "completed")
     export.export_file.attach(
       io: StringIO.new("test zip content"),
@@ -176,7 +177,7 @@ class Api::V1::FamilyExportsControllerTest < ActionDispatch::IntegrationTest
     )
 
     Api::V1::FamilyExportsController.any_instance
-      .stubs(:rails_blob_url)
+      .stubs(:send_blob_stream)
       .raises(StandardError, "storage down")
 
     get download_api_v1_family_export_url(export), headers: api_headers(@read_only_api_key)
