@@ -87,7 +87,9 @@
           </div>
         </div>
         <div class="py-4" data-dashboard-section-target="content">
-          <%= render partial: section[:partial], locals: section[:locals] %>
+          <% cache [Current.family.id, Current.user.id, "dashboard_section", section[:key], @period.key, @period.start_date, @period.end_date, I18n.locale, Current.family.accounts_cache_version, Current.family.entries_coarse_cache_version] do %>
+            <%= render partial: section[:partial], locals: section[:locals] %>
+          <% end %>
         </div>
       </section>
     <% end %>

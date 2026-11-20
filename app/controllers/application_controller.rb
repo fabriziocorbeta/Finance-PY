@@ -12,11 +12,10 @@ class ApplicationController < ActionController::Base
   end
 
   before_action :detect_os
-  before_action :set_default_chat
   before_action :set_active_storage_url_options
   before_action :set_paper_trail_whodunnit
 
-  helper_method :demo_config, :demo_host_match?, :show_demo_warning?
+  helper_method :demo_config, :demo_host_match?, :show_demo_warning?, :default_chat
 
   private
     # Records the real actor for PaperTrail, not the impersonated user --
@@ -71,8 +70,11 @@ class ApplicationController < ActionController::Base
       end
     end
 
-    # By default, we show the user the last chat they interacted with
-    def set_default_chat
+    # By default, we show the user the last chat they interacted with (lazy-loaded
+    # only when a layout actually renders the AI sidebar).
+    def default_chat
+      return @chat if defined?(@chat)
+
       @last_viewed_chat = Current.user&.last_viewed_chat
       @chat = @last_viewed_chat
     end

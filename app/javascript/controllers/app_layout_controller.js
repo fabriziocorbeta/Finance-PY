@@ -12,6 +12,7 @@ export default class extends Controller {
 
   openMobileSidebar() {
     this.mobileSidebarTarget.classList.remove("hidden");
+    this.#loadLazyFrame(this.mobileSidebarTarget);
   }
 
   closeMobileSidebar() {
@@ -28,6 +29,16 @@ export default class extends Controller {
     const isOpen = this.rightSidebarTarget.classList.contains("w-full");
     this.#updateUserPreference("show_ai_sidebar", !isOpen);
     this.#toggleSidebarWidth(this.rightSidebarTarget, isOpen, "right");
+    if (!isOpen) {
+      this.#loadLazyFrame(this.rightSidebarTarget);
+    }
+  }
+
+  #loadLazyFrame(container) {
+    const frame = container.querySelector("turbo-frame[data-lazy-src]");
+    if (frame && !frame.getAttribute("src")) {
+      frame.setAttribute("src", frame.dataset.lazySrc);
+    }
   }
 
   #toggleSidebarWidth(el, isCurrentlyOpen, side) {

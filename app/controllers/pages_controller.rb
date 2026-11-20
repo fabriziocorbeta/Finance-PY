@@ -9,7 +9,7 @@ class PagesController < ApplicationController
       redirect_to chats_path and return
     end
 
-    @accounts = Current.user.accessible_accounts.visible.with_attached_logo
+    @has_accounts = Current.user.accessible_accounts.visible.exists?
 
     summary = Dashboard::SummaryBuilder.new(family: Current.family, period: @period)
     @balance_sheet = summary.balance_sheet
@@ -83,7 +83,7 @@ class PagesController < ApplicationController
           title: "pages.dashboard.cashflow_sankey.title",
           partial: "pages/dashboard/cashflow_sankey",
           locals: { sankey_data: @cashflow_sankey_data, period: @period },
-          visible: @accounts.any?,
+          visible: @has_accounts,
           collapsible: true
         },
         {
@@ -91,7 +91,7 @@ class PagesController < ApplicationController
           title: "pages.dashboard.outflows_donut.title",
           partial: "pages/dashboard/outflows_donut",
           locals: { outflows_data: @outflows_data, period: @period },
-          visible: @accounts.any? && @outflows_data[:categories].present?,
+          visible: @has_accounts && @outflows_data[:categories].present?,
           collapsible: true
         },
         {
@@ -99,7 +99,7 @@ class PagesController < ApplicationController
           title: "pages.dashboard.investment_summary.title",
           partial: "pages/dashboard/investment_summary",
           locals: { investment_statement: @investment_statement, period: @period },
-          visible: @accounts.any? && @investment_statement.investment_accounts.any?,
+          visible: @has_accounts && @investment_statement.investment_accounts.any?,
           collapsible: true
         },
         {
@@ -107,7 +107,7 @@ class PagesController < ApplicationController
           title: "pages.dashboard.net_worth_chart.title",
           partial: "pages/dashboard/net_worth_chart",
           locals: { balance_sheet: @balance_sheet, period: @period },
-          visible: @accounts.any?,
+          visible: @has_accounts,
           collapsible: true
         },
         {
@@ -115,7 +115,7 @@ class PagesController < ApplicationController
           title: "pages.dashboard.balance_sheet.title",
           partial: "pages/dashboard/balance_sheet",
           locals: { balance_sheet: @balance_sheet },
-          visible: @accounts.any?,
+          visible: @has_accounts,
           collapsible: true
         }
       ]
