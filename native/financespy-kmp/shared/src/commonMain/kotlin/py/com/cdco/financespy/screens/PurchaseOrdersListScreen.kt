@@ -1,12 +1,17 @@
 package py.com.cdco.financespy.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,8 +21,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import py.com.cdco.financespy.api.dto.PurchaseOrderDto
 import py.com.cdco.financespy.theme.FinancePyColors
-import py.com.cdco.financespy.utils.formatMoney
 import py.com.cdco.financespy.theme.components.AppBottomNavOverlayClearance
+import py.com.cdco.financespy.utils.formatMoney
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,9 +35,28 @@ fun PurchaseOrdersListScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
 
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedStatus by remember { mutableStateOf("all") }
+
     LaunchedEffect(Unit) {
         viewModel.refresh()
     }
+
+    val filteredOrders = remember(purchaseOrders, searchQuery, selectedStatus) {
+        purchaseOrders.filter { po ->
+            val matchesStatus = selectedStatus == "all" || po.status == selectedStatus
+            val q = searchQuery.trim().lowercase()
+            val matchesQuery = q.isEmpty() ||
+                (po.order_number?.toString()?.contains(q) == true) ||
+                (po.supplier_name?.lowercase()?.contains(q) == true) ||
+                (po.notes?.lowercase()?.contains(q) == true)
+            matchesStatus && matchesQuery
+        }
+    }
+
+    val draftCount = purchaseOrders.count { it.status == "draft" }
+    val receivedCount = purchaseOrders.count { it.status == "received" }
+    val withInvoiceCount = purchaseOrders.count { it.has_invoice_photo || it.invoice_photo != null }
 
     Scaffold(
         topBar = {
@@ -92,18 +116,126 @@ fun PurchaseOrdersListScreen(
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = AppBottomNavOverlayClearance),
+                        contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = AppBottomNavOverlayClearance),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(purchaseOrders, key = { it.id }) { po ->
-                            PurchaseOrderItemCard(
-                                po = po,
-                                onClick = { onPurchaseOrderClick(po.id) }
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                PurchaseSummaryMetricCard(
+                                    label = "Total",
+                                    value = purchaseOrders.size.toString(),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                PurchaseSummaryMetricCard(
+                                    label = "Borradores",
+                                    value = draftCount.toString(),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                PurchaseSummaryMetricCard(
+                                    label = "Con factura",
+                                    value = "$withInvoiceCount/${purchaseOrders.size}",
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+
+                        item {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                placeholder = { Text("Buscar por #orden, proveedor o nota") },
+                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                                trailingIcon = {
+                                    if (searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { searchQuery = "" }) {
+                                            Icon(Icons.Default.Close, contentDescription = "Limpiar")
+                                        }
+                                    }
+                                },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
                             )
+                        }
+
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                listOf(
+                                    "all" to "Todas (${purchaseOrders.size})",
+                                    "draft" to "Borrador ($draftCount)",
+                                    "received" to "Recibidas ($receivedCount)",
+                                    "cancelled" to "Canceladas"
+                                ).forEach { (statusKey, label) ->
+                                    FilterChip(
+                                        selected = selectedStatus == statusKey,
+                                        onClick = { selectedStatus = statusKey },
+                                        label = { Text(label) }
+                                    )
+                                }
+                            }
+                        }
+
+                        if (filteredOrders.isEmpty()) {
+                            item {
+                                Text(
+                                    text = "No se encontraron órdenes con ese filtro",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = FinancePyColors.textSecondary(),
+                                    modifier = Modifier.padding(vertical = 24.dp)
+                                )
+                            }
+                        } else {
+                            items(filteredOrders, key = { it.id }) { po ->
+                                PurchaseOrderItemCard(
+                                    po = po,
+                                    onClick = { onPurchaseOrderClick(po.id) }
+                                )
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PurchaseSummaryMetricCard(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = FinancePyColors.container())
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = FinancePyColors.textSecondary(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = FinancePyColors.textPrimary(),
+                maxLines = 1
+            )
         }
     }
 }
@@ -118,6 +250,8 @@ private fun PurchaseOrderItemCard(
         "cancelled" -> Triple("Cancelada", MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
         else -> Triple("Borrador", MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
     }
+
+    val hasInvoice = po.has_invoice_photo || po.invoice_photo != null
 
     Card(
         modifier = Modifier
@@ -143,18 +277,48 @@ private fun PurchaseOrderItemCard(
                     color = FinancePyColors.textPrimary()
                 )
 
-                Surface(
-                    color = statusContainerColor,
-                    shape = RoundedCornerShape(4.dp)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = statusText,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = statusContentColor,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    if (hasInvoice) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ReceiptLong,
+                                    contentDescription = "Factura adjunta",
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = "Factura",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                    }
+
+                    Surface(
+                        color = statusContainerColor,
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = statusText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = statusContentColor,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
 
@@ -163,11 +327,23 @@ private fun PurchaseOrderItemCard(
                 Text(
                     text = "Proveedor: ${po.supplier_name}",
                     style = MaterialTheme.typography.bodyMedium,
+                    color = FinancePyColors.textSecondary(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            val dateLabel = po.expected_date ?: po.created_at?.take(10)
+            if (!dateLabel.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = if (po.expected_date != null) "Esperada: $dateLabel" else "Fecha: $dateLabel",
+                    style = MaterialTheme.typography.bodySmall,
                     color = FinancePyColors.textSecondary()
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),

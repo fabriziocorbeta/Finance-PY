@@ -58,6 +58,7 @@ data class PurchaseOrderItemRequestDto(
 data class PurchaseOrderPayloadDto(
     val supplier_name: String? = null,
     val currency: String,
+    val expected_date: String? = null,
     val notes: String? = null,
     val account_id: String? = null,
     val purchase_order_items_attributes: List<PurchaseOrderItemRequestDto>

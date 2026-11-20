@@ -1,28 +1,24 @@
 package py.com.cdco.financespy.screens
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import py.com.cdco.financespy.theme.FinancePyColors
+import py.com.cdco.financespy.theme.components.InvoicePhotoSectionCard
+import py.com.cdco.financespy.theme.components.ZoomableInvoicePhotoDialog
 import py.com.cdco.financespy.theme.components.liquidGlass
 import py.com.cdco.financespy.utils.decodeByteArrayToImageBitmap
 import py.com.cdco.financespy.utils.formatMoney
@@ -46,6 +42,7 @@ fun SaleDetailScreen(
 
     var showCompleteDialog by remember { mutableStateOf(false) }
     var showCancelDialog by remember { mutableStateOf(false) }
+    var showDeleteSaleDialog by remember { mutableStateOf(false) }
     var showDeletePhotoDialog by remember { mutableStateOf(false) }
     var showPhotoPreviewDialog by remember { mutableStateOf(false) }
 
@@ -94,11 +91,18 @@ fun SaleDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     if (error != null) {
-                        Text(
-                            text = error ?: "",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = error ?: "",
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
                     }
 
                     Card(
@@ -106,7 +110,10 @@ fun SaleDetailScreen(
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = FinancePyColors.container())
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -140,18 +147,37 @@ fun SaleDetailScreen(
                             }
 
                             if (!sale.client_name.isNullOrBlank()) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Cliente: ${sale.client_name}",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = FinancePyColors.textPrimary()
-                                )
+                                SaleDetailMetadataRow("Cliente", sale.client_name)
+                            }
+                            if (!sale.invoice_number.isNullOrBlank()) {
+                                SaleDetailMetadataRow("N° de Factura", sale.invoice_number)
+                            }
+                            if (!sale.condition.isNullOrBlank()) {
+                                SaleDetailMetadataRow("Condición", sale.condition.replaceFirstChar { it.uppercase() })
+                            }
+                            if (!sale.payment_method.isNullOrBlank()) {
+                                SaleDetailMetadataRow("Método de pago", sale.payment_method)
+                            }
+                            SaleDetailMetadataRow("Moneda", sale.currency.uppercase())
+                            if (!sale.delivery_address.isNullOrBlank()) {
+                                SaleDetailMetadataRow("Dirección entrega", sale.delivery_address)
+                            }
+                            if (!sale.delivery_date.isNullOrBlank()) {
+                                SaleDetailMetadataRow("Fecha entrega", sale.delivery_date)
+                            }
+                            if (!sale.carrier.isNullOrBlank()) {
+                                SaleDetailMetadataRow("Transportadora", sale.carrier)
+                            }
+                            if (!sale.created_at.isNullOrBlank()) {
+                                SaleDetailMetadataRow("Creada", sale.created_at.take(10))
+                            }
+                            if (!sale.notes.isNullOrBlank()) {
+                                SaleDetailMetadataRow("Notas", sale.notes)
                             }
 
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             HorizontalDivider(color = FinancePyColors.surface())
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -174,7 +200,7 @@ fun SaleDetailScreen(
                     }
 
                     Text(
-                        text = "Ítems",
+                        text = "Ítems (${sale.sale_items.size})",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = FinancePyColors.textPrimary()
@@ -223,121 +249,34 @@ fun SaleDetailScreen(
                         color = FinancePyColors.textPrimary()
                     )
 
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = FinancePyColors.container())
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            if (isUploadingPhoto) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                    Text(
-                                        text = "Procesando factura...",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = FinancePyColors.textSecondary()
-                                    )
+                    val invoicePhoto = sale.invoice_photo
+                    val hasPhoto = sale.has_invoice_photo || invoicePhoto != null
+                    InvoicePhotoSectionCard(
+                        hasAttachment = hasPhoto,
+                        decodedBitmap = decodedBitmap,
+                        fileName = invoicePhoto?.filename,
+                        contentType = invoicePhoto?.content_type,
+                        byteSize = invoicePhoto?.byte_size,
+                        isProcessing = isUploadingPhoto,
+                        emptyPrompt = "Adjuntá una foto o PDF de la factura física",
+                        removeLabel = "Eliminar factura",
+                        onTakePhoto = onTakeInvoicePhoto?.let { launcher ->
+                            {
+                                launcher { bytes, name, mime ->
+                                    viewModel.uploadInvoicePhoto(bytes, name, mime)
                                 }
                             }
-
-                            val invoicePhoto = sale.invoice_photo
-                            val hasPhoto = sale.has_invoice_photo || invoicePhoto != null
-                            if (hasPhoto) {
-                                if (decodedBitmap != null) {
-                                    Image(
-                                        bitmap = decodedBitmap,
-                                        contentDescription = "Vista previa de factura",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(180.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable { showPhotoPreviewDialog = true }
-                                    )
-                                }
-                                if (invoicePhoto != null) {
-                                    Text(
-                                        text = "${invoicePhoto.filename} (${invoicePhoto.byte_size / 1024} KB)",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = FinancePyColors.textSecondary()
-                                    )
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    OutlinedButton(
-                                        onClick = {
-                                            onTakeInvoicePhoto?.invoke { bytes, name, mime ->
-                                                viewModel.uploadInvoicePhoto(bytes, name, mime)
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        enabled = !isUploadingPhoto
-                                    ) {
-                                        Text("Tomar otra foto")
-                                    }
-                                    OutlinedButton(
-                                        onClick = {
-                                            onPickInvoicePhoto?.invoke { bytes, name, mime ->
-                                                viewModel.uploadInvoicePhoto(bytes, name, mime)
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        enabled = !isUploadingPhoto
-                                    ) {
-                                        Text("Cambiar archivo")
-                                    }
-                                }
-                                TextButton(
-                                    onClick = { showDeletePhotoDialog = true },
-                                    enabled = !isUploadingPhoto,
-                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                                ) {
-                                    Text("Eliminar factura")
-                                }
-                            } else {
-                                Text(
-                                    text = "Adjuntá una foto o PDF de la factura física",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = FinancePyColors.textSecondary()
-                                )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Button(
-                                        onClick = {
-                                            onTakeInvoicePhoto?.invoke { bytes, name, mime ->
-                                                viewModel.uploadInvoicePhoto(bytes, name, mime)
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        enabled = !isUploadingPhoto
-                                    ) {
-                                        Text("Tomar foto")
-                                    }
-                                    OutlinedButton(
-                                        onClick = {
-                                            onPickInvoicePhoto?.invoke { bytes, name, mime ->
-                                                viewModel.uploadInvoicePhoto(bytes, name, mime)
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        enabled = !isUploadingPhoto
-                                    ) {
-                                        Text("Elegir archivo")
-                                    }
+                        },
+                        onPickFile = onPickInvoicePhoto?.let { launcher ->
+                            {
+                                launcher { bytes, name, mime ->
+                                    viewModel.uploadInvoicePhoto(bytes, name, mime)
                                 }
                             }
-                        }
-                    }
+                        },
+                        onRemove = { showDeletePhotoDialog = true },
+                        onPreviewClick = { if (decodedBitmap != null) showPhotoPreviewDialog = true }
+                    )
 
                     Spacer(modifier = Modifier.height(8.dp))
                     when (sale.status) {
@@ -359,6 +298,17 @@ fun SaleDetailScreen(
                             ) {
                                 Text("Cancelar Venta")
                             }
+
+                            TextButton(
+                                onClick = { showDeleteSaleDialog = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !isActioning,
+                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Eliminar Borrador")
+                            }
                         }
                         "completed" -> {
                             OutlinedButton(
@@ -377,26 +327,11 @@ fun SaleDetailScreen(
     }
 
     if (showPhotoPreviewDialog && decodedBitmap != null) {
-        Dialog(
-            onDismissRequest = { showPhotoPreviewDialog = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.9f))
-                    .clickable { showPhotoPreviewDialog = false }
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    bitmap = decodedBitmap,
-                    contentDescription = "Factura en pantalla completa",
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-        }
+        ZoomableInvoicePhotoDialog(
+            bitmap = decodedBitmap,
+            title = saleState?.invoice_photo?.filename ?: "Factura de venta",
+            onDismiss = { showPhotoPreviewDialog = false }
+        )
     }
 
     if (showDeletePhotoDialog) {
@@ -418,6 +353,31 @@ fun SaleDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeletePhotoDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showDeleteSaleDialog) {
+        AlertDialog(
+            modifier = Modifier.liquidGlass(RoundedCornerShape(28.dp)),
+            containerColor = Color.Transparent,
+            onDismissRequest = { showDeleteSaleDialog = false },
+            title = { Text("Eliminar Borrador") },
+            text = { Text("¿Deseas eliminar permanentemente esta venta en borrador?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteSaleDialog = false
+                        viewModel.deleteSale(onDeleted)
+                    }
+                ) {
+                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteSaleDialog = false }) {
                     Text("Cancelar")
                 }
             }
@@ -478,6 +438,29 @@ fun SaleDetailScreen(
                     Text("Volver")
                 }
             }
+        )
+    }
+}
+
+@Composable
+private fun SaleDetailMetadataRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = FinancePyColors.textSecondary(),
+            modifier = Modifier.weight(0.4f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = FinancePyColors.textPrimary(),
+            modifier = Modifier.weight(0.6f)
         )
     }
 }

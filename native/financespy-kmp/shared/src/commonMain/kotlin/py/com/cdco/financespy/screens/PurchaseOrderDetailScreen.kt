@@ -1,28 +1,24 @@
 package py.com.cdco.financespy.screens
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import py.com.cdco.financespy.theme.FinancePyColors
+import py.com.cdco.financespy.theme.components.InvoicePhotoSectionCard
+import py.com.cdco.financespy.theme.components.ZoomableInvoicePhotoDialog
 import py.com.cdco.financespy.theme.components.liquidGlass
 import py.com.cdco.financespy.utils.decodeByteArrayToImageBitmap
 import py.com.cdco.financespy.utils.formatMoney
@@ -46,6 +42,7 @@ fun PurchaseOrderDetailScreen(
 
     var showReceiveDialog by remember { mutableStateOf(false) }
     var showCancelDialog by remember { mutableStateOf(false) }
+    var showDeleteOrderDialog by remember { mutableStateOf(false) }
     var showDeletePhotoDialog by remember { mutableStateOf(false) }
     var showPhotoPreviewDialog by remember { mutableStateOf(false) }
 
@@ -94,11 +91,18 @@ fun PurchaseOrderDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     if (error != null) {
-                        Text(
-                            text = error ?: "",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = error ?: "",
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
                     }
 
                     Card(
@@ -106,7 +110,10 @@ fun PurchaseOrderDetailScreen(
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = FinancePyColors.container())
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -140,18 +147,22 @@ fun PurchaseOrderDetailScreen(
                             }
 
                             if (!po.supplier_name.isNullOrBlank()) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Proveedor: ${po.supplier_name}",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = FinancePyColors.textPrimary()
-                                )
+                                DetailMetadataRow("Proveedor", po.supplier_name)
+                            }
+                            if (!po.expected_date.isNullOrBlank()) {
+                                DetailMetadataRow("Fecha esperada", po.expected_date)
+                            }
+                            DetailMetadataRow("Moneda", po.currency.uppercase())
+                            if (!po.created_at.isNullOrBlank()) {
+                                DetailMetadataRow("Creada", po.created_at.take(10))
+                            }
+                            if (!po.notes.isNullOrBlank()) {
+                                DetailMetadataRow("Notas", po.notes)
                             }
 
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             HorizontalDivider(color = FinancePyColors.surface())
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -174,7 +185,7 @@ fun PurchaseOrderDetailScreen(
                     }
 
                     Text(
-                        text = "Ítems",
+                        text = "Ítems (${po.purchase_order_items.size})",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = FinancePyColors.textPrimary()
@@ -223,121 +234,34 @@ fun PurchaseOrderDetailScreen(
                         color = FinancePyColors.textPrimary()
                     )
 
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = FinancePyColors.container())
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            if (isUploadingPhoto) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                    Text(
-                                        text = "Procesando factura...",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = FinancePyColors.textSecondary()
-                                    )
+                    val invoicePhoto = po.invoice_photo
+                    val hasPhoto = po.has_invoice_photo || invoicePhoto != null
+                    InvoicePhotoSectionCard(
+                        hasAttachment = hasPhoto,
+                        decodedBitmap = decodedBitmap,
+                        fileName = invoicePhoto?.filename,
+                        contentType = invoicePhoto?.content_type,
+                        byteSize = invoicePhoto?.byte_size,
+                        isProcessing = isUploadingPhoto,
+                        emptyPrompt = "Adjuntá una foto o PDF de la factura física",
+                        removeLabel = "Eliminar factura",
+                        onTakePhoto = onTakeInvoicePhoto?.let { launcher ->
+                            {
+                                launcher { bytes, name, mime ->
+                                    viewModel.uploadInvoicePhoto(bytes, name, mime)
                                 }
                             }
-
-                            val invoicePhoto = po.invoice_photo
-                            val hasPhoto = po.has_invoice_photo || invoicePhoto != null
-                            if (hasPhoto) {
-                                if (decodedBitmap != null) {
-                                    Image(
-                                        bitmap = decodedBitmap,
-                                        contentDescription = "Vista previa de factura",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(180.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable { showPhotoPreviewDialog = true }
-                                    )
-                                }
-                                if (invoicePhoto != null) {
-                                    Text(
-                                        text = "${invoicePhoto.filename} (${invoicePhoto.byte_size / 1024} KB)",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = FinancePyColors.textSecondary()
-                                    )
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    OutlinedButton(
-                                        onClick = {
-                                            onTakeInvoicePhoto?.invoke { bytes, name, mime ->
-                                                viewModel.uploadInvoicePhoto(bytes, name, mime)
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        enabled = !isUploadingPhoto
-                                    ) {
-                                        Text("Tomar otra foto")
-                                    }
-                                    OutlinedButton(
-                                        onClick = {
-                                            onPickInvoicePhoto?.invoke { bytes, name, mime ->
-                                                viewModel.uploadInvoicePhoto(bytes, name, mime)
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        enabled = !isUploadingPhoto
-                                    ) {
-                                        Text("Cambiar archivo")
-                                    }
-                                }
-                                TextButton(
-                                    onClick = { showDeletePhotoDialog = true },
-                                    enabled = !isUploadingPhoto,
-                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                                ) {
-                                    Text("Eliminar factura")
-                                }
-                            } else {
-                                Text(
-                                    text = "Adjuntá una foto o PDF de la factura física",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = FinancePyColors.textSecondary()
-                                )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Button(
-                                        onClick = {
-                                            onTakeInvoicePhoto?.invoke { bytes, name, mime ->
-                                                viewModel.uploadInvoicePhoto(bytes, name, mime)
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        enabled = !isUploadingPhoto
-                                    ) {
-                                        Text("Tomar foto")
-                                    }
-                                    OutlinedButton(
-                                        onClick = {
-                                            onPickInvoicePhoto?.invoke { bytes, name, mime ->
-                                                viewModel.uploadInvoicePhoto(bytes, name, mime)
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        enabled = !isUploadingPhoto
-                                    ) {
-                                        Text("Elegir archivo")
-                                    }
+                        },
+                        onPickFile = onPickInvoicePhoto?.let { launcher ->
+                            {
+                                launcher { bytes, name, mime ->
+                                    viewModel.uploadInvoicePhoto(bytes, name, mime)
                                 }
                             }
-                        }
-                    }
+                        },
+                        onRemove = { showDeletePhotoDialog = true },
+                        onPreviewClick = { if (decodedBitmap != null) showPhotoPreviewDialog = true }
+                    )
 
                     Spacer(modifier = Modifier.height(8.dp))
                     when (po.status) {
@@ -359,6 +283,17 @@ fun PurchaseOrderDetailScreen(
                             ) {
                                 Text("Cancelar Orden")
                             }
+
+                            TextButton(
+                                onClick = { showDeleteOrderDialog = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !isActioning,
+                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Eliminar Borrador")
+                            }
                         }
                         "received" -> {
                             OutlinedButton(
@@ -377,26 +312,11 @@ fun PurchaseOrderDetailScreen(
     }
 
     if (showPhotoPreviewDialog && decodedBitmap != null) {
-        Dialog(
-            onDismissRequest = { showPhotoPreviewDialog = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.9f))
-                    .clickable { showPhotoPreviewDialog = false }
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    bitmap = decodedBitmap,
-                    contentDescription = "Factura en pantalla completa",
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-        }
+        ZoomableInvoicePhotoDialog(
+            bitmap = decodedBitmap,
+            title = poState?.invoice_photo?.filename ?: "Factura de compra",
+            onDismiss = { showPhotoPreviewDialog = false }
+        )
     }
 
     if (showDeletePhotoDialog) {
@@ -418,6 +338,31 @@ fun PurchaseOrderDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeletePhotoDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showDeleteOrderDialog) {
+        AlertDialog(
+            modifier = Modifier.liquidGlass(RoundedCornerShape(28.dp)),
+            containerColor = Color.Transparent,
+            onDismissRequest = { showDeleteOrderDialog = false },
+            title = { Text("Eliminar Borrador") },
+            text = { Text("¿Deseas eliminar permanentemente esta orden en borrador?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteOrderDialog = false
+                        viewModel.deletePurchaseOrder(onDeleted)
+                    }
+                ) {
+                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteOrderDialog = false }) {
                     Text("Cancelar")
                 }
             }
@@ -478,6 +423,29 @@ fun PurchaseOrderDetailScreen(
                     Text("Volver")
                 }
             }
+        )
+    }
+}
+
+@Composable
+private fun DetailMetadataRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = FinancePyColors.textSecondary(),
+            modifier = Modifier.weight(0.4f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = FinancePyColors.textPrimary(),
+            modifier = Modifier.weight(0.6f)
         )
     }
 }

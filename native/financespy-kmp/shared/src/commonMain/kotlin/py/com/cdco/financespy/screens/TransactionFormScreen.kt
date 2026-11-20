@@ -64,6 +64,8 @@ import py.com.cdco.financespy.screens.components.parseHexColor
 import py.com.cdco.financespy.theme.FinancePyColors
 import py.com.cdco.financespy.theme.components.AppButton
 import py.com.cdco.financespy.theme.components.AppTextField
+import py.com.cdco.financespy.theme.components.InvoicePhotoSectionCard
+import py.com.cdco.financespy.theme.components.ZoomableInvoicePhotoDialog
 import py.com.cdco.financespy.utils.decodeByteArrayToImageBitmap
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -222,106 +224,33 @@ fun TransactionFormScreen(
                         color = FinancePyColors.textSecondary()
                     )
 
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = FinancePyColors.container())
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            val hasPhoto = state.invoicePhotoName != null || state.invoicePhotoBytes != null
-                            if (hasPhoto) {
-                                if (decodedBitmap != null) {
-                                    Image(
-                                        bitmap = decodedBitmap,
-                                        contentDescription = "Vista previa de factura",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(180.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .clickable { showPhotoPreviewDialog = true }
-                                    )
-                                }
-                                if (state.invoicePhotoName != null) {
-                                    Text(
-                                        text = state.invoicePhotoName ?: "",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = FinancePyColors.textSecondary()
-                                    )
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    OutlinedButton(
-                                        onClick = {
-                                            onTakeInvoicePhoto?.invoke { bytes, name, mime ->
-                                                viewModel.selectInvoicePhoto(bytes, name, mime)
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        enabled = !state.isSaving
-                                    ) {
-                                        Text("Tomar otra foto")
-                                    }
-                                    OutlinedButton(
-                                        onClick = {
-                                            onPickInvoicePhoto?.invoke { bytes, name, mime ->
-                                                viewModel.selectInvoicePhoto(bytes, name, mime)
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        enabled = !state.isSaving
-                                    ) {
-                                        Text("Cambiar archivo")
-                                    }
-                                }
-                                TextButton(
-                                    onClick = { viewModel.clearInvoicePhoto() },
-                                    enabled = !state.isSaving,
-                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                                ) {
-                                    Text("Quitar factura")
-                                }
-                            } else {
-                                Text(
-                                    text = "Adjuntá una foto o PDF de la factura o comprobante de compra",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = FinancePyColors.textSecondary()
-                                )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Button(
-                                        onClick = {
-                                            onTakeInvoicePhoto?.invoke { bytes, name, mime ->
-                                                viewModel.selectInvoicePhoto(bytes, name, mime)
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        enabled = !state.isSaving
-                                    ) {
-                                        Text("Tomar foto")
-                                    }
-                                    OutlinedButton(
-                                        onClick = {
-                                            onPickInvoicePhoto?.invoke { bytes, name, mime ->
-                                                viewModel.selectInvoicePhoto(bytes, name, mime)
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        enabled = !state.isSaving
-                                    ) {
-                                        Text("Elegir archivo")
-                                    }
+                    val hasPhoto = state.invoicePhotoName != null || state.invoicePhotoBytes != null
+                    InvoicePhotoSectionCard(
+                        hasAttachment = hasPhoto,
+                        decodedBitmap = decodedBitmap,
+                        fileName = state.invoicePhotoName,
+                        contentType = state.invoicePhotoContentType,
+                        byteSize = state.invoicePhotoBytes?.size?.toLong(),
+                        isProcessing = state.isSaving,
+                        emptyPrompt = "Adjuntá una foto o PDF de la factura o comprobante de compra",
+                        removeLabel = "Quitar factura",
+                        onTakePhoto = onTakeInvoicePhoto?.let { launcher ->
+                            {
+                                launcher { bytes, name, mime ->
+                                    viewModel.selectInvoicePhoto(bytes, name, mime)
                                 }
                             }
-                        }
-                    }
+                        },
+                        onPickFile = onPickInvoicePhoto?.let { launcher ->
+                            {
+                                launcher { bytes, name, mime ->
+                                    viewModel.selectInvoicePhoto(bytes, name, mime)
+                                }
+                            }
+                        },
+                        onRemove = { viewModel.clearInvoicePhoto() },
+                        onPreviewClick = { if (decodedBitmap != null) showPhotoPreviewDialog = true }
+                    )
                 }
 
                 AppButton(
@@ -349,26 +278,11 @@ fun TransactionFormScreen(
     }
 
     if (showPhotoPreviewDialog && decodedBitmap != null) {
-        Dialog(
-            onDismissRequest = { showPhotoPreviewDialog = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.9f))
-                    .clickable { showPhotoPreviewDialog = false }
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    bitmap = decodedBitmap,
-                    contentDescription = "Factura en pantalla completa",
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-        }
+        ZoomableInvoicePhotoDialog(
+            bitmap = decodedBitmap,
+            title = state.invoicePhotoName ?: "Factura / Comprobante",
+            onDismiss = { showPhotoPreviewDialog = false }
+        )
     }
 }
 
