@@ -15,32 +15,47 @@ export default class extends Controller {
 
     if (pending.length === 0) {
       this.containerTarget.classList.add("hidden");
+      this.listTarget.replaceChildren();
       return;
     }
 
     this.containerTarget.classList.remove("hidden");
-    this.listTarget.innerHTML = pending.map((sale) => this.renderRow(sale)).join("");
+    this.listTarget.replaceChildren(...pending.map((sale) => this.buildRow(sale)));
   }
 
-  renderRow(sale) {
+  buildRow(sale) {
     const clientEntry = sale.formData.find(([key]) => key === "sale[client_name]");
     const clientName = clientEntry ? clientEntry[1] : "-";
     const needsReview = sale.status === "needs_review";
     const statusLabel = needsReview ? (sale.errorMessage || "Necesita revisión") : "Pendiente de sincronizar";
     const statusClass = needsReview ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-800";
-    const retryButton = needsReview
-      ? `<button type="button" data-retry-id="${sale.id}" class="text-xs font-medium text-primary underline ml-2">Reintentar</button>`
-      : "";
 
-    return `
-      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-        <span class="text-sm text-primary">${clientName}</span>
-        <span class="flex items-center">
-          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusClass}">${statusLabel}</span>
-          ${retryButton}
-        </span>
-      </div>
-    `;
+    const row = document.createElement("div");
+    row.className = "flex items-center justify-between px-4 py-3 border-b border-gray-100";
+
+    const clientSpan = document.createElement("span");
+    clientSpan.className = "text-sm text-primary";
+    clientSpan.textContent = clientName;
+
+    const actionsSpan = document.createElement("span");
+    actionsSpan.className = "flex items-center";
+
+    const statusBadge = document.createElement("span");
+    statusBadge.className = `inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusClass}`;
+    statusBadge.textContent = statusLabel;
+    actionsSpan.appendChild(statusBadge);
+
+    if (needsReview) {
+      const retryButton = document.createElement("button");
+      retryButton.type = "button";
+      retryButton.dataset.retryId = String(sale.id);
+      retryButton.className = "text-xs font-medium text-primary underline ml-2";
+      retryButton.textContent = "Reintentar";
+      actionsSpan.appendChild(retryButton);
+    }
+
+    row.append(clientSpan, actionsSpan);
+    return row;
   }
 
   async handleRetryClick(event) {

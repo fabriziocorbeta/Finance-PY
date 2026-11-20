@@ -7,7 +7,7 @@ set -euo pipefail
 #
 # Steps performed:
 # 1. Pull latest changes from main (git pull --ff-only)
-# 2. Build web & worker containers passing BUILD_COMMIT_SHA
+# 2. Pull the image GitHub built for this commit (or build locally as fallback)
 # 3. Run pending migrations against the new image
 # 4. Start containers detached (docker compose up -d web worker)
 # 5. CRITICAL: Restart Caddy container to flush stale container IP cache
@@ -32,14 +32,68 @@ git pull --ff-only
 CURRENT_HEAD=$(git rev-parse HEAD)
 echo "Current HEAD commit SHA: $CURRENT_HEAD"
 
-echo "=== 2. Building Docker containers (web, worker) ==="
-BUILD_COMMIT_SHA="$CURRENT_HEAD" "${COMPOSE[@]}" build web worker
+# Image source. Default: pull the image GitHub Actions built for this exact
+# commit (.github/workflows/build-image.yml) so this notebook doesn't compile
+# while serving users. DEPLOY_MODE=build forces the old local build. If the
+# image isn't published yet (workflow still running) we wait up to
+# IMAGE_WAIT_TIMEOUT, then fall back to a local build rather than block a deploy.
+DEPLOY_MODE="${DEPLOY_MODE:-pull}"
+IMAGE_REPO="${IMAGE_REPO:-ghcr.io/fabriziocorbeta/finance-py}"
+IMAGE_WAIT_TIMEOUT="${IMAGE_WAIT_TIMEOUT:-900}"
+LOCAL_IMAGE="financespy-app:local"
+
+# Persist APP_IMAGE in the env file (not just this shell) so a later manual
+# `docker compose up -d` resolves the same image instead of recreating the
+# containers from a different one.
+set_app_image() {
+  local value="$1"
+  if grep -q '^APP_IMAGE=' "$ENV_FILE"; then
+    sed -i.bak "s|^APP_IMAGE=.*|APP_IMAGE=$value|" "$ENV_FILE" && rm -f "$ENV_FILE.bak"
+  else
+    printf '\nAPP_IMAGE=%s\n' "$value" >> "$ENV_FILE"
+  fi
+}
+
+build_locally() {
+  echo "=== 2. Building Docker containers locally (web, worker) ==="
+  set_app_image "$LOCAL_IMAGE"
+  BUILD_COMMIT_SHA="$CURRENT_HEAD" "${COMPOSE[@]}" build web worker
+}
+
+if [ "$DEPLOY_MODE" = "pull" ]; then
+  TARGET_IMAGE="$IMAGE_REPO:$CURRENT_HEAD"
+  echo "=== 2. Pulling prebuilt image $TARGET_IMAGE ==="
+  waited=0
+  pulled=false
+  while true; do
+    if docker pull "$TARGET_IMAGE"; then
+      pulled=true
+      break
+    fi
+    if [ "$waited" -ge "$IMAGE_WAIT_TIMEOUT" ]; then
+      break
+    fi
+    echo "Image not available yet (GitHub may still be building it). Retrying in 30s... (${waited}s / ${IMAGE_WAIT_TIMEOUT}s)"
+    sleep 30
+    waited=$((waited + 30))
+  done
+
+  if [ "$pulled" = true ]; then
+    set_app_image "$TARGET_IMAGE"
+  else
+    echo "::warning:: Could not pull $TARGET_IMAGE after ${IMAGE_WAIT_TIMEOUT}s. Falling back to a local build."
+    echo "If the package is private, run 'docker login ghcr.io' on this machine once."
+    build_locally
+  fi
+else
+  build_locally
+fi
 
 echo "=== 3. Running pending migrations ==="
 "${COMPOSE[@]}" run --rm web bin/rails db:migrate
 
 echo "=== 4. Starting updated services ==="
-"${COMPOSE[@]}" up -d web worker
+"${COMPOSE[@]}" up -d --no-build web worker
 
 echo "=== 5. CRITICAL: Restarting Caddy container ($CADDY_CONTAINER) ==="
 echo "Flushing Caddy proxy IP cache to avoid 502 Bad Gateway errors..."
