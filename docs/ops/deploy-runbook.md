@@ -42,7 +42,7 @@ sigue este orden.
 cd ~/financespy
 git pull --ff-only
 docker compose -f compose.local.yml --env-file .env.local config -q   # valida sintaxis antes de tocar nada
-docker compose -f compose.local.yml --env-file .env.local pull        # trae postgres/redis/caddy por digest fijo — no deberían cambiar nunca solos
+docker compose -f compose.local.yml --env-file .env.local pull --ignore-buildable   # trae postgres/redis/caddy por digest fijo — no deberían cambiar nunca solos
 BUILD_COMMIT_SHA=$(git rev-parse HEAD) \
   docker compose -f compose.local.yml --env-file .env.local up -d --build
 ```
@@ -143,3 +143,42 @@ En el host, antes de aplicar, correr la validación real:
 ```bash
 docker compose -f compose.local.yml --env-file .env.local config -q
 ```
+
+## Imagen compilada en GitHub (deploy normal)
+
+Desde 2026-11-16 la imagen de `web`/`worker` se compila en GitHub Actions
+(`.github/workflows/build-image.yml`) en cada push a `main` y se publica en
+`ghcr.io/fabriziocorbeta/finance-py`, con dos etiquetas: el SHA del commit y
+`main`. La notebook ya no compila: solo descarga.
+
+Deploy normal:
+
+```bash
+cd ~/financespy
+bin/deploy_notebook.sh
+```
+
+El script hace `git pull`, descarga la imagen del SHA exacto de `main`,
+guarda `APP_IMAGE=<imagen>` en `.env.local` (para que un
+`docker compose up -d` manual posterior use la misma imagen), corre
+migraciones, levanta `web`/`worker` y reinicia Caddy.
+
+- Si GitHub todavía está compilando, espera hasta `IMAGE_WAIT_TIMEOUT`
+  segundos (900 por defecto) y después cae a compilar localmente.
+- `DEPLOY_MODE=build bin/deploy_notebook.sh` fuerza la compilación local de
+  siempre (por ejemplo si GitHub Actions está caído).
+- Si el paquete en GHCR es privado, hay que hacer `docker login ghcr.io` una
+  vez en la notebook con un token personal de solo lectura
+  (`read:packages`). Si es público no hace falta login.
+
+Rollback sin recompilar (la imagen del commit anterior sigue en GHCR):
+
+```bash
+cd ~/financespy
+sed -i 's|^APP_IMAGE=.*|APP_IMAGE=ghcr.io/fabriziocorbeta/finance-py:<sha-anterior>|' .env.local
+docker compose -f compose.local.yml --env-file .env.local up -d --no-build web worker
+docker restart financespy-caddy-1
+```
+
+Vale la misma advertencia de arriba sobre migraciones ya corridas: cambiar
+de imagen no revierte el esquema.
