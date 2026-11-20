@@ -2,6 +2,7 @@ class SalesController < ApplicationController
   include RequireBusinessMode
 
   before_action :set_sale, only: %i[show edit update destroy complete cancel print delivery_note]
+  before_action :ensure_writable_sale!, only: %i[update destroy complete cancel]
 
   def index
     @sales = Current.family.sales.includes(:sale_items).order(created_at: :desc)
@@ -100,6 +101,12 @@ class SalesController < ApplicationController
       @sale = Current.family.sales.includes(sale_items: :product).find(params[:id])
     end
 
+    def ensure_writable_sale!
+      return if Current.family.accounts.writable_by(Current.user).exists?(id: @sale.account_id)
+
+      head :forbidden
+    end
+
     def sale_params
       permitted = params.require(:sale).permit(
         :client_name, :currency, :payment_method, :invoice_number, :condition, :notes,
@@ -107,10 +114,11 @@ class SalesController < ApplicationController
         sale_items_attributes: [ :id, :product_id, :quantity, :unit_price, :_destroy ]
       )
 
-      # account_id is deliberately NOT mass-assigned: resolve it inside the caller's
-      # own family so a foreign account id can never be attached.
+      # account_id is deliberately NOT mass-assigned: resolve it inside the
+      # accounts the caller can write to so neither foreign nor read-only shared
+      # accounts can be attached.
       if params[:sale].respond_to?(:key?) && params[:sale].key?(:account_id)
-        permitted[:account_id] = Current.family.accounts.find_by(id: params[:sale][:account_id])&.id
+        permitted[:account_id] = Current.family.accounts.writable_by(Current.user).find_by(id: params[:sale][:account_id])&.id
       end
       permitted
     end

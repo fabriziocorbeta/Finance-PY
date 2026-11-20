@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.util.Log
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.biometric.BiometricManager
@@ -137,9 +138,36 @@ class MainActivity : FragmentActivity() {
     // as-is (true): Wallet capture then simply never finds the permission
     // granted at capture time and silently skips location, same as if the
     // user had left the toggle off -- no separate "denied" state to track.
-    private val locationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
-        // No-op: WalletCaptureHandler re-checks the permission itself on
-        // every capture, so there's nothing to react to here.
+    private val locationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        // The notification that triggers a capture arrives while this app is
+        // in the background, so the plain (foreground-only) grant above is
+        // not enough -- the fused provider silently refuses a fix for a
+        // background app that only holds it. Android requires background
+        // location to be requested as ITS OWN separate permission, and only
+        // after the foreground one is already granted (requesting both at
+        // once is rejected outright on Android 11+), hence chaining it here
+        // rather than requesting it alongside COARSE above.
+        if (granted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            requestBackgroundLocationIfNeeded()
+        }
+    }
+
+    private val backgroundLocationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
+        // No-op either way: WalletCaptureHandler re-checks permissions itself
+        // on every capture (best-effort location, never blocks the
+        // capture). If denied, capture keeps working exactly as it did
+        // before this permission existed -- just without a location.
+    }
+
+    private fun requestBackgroundLocationIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
     }
 
     private val tokenStorage by lazy { AndroidTokenStorage(applicationContext) }
@@ -330,6 +358,16 @@ class MainActivity : FragmentActivity() {
         ProcessLifecycleOwner.get().lifecycle.addObserver(processLifecycleObserver)
         biometricLockEnabled.value = securityPreferences.isBiometricLockEnabled()
         walletLocationCaptureEnabled.value = walletLocationPreferences.isLocationCaptureEnabled()
+        // Covers users who opted in before ACCESS_BACKGROUND_LOCATION existed
+        // in this app: the toggle is already on and foreground location
+        // already granted, so nothing else will ever prompt them for the
+        // background permission a capture actually needs.
+        if (walletLocationCaptureEnabled.value &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
+        ) {
+            requestBackgroundLocationIfNeeded()
+        }
         uiVariant.value = uiVariantPreferences.getUiVariant()
 
         initDatabaseBuilder(applicationContext)
@@ -538,12 +576,20 @@ class MainActivity : FragmentActivity() {
                 onToggleWalletLocationCapture = { enabled ->
                     walletLocationPreferences.setLocationCaptureEnabled(enabled)
                     walletLocationCaptureEnabled.value = enabled
-                    if (enabled && ContextCompat.checkSelfPermission(
-                            this,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
-                        ) != PackageManager.PERMISSION_GRANTED
-                    ) {
-                        locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    if (enabled) {
+                        if (ContextCompat.checkSelfPermission(
+                                this,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            // locationPermissionLauncher's own callback chains into the
+                            // background request once this one is granted.
+                            locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                        } else {
+                            // Foreground already granted (e.g. re-enabling the toggle) --
+                            // nothing will trigger the background request otherwise.
+                            requestBackgroundLocationIfNeeded()
+                        }
                     }
                 },
                 uiVariant = uiVariant.value,

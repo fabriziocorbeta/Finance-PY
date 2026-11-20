@@ -66,17 +66,28 @@ class Balance::ChartSeriesBuilder
     end
 
     def query_data
-      @query_data ||= Balance.find_by_sql([
-        query,
-        {
-          account_ids: account_ids,
-          target_currency: currency,
-          start_date: period.start_date,
-          end_date: period.end_date,
-          interval: interval,
-          sign_multiplier: sign_multiplier
-        }
-      ])
+      @query_data ||= ActiveRecord::Base.transaction do
+        # This query is a one-shot analytical query (run once per cache miss,
+        # never looped) over a hand-written CTE/LATERAL plan. Postgres' JIT
+        # compiles that plan before running it even once -- EXPLAIN ANALYZE
+        # on a real YTD range showed ~200ms of the ~480ms total was JIT
+        # compilation, not execution. JIT exists to amortize compile cost
+        # over many executions of the SAME plan (e.g. a tight loop); a query
+        # this shape runs once, so the compile cost is pure overhead here.
+        # SET LOCAL confines this to the current transaction only.
+        ActiveRecord::Base.connection.execute("SET LOCAL jit = off")
+        Balance.find_by_sql([
+          query,
+          {
+            account_ids: account_ids,
+            target_currency: currency,
+            start_date: period.start_date,
+            end_date: period.end_date,
+            interval: interval,
+            sign_multiplier: sign_multiplier
+          }
+        ])
+      end
     rescue => e
       Rails.logger.error "Query data error: #{e.message} for accounts #{account_ids}, period #{period.start_date} to #{period.end_date}"
       raise
@@ -136,6 +147,12 @@ class Balance::ChartSeriesBuilder
           LIMIT 1
         ) last_bal ON TRUE
         LEFT JOIN LATERAL (
+          -- accounts.currency <> :target_currency short-circuits this whole
+          -- subquery (no exchange_rates lookup at all) for every account
+          -- already in the family's currency -- previously it ran both
+          -- nested lookups below regardless, just to land on rate=1 via the
+          -- outer COALESCE(er.rate, 1). On a mixed-currency family this is
+          -- most of the accounts, and it was most of this query's cost.
           SELECT COALESCE(
             (SELECT er.rate
              FROM exchange_rates er
@@ -152,6 +169,7 @@ class Balance::ChartSeriesBuilder
              ORDER BY er.date ASC
              LIMIT 1)
           ) AS rate
+          WHERE accounts.currency <> :target_currency
         ) er ON TRUE
         WHERE accounts.id = ANY(array[:account_ids]::uuid[])
         GROUP BY d.date
