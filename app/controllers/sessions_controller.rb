@@ -287,7 +287,8 @@ class SessionsController < ApplicationController
       email = auth.info&.email
 
       has_pending_invitation = email.present? && Invitation.pending.exists?(email: email)
-      allow_creation = has_pending_invitation || (!AuthConfig.jit_link_only? && AuthConfig.allowed_oidc_domain?(email))
+      signup_open = !self_hosted? || Setting.onboarding_state != "closed"
+      allow_creation = has_pending_invitation || (signup_open && !AuthConfig.jit_link_only? && AuthConfig.allowed_oidc_domain?(email))
 
       linking_code = SecureRandom.urlsafe_base64(32)
       Rails.cache.write(

@@ -578,6 +578,43 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "mobile SSO onboarding disables allow_account_creation when self-hosted onboarding_state is closed" do
+    Rails.application.config.app_mode.stubs(:self_hosted?).returns(true)
+    Setting.stubs(:onboarding_state).returns("closed")
+
+    setup_omniauth_mock(
+      provider: "openid_connect",
+      uid: "unlinked-uid-closed",
+      email: "nobody-closed@example.com",
+      name: "Nobody Closed"
+    )
+
+    Rails.configuration.x.auth.stubs(:sso_providers).returns([
+      { name: "openid_connect", strategy: "openid_connect", label: "Google" }
+    ])
+
+    original_cache = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+
+    begin
+      get "/auth/mobile/openid_connect", params: {
+        device_id: "flutter-device-closed",
+        device_name: "Pixel 8",
+        device_type: "android"
+      }
+      get "/auth/openid_connect/callback"
+
+      assert_response :redirect
+      params = Rack::Utils.parse_query(URI.parse(@response.redirect_url).query)
+      assert_equal "false", params["allow_account_creation"]
+
+      cached = Rails.cache.read("mobile_sso_link:#{params['linking_code']}")
+      assert_equal false, cached[:allow_account_creation]
+    ensure
+      Rails.cache = original_cache
+    end
+  end
+
   test "mobile SSO does not create a web session" do
     oidc_identity = oidc_identities(:bob_google)
 

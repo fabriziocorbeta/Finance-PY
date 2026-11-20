@@ -65,7 +65,7 @@ RSpec.describe 'API V1 Auth', type: :request do
         run_test!
       end
 
-      response '403', 'invite code required or invalid' do
+      response '403', 'signup closed or invite code required/invalid' do
         schema '$ref' => '#/components/schemas/ErrorResponse'
         run_test!
       end
