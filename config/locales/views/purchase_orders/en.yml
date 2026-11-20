@@ -1,0 +1,82 @@
+---
+en:
+  purchase_orders:
+    create:
+      success: Purchase order created successfully
+    update:
+      success: Purchase order updated successfully
+    cancel:
+      success: Order cancelled successfully.
+    destroy:
+      success: Order deleted successfully.
+    edit:
+      success: Order updated successfully.
+      title: Edit supplier order
+    form:
+      account: Account
+      cancel: Cancel
+      currency: Currency
+      expected_date: Expected date
+      invoice_photo: Invoice photo
+      select_account: Select an account
+      items: Items
+      items_help: Add items to order. Empty fields will be ignored.
+      notes: Notes
+      product: Product
+      quantity: Quantity
+      select_product: Select a product
+      submit: Save
+      supplier_name: Supplier
+      unit_cost: Unit cost
+    index:
+      columns:
+        currency: Currency
+        order_number: Number
+        status: Status
+        supplier_name: Supplier
+        total: Total
+      empty: No supplier orders recorded.
+      new: New order
+      title: Supplier Orders
+    invoice_photo:
+      confirm_delete: "Are you sure you want to delete the invoice photo?"
+      delete: Delete
+      deleted: Invoice photo deleted successfully.
+      download: Download
+      empty: No invoice photo attached.
+      file_required: Please select a file to upload.
+      help: "Allowed formats: JPEG, PNG, GIF, WebP or PDF (max. 10 MB)."
+      replace: Replace
+      replace_label: Replace invoice photo
+      title: Invoice photo
+      upload: Upload
+      upload_label: Upload invoice photo
+      uploaded: Invoice photo uploaded successfully.
+      view: View
+    new:
+      success: Order created successfully.
+      title: New supplier order
+    receive:
+      success: Order received successfully.
+    show:
+      cancel_order: Cancel order
+      columns:
+        product: Product
+        quantity: Quantity
+        subtotal: Subtotal
+        total: Total
+        unit_cost: Cost
+      confirm_cancel: "Are you sure you want to cancel this order?"
+      confirm_cancel_received: "Are you sure you want to cancel this received order? Stock will be reversed."
+      confirm_delete: "Are you sure you want to delete this order?"
+      confirm_receive: "Are you sure you want to receive this order? This will increase stock."
+      delete: Delete
+      edit: Edit
+      items: Items
+      no_items: There are no items in this order.
+      receive_order: Receive order
+      title: Supplier Order
+    status:
+      cancelled: Cancelled
+      draft: Draft
+      received: Received

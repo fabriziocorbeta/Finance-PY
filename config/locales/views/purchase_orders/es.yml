@@ -17,6 +17,7 @@ es:
       cancel: Cancelar
       currency: Moneda
       expected_date: Fecha esperada
+      invoice_photo: Foto de factura
       select_account: Seleccione una cuenta
       items: Artículos
       items_help: Agregue los artículos a pedir. Los campos vacíos serán ignorados.
@@ -37,6 +38,21 @@ es:
       empty: No hay pedidos a proveedores registrados.
       new: Nuevo pedido
       title: Pedidos a Proveedores
+    invoice_photo:
+      confirm_delete: "¿Estás seguro de que quieres eliminar la foto de la factura?"
+      delete: Eliminar
+      deleted: Foto de factura eliminada exitosamente.
+      download: Descargar
+      empty: No hay foto de factura adjunta.
+      file_required: Seleccione un archivo para subir.
+      help: "Formatos permitidos: JPEG, PNG, GIF, WebP o PDF (máx. 10 MB)."
+      replace: Reemplazar
+      replace_label: Reemplazar foto de factura
+      title: Foto de factura
+      upload: Subir
+      upload_label: Subir foto de factura
+      uploaded: Foto de factura subida exitosamente.
+      view: Ver
     new:
       success: Pedido creado exitosamente.
       title: Nuevo pedido a proveedor

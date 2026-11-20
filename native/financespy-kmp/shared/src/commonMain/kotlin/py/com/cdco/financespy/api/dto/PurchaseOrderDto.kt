@@ -30,6 +30,8 @@ data class PurchaseOrderDto(
     val total: Double = 0.0,
     val created_at: String? = null,
     val updated_at: String? = null,
+    val has_invoice_photo: Boolean = false,
+    val invoice_photo: InvoicePhotoDto? = null,
     val purchase_order_items: List<PurchaseOrderItemDto> = emptyList()
 )
 

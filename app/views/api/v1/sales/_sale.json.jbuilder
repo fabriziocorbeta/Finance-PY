@@ -14,6 +14,17 @@ json.delivery_date sale.delivery_date
 json.carrier sale.carrier
 json.account_id sale.account_id
 json.total sale.total.to_f
+json.has_invoice_photo sale.invoice_photo.attached?
+if sale.invoice_photo.attached?
+  json.invoice_photo do
+    json.filename sale.invoice_photo.filename.to_s
+    json.content_type sale.invoice_photo.content_type
+    json.byte_size sale.invoice_photo.byte_size
+    json.url "/api/v1/sales/#{sale.id}/invoice_photo"
+  end
+else
+  json.invoice_photo nil
+end
 json.created_at sale.created_at.iso8601
 json.updated_at sale.updated_at.iso8601
 

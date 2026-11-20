@@ -1,6 +1,6 @@
 <%# locals: (sale:) %>
 
-<%= styled_form_with model: sale, class: "space-y-6", data: (sale.new_record? ? { controller: "offline-sale-form", action: "submit->offline-sale-form#submit" } : {}) do |f| %>
+<%= styled_form_with model: sale, multipart: true, class: "space-y-6", data: (sale.new_record? ? { controller: "offline-sale-form", action: "submit->offline-sale-form#submit" } : {}) do |f| %>
   <% if sale.errors.any? %>
     <%= render "shared/form_errors", model: sale %>
   <% end %>
@@ -22,6 +22,15 @@
     </div>
 
     <%= f.text_area :notes, label: t(".notes"), rows: 2 %>
+
+    <div class="form-field">
+      <div class="form-field__body">
+        <%= f.label :invoice_photo, t(".invoice_photo"), class: "form-field__label" %>
+        <%= f.file_field :invoice_photo,
+              accept: Sale::ALLOWED_INVOICE_PHOTO_CONTENT_TYPES.join(","),
+              class: "form-field__input text-sm text-primary" %>
+      </div>
+    </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <%= f.text_area :delivery_address, label: t(".delivery_address"), rows: 2 %>

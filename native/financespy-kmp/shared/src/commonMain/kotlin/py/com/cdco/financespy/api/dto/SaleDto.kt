@@ -3,6 +3,14 @@ package py.com.cdco.financespy.api.dto
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class InvoicePhotoDto(
+    val filename: String,
+    val content_type: String,
+    val byte_size: Long = 0L,
+    val url: String
+)
+
+@Serializable
 data class SaleItemDto(
     val id: String? = null,
     val sale_id: String? = null,
@@ -35,6 +43,8 @@ data class SaleDto(
     val total: Double = 0.0,
     val created_at: String? = null,
     val updated_at: String? = null,
+    val has_invoice_photo: Boolean = false,
+    val invoice_photo: InvoicePhotoDto? = null,
     val sale_items: List<SaleItemDto> = emptyList()
 )
 

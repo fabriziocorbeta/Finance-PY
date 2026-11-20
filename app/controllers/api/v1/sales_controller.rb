@@ -2,17 +2,19 @@
 
 class Api::V1::SalesController < Api::V1::BaseController
   include Pagy::Backend
+  include ActiveStorage::Streaming
 
-  before_action :ensure_read_scope, only: %i[index show]
-  before_action :ensure_write_scope, only: %i[create update destroy complete cancel]
+  before_action :ensure_read_scope, only: %i[index show invoice_photo]
+  before_action :ensure_write_scope, only: %i[create update destroy complete cancel upload_invoice_photo delete_invoice_photo]
   before_action :require_business_mode!
-  before_action :set_sale, only: %i[show update destroy complete cancel]
+  before_action :set_sale, only: %i[show update destroy complete cancel invoice_photo upload_invoice_photo delete_invoice_photo]
+  before_action :ensure_writable_sale_account!, only: %i[upload_invoice_photo delete_invoice_photo]
 
   def index
     @per_page = safe_per_page_param
 
     @pagy, @sales = pagy(
-      sales_scope.includes(sale_items: :product).order(created_at: :desc, id: :asc),
+      sales_scope.includes(sale_items: :product, invoice_photo_attachment: :blob).order(created_at: :desc, id: :asc),
       page: safe_page_param,
       limit: @per_page
     )
@@ -132,6 +134,56 @@ class Api::V1::SalesController < Api::V1::BaseController
     }, status: :internal_server_error
   end
 
+  def invoice_photo
+    if @sale.invoice_photo.attached?
+      disposition = params[:disposition] == "attachment" ? "attachment" : "inline"
+      send_blob_stream @sale.invoice_photo.blob, disposition: disposition
+    else
+      render json: {
+        error: "not_found",
+        message: "Invoice photo not found"
+      }, status: :not_found
+    end
+  end
+
+  def upload_invoice_photo
+    file = params[:invoice_photo] || params[:file] || params.dig(:sale, :invoice_photo)
+
+    if file.blank?
+      return render_validation_error([ "Invoice photo file is required" ])
+    end
+
+    @sale.invoice_photo.attach(file)
+
+    if @sale.valid?
+      render :show, status: :ok
+    else
+      @sale.invoice_photo.purge
+      render_validation_error(@sale.errors.full_messages)
+    end
+  rescue => e
+    Rails.logger.error "SalesController#upload_invoice_photo error: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
+
+    render json: {
+      error: "internal_server_error",
+      message: "An unexpected error occurred"
+    }, status: :internal_server_error
+  end
+
+  def delete_invoice_photo
+    @sale.invoice_photo.purge if @sale.invoice_photo.attached?
+    render :show, status: :ok
+  rescue => e
+    Rails.logger.error "SalesController#delete_invoice_photo error: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
+
+    render json: {
+      error: "internal_server_error",
+      message: "An unexpected error occurred"
+    }, status: :internal_server_error
+  end
+
   private
 
     def ensure_read_scope
@@ -140,6 +192,15 @@ class Api::V1::SalesController < Api::V1::BaseController
 
     def ensure_write_scope
       authorize_scope!(:write)
+    end
+
+    def ensure_writable_sale_account!
+      return if current_family.accounts.writable_by(current_resource_owner).exists?(id: @sale.account_id)
+
+      render json: {
+        error: "forbidden",
+        message: "You do not have write access to this account"
+      }, status: :forbidden
     end
 
     def set_sale
@@ -159,7 +220,7 @@ class Api::V1::SalesController < Api::V1::BaseController
       raw = params.key?(:sale) ? params.require(:sale) : params
       permitted = raw.permit(
         :client_name, :currency, :payment_method, :invoice_number, :condition, :notes,
-        :delivery_address, :delivery_date, :carrier,
+        :delivery_address, :delivery_date, :carrier, :invoice_photo,
         sale_items_attributes: [ :id, :product_id, :quantity, :unit_price, :_destroy ]
       )
 

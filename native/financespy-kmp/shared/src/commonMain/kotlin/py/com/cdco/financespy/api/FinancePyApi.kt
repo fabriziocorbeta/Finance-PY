@@ -602,6 +602,33 @@ open class FinancePyApi(private val http: HttpClient) {
         return response.data
     }
 
+    open suspend fun uploadSaleInvoicePhoto(
+        saleId: String,
+        fileBytes: ByteArray,
+        fileName: String,
+        contentType: String = "image/jpeg"
+    ): SaleDto {
+        val response: SaleResponseDto = http.submitFormWithBinaryData(
+            url = "/api/v1/sales/$saleId/invoice_photo",
+            formData = formData {
+                append("invoice_photo", fileBytes, Headers.build {
+                    append(HttpHeaders.ContentType, contentType)
+                    append(HttpHeaders.ContentDisposition, "form-data; name=\"invoice_photo\"; filename=\"$fileName\"")
+                })
+            }
+        ).body()
+        return response.data
+    }
+
+    open suspend fun deleteSaleInvoicePhoto(saleId: String): SaleDto {
+        val response: SaleResponseDto = http.delete("/api/v1/sales/$saleId/invoice_photo").body()
+        return response.data
+    }
+
+    open suspend fun downloadSaleInvoicePhoto(saleId: String): ByteArray {
+        return http.get("/api/v1/sales/$saleId/invoice_photo").bodyAsBytes()
+    }
+
     // --- Purchase Orders ---
     open suspend fun fetchAllPurchaseOrders(): List<PurchaseOrderDto> {
         val response: PurchaseOrdersResponseDto = http.get("/api/v1/purchase_orders") {
@@ -643,6 +670,33 @@ open class FinancePyApi(private val http: HttpClient) {
     open suspend fun cancelPurchaseOrder(id: String): PurchaseOrderDto {
         val response: PurchaseOrderResponseDto = http.post("/api/v1/purchase_orders/$id/cancel").body()
         return response.data
+    }
+
+    open suspend fun uploadPurchaseOrderInvoicePhoto(
+        poId: String,
+        fileBytes: ByteArray,
+        fileName: String,
+        contentType: String = "image/jpeg"
+    ): PurchaseOrderDto {
+        val response: PurchaseOrderResponseDto = http.submitFormWithBinaryData(
+            url = "/api/v1/purchase_orders/$poId/invoice_photo",
+            formData = formData {
+                append("invoice_photo", fileBytes, Headers.build {
+                    append(HttpHeaders.ContentType, contentType)
+                    append(HttpHeaders.ContentDisposition, "form-data; name=\"invoice_photo\"; filename=\"$fileName\"")
+                })
+            }
+        ).body()
+        return response.data
+    }
+
+    open suspend fun deletePurchaseOrderInvoicePhoto(poId: String): PurchaseOrderDto {
+        val response: PurchaseOrderResponseDto = http.delete("/api/v1/purchase_orders/$poId/invoice_photo").body()
+        return response.data
+    }
+
+    open suspend fun downloadPurchaseOrderInvoicePhoto(poId: String): ByteArray {
+        return http.get("/api/v1/purchase_orders/$poId/invoice_photo").bodyAsBytes()
     }
 
     open suspend fun fetchReportsSummary(

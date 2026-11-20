@@ -2095,6 +2095,314 @@ components:
             budgets:
               type: integer
               minimum: 0
+    InvoicePhotoMetadata:
+      type: object
+      required:
+      - filename
+      - content_type
+      - byte_size
+      - url
+      properties:
+        filename:
+          type: string
+        content_type:
+          type: string
+        byte_size:
+          type: integer
+          minimum: 0
+        url:
+          type: string
+    SaleItem:
+      type: object
+      required:
+      - id
+      - sale_id
+      - product_id
+      - quantity
+      - unit_price
+      - subtotal
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        sale_id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        product_name:
+          type: string
+          nullable: true
+        product_sku:
+          type: string
+          nullable: true
+        quantity:
+          type: integer
+        unit_price:
+          type: number
+        subtotal:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    Sale:
+      type: object
+      required:
+      - id
+      - sale_number
+      - status
+      - currency
+      - account_id
+      - total
+      - has_invoice_photo
+      - sale_items
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        sale_number:
+          type: integer
+        client_name:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+          - draft
+          - completed
+          - cancelled
+        currency:
+          type: string
+          enum:
+          - pyg
+          - usd
+        payment_method:
+          type: string
+          nullable: true
+        invoice_number:
+          type: string
+          nullable: true
+        condition:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        delivery_address:
+          type: string
+          nullable: true
+        delivery_date:
+          type: string
+          format: date
+          nullable: true
+        carrier:
+          type: string
+          nullable: true
+        account_id:
+          type: string
+          format: uuid
+        total:
+          type: number
+        has_invoice_photo:
+          type: boolean
+        invoice_photo:
+          "$ref": "#/components/schemas/InvoicePhotoMetadata"
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        sale_items:
+          type: array
+          items:
+            "$ref": "#/components/schemas/SaleItem"
+    SaleResponse:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          "$ref": "#/components/schemas/Sale"
+    SaleCollection:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Sale"
+        meta:
+          type: object
+          required:
+          - current_page
+          - total_pages
+          - total_count
+          - per_page
+          properties:
+            current_page:
+              type: integer
+            next_page:
+              type: integer
+              nullable: true
+            prev_page:
+              type: integer
+              nullable: true
+            total_pages:
+              type: integer
+            total_count:
+              type: integer
+            per_page:
+              type: integer
+    PurchaseOrderItem:
+      type: object
+      required:
+      - id
+      - purchase_order_id
+      - product_id
+      - quantity
+      - unit_cost
+      - subtotal
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        purchase_order_id:
+          type: string
+          format: uuid
+        product_id:
+          type: string
+          format: uuid
+        product_name:
+          type: string
+          nullable: true
+        product_sku:
+          type: string
+          nullable: true
+        quantity:
+          type: integer
+        unit_cost:
+          type: number
+        subtotal:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    PurchaseOrder:
+      type: object
+      required:
+      - id
+      - order_number
+      - status
+      - currency
+      - account_id
+      - total
+      - has_invoice_photo
+      - purchase_order_items
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_number:
+          type: integer
+        supplier_name:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+          - draft
+          - received
+          - cancelled
+        currency:
+          type: string
+          enum:
+          - pyg
+          - usd
+        expected_date:
+          type: string
+          format: date
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        account_id:
+          type: string
+          format: uuid
+        total:
+          type: number
+        has_invoice_photo:
+          type: boolean
+        invoice_photo:
+          "$ref": "#/components/schemas/InvoicePhotoMetadata"
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        purchase_order_items:
+          type: array
+          items:
+            "$ref": "#/components/schemas/PurchaseOrderItem"
+    PurchaseOrderResponse:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          "$ref": "#/components/schemas/PurchaseOrder"
+    PurchaseOrderCollection:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: array
+          items:
+            "$ref": "#/components/schemas/PurchaseOrder"
+        meta:
+          type: object
+          required:
+          - current_page
+          - total_pages
+          - total_count
+          - per_page
+          properties:
+            current_page:
+              type: integer
+            next_page:
+              type: integer
+              nullable: true
+            prev_page:
+              type: integer
+              nullable: true
+            total_pages:
+              type: integer
+            total_count:
+              type: integer
+            per_page:
+              type: integer
 paths:
   "/api/v1/budgets":
     get:
@@ -6243,3 +6551,532 @@ paths:
                       type: string
                       description: Additional notes
         required: true
+  "/api/v1/sales":
+    get:
+      summary: List sales
+      tags:
+      - Sales
+      security:
+      - apiKeyAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        description: 'Page number (default: 1)'
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        description: 'Items per page (default: 25, max: 100)'
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: sales listed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SaleCollection"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires read scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    post:
+      summary: Create a sale
+      tags:
+      - Sales
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '201':
+          description: sale created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SaleResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: unprocessable entity
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sale:
+                  type: object
+                  properties:
+                    client_name:
+                      type: string
+                    currency:
+                      type: string
+                      enum:
+                      - pyg
+                      - usd
+                    account_id:
+                      type: string
+                      format: uuid
+                    payment_method:
+                      type: string
+                      nullable: true
+                    invoice_number:
+                      type: string
+                      nullable: true
+                    condition:
+                      type: string
+                      nullable: true
+                    notes:
+                      type: string
+                      nullable: true
+                    delivery_address:
+                      type: string
+                      nullable: true
+                    delivery_date:
+                      type: string
+                      format: date
+                      nullable: true
+                    carrier:
+                      type: string
+                      nullable: true
+                    sale_items_attributes:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          product_id:
+                            type: string
+                            format: uuid
+                          quantity:
+                            type: integer
+                          unit_price:
+                            type: number
+        required: true
+  "/api/v1/sales/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Sale ID
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Retrieve a sale
+      tags:
+      - Sales
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: sale retrieved
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SaleResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: sale not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/api/v1/sales/{id}/invoice_photo":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Sale ID
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Download or view sale invoice photo
+      tags:
+      - Sales
+      security:
+      - apiKeyAuth: []
+      parameters:
+      - name: disposition
+        in: query
+        required: false
+        description: Content-Disposition mode (inline or attachment)
+        schema:
+          type: string
+      responses:
+        '200':
+          description: invoice photo streamed
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: invoice photo or sale not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    post:
+      summary: Upload or replace sale invoice photo
+      tags:
+      - Sales
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: invoice photo uploaded
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SaleResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: invalid or missing file
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                invoice_photo:
+                  type: string
+                  format: binary
+                  description: Invoice photo file (JPEG, PNG, GIF, WebP or PDF up to 10MB)
+              required:
+              - invoice_photo
+        required: true
+    delete:
+      summary: Delete sale invoice photo
+      tags:
+      - Sales
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: invoice photo deleted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SaleResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: sale not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/api/v1/purchase_orders":
+    get:
+      summary: List purchase orders
+      tags:
+      - Purchase Orders
+      security:
+      - apiKeyAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        description: 'Page number (default: 1)'
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        description: 'Items per page (default: 25, max: 100)'
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: purchase orders listed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PurchaseOrderCollection"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires read scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    post:
+      summary: Create a purchase order
+      tags:
+      - Purchase Orders
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '201':
+          description: purchase order created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PurchaseOrderResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: unprocessable entity
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                purchase_order:
+                  type: object
+                  properties:
+                    supplier_name:
+                      type: string
+                    currency:
+                      type: string
+                      enum:
+                      - pyg
+                      - usd
+                    account_id:
+                      type: string
+                      format: uuid
+                    expected_date:
+                      type: string
+                      format: date
+                      nullable: true
+                    notes:
+                      type: string
+                      nullable: true
+                    purchase_order_items_attributes:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          product_id:
+                            type: string
+                            format: uuid
+                          quantity:
+                            type: integer
+                          unit_cost:
+                            type: number
+        required: true
+  "/api/v1/purchase_orders/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Purchase Order ID
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Retrieve a purchase order
+      tags:
+      - Purchase Orders
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: purchase order retrieved
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PurchaseOrderResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: purchase order not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/api/v1/purchase_orders/{id}/invoice_photo":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Purchase Order ID
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Download or view purchase order invoice photo
+      tags:
+      - Purchase Orders
+      security:
+      - apiKeyAuth: []
+      parameters:
+      - name: disposition
+        in: query
+        required: false
+        description: Content-Disposition mode (inline or attachment)
+        schema:
+          type: string
+      responses:
+        '200':
+          description: invoice photo streamed
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: invoice photo or purchase order not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    post:
+      summary: Upload or replace purchase order invoice photo
+      tags:
+      - Purchase Orders
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: invoice photo uploaded
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PurchaseOrderResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: invalid or missing file
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                invoice_photo:
+                  type: string
+                  format: binary
+                  description: Invoice photo file (JPEG, PNG, GIF, WebP or PDF up to 10MB)
+              required:
+              - invoice_photo
+        required: true
+    delete:
+      summary: Delete purchase order invoice photo
+      tags:
+      - Purchase Orders
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: invoice photo deleted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PurchaseOrderResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: purchase order not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"

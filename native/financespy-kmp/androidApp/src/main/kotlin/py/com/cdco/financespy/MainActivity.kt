@@ -130,6 +130,13 @@ class MainActivity : FragmentActivity() {
     private val pdfFilePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { handlePdfFilePicked(it) }
     }
+    private var invoicePhotoPickedCallback: ((ByteArray, String, String) -> Unit)? = null
+    private val invoicePhotoPickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { handleInvoicePhotoPicked(it) }
+    }
+    private val invoiceCameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        bitmap?.let { handleInvoiceCameraCaptured(it) }
+    }
 
     // User turning the Settings toggle on is the trigger for the runtime
     // permission request (not app startup) -- the capture itself is
@@ -608,6 +615,8 @@ class MainActivity : FragmentActivity() {
                     PdfStatementImportViewModel(scope = lifecycleScope, api = api, accountDao = database.accountDao())
                 },
                 onPickPdfFile = { onPicked -> pickPdfFile(onPicked) },
+                onPickInvoicePhoto = { onPicked -> pickInvoicePhoto(onPicked) },
+                onTakeInvoicePhoto = { onPicked -> takeInvoicePhoto(onPicked) },
                 chatsListViewModelFactory = { py.com.cdco.financespy.screens.ChatsListViewModel(scope = lifecycleScope, api = api) },
                 chatViewModelFactory = { chatId -> py.com.cdco.financespy.screens.ChatViewModel(scope = lifecycleScope, api = api, chatId = chatId) },
                 onOpenNotificationSettings = {
@@ -955,6 +964,60 @@ class MainActivity : FragmentActivity() {
                 Log.e("FinancePYPdfImport", "Error reading picked PDF", e)
             } finally {
                 pdfFilePickedCallback = null
+            }
+        }
+    }
+
+    private fun pickInvoicePhoto(onPicked: (ByteArray, String, String) -> Unit) {
+        invoicePhotoPickedCallback = onPicked
+        invoicePhotoPickerLauncher.launch(arrayOf("image/*", "application/pdf"))
+    }
+
+    private fun takeInvoicePhoto(onPicked: (ByteArray, String, String) -> Unit) {
+        invoicePhotoPickedCallback = onPicked
+        invoiceCameraLauncher.launch(null)
+    }
+
+    private fun handleInvoicePhotoPicked(uri: Uri) {
+        val callback = invoicePhotoPickedCallback ?: return
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
+                val defaultExt = if (mimeType == "application/pdf") "pdf" else "jpg"
+                val fileName = contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (cursor.moveToFirst() && nameIndex >= 0) cursor.getString(nameIndex) else null
+                } ?: uri.lastPathSegment ?: "factura.$defaultExt"
+
+                val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: throw IllegalStateException("No se pudo leer el archivo seleccionado")
+
+                withContext(Dispatchers.Main) {
+                    callback(bytes, fileName, mimeType)
+                }
+            } catch (e: Exception) {
+                Log.e("FinancePYInvoicePhoto", "Error reading picked invoice photo", e)
+            } finally {
+                invoicePhotoPickedCallback = null
+            }
+        }
+    }
+
+    private fun handleInvoiceCameraCaptured(bitmap: android.graphics.Bitmap) {
+        val callback = invoicePhotoPickedCallback ?: return
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val out = java.io.ByteArrayOutputStream()
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
+                val bytes = out.toByteArray()
+                val fileName = "factura_${System.currentTimeMillis()}.jpg"
+                withContext(Dispatchers.Main) {
+                    callback(bytes, fileName, "image/jpeg")
+                }
+            } catch (e: Exception) {
+                Log.e("FinancePYInvoicePhoto", "Error compressing captured invoice photo", e)
+            } finally {
+                invoicePhotoPickedCallback = null
             }
         }
     }

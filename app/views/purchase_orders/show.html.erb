@@ -130,4 +130,8 @@
       <p class="text-sm text-secondary py-4 text-center"><%= t(".no_items") %></p>
     <% end %>
   </div>
+
+  <%= render "purchase_orders/invoice_photo",
+        purchase_order: @purchase_order,
+        writable: Current.family.accounts.writable_by(Current.user).exists?(id: @purchase_order.account_id) %>
 </div>

@@ -166,4 +166,8 @@
       <p class="text-sm text-secondary py-4 text-center"><%= t(".no_items") %></p>
     <% end %>
   </div>
+
+  <%= render "sales/invoice_photo",
+        sale: @sale,
+        writable: Current.family.accounts.writable_by(Current.user).exists?(id: @sale.account_id) %>
 </div>

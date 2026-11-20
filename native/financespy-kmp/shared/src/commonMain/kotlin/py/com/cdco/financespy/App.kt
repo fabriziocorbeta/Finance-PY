@@ -173,6 +173,8 @@ fun App(
     onShareFile: ((ByteArray, String, String) -> Unit)? = null,
     onPickUpayCsv: ((onPicked: (ByteArray, String) -> Unit) -> Unit)? = null,
     onPickPdfFile: ((onPicked: (ByteArray, String) -> Unit) -> Unit)? = null,
+    onPickInvoicePhoto: ((onPicked: (ByteArray, String, String) -> Unit) -> Unit)? = null,
+    onTakeInvoicePhoto: ((onPicked: (ByteArray, String, String) -> Unit) -> Unit)? = null,
     chatsListViewModelFactory: () -> ChatsListViewModel = { TODO() },
     chatViewModelFactory: (String?) -> ChatViewModel = { _ -> TODO() }
 ) {
@@ -517,7 +519,9 @@ fun App(
                                 viewModel = remember(saleId) { saleDetailViewModelFactory(saleId) },
                                 onEditClick = { navController.navigate(Routes.saleFormEdit(saleId)) },
                                 onDeleted = { navController.popBackStack(Routes.SALES, inclusive = false) },
-                                onBack = { navController.popBackStack() }
+                                onBack = { navController.popBackStack() },
+                                onPickInvoicePhoto = onPickInvoicePhoto,
+                                onTakeInvoicePhoto = onTakeInvoicePhoto
                             )
                         }
                         composable(Routes.SALE_FORM) { entry ->
@@ -541,7 +545,9 @@ fun App(
                                 viewModel = remember(poId) { purchaseOrderDetailViewModelFactory(poId) },
                                 onEditClick = { navController.navigate(Routes.purchaseOrderFormEdit(poId)) },
                                 onDeleted = { navController.popBackStack(Routes.PURCHASE_ORDERS, inclusive = false) },
-                                onBack = { navController.popBackStack() }
+                                onBack = { navController.popBackStack() },
+                                onPickInvoicePhoto = onPickInvoicePhoto,
+                                onTakeInvoicePhoto = onTakeInvoicePhoto
                             )
                         }
                         composable(Routes.PURCHASE_ORDER_FORM) { entry ->

@@ -23,6 +23,12 @@ class PurchaseOrderDetailViewModel(
     private val _isActioning = MutableStateFlow(false)
     val isActioning: StateFlow<Boolean> = _isActioning.asStateFlow()
 
+    private val _invoicePhotoBytes = MutableStateFlow<ByteArray?>(null)
+    val invoicePhotoBytes: StateFlow<ByteArray?> = _invoicePhotoBytes.asStateFlow()
+
+    private val _isUploadingPhoto = MutableStateFlow(false)
+    val isUploadingPhoto: StateFlow<Boolean> = _isUploadingPhoto.asStateFlow()
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
@@ -35,11 +41,64 @@ class PurchaseOrderDetailViewModel(
             _isLoading.value = true
             _error.value = null
             try {
-                _purchaseOrder.value = api.fetchPurchaseOrder(purchaseOrderId)
+                val loaded = api.fetchPurchaseOrder(purchaseOrderId)
+                _purchaseOrder.value = loaded
+                refreshInvoicePhotoBytes(loaded)
             } catch (e: Exception) {
                 _error.value = e.message ?: "Error al cargar orden de compra"
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    private fun refreshInvoicePhotoBytes(po: PurchaseOrderDto) {
+        val photo = po.invoice_photo
+        if ((po.has_invoice_photo || photo != null) && (photo == null || photo.content_type.startsWith("image/"))) {
+            viewModelScope.launch {
+                try {
+                    _invoicePhotoBytes.value = api.downloadPurchaseOrderInvoicePhoto(purchaseOrderId)
+                } catch (_: Exception) {
+                    _invoicePhotoBytes.value = null
+                }
+            }
+        } else {
+            _invoicePhotoBytes.value = null
+        }
+    }
+
+    fun uploadInvoicePhoto(fileBytes: ByteArray, fileName: String, contentType: String) {
+        viewModelScope.launch {
+            _isUploadingPhoto.value = true
+            _error.value = null
+            try {
+                val updated = api.uploadPurchaseOrderInvoicePhoto(purchaseOrderId, fileBytes, fileName, contentType)
+                _purchaseOrder.value = updated
+                if (contentType.startsWith("image/") || updated.invoice_photo?.content_type?.startsWith("image/") == true) {
+                    _invoicePhotoBytes.value = fileBytes
+                } else {
+                    _invoicePhotoBytes.value = null
+                }
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Error al subir factura"
+            } finally {
+                _isUploadingPhoto.value = false
+            }
+        }
+    }
+
+    fun deleteInvoicePhoto() {
+        viewModelScope.launch {
+            _isUploadingPhoto.value = true
+            _error.value = null
+            try {
+                val updated = api.deletePurchaseOrderInvoicePhoto(purchaseOrderId)
+                _purchaseOrder.value = updated
+                _invoicePhotoBytes.value = null
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Error al eliminar factura"
+            } finally {
+                _isUploadingPhoto.value = false
             }
         }
     }
