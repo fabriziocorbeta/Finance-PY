@@ -1,0 +1,73 @@
+name: Build and publish image
+
+# Compila la imagen de producción en GitHub y la publica en GHCR, para que
+# la notebook de producción (8GB, WSL2 con tope de 4GB) solo tenga que
+# descargarla en vez de compilarla mientras atiende usuarios. La consume
+# bin/deploy_notebook.sh (ver docs/ops/deploy-runbook.md).
+#
+# Corre en cada push a main, sin paths-ignore a propósito: el deploy busca la
+# imagen etiquetada con el SHA exacto de main, así que cada commit de main
+# necesita la suya (con caché de capas, un commit que no toca código tarda
+# poco).
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-image-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and push to GHCR
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    env:
+      # GHCR exige minúsculas; el repo es Finance-PY.
+      IMAGE: ghcr.io/fabriziocorbeta/finance-py
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Log in to GHCR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_ACTOR: ${{ github.actor }}
+        run: echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+
+      # El driver por defecto de Docker no exporta caché a un registry; el
+      # driver docker-container sí. Solo CLI, sin actions de terceros.
+      - name: Set up buildx builder
+        run: docker buildx create --name financespy-builder --driver docker-container --use
+
+      - name: Build and push
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --build-arg BUILD_COMMIT_SHA="$COMMIT_SHA" \
+            --cache-from "type=registry,ref=$IMAGE:buildcache" \
+            --cache-to "type=registry,ref=$IMAGE:buildcache,mode=max" \
+            --tag "$IMAGE:$COMMIT_SHA" \
+            --tag "$IMAGE:main" \
+            --push \
+            .
+
+      - name: Summary
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          {
+            echo "## Imagen publicada"
+            echo ""
+            echo "- \`$IMAGE:$COMMIT_SHA\`"
+            echo "- \`$IMAGE:main\`"
+          } >> "$GITHUB_STEP_SUMMARY"

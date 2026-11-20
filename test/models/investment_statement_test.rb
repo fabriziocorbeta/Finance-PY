@@ -106,6 +106,43 @@ class InvestmentStatementTest < ActiveSupport::TestCase
     assert_equal 1100, totals.contributions.amount
   end
 
+  # Regression test: a trade labelled Contribution was summed once here as a
+  # buy and again by InvestmentFlowStatement, doubling the reported figure.
+  test "a trade labelled Contribution is counted once" do
+    account = create_investment_account(balance: 1_000)
+    entry = create_buy_trade(account: account, amount: 1_000)
+    entry.entryable.update!(investment_activity_label: "Contribution")
+
+    totals = @statement.totals(period: Period.all_time)
+
+    assert_equal 1_000, totals.contributions.amount
+    assert_equal 0, totals.withdrawals.amount
+  end
+
+  # Regression test: capital that bought priced holdings is already in their
+  # cost basis; adding that account's contributions to the baseline as well
+  # counted it twice and understated the return.
+  test "capital held in priced holdings is not double counted in the trend baseline" do
+    brokerage = create_investment_account(balance: 2_100)
+    create_buy_trade(account: brokerage, amount: 2_000, qty: 10)
+    Holding.create!(
+      account: brokerage, security: securities(:aapl), date: Date.current,
+      qty: 10, price: 210, amount: 2_100, currency: "USD",
+      cost_basis: 200, cost_basis_locked: true
+    )
+
+    fund = create_investment_account(balance: 1_050)
+    create_buy_trade(account: fund, amount: 1_000)
+    create_interest_trade(account: fund, amount: 50)
+
+    trend = @statement.unrealized_gains_trend
+
+    # baseline = holdings cost (2000) + capital in the fund (1000)
+    assert_in_delta 3_000, trend.previous.amount, 0.001
+    # current = holdings value (2100) + fund capital (1000) + interest (50)
+    assert_in_delta 3_150, trend.current.amount, 0.001
+  end
+
   test "return trend stays nil when there is neither a holding nor interest" do
     create_investment_account(balance: 1000)
 

@@ -92,7 +92,7 @@ class SettingsViewModelTest {
 
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)
-        assertEquals("API Error", state.error)
+        assertEquals("API Error (Exception)", state.error)
     }
 
     @Test
