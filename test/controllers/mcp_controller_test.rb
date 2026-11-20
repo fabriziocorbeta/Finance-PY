@@ -326,8 +326,15 @@ class McpControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "deactivated user API key is rejected with 401" do
-    rw_key = api_keys(:active_key)
-    rw_key.user.update!(active: false)
+    member = users(:family_member)
+    rw_key = ApiKey.create!(
+      user: member,
+      name: "Member MCP Key",
+      source: "mobile",
+      scopes: [ "read_write" ],
+      key: ApiKey.generate_secure_key
+    )
+    member.update!(active: false)
 
     post "/mcp", params: jsonrpc_request("tools/list").to_json,
          headers: mcp_headers(rw_key.display_key)
