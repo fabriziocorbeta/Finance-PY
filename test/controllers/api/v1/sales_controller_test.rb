@@ -211,6 +211,98 @@ class Api::V1::SalesControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
   end
 
+  test "should upload, stream, and delete invoice photo via API including on completed sale" do
+    @sale.complete!
+    file = fixture_file_upload("receipt.jpg", "image/jpeg")
+
+    post upload_invoice_photo_api_v1_sale_url(@sale),
+         params: { invoice_photo: file },
+         headers: api_headers(@write_api_key)
+
+    assert_response :success
+    data = JSON.parse(response.body)["data"]
+    assert_equal true, data["has_invoice_photo"]
+    assert_equal "receipt.jpg", data.dig("invoice_photo", "filename")
+    assert_equal "image/jpeg", data.dig("invoice_photo", "content_type")
+    assert_equal "/api/v1/sales/#{@sale.id}/invoice_photo", data.dig("invoice_photo", "url")
+    assert @sale.reload.invoice_photo.attached?
+
+    get invoice_photo_api_v1_sale_url(@sale), headers: api_headers(@read_api_key)
+    assert_response :success
+    assert_equal "image/jpeg", response.media_type
+
+    delete delete_invoice_photo_api_v1_sale_url(@sale), headers: api_headers(@write_api_key)
+    assert_response :success
+    data = JSON.parse(response.body)["data"]
+    assert_equal false, data["has_invoice_photo"]
+    assert_nil data["invoice_photo"]
+    assert_not @sale.reload.invoice_photo.attached?
+
+    get invoice_photo_api_v1_sale_url(@sale), headers: api_headers(@read_api_key)
+    assert_response :not_found
+  end
+
+  test "should reject invalid invoice photo content type via API" do
+    invalid_file = fixture_file_upload("test.txt", "text/plain")
+
+    post upload_invoice_photo_api_v1_sale_url(@sale),
+         params: { invoice_photo: invalid_file },
+         headers: api_headers(@write_api_key)
+
+    assert_response :unprocessable_entity
+    body = JSON.parse(response.body)
+    assert_equal "validation_failed", body["error"]
+    assert_not @sale.reload.invoice_photo.attached?
+  end
+
+  test "should block invoice photo upload/delete on read-only account or read-only key or other family" do
+    file = fixture_file_upload("receipt.jpg", "image/jpeg")
+
+    post upload_invoice_photo_api_v1_sale_url(@sale),
+         params: { invoice_photo: file },
+         headers: api_headers(@read_api_key)
+    assert_response :forbidden
+
+    restricted_user = users(:family_member)
+    restricted_user.api_keys.active.destroy_all
+    restricted_key = ApiKey.create!(
+      user: restricted_user,
+      name: "Restricted Write Key",
+      scopes: [ "read_write" ],
+      source: "mobile",
+      display_key: "test_restricted_#{SecureRandom.hex(8)}"
+    )
+    Redis.new.del("api_rate_limit:#{restricted_key.id}")
+
+    read_only_sale = @family.sales.create!(
+      account: accounts(:credit_card),
+      client_name: "Read Only Account Sale",
+      currency: "pyg"
+    )
+
+    post upload_invoice_photo_api_v1_sale_url(read_only_sale),
+         params: { invoice_photo: file },
+         headers: api_headers(restricted_key)
+    assert_response :forbidden
+    assert_not read_only_sale.reload.invoice_photo.attached?
+
+    delete delete_invoice_photo_api_v1_sale_url(read_only_sale),
+           headers: api_headers(restricted_key)
+    assert_response :forbidden
+
+    other_family = Family.create!(name: "Other Family", business_mode_enabled: true)
+    other_account = Account.create!(family: other_family, name: "Other Acc", currency: "USD", balance: 0, accountable: Depository.new)
+    other_sale = other_family.sales.create!(account: other_account, client_name: "Other", currency: "pyg")
+
+    get invoice_photo_api_v1_sale_url(other_sale), headers: api_headers(@read_api_key)
+    assert_response :not_found
+
+    post upload_invoice_photo_api_v1_sale_url(other_sale),
+         params: { invoice_photo: file },
+         headers: api_headers(@write_api_key)
+    assert_response :not_found
+  end
+
   private
 
     def api_headers(api_key)

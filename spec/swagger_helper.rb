@@ -1193,6 +1193,163 @@ RSpec.configure do |config|
                 }
               }
             }
+          },
+          InvoicePhotoMetadata: {
+            type: :object,
+            required: %w[filename content_type byte_size url],
+            properties: {
+              filename: { type: :string },
+              content_type: { type: :string },
+              byte_size: { type: :integer, minimum: 0 },
+              url: { type: :string }
+            }
+          },
+          SaleItem: {
+            type: :object,
+            required: %w[id sale_id product_id quantity unit_price subtotal created_at updated_at],
+            properties: {
+              id: { type: :string, format: :uuid },
+              sale_id: { type: :string, format: :uuid },
+              product_id: { type: :string, format: :uuid },
+              product_name: { type: :string, nullable: true },
+              product_sku: { type: :string, nullable: true },
+              quantity: { type: :integer },
+              unit_price: { type: :number },
+              subtotal: { type: :number },
+              created_at: { type: :string, format: :'date-time' },
+              updated_at: { type: :string, format: :'date-time' }
+            }
+          },
+          Sale: {
+            type: :object,
+            required: %w[id sale_number status currency account_id total has_invoice_photo sale_items created_at updated_at],
+            properties: {
+              id: { type: :string, format: :uuid },
+              sale_number: { type: :integer },
+              client_name: { type: :string, nullable: true },
+              status: { type: :string, enum: %w[draft completed cancelled] },
+              currency: { type: :string, enum: %w[pyg usd] },
+              payment_method: { type: :string, nullable: true },
+              invoice_number: { type: :string, nullable: true },
+              condition: { type: :string, nullable: true },
+              notes: { type: :string, nullable: true },
+              delivery_address: { type: :string, nullable: true },
+              delivery_date: { type: :string, format: :date, nullable: true },
+              carrier: { type: :string, nullable: true },
+              account_id: { type: :string, format: :uuid },
+              total: { type: :number },
+              has_invoice_photo: { type: :boolean },
+              invoice_photo: {
+                '$ref' => '#/components/schemas/InvoicePhotoMetadata',
+                nullable: true
+              },
+              created_at: { type: :string, format: :'date-time' },
+              updated_at: { type: :string, format: :'date-time' },
+              sale_items: {
+                type: :array,
+                items: { '$ref' => '#/components/schemas/SaleItem' }
+              }
+            }
+          },
+          SaleResponse: {
+            type: :object,
+            required: %w[data],
+            properties: {
+              data: { '$ref' => '#/components/schemas/Sale' }
+            }
+          },
+          SaleCollection: {
+            type: :object,
+            required: %w[data meta],
+            properties: {
+              data: {
+                type: :array,
+                items: { '$ref' => '#/components/schemas/Sale' }
+              },
+              meta: {
+                type: :object,
+                required: %w[current_page total_pages total_count per_page],
+                properties: {
+                  current_page: { type: :integer },
+                  next_page: { type: :integer, nullable: true },
+                  prev_page: { type: :integer, nullable: true },
+                  total_pages: { type: :integer },
+                  total_count: { type: :integer },
+                  per_page: { type: :integer }
+                }
+              }
+            }
+          },
+          PurchaseOrderItem: {
+            type: :object,
+            required: %w[id purchase_order_id product_id quantity unit_cost subtotal created_at updated_at],
+            properties: {
+              id: { type: :string, format: :uuid },
+              purchase_order_id: { type: :string, format: :uuid },
+              product_id: { type: :string, format: :uuid },
+              product_name: { type: :string, nullable: true },
+              product_sku: { type: :string, nullable: true },
+              quantity: { type: :integer },
+              unit_cost: { type: :number },
+              subtotal: { type: :number },
+              created_at: { type: :string, format: :'date-time' },
+              updated_at: { type: :string, format: :'date-time' }
+            }
+          },
+          PurchaseOrder: {
+            type: :object,
+            required: %w[id order_number status currency account_id total has_invoice_photo purchase_order_items created_at updated_at],
+            properties: {
+              id: { type: :string, format: :uuid },
+              order_number: { type: :integer },
+              supplier_name: { type: :string, nullable: true },
+              status: { type: :string, enum: %w[draft received cancelled] },
+              currency: { type: :string, enum: %w[pyg usd] },
+              expected_date: { type: :string, format: :date, nullable: true },
+              notes: { type: :string, nullable: true },
+              account_id: { type: :string, format: :uuid },
+              total: { type: :number },
+              has_invoice_photo: { type: :boolean },
+              invoice_photo: {
+                '$ref' => '#/components/schemas/InvoicePhotoMetadata',
+                nullable: true
+              },
+              created_at: { type: :string, format: :'date-time' },
+              updated_at: { type: :string, format: :'date-time' },
+              purchase_order_items: {
+                type: :array,
+                items: { '$ref' => '#/components/schemas/PurchaseOrderItem' }
+              }
+            }
+          },
+          PurchaseOrderResponse: {
+            type: :object,
+            required: %w[data],
+            properties: {
+              data: { '$ref' => '#/components/schemas/PurchaseOrder' }
+            }
+          },
+          PurchaseOrderCollection: {
+            type: :object,
+            required: %w[data meta],
+            properties: {
+              data: {
+                type: :array,
+                items: { '$ref' => '#/components/schemas/PurchaseOrder' }
+              },
+              meta: {
+                type: :object,
+                required: %w[current_page total_pages total_count per_page],
+                properties: {
+                  current_page: { type: :integer },
+                  next_page: { type: :integer, nullable: true },
+                  prev_page: { type: :integer, nullable: true },
+                  total_pages: { type: :integer },
+                  total_count: { type: :integer },
+                  per_page: { type: :integer }
+                }
+              }
+            }
           }
         }
       }

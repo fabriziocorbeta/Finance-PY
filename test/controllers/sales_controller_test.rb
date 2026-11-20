@@ -299,4 +299,91 @@ class SalesControllerTest < ActionDispatch::IntegrationTest
     assert_select "[role='option'][data-value=?]", accounts(:depository).id.to_s, count: 1
     assert_select "[role='option'][data-value=?]", accounts(:credit_card).id.to_s, count: 0
   end
+
+  test "should upload, view, download, and delete invoice photo on sale" do
+    file = fixture_file_upload("receipt.jpg", "image/jpeg")
+
+    post sale_invoice_photo_url(@sale), params: { invoice_photo: file }
+    assert_redirected_to sale_url(@sale)
+    assert @sale.reload.invoice_photo.attached?
+    assert_equal "receipt.jpg", @sale.invoice_photo.filename.to_s
+
+    get sale_invoice_photo_url(@sale)
+    assert_response :success
+    assert_equal "image/jpeg", response.media_type
+    assert_match(/inline/, response.headers["Content-Disposition"])
+
+    get sale_invoice_photo_url(@sale, disposition: "attachment")
+    assert_response :success
+    assert_match(/attachment/, response.headers["Content-Disposition"])
+
+    delete sale_invoice_photo_url(@sale)
+    assert_redirected_to sale_url(@sale)
+    assert_not @sale.reload.invoice_photo.attached?
+
+    get sale_invoice_photo_url(@sale)
+    assert_response :not_found
+  end
+
+  test "should attach invoice photo when creating sale via form" do
+    file = fixture_file_upload("receipt.jpg", "image/jpeg")
+
+    assert_difference("Sale.count", 1) do
+      post sales_url, params: {
+        sale: {
+          client_name: "Photo Client",
+          account_id: accounts(:depository).id,
+          invoice_photo: file,
+          sale_items_attributes: {
+            "0" => {
+              product_id: @product.id,
+              quantity: 1,
+              unit_price: 20
+            }
+          }
+        }
+      }
+    end
+
+    sale = Sale.order(:created_at).last
+    assert sale.invoice_photo.attached?
+    assert_equal "receipt.jpg", sale.invoice_photo.filename.to_s
+  end
+
+  test "should reject invalid invoice photo content type on sale" do
+    invalid_file = fixture_file_upload("test.txt", "text/plain")
+
+    post sale_invoice_photo_url(@sale), params: { invoice_photo: invalid_file }
+    assert_redirected_to sale_url(@sale)
+    assert_match(/JPEG, PNG, GIF, WebP image or PDF/, flash[:alert].to_s)
+    assert_not @sale.reload.invoice_photo.attached?
+  end
+
+  test "cannot upload or delete invoice photo on read-only account or other family sale" do
+    read_only_sale = @dylan_family.sales.create!(
+      client_name: "Locked Sale",
+      status: "draft",
+      account: accounts(:credit_card)
+    )
+    file = fixture_file_upload("receipt.jpg", "image/jpeg")
+
+    sign_in users(:family_member)
+
+    post sale_invoice_photo_url(read_only_sale), params: { invoice_photo: file }
+    assert_response :forbidden
+    assert_not read_only_sale.reload.invoice_photo.attached?
+
+    delete sale_invoice_photo_url(read_only_sale)
+    assert_response :forbidden
+
+    other_family = Family.create!(name: "Other Family", business_mode_enabled: true)
+    other_account = Account.create!(family: other_family, name: "Cuenta Other", currency: "USD", balance: 0, accountable: Depository.new)
+    other_sale = other_family.sales.create!(client_name: "Other", status: "draft", account: other_account)
+
+    get sale_invoice_photo_url(other_sale)
+    assert_response :not_found
+
+    post sale_invoice_photo_url(other_sale), params: { invoice_photo: file }
+    assert_response :not_found
+  end
 end

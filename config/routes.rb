@@ -232,6 +232,8 @@ Rails.application.routes.draw do
     resources :fuel_logs, only: [ :create, :edit, :update, :destroy ]
   end
   resources :sales do
+    resource :invoice_photo, only: %i[show create destroy], controller: "sale_invoice_photos"
+
     member do
       patch :complete
       patch :cancel
@@ -240,6 +242,8 @@ Rails.application.routes.draw do
     end
   end
   resources :purchase_orders do
+    resource :invoice_photo, only: %i[show create destroy], controller: "purchase_order_invoice_photos"
+
     member do
       patch :receive
       patch :cancel
@@ -502,12 +506,18 @@ Rails.application.routes.draw do
         member do
           post :complete
           post :cancel
+          get :invoice_photo
+          post :upload_invoice_photo, path: "invoice_photo"
+          delete :delete_invoice_photo, path: "invoice_photo"
         end
       end
       resources :purchase_orders, only: %i[index show create update destroy] do
         member do
           post :receive
           post :cancel
+          get :invoice_photo
+          post :upload_invoice_photo, path: "invoice_photo"
+          delete :delete_invoice_photo, path: "invoice_photo"
         end
       end
       resources :fleet_vehicles, only: %i[index show create update destroy] do

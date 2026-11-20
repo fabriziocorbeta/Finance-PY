@@ -10,6 +10,13 @@ class PurchaseOrder < ApplicationRecord
   belongs_to :account
   belongs_to :entry, optional: true
   has_many :purchase_order_items, dependent: :destroy
+  has_one_attached :invoice_photo, dependent: :purge_later
+
+  MAX_INVOICE_PHOTO_SIZE = 10.megabytes
+  ALLOWED_INVOICE_PHOTO_CONTENT_TYPES = %w[
+    image/jpeg image/jpg image/png image/gif image/webp
+    application/pdf
+  ].freeze
 
   enum :status, { draft: "draft", received: "received", cancelled: "cancelled" }, default: "draft"
   enum :currency, { pyg: "pyg", usd: "usd" }, default: "pyg"
@@ -17,6 +24,7 @@ class PurchaseOrder < ApplicationRecord
   validates :order_number, presence: true, uniqueness: { scope: :family_id }
   validate :account_belongs_to_family
   validate :status_cannot_be_changed_directly, on: :update
+  validate :validate_invoice_photo, if: -> { invoice_photo.attached? }
 
   before_validation :assign_order_number, on: :create
   before_destroy :prevent_destroy_unless_draft
@@ -176,6 +184,19 @@ class PurchaseOrder < ApplicationRecord
       unless draft?
         errors.add(:base, "Cannot delete a purchase order that is not in draft status. Cancel it first.")
         throw :abort
+      end
+    end
+
+    def validate_invoice_photo
+      blob = invoice_photo.blob
+      return unless blob
+
+      unless blob.content_type.in?(ALLOWED_INVOICE_PHOTO_CONTENT_TYPES)
+        errors.add(:invoice_photo, "must be a JPEG, PNG, GIF, WebP image or PDF")
+      end
+
+      if blob.byte_size > MAX_INVOICE_PHOTO_SIZE
+        errors.add(:invoice_photo, "must be less than 10MB")
       end
     end
 end

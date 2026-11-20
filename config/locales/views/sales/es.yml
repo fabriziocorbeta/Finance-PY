@@ -37,6 +37,7 @@ es:
       delivery_address: Dirección de entrega
       delivery_date: Fecha de envío
       invoice_number: Número de factura
+      invoice_photo: Foto de factura
       items: Artículos
       items_help: Agregue los artículos a vender. Los campos vacíos serán ignorados.
       notes: Notas
@@ -56,6 +57,21 @@ es:
       empty: No hay ventas registradas.
       new: Nueva venta
       title: Ventas
+    invoice_photo:
+      confirm_delete: "¿Estás seguro de que deseas eliminar la foto de la factura?"
+      delete: Eliminar
+      deleted: Foto de factura eliminada exitosamente.
+      download: Descargar
+      empty: No hay foto de factura adjunta.
+      file_required: Seleccione un archivo para subir.
+      help: "Formatos permitidos: JPEG, PNG, GIF, WebP o PDF (máx. 10 MB)."
+      replace: Reemplazar
+      replace_label: Reemplazar foto de factura
+      title: Foto de factura
+      upload: Subir
+      upload_label: Subir foto de factura
+      uploaded: Foto de factura subida exitosamente.
+      view: Ver
     new:
       success: Venta creada exitosamente.
       title: Nueva venta

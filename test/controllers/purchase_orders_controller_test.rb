@@ -239,4 +239,91 @@ class PurchaseOrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "[role='option'][data-value=?]", accounts(:depository).id.to_s, count: 1
     assert_select "[role='option'][data-value=?]", accounts(:credit_card).id.to_s, count: 0
   end
+
+  test "should upload, view, download, and delete invoice photo on purchase order" do
+    file = fixture_file_upload("receipt.jpg", "image/jpeg")
+
+    post purchase_order_invoice_photo_url(@purchase_order), params: { invoice_photo: file }
+    assert_redirected_to purchase_order_url(@purchase_order)
+    assert @purchase_order.reload.invoice_photo.attached?
+    assert_equal "receipt.jpg", @purchase_order.invoice_photo.filename.to_s
+
+    get purchase_order_invoice_photo_url(@purchase_order)
+    assert_response :success
+    assert_equal "image/jpeg", response.media_type
+    assert_match(/inline/, response.headers["Content-Disposition"])
+
+    get purchase_order_invoice_photo_url(@purchase_order, disposition: "attachment")
+    assert_response :success
+    assert_match(/attachment/, response.headers["Content-Disposition"])
+
+    delete purchase_order_invoice_photo_url(@purchase_order)
+    assert_redirected_to purchase_order_url(@purchase_order)
+    assert_not @purchase_order.reload.invoice_photo.attached?
+
+    get purchase_order_invoice_photo_url(@purchase_order)
+    assert_response :not_found
+  end
+
+  test "should attach invoice photo when creating purchase order via form" do
+    file = fixture_file_upload("receipt.jpg", "image/jpeg")
+
+    assert_difference("PurchaseOrder.count", 1) do
+      post purchase_orders_url, params: {
+        purchase_order: {
+          supplier_name: "Photo Supplier",
+          account_id: accounts(:depository).id,
+          invoice_photo: file,
+          purchase_order_items_attributes: {
+            "0" => {
+              product_id: @product.id,
+              quantity: 1,
+              unit_cost: 10
+            }
+          }
+        }
+      }
+    end
+
+    po = PurchaseOrder.order(:created_at).last
+    assert po.invoice_photo.attached?
+    assert_equal "receipt.jpg", po.invoice_photo.filename.to_s
+  end
+
+  test "should reject invalid invoice photo content type on purchase order" do
+    invalid_file = fixture_file_upload("test.txt", "text/plain")
+
+    post purchase_order_invoice_photo_url(@purchase_order), params: { invoice_photo: invalid_file }
+    assert_redirected_to purchase_order_url(@purchase_order)
+    assert_match(/JPEG, PNG, GIF, WebP image or PDF/, flash[:alert].to_s)
+    assert_not @purchase_order.reload.invoice_photo.attached?
+  end
+
+  test "cannot upload or delete invoice photo on read-only account or other family purchase order" do
+    read_only_po = @dylan_family.purchase_orders.create!(
+      supplier_name: "Locked PO",
+      status: "draft",
+      account: accounts(:credit_card)
+    )
+    file = fixture_file_upload("receipt.jpg", "image/jpeg")
+
+    sign_in users(:family_member)
+
+    post purchase_order_invoice_photo_url(read_only_po), params: { invoice_photo: file }
+    assert_response :forbidden
+    assert_not read_only_po.reload.invoice_photo.attached?
+
+    delete purchase_order_invoice_photo_url(read_only_po)
+    assert_response :forbidden
+
+    other_family = Family.create!(name: "Other Family", business_mode_enabled: true)
+    other_account = Account.create!(family: other_family, name: "Cuenta Other", currency: "USD", balance: 0, accountable: Depository.new)
+    other_po = other_family.purchase_orders.create!(supplier_name: "Other", status: "draft", account: other_account)
+
+    get purchase_order_invoice_photo_url(other_po)
+    assert_response :not_found
+
+    post purchase_order_invoice_photo_url(other_po), params: { invoice_photo: file }
+    assert_response :not_found
+  end
 end

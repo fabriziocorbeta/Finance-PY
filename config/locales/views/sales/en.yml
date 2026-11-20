@@ -1,0 +1,116 @@
+---
+en:
+  sales:
+    create:
+      success: Sale created successfully
+    update:
+      success: Sale updated successfully
+    cancel:
+      success: Sale cancelled successfully.
+    complete:
+      success: Sale completed successfully.
+    delivery_note:
+      carrier: Carrier
+      client: Deliver to
+      delivery_address: Delivery address
+      delivery_date: Expected shipping date
+      document_title: Delivery note
+      footer_thanks: Thank you for your purchase!
+      generated_on: Generated on %{date}
+      product: Product
+      quantity: Quantity
+      sale_number: Sale No.
+      title: Delivery Note
+    destroy:
+      success: Sale deleted successfully.
+    edit:
+      success: Sale updated successfully.
+      title: Edit sale
+    form:
+      account: Account
+      cancel: Cancel
+      carrier: Carrier
+      client_name: Client
+      select_account: Select an account
+      condition: Condition
+      currency: Currency
+      delivery_address: Delivery address
+      delivery_date: Shipping date
+      invoice_number: Invoice number
+      invoice_photo: Invoice photo
+      items: Items
+      items_help: Add items to sell. Empty fields will be ignored.
+      notes: Notes
+      payment_method: Payment method
+      product: Product
+      quantity: Quantity
+      select_product: Select a product
+      submit: Save
+      unit_price: Unit price
+    index:
+      columns:
+        client_name: Client
+        currency: Currency
+        sale_number: Number
+        status: Status
+        total: Total
+      empty: No sales recorded.
+      new: New sale
+      title: Sales
+    invoice_photo:
+      confirm_delete: "Are you sure you want to delete the invoice photo?"
+      delete: Delete
+      deleted: Invoice photo deleted successfully.
+      download: Download
+      empty: No invoice photo attached.
+      file_required: Please select a file to upload.
+      help: "Allowed formats: JPEG, PNG, GIF, WebP or PDF (max. 10 MB)."
+      replace: Replace
+      replace_label: Replace invoice photo
+      title: Invoice photo
+      upload: Upload
+      upload_label: Upload invoice photo
+      uploaded: Invoice photo uploaded successfully.
+      view: View
+    new:
+      success: Sale created successfully.
+      title: New sale
+    print:
+      client: Client
+      condition: Condition
+      document_title: Sales note
+      footer_thanks: Thank you for your purchase!
+      generated_on: Generated on %{date}
+      invoice_number: Invoice No.
+      notes: Notes
+      payment_method: Payment method
+      product: Product
+      quantity: Quantity
+      sale_number: Sale No.
+      subtotal: Subtotal
+      title: Sales Note
+      total: Total
+      unit_price: Unit price
+    show:
+      cancel_sale: Cancel sale
+      columns:
+        product: Product
+        quantity: Quantity
+        subtotal: Subtotal
+        total: Total
+        unit_price: Price
+      complete_sale: Complete sale
+      confirm_cancel: "Are you sure you want to cancel this sale?"
+      confirm_cancel_completed: "Are you sure you want to cancel this completed sale? Stock will be restored."
+      confirm_complete: "Are you sure you want to complete this sale? This will deduct stock."
+      delete: Delete
+      delivery_note: Delivery note
+      edit: Edit
+      items: Items
+      no_items: There are no items in this sale.
+      print: Download note
+      title: Sale
+    status:
+      cancelled: Cancelled
+      completed: Completed
+      draft: Draft

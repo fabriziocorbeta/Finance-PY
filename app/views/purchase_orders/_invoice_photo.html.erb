@@ -1,0 +1,83 @@
+<%# locals: (purchase_order:, writable: false) %>
+
+<div class="space-y-4">
+  <h2 class="text-lg font-medium text-primary"><%= t("purchase_orders.invoice_photo.title") %></h2>
+
+  <div class="bg-container rounded-xl shadow-border-xs p-4 space-y-4">
+    <% if purchase_order.invoice_photo.attached? %>
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-4 min-w-0">
+          <% if purchase_order.invoice_photo.image? %>
+            <img src="<%= purchase_order_invoice_photo_path(purchase_order, disposition: "inline") %>"
+                 alt="<%= purchase_order.invoice_photo.filename %>"
+                 class="h-20 w-20 object-cover rounded-lg border border-secondary shrink-0">
+          <% else %>
+            <div class="h-12 w-12 flex items-center justify-center rounded-lg border border-secondary bg-surface-inset shrink-0">
+              <%= icon "file-text", size: "md", color: "secondary" %>
+            </div>
+          <% end %>
+
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-primary truncate"><%= purchase_order.invoice_photo.filename %></p>
+            <p class="text-xs text-secondary"><%= number_to_human_size(purchase_order.invoice_photo.byte_size) %></p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+          <%= render DS::Link.new(
+            href: purchase_order_invoice_photo_path(purchase_order, disposition: "inline"),
+            variant: "outline",
+            size: "sm",
+            icon: "eye",
+            text: t("purchase_orders.invoice_photo.view"),
+            target: "_blank"
+          ) %>
+
+          <%= render DS::Link.new(
+            href: purchase_order_invoice_photo_path(purchase_order, disposition: "attachment"),
+            variant: "outline",
+            size: "sm",
+            icon: "download",
+            text: t("purchase_orders.invoice_photo.download"),
+            data: { turbo: false }
+          ) %>
+
+          <% if writable %>
+            <%= render DS::Button.new(
+              href: purchase_order_invoice_photo_path(purchase_order),
+              method: :delete,
+              variant: "outline_destructive",
+              size: "sm",
+              icon: "trash-2",
+              text: t("purchase_orders.invoice_photo.delete"),
+              confirm: t("purchase_orders.invoice_photo.confirm_delete")
+            ) %>
+          <% end %>
+        </div>
+      </div>
+    <% else %>
+      <p class="text-sm text-secondary"><%= t("purchase_orders.invoice_photo.empty") %></p>
+    <% end %>
+
+    <% if writable %>
+      <%= form_with url: purchase_order_invoice_photo_path(purchase_order), method: :post, multipart: true, local: true, class: "flex flex-col sm:flex-row sm:items-end gap-3 pt-2 border-t border-secondary" do |f| %>
+        <div class="flex-1">
+          <%= f.label :invoice_photo, (purchase_order.invoice_photo.attached? ? t("purchase_orders.invoice_photo.replace_label") : t("purchase_orders.invoice_photo.upload_label")), class: "text-xs font-medium text-secondary uppercase tracking-wide block mb-1" %>
+          <%= f.file_field :invoice_photo,
+                accept: PurchaseOrder::ALLOWED_INVOICE_PHOTO_CONTENT_TYPES.join(","),
+                required: true,
+                class: "form-field__input text-sm text-primary w-full" %>
+          <p class="text-xs text-secondary mt-1"><%= t("purchase_orders.invoice_photo.help") %></p>
+        </div>
+        <div class="shrink-0">
+          <%= render DS::Button.new(
+            text: (purchase_order.invoice_photo.attached? ? t("purchase_orders.invoice_photo.replace") : t("purchase_orders.invoice_photo.upload")),
+            variant: "primary",
+            size: "sm",
+            icon: "upload"
+          ) %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>
