@@ -434,6 +434,108 @@ end
     assert transaction_data.key?("tags")
     assert transaction_data.key?("transfer")
     assert transaction_data.key?("notes")
+    assert transaction_data.key?("has_invoice_photo")
+    assert transaction_data.key?("invoice_photo")
+  end
+
+  test "should upload, stream, replace, and delete invoice photo via API" do
+    file = fixture_file_upload("receipt.jpg", "image/jpeg")
+
+    post upload_invoice_photo_api_v1_transaction_url(@transaction),
+         params: { invoice_photo: file },
+         headers: api_headers(@api_key)
+
+    assert_response :success
+    data = JSON.parse(response.body)
+    assert_equal true, data["has_invoice_photo"]
+    assert_equal "receipt.jpg", data.dig("invoice_photo", "filename")
+    assert_equal "image/jpeg", data.dig("invoice_photo", "content_type")
+    assert_equal "/api/v1/transactions/#{@transaction.id}/invoice_photo", data.dig("invoice_photo", "url")
+    assert @transaction.reload.attachments.attached?
+
+    get invoice_photo_api_v1_transaction_url(@transaction), headers: api_headers(@read_only_api_key)
+    assert_response :success
+    assert_equal "image/jpeg", response.media_type
+
+    delete delete_invoice_photo_api_v1_transaction_url(@transaction), headers: api_headers(@api_key)
+    assert_response :success
+    data = JSON.parse(response.body)
+    assert_equal false, data["has_invoice_photo"]
+    assert_nil data["invoice_photo"]
+    assert_not @transaction.reload.attachments.attached?
+
+    get invoice_photo_api_v1_transaction_url(@transaction), headers: api_headers(@read_only_api_key)
+    assert_response :not_found
+  end
+
+  test "should reject invalid invoice photo content type via API" do
+    invalid_file = fixture_file_upload("test.txt", "text/plain")
+
+    post upload_invoice_photo_api_v1_transaction_url(@transaction),
+         params: { invoice_photo: invalid_file },
+         headers: api_headers(@api_key)
+
+    assert_response :unprocessable_entity
+    body = JSON.parse(response.body)
+    assert_equal "validation_failed", body["error"]
+    assert_not @transaction.reload.attachments.attached?
+  end
+
+  test "should block invoice photo upload/delete on read-only account or read-only key or other family" do
+    file = fixture_file_upload("receipt.jpg", "image/jpeg")
+
+    post upload_invoice_photo_api_v1_transaction_url(@transaction),
+         params: { invoice_photo: file },
+         headers: api_headers(@read_only_api_key)
+    assert_response :forbidden
+
+    restricted_user = users(:family_member)
+    restricted_user.api_keys.active.destroy_all
+    restricted_key = ApiKey.create!(
+      user: restricted_user,
+      name: "Restricted Write Key",
+      scopes: [ "read_write" ],
+      source: "mobile",
+      display_key: "test_restricted_#{SecureRandom.hex(8)}"
+    )
+    Redis.new.del("api_rate_limit:#{restricted_key.id}")
+
+    read_only_entry = accounts(:credit_card).entries.create!(
+      name: "Read Only Card Purchase",
+      amount: 25.00,
+      currency: "USD",
+      date: Date.current,
+      entryable: Transaction.new
+    )
+    read_only_txn = read_only_entry.transaction
+
+    post upload_invoice_photo_api_v1_transaction_url(read_only_txn),
+         params: { invoice_photo: file },
+         headers: api_headers(restricted_key)
+    assert_response :forbidden
+    assert_not read_only_txn.reload.attachments.attached?
+
+    delete delete_invoice_photo_api_v1_transaction_url(read_only_txn),
+           headers: api_headers(restricted_key)
+    assert_response :forbidden
+
+    other_family = Family.create!(name: "Other Family")
+    other_account = Account.create!(family: other_family, name: "Other Acc", currency: "USD", balance: 0, accountable: Depository.new)
+    other_entry = other_account.entries.create!(
+      name: "Other Family Purchase",
+      amount: 15.00,
+      currency: "USD",
+      date: Date.current,
+      entryable: Transaction.new
+    )
+
+    get invoice_photo_api_v1_transaction_url(other_entry.transaction), headers: api_headers(@read_only_api_key)
+    assert_response :not_found
+
+    post upload_invoice_photo_api_v1_transaction_url(other_entry.transaction),
+         params: { invoice_photo: file },
+         headers: api_headers(@api_key)
+    assert_response :not_found
   end
 
   test "transactions with transfers should include transfer information" do

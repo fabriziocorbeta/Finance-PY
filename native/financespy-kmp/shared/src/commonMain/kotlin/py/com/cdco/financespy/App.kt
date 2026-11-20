@@ -404,7 +404,9 @@ fun App(
                                     transactionsViewModelFactory().refresh()
                                     navController.popBackStack()
                                 },
-                                onCancel = { navController.popBackStack() }
+                                onCancel = { navController.popBackStack() },
+                                onPickInvoicePhoto = onPickInvoicePhoto,
+                                onTakeInvoicePhoto = onTakeInvoicePhoto
                             )
                         }
                         composable(Routes.RULES) {
@@ -529,7 +531,9 @@ fun App(
                             SaleFormScreen(
                                 viewModel = remember(saleId) { saleFormViewModelFactory(saleId) },
                                 onSaved = { navController.popBackStack() },
-                                onCancel = { navController.popBackStack() }
+                                onCancel = { navController.popBackStack() },
+                                onPickInvoicePhoto = onPickInvoicePhoto,
+                                onTakeInvoicePhoto = onTakeInvoicePhoto
                             )
                         }
                         composable(Routes.PURCHASE_ORDERS) {
@@ -555,7 +559,9 @@ fun App(
                             PurchaseOrderFormScreen(
                                 viewModel = remember(poId) { purchaseOrderFormViewModelFactory(poId) },
                                 onSaved = { navController.popBackStack() },
-                                onCancel = { navController.popBackStack() }
+                                onCancel = { navController.popBackStack() },
+                                onPickInvoicePhoto = onPickInvoicePhoto,
+                                onTakeInvoicePhoto = onTakeInvoicePhoto
                             )
                         }
                         composable(Routes.REPORTS) {

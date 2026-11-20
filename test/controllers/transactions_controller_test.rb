@@ -622,4 +622,37 @@ end
     created_entry = Entry.order(:created_at).last
     assert_nil created_entry.transaction.extra["exchange_rate"]
   end
+
+  test "new transaction form includes invoice photo file input" do
+    get new_transaction_url
+    assert_response :success
+    assert_select "input[type='file'][name='entry[entryable_attributes][attachments][]']"
+  end
+
+  test "creates transaction with invoice photo attachment" do
+    file = fixture_file_upload("receipt.jpg", "image/jpeg")
+
+    assert_difference [ "Entry.count", "Transaction.count" ], 1 do
+      post transactions_url, params: {
+        entry: {
+          account_id: @entry.account_id,
+          name: "Purchase with invoice photo",
+          date: Date.current,
+          currency: "USD",
+          amount: 45,
+          nature: "outflow",
+          entryable_type: "Transaction",
+          entryable_attributes: {
+            category_id: Category.first.id,
+            attachments: [ "", file ]
+          }
+        }
+      }
+    end
+
+    created_entry = Entry.order(:created_at).last
+    assert_redirected_to account_url(created_entry.account)
+    assert created_entry.transaction.attachments.attached?
+    assert_equal "receipt.jpg", created_entry.transaction.attachments.first.filename.to_s
+  end
 end

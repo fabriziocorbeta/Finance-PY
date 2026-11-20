@@ -123,6 +123,9 @@ class TransactionsController < ApplicationController
         format.turbo_stream { stream_redirect_back_or_to(account_path(@entry.account)) }
       end
     else
+      @income_categories = Current.family.categories.incomes.alphabetically
+      @expense_categories = Current.family.categories.expenses.alphabetically
+      @categories = Current.family.categories.alphabetically
       render :new, status: :unprocessable_entity
     end
   end
@@ -450,8 +453,17 @@ class TransactionsController < ApplicationController
     def entry_params
       entry_params = params.require(:entry).permit(
         :name, :date, :amount, :currency, :excluded, :notes, :nature, :entryable_type,
-        entryable_attributes: [ :id, :category_id, :merchant_id, :kind, :investment_activity_label, :exchange_rate, { tag_ids: [] } ]
+        entryable_attributes: [ :id, :category_id, :merchant_id, :kind, :investment_activity_label, :exchange_rate, { tag_ids: [], attachments: [] } ]
       )
+
+      if entry_params[:entryable_attributes]&.key?(:attachments)
+        cleaned_attachments = Array(entry_params[:entryable_attributes][:attachments]).reject(&:blank?)
+        if cleaned_attachments.any?
+          entry_params[:entryable_attributes][:attachments] = cleaned_attachments
+        else
+          entry_params[:entryable_attributes].delete(:attachments)
+        end
+      end
 
       nature = entry_params.delete(:nature)
 

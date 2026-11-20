@@ -111,6 +111,19 @@ else
   json.location nil
 end
 
+json.has_invoice_photo transaction.attachments.attached?
+if transaction.attachments.attached?
+  att = transaction.attachments.first
+  json.invoice_photo do
+    json.filename att.filename.to_s
+    json.content_type att.content_type
+    json.byte_size att.byte_size
+    json.url "/api/v1/transactions/#{transaction.id}/invoice_photo"
+  end
+else
+  json.invoice_photo nil
+end
+
 # Additional metadata
 json.created_at transaction.created_at.iso8601
 json.updated_at transaction.updated_at.iso8601

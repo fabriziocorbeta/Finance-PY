@@ -8,6 +8,7 @@ import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.CategoryDto
 import py.com.cdco.financespy.api.dto.CreateTransactionBody
+import py.com.cdco.financespy.api.dto.InvoicePhotoDto
 import py.com.cdco.financespy.api.dto.MerchantDto
 import py.com.cdco.financespy.api.dto.TagDto
 import py.com.cdco.financespy.api.dto.TransactionLocationDto
@@ -36,7 +37,13 @@ data class TransactionFormState(
     val categories: List<CategoryDto> = emptyList(),
     val merchants: List<MerchantDto> = emptyList(),
     val tags: List<TagDto> = emptyList(),
-    val location: TransactionLocationDto? = null
+    val location: TransactionLocationDto? = null,
+    val invoicePhotoBytes: ByteArray? = null,
+    val invoicePhotoName: String? = null,
+    val invoicePhotoContentType: String? = null,
+    val existingInvoicePhoto: InvoicePhotoDto? = null,
+    val hasNewInvoicePhoto: Boolean = false,
+    val removeExistingInvoicePhoto: Boolean = false
 )
 
 class TransactionFormViewModel(
@@ -96,8 +103,22 @@ class TransactionFormViewModel(
                             categoryId = detail.category?.id,
                             merchantId = detail.merchant?.id,
                             selectedTagIds = detail.tags.map { it.id }.toSet(),
-                            location = detail.location
+                            location = detail.location,
+                            existingInvoicePhoto = detail.invoice_photo,
+                            invoicePhotoName = detail.invoice_photo?.filename,
+                            invoicePhotoContentType = detail.invoice_photo?.content_type
                         )
+                        val existingPhoto = detail.invoice_photo
+                        if ((detail.has_invoice_photo || existingPhoto != null) &&
+                            (existingPhoto == null || existingPhoto.content_type.startsWith("image/"))
+                        ) {
+                            scope.launch {
+                                runCatching { api.downloadTransactionInvoicePhoto(transactionId) }
+                                    .onSuccess { bytes ->
+                                        _state.value = _state.value.copy(invoicePhotoBytes = bytes)
+                                    }
+                            }
+                        }
                     }
                     .onFailure { e ->
                         val entry = runCatching { entryDao?.observeAll()?.first()?.firstOrNull { it.id == transactionId } }.getOrNull()
@@ -142,6 +163,27 @@ class TransactionFormViewModel(
             current.add(id)
         }
         _state.value = _state.value.copy(selectedTagIds = current)
+    }
+
+    fun selectInvoicePhoto(bytes: ByteArray, fileName: String, contentType: String) {
+        _state.value = _state.value.copy(
+            invoicePhotoBytes = bytes,
+            invoicePhotoName = fileName,
+            invoicePhotoContentType = contentType,
+            hasNewInvoicePhoto = true,
+            removeExistingInvoicePhoto = false
+        )
+    }
+
+    fun clearInvoicePhoto() {
+        val s = _state.value
+        _state.value = s.copy(
+            invoicePhotoBytes = null,
+            invoicePhotoName = null,
+            invoicePhotoContentType = null,
+            hasNewInvoicePhoto = false,
+            removeExistingInvoicePhoto = s.existingInvoicePhoto != null
+        )
     }
 
     fun save(onSaved: () -> Unit) {
@@ -196,7 +238,21 @@ class TransactionFormViewModel(
             }
 
             result
-                .onSuccess {
+                .onSuccess { savedTx ->
+                    if (s.hasNewInvoicePhoto && s.invoicePhotoBytes != null) {
+                        runCatching {
+                            api.uploadTransactionInvoicePhoto(
+                                transactionId = savedTx.id,
+                                fileBytes = s.invoicePhotoBytes,
+                                fileName = s.invoicePhotoName ?: "factura.jpg",
+                                contentType = s.invoicePhotoContentType ?: "image/jpeg"
+                            )
+                        }
+                    } else if (s.removeExistingInvoicePhoto && transactionId != null) {
+                        runCatching {
+                            api.deleteTransactionInvoicePhoto(savedTx.id)
+                        }
+                    }
                     _state.value = _state.value.copy(isSaving = false)
                     onSaved()
                 }

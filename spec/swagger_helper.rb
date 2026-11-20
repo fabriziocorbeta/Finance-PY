@@ -711,7 +711,7 @@ RSpec.configure do |config|
           },
           Transaction: {
             type: :object,
-            required: %w[id date amount currency name classification account tags created_at updated_at],
+            required: %w[id date amount currency name classification account tags has_invoice_photo created_at updated_at],
             properties: {
               id: { type: :string, format: :uuid },
               date: { type: :string, format: :date },
@@ -728,6 +728,11 @@ RSpec.configure do |config|
                 items: { '$ref' => '#/components/schemas/Tag' }
               },
               transfer: { '$ref' => '#/components/schemas/Transfer', nullable: true },
+              has_invoice_photo: { type: :boolean },
+              invoice_photo: {
+                '$ref' => '#/components/schemas/InvoicePhotoMetadata',
+                nullable: true
+              },
               created_at: { type: :string, format: :'date-time' },
               updated_at: { type: :string, format: :'date-time' }
             }

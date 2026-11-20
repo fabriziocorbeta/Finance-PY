@@ -137,6 +137,41 @@ class SaleAndPoSerializationTest {
         assertEquals("application/pdf", poPhoto.content_type)
         assertEquals(65432L, poPhoto.byte_size)
         assertEquals("/api/v1/purchase_orders/po-1/invoice_photo", poPhoto.url)
+
+        val txJson = """
+            {
+              "id": "tx-1",
+              "date": "2026-10-18",
+              "amount": "150.000",
+              "amount_cents": 150000,
+              "signed_amount_cents": -150000,
+              "currency": "PYG",
+              "name": "Superseis Compra",
+              "classification": "expense",
+              "account": {
+                "id": "acc-1",
+                "name": "Cuenta Corriente",
+                "account_type": "Depository"
+              },
+              "has_invoice_photo": true,
+              "invoice_photo": {
+                "filename": "ticket_super.jpg",
+                "content_type": "image/jpeg",
+                "byte_size": 98765,
+                "url": "/api/v1/transactions/tx-1/invoice_photo"
+              },
+              "created_at": "2026-10-18T12:00:00Z",
+              "updated_at": "2026-10-18T12:00:00Z"
+            }
+        """.trimIndent()
+
+        val txDetail = json.decodeFromString<TransactionDetailDto>(txJson)
+        assertTrue(txDetail.has_invoice_photo)
+        val txPhoto = assertNotNull(txDetail.invoice_photo)
+        assertEquals("ticket_super.jpg", txPhoto.filename)
+        assertEquals("image/jpeg", txPhoto.content_type)
+        assertEquals(98765L, txPhoto.byte_size)
+        assertEquals("/api/v1/transactions/tx-1/invoice_photo", txPhoto.url)
     }
 
     @Test
@@ -187,6 +222,27 @@ class SaleAndPoSerializationTest {
                         headers = headersOf(HttpHeaders.ContentType, ContentType.Image.JPEG.toString())
                     )
                 }
+                path == "/api/v1/transactions/t1/invoice_photo" && request.method == HttpMethod.Post -> {
+                    respond(
+                        content = """{"id":"t1","date":"2026-10-18","amount":"100.000","amount_cents":100000,"signed_amount_cents":-100000,"currency":"PYG","name":"Compra","classification":"expense","account":{"id":"a1","name":"Acc","account_type":"Depository"},"has_invoice_photo":true,"invoice_photo":{"filename":"compra.jpg","content_type":"image/jpeg","byte_size":4,"url":"/api/v1/transactions/t1/invoice_photo"},"created_at":"2026-10-18","updated_at":"2026-10-18"}""",
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    )
+                }
+                path == "/api/v1/transactions/t1/invoice_photo" && request.method == HttpMethod.Delete -> {
+                    respond(
+                        content = """{"id":"t1","date":"2026-10-18","amount":"100.000","amount_cents":100000,"signed_amount_cents":-100000,"currency":"PYG","name":"Compra","classification":"expense","account":{"id":"a1","name":"Acc","account_type":"Depository"},"has_invoice_photo":false,"invoice_photo":null,"created_at":"2026-10-18","updated_at":"2026-10-18"}""",
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    )
+                }
+                path == "/api/v1/transactions/t1/invoice_photo" && request.method == HttpMethod.Get -> {
+                    respond(
+                        content = sampleImageBytes,
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Image.JPEG.toString())
+                    )
+                }
                 else -> error("Unhandled request: ${request.method.value} $path")
             }
         }
@@ -219,5 +275,16 @@ class SaleAndPoSerializationTest {
         val deletedPo = api.deletePurchaseOrderInvoicePhoto("p1")
         assertFalse(deletedPo.has_invoice_photo)
         assertNull(deletedPo.invoice_photo)
+
+        val uploadedTx = api.uploadTransactionInvoicePhoto("t1", sampleImageBytes, "compra.jpg", "image/jpeg")
+        assertTrue(uploadedTx.has_invoice_photo)
+        assertEquals("compra.jpg", uploadedTx.invoice_photo?.filename)
+
+        val downloadedTxBytes = api.downloadTransactionInvoicePhoto("t1")
+        assertContentEquals(sampleImageBytes, downloadedTxBytes)
+
+        val deletedTx = api.deleteTransactionInvoicePhoto("t1")
+        assertFalse(deletedTx.has_invoice_photo)
+        assertNull(deletedTx.invoice_photo)
     }
 }

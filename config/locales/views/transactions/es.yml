@@ -148,6 +148,7 @@ es:
       details: Detalles
       expense: Gasto
       income: Ingreso
+      invoice_photo_label: Foto de factura / comprobante
       merchant_label: Comerciante
       none: (ninguno)
       note_label: Notas
