@@ -278,19 +278,31 @@ class Holding < ApplicationRecord
     # Calculates weighted average cost from buy trades in the currently open
     # lot. Returns nil if no trades exist (cost basis is unknown).
     def calculate_avg_cost
+      # Nearest rate on or before the trade date, else the nearest after it.
+      # An exact-date join fell back to 1:1 for any trade on a day with no
+      # stored rate (weekend, holiday, not yet backfilled), so a USD buy on a
+      # PYG account got a cost basis thousands of times too low. Same lookup
+      # as InvestmentStatement::Totals and InvestmentFlowStatement.
+      converted_price_sql = ActiveRecord::Base.sanitize_sql_array([
+        <<~SQL.squish, { target_currency: account.currency }
+          trades.price * COALESCE(
+            (SELECT er.rate FROM exchange_rates er
+             WHERE er.from_currency = trades.currency AND er.to_currency = :target_currency AND er.date <= entries.date
+             ORDER BY er.date DESC LIMIT 1),
+            (SELECT er.rate FROM exchange_rates er
+             WHERE er.from_currency = trades.currency AND er.to_currency = :target_currency AND er.date > entries.date
+             ORDER BY er.date ASC LIMIT 1),
+            1
+          )
+        SQL
+      ])
+
       trade_rows = account.trades
         .with_entry
-        .joins(ActiveRecord::Base.sanitize_sql_array([
-          "LEFT JOIN exchange_rates ON (
-            exchange_rates.date = entries.date AND
-            exchange_rates.from_currency = trades.currency AND
-            exchange_rates.to_currency = ?
-          )", account.currency
-        ]))
         .where(security_id: security.id)
         .where("entries.date <= ?", date)
         .order(Arel.sql("entries.date ASC, trades.id ASC"))
-        .pluck(:qty, Arel.sql("trades.price * COALESCE(exchange_rates.rate, 1)"))
+        .pluck(:qty, Arel.sql(converted_price_sql))
 
       buys = current_lot_trades(trade_rows).select { |qty, _price| qty.positive? }
 

@@ -13,6 +13,7 @@ import py.com.cdco.financespy.api.dto.FamilyExportDto
 import py.com.cdco.financespy.api.dto.UserDto
 import py.com.cdco.financespy.auth.AuthRepository
 import py.com.cdco.financespy.sync.OfflineOutbox
+import py.com.cdco.financespy.utils.describeForUser
 
 data class SettingsUiState(
     val isLoading: Boolean = false,
@@ -68,7 +69,7 @@ class SettingsViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = err.message ?: "Error al cargar la configuración"
+                        error = err.describeForUser()
                     )
                 }
             }
@@ -101,7 +102,7 @@ class SettingsViewModel(
                 _uiState.update {
                     it.copy(
                         isCreatingExport = false,
-                        error = err.message ?: "Error al crear copia de seguridad"
+                        error = err.describeForUser()
                     )
                 }
             }
@@ -124,7 +125,7 @@ class SettingsViewModel(
                 _uiState.update {
                     it.copy(
                         downloadingExportId = null,
-                        error = err.message ?: "Error al descargar copia de seguridad"
+                        error = err.describeForUser()
                     )
                 }
             }

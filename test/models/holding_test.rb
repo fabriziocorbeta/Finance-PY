@@ -63,6 +63,17 @@ class HoldingTest < ActiveSupport::TestCase
     assert_equal Money.new(expected_nvda_usd, "CAD").exchange_to("USD"), @nvda.avg_cost
   end
 
+  # Regression test: the FX join matched the trade's exact date only, so a
+  # trade on a day with no stored rate fell back to 1:1 instead of the nearest
+  # available rate.
+  test "average cost basis uses the nearest exchange rate when the trade date has none" do
+    create_trade(@amzn.security, account: @account, qty: 10, price: 200.00, date: Date.current, currency: "CAD")
+
+    ExchangeRate.create!(from_currency: "CAD", to_currency: "USD", date: 2.days.ago.to_date, rate: 0.5)
+
+    assert_equal Money.new(100, "USD"), @amzn.avg_cost
+  end
+
   # Regression test: a holding's calculated avg_cost used to average in
   # every buy trade ever made for that security, even ones from a position
   # that was fully sold off and later reopened. That inflated/deflated
