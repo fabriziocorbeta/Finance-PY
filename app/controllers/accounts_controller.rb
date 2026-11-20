@@ -39,6 +39,11 @@ class AccountsController < ApplicationController
     @provider_configs = []
   end
 
+  def sidebar
+    @account_group_tab = params[:tab].presence || session[:account_sidebar_tab] || "all"
+    render layout: false
+  end
+
   def sync_all
     family.sync_later
     redirect_to accounts_path, notice: t("accounts.sync_all.syncing")

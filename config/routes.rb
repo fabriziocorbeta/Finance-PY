@@ -422,6 +422,7 @@ Rails.application.routes.draw do
     end
 
     collection do
+      get :sidebar
       post :sync_all
     end
 

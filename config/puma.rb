@@ -108,7 +108,11 @@ if rails_env == "production"
           "/budgets/#{Budget.date_to_param(Date.current)}",
           "/goals",
           "/receivables",
-          "/accounts"
+          "/accounts",
+          "/sales",
+          "/purchase_orders",
+          "/products",
+          "/fleet_vehicles"
         ]
 
         total_t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)

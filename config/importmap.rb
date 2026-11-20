@@ -2,8 +2,8 @@
 
 pin "application"
 pin "@hotwired/turbo-rails", to: "turbo.min.js", preload: true
-pin "@hotwired/stimulus", to: "stimulus.min.js"
-pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
+pin "@hotwired/stimulus", to: "stimulus.min.js", preload: true
+pin "@hotwired/stimulus-loading", to: "stimulus-loading.js", preload: true
 
 # Controllers are lazy-loaded on demand (see app/javascript/controllers/index.js), so most of
 # them don't need a <link rel="modulepreload"> hint competing with CSS/fonts for first paint.

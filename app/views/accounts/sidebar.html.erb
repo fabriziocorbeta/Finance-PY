@@ -1,0 +1,8 @@
+<%= turbo_frame_tag "mobile_account_sidebar" do %>
+  <%= render(
+    "accounts/account_sidebar_tabs",
+    family: Current.family,
+    active_tab: @account_group_tab,
+    mobile: true
+  ) %>
+<% end %>

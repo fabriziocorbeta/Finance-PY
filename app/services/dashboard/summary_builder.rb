@@ -34,15 +34,34 @@ class Dashboard::SummaryBuilder
   end
 
   def cashflow_sankey_data
-    @cashflow_sankey_data ||= build_cashflow_sankey_data
+    @cashflow_sankey_data ||= Rails.cache.fetch(dashboard_cache_key("cashflow_sankey"), expires_in: 15.minutes) do
+      build_cashflow_sankey_data
+    end
   end
 
   def outflows_donut_data
-    @outflows_donut_data ||= build_outflows_donut_data
+    @outflows_donut_data ||= Rails.cache.fetch(dashboard_cache_key("outflows_donut"), expires_in: 15.minutes) do
+      build_outflows_donut_data
+    end
   end
 
   private
     attr_reader :family, :period
+
+    def dashboard_cache_key(section)
+      [
+        "dashboard_summary",
+        section,
+        family.id,
+        Current.user&.id,
+        period.key,
+        period.start_date,
+        period.end_date,
+        I18n.locale,
+        family.accounts_cache_version,
+        family.entries_coarse_cache_version
+      ]
+    end
 
     def build_cashflow_sankey_data
       nodes = []
