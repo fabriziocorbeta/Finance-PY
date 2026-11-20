@@ -221,9 +221,23 @@ class PurchaseOrderFormViewModel(
                 }
                 onSaved()
             } catch (e: Exception) {
-                if (purchaseOrderId == null && outbox != null && outbox.shouldQueue(e)) {
-                    val itemsAttributes = items.map { item ->
+                if (outbox != null && outbox.shouldQueue(e)) {
+                    val keptExistingIds = items.mapNotNull { it.existingId }.toSet()
+                    val destroyedItems = _purchaseOrder.value?.purchase_order_items
+                        ?.filter { it.id != null && it.id !in keptExistingIds }
+                        ?.map { removed ->
+                            PurchaseOrderItemRequestDto(
+                                id = removed.id,
+                                product_id = removed.product_id,
+                                quantity = removed.quantity,
+                                unit_cost = removed.unit_cost,
+                                _destroy = true
+                            )
+                        }
+                        ?: emptyList()
+                    val activeItems = items.map { item ->
                         PurchaseOrderItemRequestDto(
+                            id = item.existingId,
                             product_id = item.productId,
                             quantity = item.quantity,
                             unit_cost = item.unitCost
@@ -236,17 +250,29 @@ class PurchaseOrderFormViewModel(
                             expected_date = expectedDate.takeIf { !it.isNullOrBlank() },
                             notes = notes.takeIf { !it.isNullOrBlank() },
                             account_id = accountId,
-                            purchase_order_items_attributes = itemsAttributes
+                            purchase_order_items_attributes = activeItems + destroyedItems
                         )
                     )
                     val label = "Orden compra: ${supplierName?.takeIf { it.isNotBlank() } ?: "${items.size} ítems"}"
-                    outbox.enqueuePurchaseOrder(
-                        payload = payload,
-                        label = label,
-                        photoBytes = if (hasNewLocalPhoto) _pendingPhotoBytes.value else null,
-                        photoName = _pendingPhotoName.value,
-                        photoContentType = _pendingPhotoContentType.value
-                    )
+                    if (purchaseOrderId == null) {
+                        outbox.enqueuePurchaseOrder(
+                            payload = payload,
+                            label = label,
+                            photoBytes = if (hasNewLocalPhoto) _pendingPhotoBytes.value else null,
+                            photoName = _pendingPhotoName.value,
+                            photoContentType = _pendingPhotoContentType.value
+                        )
+                    } else {
+                        outbox.enqueuePurchaseOrderUpdate(
+                            id = purchaseOrderId,
+                            payload = payload,
+                            label = "Actualizar $label",
+                            photoBytes = if (hasNewLocalPhoto) _pendingPhotoBytes.value else null,
+                            photoName = _pendingPhotoName.value,
+                            photoContentType = _pendingPhotoContentType.value,
+                            removePhoto = _removeExistingPhoto.value
+                        )
+                    }
                     onSaved()
                 } else {
                     _error.value = e.message ?: "Error al guardar orden"

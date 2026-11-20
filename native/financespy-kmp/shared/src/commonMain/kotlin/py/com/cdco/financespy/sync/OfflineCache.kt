@@ -46,4 +46,14 @@ class OfflineCache(private val store: OfflineStore?) {
 
     fun <T> putList(key: String, elementSerializer: KSerializer<T>, value: List<T>) =
         put(key, ListSerializer(elementSerializer), value)
+
+    /** Rewrites a cached list in place (optimistic local edits made while offline). */
+    fun <T> updateList(key: String, elementSerializer: KSerializer<T>, transform: (List<T>) -> List<T>) {
+        val current = getList(key, elementSerializer) ?: return
+        putList(key, elementSerializer, transform(current))
+    }
+
+    fun remove(key: String) {
+        runCatching { store?.remove(key) }
+    }
 }

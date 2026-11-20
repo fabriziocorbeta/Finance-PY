@@ -156,6 +156,7 @@ fun App(
     isBiometricLockEnabled: Boolean = false,
     onToggleBiometricLock: ((Boolean) -> Unit)? = null,
     isScreenCaptureBlockEnabled: Boolean = true,
+    isOffline: Boolean = false,
     outbox: py.com.cdco.financespy.sync.OfflineOutbox? = null,
     onToggleScreenCaptureBlock: ((Boolean) -> Unit)? = null,
     isWalletLocationCaptureEnabled: Boolean = false,
@@ -264,17 +265,23 @@ fun App(
                             topBar = {
                                 val pending by (outbox?.pendingCount ?: kotlinx.coroutines.flow.MutableStateFlow(0)).collectAsState()
                                 val failed by (outbox?.failedCount ?: kotlinx.coroutines.flow.MutableStateFlow(0)).collectAsState()
-                                if (pending > 0 || failed > 0) {
+                                if (isOffline || pending > 0 || failed > 0) {
+                                    val bannerColor = if (isOffline && pending == 0 && failed == 0) {
+                                        androidx.compose.ui.graphics.Color(0xFF334155)
+                                    } else {
+                                        androidx.compose.ui.graphics.Color(0xFF8A5A00)
+                                    }
+                                    val parts = buildList {
+                                        if (isOffline) add("Sin conexión · Modo local")
+                                        if (pending > 0) add("$pending pendiente(s) de sincronizar")
+                                        if (failed > 0) add("$failed con error")
+                                    }
                                     androidx.compose.material3.Text(
-                                        text = buildString {
-                                            if (pending > 0) append("$pending pendiente(s) de sincronizar")
-                                            if (pending > 0 && failed > 0) append(" · ")
-                                            if (failed > 0) append("$failed con error")
-                                        },
+                                        text = parts.joinToString(" · "),
                                         color = androidx.compose.ui.graphics.Color.White,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .background(androidx.compose.ui.graphics.Color(0xFF8A5A00))
+                                            .background(bannerColor)
                                             .padding(horizontal = 16.dp, vertical = 6.dp)
                                     )
                                 }
