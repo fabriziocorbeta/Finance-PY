@@ -79,6 +79,12 @@ import py.com.cdco.financespy.screens.PurchaseOrdersListScreen
 import py.com.cdco.financespy.screens.PurchaseOrdersListViewModel
 import py.com.cdco.financespy.screens.ReportsScreen
 import py.com.cdco.financespy.screens.ReportsViewModel
+import py.com.cdco.financespy.screens.InvestmentsListScreen
+import py.com.cdco.financespy.screens.InvestmentsListViewModel
+import py.com.cdco.financespy.screens.InvestmentPerformanceScreen
+import py.com.cdco.financespy.screens.InvestmentPerformanceViewModel
+import py.com.cdco.financespy.screens.HoldingDetailScreen
+import py.com.cdco.financespy.screens.HoldingDetailViewModel
 import py.com.cdco.financespy.screens.RuleDetailScreen
 import py.com.cdco.financespy.screens.SaleDetailScreen
 import py.com.cdco.financespy.screens.SaleDetailViewModel
@@ -158,6 +164,9 @@ fun App(
     onSelectUiVariant: ((UiVariant) -> Unit)? = null,
     uiVariantPreferences: UiVariantPreferences? = null,
     reportsViewModelFactory: () -> ReportsViewModel,
+    investmentsListViewModelFactory: () -> InvestmentsListViewModel = { TODO() },
+    investmentPerformanceViewModelFactory: () -> InvestmentPerformanceViewModel = { TODO() },
+    holdingDetailViewModelFactory: (String) -> HoldingDetailViewModel = { _ -> TODO() },
     upayImportViewModelFactory: () -> UpayImportViewModel,
     pdfStatementImportViewModelFactory: () -> PdfStatementImportViewModel,
     onOpenNotificationSettings: (() -> Unit)? = null,
@@ -546,7 +555,30 @@ fun App(
                         composable(Routes.REPORTS) {
                             ReportsScreen(
                                 viewModel = remember { reportsViewModelFactory() },
-                                onShareFile = onShareFile
+                                onShareFile = onShareFile,
+                                onNavigateToInvestments = { navController.navigate(Routes.INVESTMENTS) }
+                            )
+                        }
+                        composable(Routes.INVESTMENTS) {
+                            InvestmentsListScreen(
+                                viewModel = remember { investmentsListViewModelFactory() },
+                                onAccountClick = { accountId -> navController.navigate(Routes.accountDetail(accountId)) },
+                                onHoldingClick = { securityId -> navController.navigate(Routes.holdingDetail(securityId)) },
+                                onViewPerformanceClick = { navController.navigate(Routes.INVESTMENT_PERFORMANCE) },
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Routes.INVESTMENT_PERFORMANCE) {
+                            InvestmentPerformanceScreen(
+                                viewModel = remember { investmentPerformanceViewModelFactory() },
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Routes.HOLDING_DETAIL) { entry ->
+                            val securityId = entry.arguments?.getString("securityId") ?: return@composable
+                            HoldingDetailScreen(
+                                viewModel = remember(securityId) { holdingDetailViewModelFactory(securityId) },
+                                onBack = { navController.popBackStack() }
                             )
                         }
                         composable(Routes.FLEET) {

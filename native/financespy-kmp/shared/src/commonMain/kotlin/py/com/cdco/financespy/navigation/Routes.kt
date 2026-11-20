@@ -12,6 +12,9 @@ object Routes {
     const val RECEIVABLES = "receivables"
     const val DEBTS = "debts"
     const val REPORTS = "reports"
+    const val INVESTMENTS = "investments"
+    const val INVESTMENT_PERFORMANCE = "investment_performance"
+    const val HOLDING_DETAIL = "holding_detail/{securityId}"
     const val FLEET = "fleet"
     const val FLEET_VEHICLE_DETAIL = "fleet_vehicle/{vehicleId}"
     const val ACCOUNT_DETAIL = "account/{accountId}"
@@ -60,4 +63,5 @@ object Routes {
     fun budgetAllocationEditor(budgetId: String) = "budget_editor/$budgetId"
     fun transactionFormEdit(transactionId: String) = "transaction_form?transactionId=$transactionId"
     fun transactionFormCreate() = "transaction_form"
+    fun holdingDetail(securityId: String) = "holding_detail/$securityId"
 }

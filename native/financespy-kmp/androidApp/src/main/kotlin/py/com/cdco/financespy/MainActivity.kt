@@ -65,6 +65,9 @@ import py.com.cdco.financespy.screens.FleetVehicleDetailViewModel
 import py.com.cdco.financespy.screens.ReceivableFormViewModel
 import py.com.cdco.financespy.screens.ReceivablesListViewModel
 import py.com.cdco.financespy.screens.ReportsViewModel
+import py.com.cdco.financespy.screens.InvestmentsListViewModel
+import py.com.cdco.financespy.screens.InvestmentPerformanceViewModel
+import py.com.cdco.financespy.screens.HoldingDetailViewModel
 import py.com.cdco.financespy.screens.SaleDetailViewModel
 import py.com.cdco.financespy.screens.SaleFormViewModel
 import py.com.cdco.financespy.screens.SalesListViewModel
@@ -321,6 +324,12 @@ class MainActivity : FragmentActivity() {
             api = api,
             store = offlineStore
         )
+    }
+    private val investmentsListViewModel by lazy {
+        InvestmentsListViewModel(api = api)
+    }
+    private val investmentPerformanceViewModel by lazy {
+        InvestmentPerformanceViewModel(api = api)
     }
     private val onboardingViewModel by lazy {
         OnboardingViewModel(
@@ -589,6 +598,9 @@ class MainActivity : FragmentActivity() {
                     uiVariant.value = selected
                 },
                 reportsViewModelFactory = { reportsViewModel },
+                investmentsListViewModelFactory = { investmentsListViewModel },
+                investmentPerformanceViewModelFactory = { investmentPerformanceViewModel },
+                holdingDetailViewModelFactory = { securityId -> HoldingDetailViewModel(api = api, securityId = securityId) },
                 upayImportViewModelFactory = {
                     UpayImportViewModel(scope = lifecycleScope, api = api, accountDao = database.accountDao())
                 },

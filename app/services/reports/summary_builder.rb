@@ -151,6 +151,10 @@ module Reports
         trends = []
         current_month = start_date.beginning_of_month
         end_of_period = end_date.end_of_month
+        operating_scope = family.transactions
+          .visible
+          .excluding_pending
+          .where.not(kind: Reports::CashflowProjectionsBuilder::EXCLUDED_TRANSACTION_KINDS)
 
         while current_month <= end_of_period
           month_start = current_month
@@ -158,12 +162,13 @@ module Reports
           month_end = end_date if month_end > end_date
 
           m_period = Period.custom(start_date: month_start, end_date: month_end)
+          scope_totals = family.income_statement.totals(
+            transactions_scope: operating_scope.in_period(m_period),
+            date_range: m_period.date_range
+          )
 
-          income_val = family.income_statement.income_totals(period: m_period).total
-          expenses_val = family.income_statement.expense_totals(period: m_period).total
-
-          income_money = ensure_money(income_val)
-          expenses_money = ensure_money(expenses_val)
+          income_money = scope_totals.income_money
+          expenses_money = scope_totals.expense_money
           net_money = income_money - expenses_money
 
           trends << {

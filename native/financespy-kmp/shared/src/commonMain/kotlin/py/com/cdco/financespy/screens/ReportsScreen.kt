@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +47,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import py.com.cdco.financespy.api.dto.CashflowMonthDto
+import py.com.cdco.financespy.api.dto.CashflowProjectionsDto
+import py.com.cdco.financespy.api.dto.CashflowProjectionsSummaryDto
 import py.com.cdco.financespy.api.dto.ReportCategoryBreakdownDto
 import py.com.cdco.financespy.api.dto.ReportInvestmentFlowsDto
 import py.com.cdco.financespy.api.dto.ReportInvestmentMetricsDto
@@ -65,7 +69,8 @@ import py.com.cdco.financespy.utils.formatPercent
 fun ReportsScreen(
     viewModel: ReportsViewModel,
     modifier: Modifier = Modifier,
-    onShareFile: ((ByteArray, String, String) -> Unit)? = null
+    onShareFile: ((ByteArray, String, String) -> Unit)? = null,
+    onNavigateToInvestments: (() -> Unit)? = null
 ) {
     val state by viewModel.state.collectAsState()
 
@@ -176,10 +181,25 @@ fun ReportsScreen(
                         TrendsChartCard(trends = summaryDto.trends)
                     }
 
+                    val projections = summaryDto.cashflowProjections
+                    if (projections != null) {
+                        item {
+                            CashflowProjectionsCard(
+                                projections = projections,
+                                selectedHorizon = state.selectedProjectionMonths,
+                                onSelectHorizon = { viewModel.selectProjectionMonths(it) }
+                            )
+                        }
+                    }
+
                     val investmentMetrics = summaryDto.investmentMetrics
                     if (investmentMetrics != null && investmentMetrics.hasInvestments) {
                         item {
-                            InvestmentPerformanceCard(investmentMetrics = investmentMetrics, currency = summaryDto.currency)
+                            InvestmentPerformanceCard(
+                                investmentMetrics = investmentMetrics,
+                                currency = summaryDto.currency,
+                                onViewPortfolioClick = onNavigateToInvestments
+                            )
                         }
                     }
 
@@ -517,6 +537,186 @@ private fun TrendsCanvasChart(
 }
 
 @Composable
+private fun CashflowProjectionsCard(
+    projections: CashflowProjectionsDto,
+    selectedHorizon: Int,
+    onSelectHorizon: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    AppCard(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Proyección de Flujo de Caja",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = FinancePyColors.textPrimary()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(3, 6, 12).forEach { months ->
+                    val selected = months == selectedHorizon
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (selected) FinancePyColors.buttonBgPrimary() else FinancePyColors.container(),
+                        modifier = Modifier.clickable { onSelectHorizon(months) }
+                    ) {
+                        Text(
+                            text = "${months}m",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = if (selected) FinancePyColors.surface() else FinancePyColors.textSecondary(),
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val combined = projections.historicalSeries.takeLast(3) + projections.projectedSeries
+            if (combined.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(140.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Sin datos suficientes para proyectar", style = MaterialTheme.typography.bodySmall, color = FinancePyColors.textSecondary())
+                }
+            } else {
+                CashflowProjectionsCanvasChart(
+                    months = combined,
+                    actualColor = FinancePyColors.buttonBgPrimary(),
+                    projectedColor = FinancePyColors.warning(),
+                    modifier = Modifier.fillMaxWidth().height(160.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                LegendDot(color = FinancePyColors.buttonBgPrimary(), label = "Histórico")
+                LegendDot(color = FinancePyColors.warning(), label = "Proyectado")
+            }
+
+            projections.summary?.let { summary ->
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = FinancePyColors.borderSecondary())
+                Spacer(modifier = Modifier.height(12.dp))
+                CashflowProjectionsSummaryRow(summary = summary, currency = projections.currency)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LegendDot(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(modifier = Modifier.size(10.dp).background(color, CircleShape))
+        Text(label, style = MaterialTheme.typography.bodySmall, color = FinancePyColors.textSecondary())
+    }
+}
+
+@Composable
+private fun CashflowProjectionsSummaryRow(
+    summary: CashflowProjectionsSummaryDto,
+    currency: String?
+) {
+    val netColor = if (summary.avgMonthlyProjectedNet >= 0) FinancePyColors.success() else FinancePyColors.destructive()
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Ahorro mensual proyectado",
+                style = MaterialTheme.typography.bodySmall,
+                color = FinancePyColors.textSecondary()
+            )
+            Text(
+                text = formatMoney(summary.avgMonthlyProjectedNet, currency),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = netColor
+            )
+        }
+        Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+            Text(
+                text = "Tasa de ahorro proyectada",
+                style = MaterialTheme.typography.bodySmall,
+                color = FinancePyColors.textSecondary()
+            )
+            Text(
+                text = formatPercent(summary.projectedSavingsRate),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = netColor
+            )
+        }
+    }
+    Spacer(modifier = Modifier.height(8.dp))
+    Text(
+        text = "Rango estimado: ${formatMoney(summary.conservativeTotalNet, currency)} a ${formatMoney(summary.optimisticTotalNet, currency)} en el período",
+        style = MaterialTheme.typography.labelSmall,
+        color = FinancePyColors.textSecondary()
+    )
+}
+
+@Composable
+private fun CashflowProjectionsCanvasChart(
+    months: List<CashflowMonthDto>,
+    actualColor: Color,
+    projectedColor: Color,
+    modifier: Modifier = Modifier
+) {
+    // Scaled by |net|, not income/expenses -- those can be an order of
+    // magnitude larger than the net, which flattened every bar to a sliver.
+    val maxVal = months.maxOfOrNull { kotlin.math.abs(it.net) }?.let { if (it == 0.0) 1.0 else it } ?: 1.0
+
+    Column(modifier = modifier) {
+        Canvas(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            val widthPx = size.width
+            val heightPx = size.height
+            val itemCount = months.size
+            val groupWidth = widthPx / itemCount
+            val barWidth = (groupWidth * 0.4f).coerceAtMost(28.dp.toPx())
+
+            months.forEachIndexed { idx, item ->
+                val groupCenterX = idx * groupWidth + groupWidth / 2f
+                val isProjected = item.kind == "projected"
+                val color = if (isProjected) projectedColor else actualColor
+
+                val netHeight = ((kotlin.math.abs(item.net) / maxVal) * (heightPx - 10)).toFloat()
+                val barX = groupCenterX - barWidth / 2f
+                val barY = heightPx - netHeight
+                if (netHeight > 0) {
+                    drawRect(
+                        color = color.copy(alpha = if (isProjected) 0.55f else 1f),
+                        topLeft = Offset(barX, barY),
+                        size = Size(barWidth, netHeight)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround
+        ) {
+            months.forEach { item ->
+                // Short month only (no year) -- up to 9 bars (3 historical + up to
+                // 6 projected) need to fit one label each without overlapping.
+                val label = item.monthLabel?.substringBefore(" ") ?: item.month.takeLast(2)
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (item.isCurrentMonth) FinancePyColors.textPrimary() else FinancePyColors.textSecondary(),
+                    textAlign = TextAlign.Center,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun CategoryBreakdownCard(
     breakdown: py.com.cdco.financespy.api.dto.ReportTransactionsBreakdownDto,
     currency: String?,
@@ -663,7 +863,8 @@ private fun CategoryBreakdownRow(
 private fun InvestmentPerformanceCard(
     investmentMetrics: ReportInvestmentMetricsDto,
     currency: String?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onViewPortfolioClick: (() -> Unit)? = null
 ) {
     AppCard(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -810,6 +1011,16 @@ private fun InvestmentPerformanceCard(
                         }
                     }
                 }
+            }
+
+            if (onViewPortfolioClick != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                AppButton(
+                    text = "Ver portafolio completo",
+                    onClick = onViewPortfolioClick,
+                    variant = ButtonVariant.Secondary,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
