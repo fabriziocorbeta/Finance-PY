@@ -8,11 +8,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.ProductDto
+import py.com.cdco.financespy.sync.OfflineCache
+import py.com.cdco.financespy.sync.OfflineCacheKeys
+import py.com.cdco.financespy.sync.OfflineOutbox
+import py.com.cdco.financespy.sync.OfflineStore
 
 class ProductFormViewModel(
     private val productId: String?,
-    private val api: FinancePyApi
+    private val api: FinancePyApi,
+    store: OfflineStore? = null,
+    private val outbox: OfflineOutbox? = null
 ) : ViewModel() {
+
+    private val cache = OfflineCache(store)
 
     private val _product = MutableStateFlow<ProductDto?>(null)
     val product: StateFlow<ProductDto?> = _product.asStateFlow()
@@ -39,7 +47,12 @@ class ProductFormViewModel(
             try {
                 _product.value = api.fetchProduct(id)
             } catch (e: Exception) {
-                _error.value = e.message ?: "Error al cargar producto"
+                val cached = cache.getList(OfflineCacheKeys.PRODUCTS_LIST, ProductDto.serializer())?.find { it.id == id }
+                if (cached != null) {
+                    _product.value = cached
+                } else {
+                    _error.value = e.message ?: "Error al cargar producto"
+                }
             } finally {
                 _isLoading.value = false
             }
@@ -84,7 +97,29 @@ class ProductFormViewModel(
                 }
                 onSaved()
             } catch (e: Exception) {
-                _error.value = e.message ?: "Error al guardar producto"
+                val dto = ProductDto(
+                    id = productId ?: "",
+                    name = name,
+                    sku = sku.takeIf { !it.isNullOrBlank() },
+                    category = category.takeIf { !it.isNullOrBlank() },
+                    supplier = supplier.takeIf { !it.isNullOrBlank() },
+                    buy_price = buyPrice,
+                    sell_price = sellPrice,
+                    currency = currency.lowercase(),
+                    min_stock = minStock,
+                    stock = initialStock,
+                    description = description.takeIf { !it.isNullOrBlank() }
+                )
+                if (outbox != null && outbox.shouldQueue(e)) {
+                    if (productId == null) {
+                        outbox.enqueueProduct(dto, "Producto: $name")
+                    } else {
+                        outbox.enqueueProductUpdate(productId, dto, "Actualizar producto: $name")
+                    }
+                    onSaved()
+                } else {
+                    _error.value = e.message ?: "Error al guardar producto"
+                }
             } finally {
                 _isSaving.value = false
             }

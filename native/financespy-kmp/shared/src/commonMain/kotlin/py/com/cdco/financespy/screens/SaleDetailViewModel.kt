@@ -8,13 +8,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.SaleDto
+import py.com.cdco.financespy.sync.OfflineCache
+import py.com.cdco.financespy.sync.OfflineCacheKeys
+import py.com.cdco.financespy.sync.OfflineStore
 
 class SaleDetailViewModel(
     private val saleId: String,
-    private val api: FinancePyApi
+    private val api: FinancePyApi,
+    store: OfflineStore? = null
 ) : ViewModel() {
 
-    private val _sale = MutableStateFlow<SaleDto?>(null)
+    private val cache = OfflineCache(store)
+    private val _sale = MutableStateFlow<SaleDto?>(
+        cache.get(OfflineCacheKeys.saleDetail(saleId), SaleDto.serializer())
+            ?: cache.getList(OfflineCacheKeys.SALES_LIST, SaleDto.serializer())?.find { it.id == saleId }
+    )
     val sale: StateFlow<SaleDto?> = _sale.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
@@ -43,9 +51,12 @@ class SaleDetailViewModel(
             try {
                 val loaded = api.fetchSale(saleId)
                 _sale.value = loaded
+                cache.put(OfflineCacheKeys.saleDetail(saleId), SaleDto.serializer(), loaded)
                 refreshInvoicePhotoBytes(loaded)
             } catch (e: Exception) {
-                _error.value = e.message ?: "Error al cargar venta"
+                if (_sale.value == null) {
+                    _error.value = e.message ?: "Error al cargar venta"
+                }
             } finally {
                 _isLoading.value = false
             }

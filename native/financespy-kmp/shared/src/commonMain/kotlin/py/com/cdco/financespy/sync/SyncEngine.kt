@@ -5,8 +5,17 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.supervisorScope
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.AccountDto
+import py.com.cdco.financespy.api.dto.BudgetDto
+import py.com.cdco.financespy.api.dto.ChatDto
+import py.com.cdco.financespy.api.dto.DashboardDto
+import py.com.cdco.financespy.api.dto.FamilySettingsDto
+import py.com.cdco.financespy.api.dto.FleetVehicleDto
 import py.com.cdco.financespy.api.dto.GoalDto
+import py.com.cdco.financespy.api.dto.PortfolioHoldingDto
+import py.com.cdco.financespy.api.dto.ProductDto
+import py.com.cdco.financespy.api.dto.PurchaseOrderDto
 import py.com.cdco.financespy.api.dto.RuleDto
+import py.com.cdco.financespy.api.dto.SaleDto
 import py.com.cdco.financespy.api.dto.TransactionListItemDto
 import py.com.cdco.financespy.db.AccountDao
 import py.com.cdco.financespy.db.AccountEntity
@@ -35,8 +44,10 @@ class SyncEngine(
     private val ruleRunDao: RuleRunDao,
     private val goalDao: GoalDao? = null,
     private val receivableDao: ReceivableDao? = null,
+    private val offlineStore: OfflineStore? = null,
     private val currentDateProvider: () -> String
 ) {
+    private val cache = OfflineCache(offlineStore)
     // The 5 syncs hit independent endpoints and write to independent tables
     // (no FK enforced between EntryEntity.accountId and AccountEntity at the
     // Room level, confirmed no @ForeignKey on EntryEntity/TransactionEntity),
@@ -55,10 +66,12 @@ class SyncEngine(
         val rules = async { runCatching { syncRules() } }
         val goals = async { runCatching { syncGoals() } }
         val receivables = async { runCatching { syncReceivables() } }
+        val supplementary = async { runCatching { syncSupplementaryCaches() } }
 
         val failures = listOf(accounts, transactions, rules, goals, receivables)
             .map { it.await() }
             .mapNotNull { it.exceptionOrNull() }
+        supplementary.await()
 
         if (failures.isEmpty()) {
             Result.success(Unit)
@@ -73,6 +86,7 @@ class SyncEngine(
         val remote = api.fetchAllAccounts()
         accountDao.upsertAll(remote.map { it.toEntity() })
         accountDao.deleteAllExcept(remote.map { it.id })
+        cache.putList(OfflineCacheKeys.ACCOUNTS_LIST, AccountDto.serializer(), remote)
     }
 
     private suspend fun syncTransactions() {
@@ -119,6 +133,22 @@ class SyncEngine(
         val entities = remote.map { it.toEntity() }
         dao.upsertAll(entities)
         dao.deleteAllExcept(entities.map { it.id })
+    }
+
+    private suspend fun syncSupplementaryCaches() = coroutineScope {
+        if (offlineStore == null) return@coroutineScope
+        val currentBudgetParam = currentDateProvider().take(7)
+        listOf(
+            async { runCatching { cache.putList(OfflineCacheKeys.PRODUCTS_LIST, ProductDto.serializer(), api.fetchAllProducts()) } },
+            async { runCatching { cache.putList(OfflineCacheKeys.SALES_LIST, SaleDto.serializer(), api.fetchAllSales()) } },
+            async { runCatching { cache.putList(OfflineCacheKeys.PURCHASE_ORDERS_LIST, PurchaseOrderDto.serializer(), api.fetchAllPurchaseOrders()) } },
+            async { runCatching { cache.putList(OfflineCacheKeys.FLEET_VEHICLES_LIST, FleetVehicleDto.serializer(), api.fetchFleetVehicles()) } },
+            async { runCatching { cache.putList(OfflineCacheKeys.CHATS_LIST, ChatDto.serializer(), api.fetchChats(page = 1).chats) } },
+            async { runCatching { cache.putList(OfflineCacheKeys.HOLDINGS_LIST, PortfolioHoldingDto.serializer(), api.fetchAllHoldings()) } },
+            async { runCatching { cache.put(OfflineCacheKeys.DASHBOARD_DTO, DashboardDto.serializer(), api.fetchDashboard()) } },
+            async { runCatching { cache.put(OfflineCacheKeys.FAMILY_SETTINGS, FamilySettingsDto.serializer(), api.fetchFamilySettings()) } },
+            async { runCatching { cache.put(OfflineCacheKeys.budget(currentBudgetParam), BudgetDto.serializer(), api.fetchBudget(currentBudgetParam)) } }
+        ).forEach { it.await() }
     }
 }
 

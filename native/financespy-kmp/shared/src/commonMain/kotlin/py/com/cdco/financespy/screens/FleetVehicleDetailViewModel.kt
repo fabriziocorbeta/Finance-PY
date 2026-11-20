@@ -10,16 +10,26 @@ import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.CreateFuelLogBody
 import py.com.cdco.financespy.api.dto.CreateFuelLogLineBody
 import py.com.cdco.financespy.api.dto.FleetVehicleDto
+import py.com.cdco.financespy.sync.OfflineCache
+import py.com.cdco.financespy.sync.OfflineCacheKeys
+import py.com.cdco.financespy.sync.OfflineStore
 
 class FleetVehicleDetailViewModel(
     private val scope: CoroutineScope,
     private val vehicleId: String,
-    private val api: FinancePyApi
+    private val api: FinancePyApi,
+    store: OfflineStore? = null
 ) {
-    private val _vehicle = MutableStateFlow<FleetVehicleDto?>(null)
+    private val cache = OfflineCache(store)
+    private val _vehicle = MutableStateFlow<FleetVehicleDto?>(
+        cache.get(OfflineCacheKeys.fleetVehicleDetail(vehicleId), FleetVehicleDto.serializer())
+            ?: cache.getList(OfflineCacheKeys.FLEET_VEHICLES_LIST, FleetVehicleDto.serializer())?.find { it.id == vehicleId }
+    )
     val vehicle: StateFlow<FleetVehicleDto?> = _vehicle.asStateFlow()
 
-    private val _accounts = MutableStateFlow<List<AccountDto>>(emptyList())
+    private val _accounts = MutableStateFlow(
+        cache.getList(OfflineCacheKeys.ACCOUNTS_LIST, AccountDto.serializer()) ?: emptyList()
+    )
     val accounts: StateFlow<List<AccountDto>> = _accounts.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
@@ -41,8 +51,11 @@ class FleetVehicleDetailViewModel(
                 api.fetchFleetVehicle(vehicleId)
             }.onSuccess { detail ->
                 _vehicle.value = detail
+                cache.put(OfflineCacheKeys.fleetVehicleDetail(vehicleId), FleetVehicleDto.serializer(), detail)
             }.onFailure { throwable ->
-                _error.value = throwable.message ?: "Error al cargar el vehículo"
+                if (_vehicle.value == null) {
+                    _error.value = throwable.message ?: "Error al cargar el vehículo"
+                }
             }
             _isLoading.value = false
         }
@@ -54,6 +67,7 @@ class FleetVehicleDetailViewModel(
                 api.fetchAllAccounts()
             }.onSuccess { list ->
                 _accounts.value = list
+                cache.putList(OfflineCacheKeys.ACCOUNTS_LIST, AccountDto.serializer(), list)
             }
         }
     }

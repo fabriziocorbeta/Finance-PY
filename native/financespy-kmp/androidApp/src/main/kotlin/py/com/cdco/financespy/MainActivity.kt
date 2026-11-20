@@ -36,6 +36,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import py.com.cdco.financespy.auth.AndroidTokenStorage
 import py.com.cdco.financespy.auth.AuthRepository
 import py.com.cdco.financespy.api.FinancePyApi
+import py.com.cdco.financespy.api.dto.FamilySettingsDto
 import py.com.cdco.financespy.cache.AndroidDashboardCache
 import py.com.cdco.financespy.db.buildDatabase
 import py.com.cdco.financespy.db.initDatabaseBuilder
@@ -44,6 +45,8 @@ import py.com.cdco.financespy.network.ApiClient
 import py.com.cdco.financespy.security.AndroidSecurityPreferences
 import py.com.cdco.financespy.security.BiometricRefreshTokenGuard
 import py.com.cdco.financespy.security.OwnerScope
+import py.com.cdco.financespy.sync.OfflineCache
+import py.com.cdco.financespy.sync.OfflineCacheKeys
 import py.com.cdco.financespy.screens.AccountDetailViewModel
 import py.com.cdco.financespy.screens.AccountFormViewModel
 import py.com.cdco.financespy.screens.BudgetAllocationEditorViewModel
@@ -232,6 +235,7 @@ class MainActivity : FragmentActivity() {
             ruleRunDao = database.ruleRunDao(),
             goalDao = database.goalDao(),
             receivableDao = database.receivableDao(),
+            offlineStore = offlineStore,
             currentDateProvider = { currentIsoDate() }
         )
     }
@@ -256,7 +260,8 @@ class MainActivity : FragmentActivity() {
     private val budgetDashboardViewModel by lazy {
         BudgetDashboardViewModel(
             scope = lifecycleScope,
-            api = api
+            api = api,
+            store = offlineStore
         )
     }
     private val transactionsViewModel by lazy {
@@ -298,23 +303,27 @@ class MainActivity : FragmentActivity() {
     }
     private val productsListViewModel by lazy {
         ProductsListViewModel(
-            api = api
+            api = api,
+            store = offlineStore
         )
     }
     private val salesListViewModel by lazy {
         SalesListViewModel(
-            api = api
+            api = api,
+            store = offlineStore
         )
     }
     private val purchaseOrdersListViewModel by lazy {
         PurchaseOrdersListViewModel(
-            api = api
+            api = api,
+            store = offlineStore
         )
     }
     private val fleetListViewModel by lazy {
         FleetListViewModel(
             scope = lifecycleScope,
-            api = api
+            api = api,
+            store = offlineStore
         )
     }
     private val settingsViewModel by lazy {
@@ -334,10 +343,10 @@ class MainActivity : FragmentActivity() {
         )
     }
     private val investmentsListViewModel by lazy {
-        InvestmentsListViewModel(api = api)
+        InvestmentsListViewModel(api = api, store = offlineStore)
     }
     private val investmentPerformanceViewModel by lazy {
-        InvestmentPerformanceViewModel(api = api)
+        InvestmentPerformanceViewModel(api = api, store = offlineStore)
     }
     private val onboardingViewModel by lazy {
         OnboardingViewModel(
@@ -411,7 +420,10 @@ class MainActivity : FragmentActivity() {
                 try {
                     // Cap it: with the server down the client's 30s connect
                     // timeout would otherwise pin the splash for 30s.
-                    val settings = withTimeoutOrNull(4_000L) { api.fetchFamilySettings() }
+                    val offlineCache = OfflineCache(offlineStore)
+                    val settings = withTimeoutOrNull(4_000L) { api.fetchFamilySettings() }?.also {
+                        offlineCache.put(OfflineCacheKeys.FAMILY_SETTINGS, FamilySettingsDto.serializer(), it)
+                    } ?: offlineCache.get(OfflineCacheKeys.FAMILY_SETTINGS, FamilySettingsDto.serializer())
                     onboardingNeeded = settings?.current_user?.needs_onboarding == true
                     // Data already fetched above, just reusing it: record who
                     // this device's local caches/outbox belong to now, so a
@@ -533,28 +545,29 @@ class MainActivity : FragmentActivity() {
                 },
                 productsListViewModelFactory = { productsListViewModel },
                 productFormViewModelFactory = { productId ->
-                    ProductFormViewModel(productId = productId, api = api)
+                    ProductFormViewModel(productId = productId, api = api, store = offlineStore, outbox = outbox)
                 },
                 salesListViewModelFactory = { salesListViewModel },
                 saleDetailViewModelFactory = { saleId ->
-                    SaleDetailViewModel(saleId = saleId, api = api)
+                    SaleDetailViewModel(saleId = saleId, api = api, store = offlineStore)
                 },
                 saleFormViewModelFactory = { saleId ->
-                    SaleFormViewModel(saleId = saleId, api = api, accountDao = database.accountDao())
+                    SaleFormViewModel(saleId = saleId, api = api, accountDao = database.accountDao(), store = offlineStore, outbox = outbox)
                 },
                 purchaseOrdersListViewModelFactory = { purchaseOrdersListViewModel },
                 purchaseOrderDetailViewModelFactory = { poId ->
-                    PurchaseOrderDetailViewModel(purchaseOrderId = poId, api = api)
+                    PurchaseOrderDetailViewModel(purchaseOrderId = poId, api = api, store = offlineStore)
                 },
                 purchaseOrderFormViewModelFactory = { poId ->
-                    PurchaseOrderFormViewModel(purchaseOrderId = poId, api = api, accountDao = database.accountDao())
+                    PurchaseOrderFormViewModel(purchaseOrderId = poId, api = api, accountDao = database.accountDao(), store = offlineStore, outbox = outbox)
                 },
                 fleetListViewModelFactory = { fleetListViewModel },
                 fleetVehicleDetailViewModelFactory = { vehicleId ->
                     FleetVehicleDetailViewModel(
                         scope = lifecycleScope,
                         vehicleId = vehicleId,
-                        api = api
+                        api = api,
+                        store = offlineStore
                     )
                 },
                 accountDetailViewModelFactory = { accountId ->
@@ -608,7 +621,7 @@ class MainActivity : FragmentActivity() {
                 reportsViewModelFactory = { reportsViewModel },
                 investmentsListViewModelFactory = { investmentsListViewModel },
                 investmentPerformanceViewModelFactory = { investmentPerformanceViewModel },
-                holdingDetailViewModelFactory = { securityId -> HoldingDetailViewModel(api = api, securityId = securityId) },
+                holdingDetailViewModelFactory = { securityId -> HoldingDetailViewModel(api = api, securityId = securityId, store = offlineStore) },
                 upayImportViewModelFactory = {
                     UpayImportViewModel(scope = lifecycleScope, api = api, accountDao = database.accountDao())
                 },
@@ -618,8 +631,8 @@ class MainActivity : FragmentActivity() {
                 onPickPdfFile = { onPicked -> pickPdfFile(onPicked) },
                 onPickInvoicePhoto = { onPicked -> pickInvoicePhoto(onPicked) },
                 onTakeInvoicePhoto = { onPicked -> takeInvoicePhoto(onPicked) },
-                chatsListViewModelFactory = { py.com.cdco.financespy.screens.ChatsListViewModel(scope = lifecycleScope, api = api) },
-                chatViewModelFactory = { chatId -> py.com.cdco.financespy.screens.ChatViewModel(scope = lifecycleScope, api = api, chatId = chatId) },
+                chatsListViewModelFactory = { py.com.cdco.financespy.screens.ChatsListViewModel(scope = lifecycleScope, api = api, store = offlineStore) },
+                chatViewModelFactory = { chatId -> py.com.cdco.financespy.screens.ChatViewModel(scope = lifecycleScope, api = api, chatId = chatId, store = offlineStore) },
                 onOpenNotificationSettings = {
                     val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

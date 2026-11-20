@@ -9,6 +9,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.AccountDto
+import py.com.cdco.financespy.api.dto.DashboardDto
+import py.com.cdco.financespy.api.dto.PortfolioHoldingDto
+import py.com.cdco.financespy.sync.OfflineCache
+import py.com.cdco.financespy.sync.OfflineCacheKeys
+import py.com.cdco.financespy.sync.OfflineStore
 
 data class AggregatedHolding(
     val securityId: String,
@@ -29,68 +34,93 @@ data class InvestmentsListState(
 )
 
 class InvestmentsListViewModel(
-    private val api: FinancePyApi
+    private val api: FinancePyApi,
+    store: OfflineStore? = null
 ) : ViewModel() {
 
+    private val cache = OfflineCache(store)
     private val _state = MutableStateFlow(InvestmentsListState())
     val state: StateFlow<InvestmentsListState> = _state.asStateFlow()
+
+    init {
+        loadFromCache()
+    }
+
+    private fun loadFromCache() {
+        val accounts = cache.getList(OfflineCacheKeys.ACCOUNTS_LIST, AccountDto.serializer())
+        val holdings = cache.getList(OfflineCacheKeys.HOLDINGS_LIST, PortfolioHoldingDto.serializer())
+        val dashboard = cache.get(OfflineCacheKeys.DASHBOARD_DTO, DashboardDto.serializer())
+        if (accounts != null || holdings != null) {
+            applyHoldingsData(accounts ?: emptyList(), holdings ?: emptyList(), dashboard)
+        }
+    }
+
+    private fun applyHoldingsData(
+        allAccounts: List<AccountDto>,
+        allHoldings: List<PortfolioHoldingDto>,
+        dashboard: DashboardDto?
+    ) {
+        val investmentAccounts = allAccounts.filter { it.account_type == "investment" }
+        val investmentAccountIds = investmentAccounts.map { it.id }.toSet()
+
+        val currentHoldings = allHoldings
+            .filter { it.account.id in investmentAccountIds }
+            .groupBy { it.account.id to it.security.id }
+            .mapNotNull { (_, snapshots) -> snapshots.maxByOrNull { it.date } }
+
+        val bySecurity = currentHoldings
+            .groupBy { it.security.id }
+            .map { (securityId, snapshots) ->
+                AggregatedHolding(
+                    securityId = securityId,
+                    ticker = snapshots.first().security.ticker,
+                    name = snapshots.first().security.name ?: snapshots.first().security.ticker,
+                    currency = snapshots.first().currency,
+                    amountCents = snapshots.sumOf { it.amount_cents ?: 0L },
+                    accountsCount = snapshots.map { it.account.id }.distinct().size
+                )
+            }
+            .sortedByDescending { it.amountCents }
+
+        val investmentSummary = dashboard?.investment_summary
+        val currency = investmentSummary?.currency
+            ?: investmentAccounts.firstOrNull()?.currency
+            ?: bySecurity.firstOrNull()?.currency
+            ?: "PYG"
+        val totalPortfolioValueCents = investmentSummary?.portfolio_value_cents
+            ?: bySecurity.sumOf { h -> h.amountCents }
+
+        _state.update {
+            it.copy(
+                isLoading = false,
+                investmentAccounts = investmentAccounts,
+                holdingsBySecurity = bySecurity,
+                totalPortfolioValueCents = totalPortfolioValueCents,
+                currency = currency
+            )
+        }
+    }
 
     fun refresh() {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
             try {
-                val investmentAccounts = api.fetchAllAccounts().filter { it.account_type == "investment" }
-                val investmentAccountIds = investmentAccounts.map { it.id }.toSet()
-
-                // Holdings are point-in-time snapshots (one row per account+security+date
-                // the sync ran), so the current position is the latest-dated row per
-                // (account, security) pair -- not the sum of every historical row.
-                val currentHoldings = api.fetchAllHoldings()
-                    .filter { it.account.id in investmentAccountIds }
-                    .groupBy { it.account.id to it.security.id }
-                    .mapNotNull { (_, snapshots) -> snapshots.maxByOrNull { it.date } }
-
-                val bySecurity = currentHoldings
-                    .groupBy { it.security.id }
-                    .map { (securityId, snapshots) ->
-                        AggregatedHolding(
-                            securityId = securityId,
-                            ticker = snapshots.first().security.ticker,
-                            name = snapshots.first().security.name ?: snapshots.first().security.ticker,
-                            currency = snapshots.first().currency,
-                            amountCents = snapshots.sumOf { it.amount_cents ?: 0L },
-                            accountsCount = snapshots.map { it.account.id }.distinct().size
-                        )
-                    }
-                    .sortedByDescending { it.amountCents }
-
-                // The holdings-based total is only accurate when every investment
-                // account has real security/trade records synced -- accounts with
-                // just placeholder CASH holdings would show ₲0 here otherwise.
-                // The dashboard's investment_summary already aggregates portfolio
-                // value by account balance (with FX conversion across currencies),
-                // so reuse that instead of summing holdings ourselves.
-                val investmentSummary = api.fetchDashboard().investment_summary
-
-                val currency = investmentSummary?.currency
-                    ?: investmentAccounts.firstOrNull()?.currency
-                    ?: bySecurity.firstOrNull()?.currency
-                    ?: "PYG"
-
-                val totalPortfolioValueCents = investmentSummary?.portfolio_value_cents
-                    ?: bySecurity.sumOf { h -> h.amountCents }
-
+                val allAccounts = api.fetchAllAccounts()
+                cache.putList(OfflineCacheKeys.ACCOUNTS_LIST, AccountDto.serializer(), allAccounts)
+                val allHoldings = api.fetchAllHoldings()
+                cache.putList(OfflineCacheKeys.HOLDINGS_LIST, PortfolioHoldingDto.serializer(), allHoldings)
+                val dashboard = api.fetchDashboard()
+                cache.put(OfflineCacheKeys.DASHBOARD_DTO, DashboardDto.serializer(), dashboard)
+                applyHoldingsData(allAccounts, allHoldings, dashboard)
+            } catch (e: Exception) {
+                loadFromCache()
+                val hasCached = _state.value.investmentAccounts.isNotEmpty() || _state.value.holdingsBySecurity.isNotEmpty()
                 _state.update {
                     it.copy(
                         isLoading = false,
-                        investmentAccounts = investmentAccounts,
-                        holdingsBySecurity = bySecurity,
-                        totalPortfolioValueCents = totalPortfolioValueCents,
-                        currency = currency
+                        error = if (!hasCached) (e.message ?: "Error al cargar inversiones") else null
                     )
                 }
-            } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, error = e.message ?: "Error al cargar inversiones") }
             }
         }
     }

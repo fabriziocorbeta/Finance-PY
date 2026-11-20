@@ -8,13 +8,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.PurchaseOrderDto
+import py.com.cdco.financespy.sync.OfflineCache
+import py.com.cdco.financespy.sync.OfflineCacheKeys
+import py.com.cdco.financespy.sync.OfflineStore
 
 class PurchaseOrderDetailViewModel(
     private val purchaseOrderId: String,
-    private val api: FinancePyApi
+    private val api: FinancePyApi,
+    store: OfflineStore? = null
 ) : ViewModel() {
 
-    private val _purchaseOrder = MutableStateFlow<PurchaseOrderDto?>(null)
+    private val cache = OfflineCache(store)
+    private val _purchaseOrder = MutableStateFlow<PurchaseOrderDto?>(
+        cache.get(OfflineCacheKeys.purchaseOrderDetail(purchaseOrderId), PurchaseOrderDto.serializer())
+            ?: cache.getList(OfflineCacheKeys.PURCHASE_ORDERS_LIST, PurchaseOrderDto.serializer())?.find { it.id == purchaseOrderId }
+    )
     val purchaseOrder: StateFlow<PurchaseOrderDto?> = _purchaseOrder.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
@@ -43,9 +51,12 @@ class PurchaseOrderDetailViewModel(
             try {
                 val loaded = api.fetchPurchaseOrder(purchaseOrderId)
                 _purchaseOrder.value = loaded
+                cache.put(OfflineCacheKeys.purchaseOrderDetail(purchaseOrderId), PurchaseOrderDto.serializer(), loaded)
                 refreshInvoicePhotoBytes(loaded)
             } catch (e: Exception) {
-                _error.value = e.message ?: "Error al cargar orden de compra"
+                if (_purchaseOrder.value == null) {
+                    _error.value = e.message ?: "Error al cargar orden de compra"
+                }
             } finally {
                 _isLoading.value = false
             }

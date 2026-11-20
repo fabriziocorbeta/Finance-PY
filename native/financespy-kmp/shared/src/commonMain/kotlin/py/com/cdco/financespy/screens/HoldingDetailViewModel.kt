@@ -8,6 +8,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
+import py.com.cdco.financespy.api.dto.SecurityPriceDto
+import py.com.cdco.financespy.sync.OfflineCache
+import py.com.cdco.financespy.sync.OfflineCacheKeys
+import py.com.cdco.financespy.sync.OfflineStore
 
 data class PricePoint(val date: String, val price: Double)
 
@@ -52,11 +56,34 @@ data class HoldingDetailState(
 
 class HoldingDetailViewModel(
     private val api: FinancePyApi,
-    private val securityId: String
+    private val securityId: String,
+    store: OfflineStore? = null
 ) : ViewModel() {
 
+    private val cache = OfflineCache(store)
     private val _state = MutableStateFlow(HoldingDetailState())
     val state: StateFlow<HoldingDetailState> = _state.asStateFlow()
+
+    init {
+        cache.getList(OfflineCacheKeys.securityPrices(securityId), SecurityPriceDto.serializer())?.let { cached ->
+            applyPrices(cached)
+        }
+    }
+
+    private fun applyPrices(dtos: List<SecurityPriceDto>) {
+        val sorted = dtos.sortedBy { it.date }
+        val prices = sorted.mapNotNull { dto -> dto.price_amount.toDoubleOrNull()?.let { PricePoint(dto.date, it) } }
+        val lastDto = sorted.lastOrNull()
+        _state.update {
+            it.copy(
+                isLoading = false,
+                fullHistory = prices,
+                ticker = lastDto?.security?.ticker ?: it.ticker,
+                name = lastDto?.security?.name ?: lastDto?.security?.ticker ?: it.name,
+                currency = lastDto?.currency ?: it.currency
+            )
+        }
+    }
 
     fun selectRange(range: PriceRange) {
         _state.update { it.copy(selectedRange = range) }
@@ -66,20 +93,16 @@ class HoldingDetailViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
             try {
-                val dtos = api.fetchAllSecurityPrices(securityId).sortedBy { it.date }
-                val prices = dtos.mapNotNull { dto -> dto.price_amount.toDoubleOrNull()?.let { PricePoint(dto.date, it) } }
-                val lastDto = dtos.lastOrNull()
-                _state.update {
-                    it.copy(
-                        isLoading = false,
-                        fullHistory = prices,
-                        ticker = lastDto?.security?.ticker ?: it.ticker,
-                        name = lastDto?.security?.name ?: lastDto?.security?.ticker ?: it.name,
-                        currency = lastDto?.currency ?: it.currency
-                    )
-                }
+                val dtos = api.fetchAllSecurityPrices(securityId)
+                cache.putList(OfflineCacheKeys.securityPrices(securityId), SecurityPriceDto.serializer(), dtos)
+                applyPrices(dtos)
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, error = e.message ?: "Error al cargar el historial de precios") }
+                val cached = cache.getList(OfflineCacheKeys.securityPrices(securityId), SecurityPriceDto.serializer())
+                if (cached != null) {
+                    applyPrices(cached)
+                } else {
+                    _state.update { it.copy(isLoading = false, error = e.message ?: "Error al cargar el historial de precios") }
+                }
             }
         }
     }

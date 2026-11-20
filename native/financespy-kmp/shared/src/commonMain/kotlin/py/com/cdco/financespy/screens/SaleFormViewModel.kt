@@ -14,6 +14,10 @@ import py.com.cdco.financespy.api.dto.SalePayloadDto
 import py.com.cdco.financespy.api.dto.SaleItemRequestDto
 import py.com.cdco.financespy.db.AccountDao
 import py.com.cdco.financespy.db.AccountEntity
+import py.com.cdco.financespy.sync.OfflineCache
+import py.com.cdco.financespy.sync.OfflineCacheKeys
+import py.com.cdco.financespy.sync.OfflineOutbox
+import py.com.cdco.financespy.sync.OfflineStore
 
 data class SaleFormItemState(
     val existingId: String? = null,
@@ -25,13 +29,18 @@ data class SaleFormItemState(
 class SaleFormViewModel(
     private val saleId: String?,
     private val api: FinancePyApi,
-    private val accountDao: AccountDao
+    private val accountDao: AccountDao,
+    store: OfflineStore? = null,
+    private val outbox: OfflineOutbox? = null
 ) : ViewModel() {
 
+    private val cache = OfflineCache(store)
     private val _sale = MutableStateFlow<SaleDto?>(null)
     val sale: StateFlow<SaleDto?> = _sale.asStateFlow()
 
-    private val _availableProducts = MutableStateFlow<List<ProductDto>>(emptyList())
+    private val _availableProducts = MutableStateFlow(
+        cache.getList(OfflineCacheKeys.PRODUCTS_LIST, ProductDto.serializer()) ?: emptyList()
+    )
     val availableProducts: StateFlow<List<ProductDto>> = _availableProducts.asStateFlow()
 
     private val _availableAccounts = MutableStateFlow<List<AccountEntity>>(emptyList())
@@ -79,9 +88,13 @@ class SaleFormViewModel(
     private fun loadProducts() {
         viewModelScope.launch {
             try {
-                _availableProducts.value = api.fetchAllProducts()
-            } catch (e: Exception) {
-                // handle silently or expose
+                val fresh = api.fetchAllProducts()
+                _availableProducts.value = fresh
+                cache.putList(OfflineCacheKeys.PRODUCTS_LIST, ProductDto.serializer(), fresh)
+            } catch (_: Exception) {
+                if (_availableProducts.value.isEmpty()) {
+                    _availableProducts.value = cache.getList(OfflineCacheKeys.PRODUCTS_LIST, ProductDto.serializer()) ?: emptyList()
+                }
             }
         }
     }
@@ -93,6 +106,7 @@ class SaleFormViewModel(
             try {
                 val loadedSale = api.fetchSale(id)
                 _sale.value = loadedSale
+                cache.put(OfflineCacheKeys.saleDetail(id), SaleDto.serializer(), loadedSale)
                 val existingPhoto = loadedSale.invoice_photo
                 if (loadedSale.has_invoice_photo || existingPhoto != null) {
                     _pendingPhotoName.value = existingPhoto?.filename ?: "factura_venta"
@@ -105,7 +119,13 @@ class SaleFormViewModel(
                     }
                 }
             } catch (e: Exception) {
-                _error.value = e.message ?: "Error al cargar venta"
+                val cached = cache.get(OfflineCacheKeys.saleDetail(id), SaleDto.serializer())
+                    ?: cache.getList(OfflineCacheKeys.SALES_LIST, SaleDto.serializer())?.find { it.id == id }
+                if (cached != null) {
+                    _sale.value = cached
+                } else {
+                    _error.value = e.message ?: "Error al cargar venta"
+                }
             } finally {
                 _isLoading.value = false
             }
@@ -211,7 +231,41 @@ class SaleFormViewModel(
                 }
                 onSaved()
             } catch (e: Exception) {
-                _error.value = e.message ?: "Error al guardar venta"
+                if (saleId == null && outbox != null && outbox.shouldQueue(e)) {
+                    val itemsAttributes = items.map { item ->
+                        SaleItemRequestDto(
+                            product_id = item.productId,
+                            quantity = item.quantity,
+                            unit_price = item.unitPrice
+                        )
+                    }
+                    val payload = SaleRequestDto(
+                        sale = SalePayloadDto(
+                            client_name = clientName.takeIf { !it.isNullOrBlank() },
+                            currency = currency.lowercase(),
+                            payment_method = paymentMethod.takeIf { !it.isNullOrBlank() },
+                            invoice_number = invoiceNumber.takeIf { !it.isNullOrBlank() },
+                            condition = condition.takeIf { !it.isNullOrBlank() },
+                            notes = notes.takeIf { !it.isNullOrBlank() },
+                            delivery_address = deliveryAddress.takeIf { !it.isNullOrBlank() },
+                            delivery_date = deliveryDate.takeIf { !it.isNullOrBlank() },
+                            carrier = carrier.takeIf { !it.isNullOrBlank() },
+                            account_id = accountId,
+                            sale_items_attributes = itemsAttributes
+                        )
+                    )
+                    val label = "Venta: ${clientName?.takeIf { it.isNotBlank() } ?: "${items.size} ítems"}"
+                    outbox.enqueueSale(
+                        payload = payload,
+                        label = label,
+                        photoBytes = if (hasNewLocalPhoto) _pendingPhotoBytes.value else null,
+                        photoName = _pendingPhotoName.value,
+                        photoContentType = _pendingPhotoContentType.value
+                    )
+                    onSaved()
+                } else {
+                    _error.value = e.message ?: "Error al guardar venta"
+                }
             } finally {
                 _isSaving.value = false
             }
