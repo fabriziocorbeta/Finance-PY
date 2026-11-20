@@ -467,6 +467,33 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
     assert initial_token.revoked?
   end
 
+  test "should reject refresh for deactivated user and revoke refresh token" do
+    user = users(:family_admin)
+    device = user.mobile_devices.create!(@device_info)
+
+    initial_token = Doorkeeper::AccessToken.create!(
+      application: @shared_app,
+      resource_owner_id: user.id,
+      mobile_device_id: device.id,
+      expires_in: 30.days.to_i,
+      scopes: "read_write",
+      use_refresh_token: true
+    )
+
+    user.update_column(:active, false)
+
+    assert_no_difference("Doorkeeper::AccessToken.count") do
+      post "/api/v1/auth/refresh", params: {
+        refresh_token: initial_token.refresh_token,
+        device: @device_info
+      }
+    end
+
+    assert_response :unauthorized
+    assert_equal "invalid_grant", JSON.parse(response.body)["error"]
+    assert initial_token.reload.revoked?
+  end
+
   test "should not refresh with invalid refresh token" do
     assert_no_difference("Doorkeeper::AccessToken.count") do
       post "/api/v1/auth/refresh", params: {
