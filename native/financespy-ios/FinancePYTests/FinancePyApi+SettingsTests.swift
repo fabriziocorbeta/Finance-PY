@@ -66,4 +66,69 @@ final class FinancePyApiSettingsTests: XCTestCase {
             XCTFail("Unexpected error: \(error)")
         }
     }
+
+    func testDeleteAccountSendsCurrentPassword() async throws {
+        var capturedBody: [String: String]?
+        var capturedMethod: String?
+        var capturedPath: String?
+
+        MockURLProtocol.requestHandler = { request in
+            capturedMethod = request.httpMethod
+            capturedPath = request.url?.path
+            capturedBody = try self.decodedBody(from: request)
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, "{}".data(using: .utf8)!)
+        }
+
+        try await FinancePyApi.shared.deleteAccount(currentPassword: "secret-password")
+
+        XCTAssertEqual(capturedMethod, "DELETE")
+        XCTAssertEqual(capturedPath, "/api/v1/users/me")
+        XCTAssertEqual(capturedBody?["current_password"], "secret-password")
+    }
+
+    func testResetDataSendsCurrentPassword() async throws {
+        var capturedBody: [String: String]?
+        var capturedMethod: String?
+        var capturedPath: String?
+
+        MockURLProtocol.requestHandler = { request in
+            capturedMethod = request.httpMethod
+            capturedPath = request.url?.path
+            capturedBody = try self.decodedBody(from: request)
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, "{}".data(using: .utf8)!)
+        }
+
+        try await FinancePyApi.shared.resetData(currentPassword: "secret-password")
+
+        XCTAssertEqual(capturedMethod, "DELETE")
+        XCTAssertEqual(capturedPath, "/api/v1/users/reset")
+        XCTAssertEqual(capturedBody?["current_password"], "secret-password")
+    }
+
+    private func decodedBody(from request: URLRequest) throws -> [String: String]? {
+        let data: Data?
+        if let httpBody = request.httpBody {
+            data = httpBody
+        } else if let stream = request.httpBodyStream {
+            stream.open()
+            defer { stream.close() }
+            var buffer = [UInt8](repeating: 0, count: 1024)
+            var collected = Data()
+            while stream.hasBytesAvailable {
+                let count = stream.read(&buffer, maxLength: buffer.count)
+                if count > 0 {
+                    collected.append(buffer, count: count)
+                } else {
+                    break
+                }
+            }
+            data = collected
+        } else {
+            data = nil
+        }
+        guard let data, !data.isEmpty else { return nil }
+        return try JSONSerialization.jsonObject(with: data) as? [String: String]
+    }
 }

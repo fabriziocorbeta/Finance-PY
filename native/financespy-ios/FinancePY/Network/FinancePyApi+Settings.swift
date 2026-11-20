@@ -106,11 +106,25 @@ extension FinancePyApi {
         return try await ApiClient.shared.request(path: "/api/v1/usage")
     }
 
-    func deleteAccount() async throws {
-        let _: EmptyResponse = try await ApiClient.shared.request(method: "DELETE", path: "/api/v1/users/me")
+    func deleteAccount(currentPassword: String) async throws {
+        let body = StepUpPasswordRequest(currentPassword: currentPassword)
+        let _: EmptyResponse = try await ApiClient.shared.request(
+            method: "DELETE",
+            path: "/api/v1/users/me",
+            body: body
+        )
     }
 
-    func resetData() async throws {
-        let _: EmptyResponse = try await ApiClient.shared.request(method: "DELETE", path: "/api/v1/users/reset")
+    func resetData(currentPassword: String) async throws {
+        let body = StepUpPasswordRequest(currentPassword: currentPassword)
+        let _: EmptyResponse = try await ApiClient.shared.request(
+            method: "DELETE",
+            path: "/api/v1/users/reset",
+            body: body
+        )
     }
+}
+
+private struct StepUpPasswordRequest: Encodable {
+    let currentPassword: String
 }

@@ -13,6 +13,7 @@ struct SettingsView: View {
     @State private var usage: UsageDto?
 
     @State private var showDeleteAccountAlert = false
+    @State private var deleteAccountPassword = ""
     @State private var showDeleteAccountErrorAlert = false
     @State private var deleteAccountError: String? = nil
     @State private var showLogoutAlert = false
@@ -137,11 +138,22 @@ struct SettingsView: View {
             }
 
             .alert("¿Eliminar cuenta?", isPresented: $showDeleteAccountAlert) {
-                Button("Cancelar", role: .cancel) { }
+                SecureField("Contraseña actual", text: $deleteAccountPassword)
+                Button("Cancelar", role: .cancel) {
+                    deleteAccountPassword = ""
+                }
                 Button("Eliminar", role: .destructive) {
+                    let password = deleteAccountPassword
+                    deleteAccountPassword = ""
+                    guard !password.isEmpty else {
+                        showDeleteAccountAlert = false
+                        deleteAccountError = "Ingresa tu contraseña actual para confirmar."
+                        showDeleteAccountErrorAlert = true
+                        return
+                    }
                     Task {
                         do {
-                            try await FinancePyApi.shared.deleteAccount()
+                            try await FinancePyApi.shared.deleteAccount(currentPassword: password)
                             await AuthRepository.shared.logout()
                             onLoggedOut()
                         } catch {
@@ -152,7 +164,7 @@ struct SettingsView: View {
                     }
                 }
             } message: {
-                Text("Esta acción es irreversible y todos tus datos serán eliminados.")
+                Text("Esta acción es irreversible y todos tus datos serán eliminados. Ingresa tu contraseña actual para confirmar.")
             }
 
         }

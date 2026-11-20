@@ -4,6 +4,7 @@ class Api::V1::UsersController < Api::V1::BaseController
   before_action :ensure_read_scope, only: %i[reset_status nav_preferences]
   before_action :ensure_write_scope, except: %i[reset_status nav_preferences]
   before_action :ensure_admin, only: %i[reset reset_status]
+  before_action :verify_current_password!, only: %i[reset destroy]
 
   def reset
     family = current_family
@@ -127,6 +128,25 @@ class Api::V1::UsersController < Api::V1::BaseController
 
       render_json({ error: "forbidden", message: "You are not authorized to perform this action" }, status: :forbidden)
       false
+    end
+
+    def verify_current_password!
+      user = current_resource_owner
+
+      if user.sso_only?
+        render json: {
+          error: "sso_only_account",
+          message: I18n.t("users.api.sso_only_step_up")
+        }, status: :forbidden
+        return
+      end
+
+      return if user.authenticate(params[:current_password].to_s)
+
+      render json: {
+        error: "password_required",
+        message: I18n.t("users.api.password_required")
+      }, status: :forbidden
     end
 
     def reset_target_counts(family)

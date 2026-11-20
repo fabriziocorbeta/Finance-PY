@@ -68,7 +68,7 @@ class McpController < ApplicationController
     end
 
     def handle_tools_list
-      tools = Assistant.function_classes.map do |fn_class|
+      tools = available_function_classes.map do |fn_class|
         fn_instance = fn_class.new(mcp_user)
         {
           name: fn_instance.name,
@@ -91,6 +91,11 @@ class McpController < ApplicationController
         return nil
       end
 
+      if fn_class.write? && !mcp_write_allowed?
+        render_jsonrpc_error(request_id, -32602, "Tool requires read_write scope: #{name}")
+        return nil
+      end
+
       fn = fn_class.new(mcp_user)
       result = fn.call(arguments)
 
@@ -109,6 +114,12 @@ class McpController < ApplicationController
 
       key_record = ApiKey.find_by_value(bearer_token)
       if key_record&.user
+        unless key_record.user.active?
+          render json: { error: "unauthorized" }, status: :unauthorized
+          return
+        end
+
+        @mcp_api_key = key_record
         @mcp_user = key_record.user
         key_record.update_last_used!
       else
@@ -145,6 +156,18 @@ class McpController < ApplicationController
 
     def mcp_user
       @mcp_user
+    end
+
+    def available_function_classes
+      return Assistant.function_classes if mcp_write_allowed?
+
+      Assistant.function_classes.reject(&:write?)
+    end
+
+    def mcp_write_allowed?
+      return true unless @mcp_api_key
+
+      Array(@mcp_api_key.scopes).include?("read_write")
     end
 
     def render_jsonrpc_error(id, code, message)

@@ -7,6 +7,10 @@ class Assistant::Function
     def description
       raise NotImplementedError, "Subclasses must implement the description class method"
     end
+
+    def write?
+      false
+    end
   end
 
   def initialize(user)
@@ -19,6 +23,10 @@ class Assistant::Function
 
   def name
     self.class.name
+  end
+
+  def write?
+    self.class.write?
   end
 
   def description
