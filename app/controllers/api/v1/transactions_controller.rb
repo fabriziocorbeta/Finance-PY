@@ -372,18 +372,27 @@ class Api::V1::TransactionsController < Api::V1::BaseController
     def transaction_params
       params.require(:transaction).permit(
         :account_id, :date, :amount, :name, :description, :notes, :currency,
-        :category_id, :merchant_id, :nature, :exchange_rate, :latitude, :longitude,
-        tag_ids: [],
+        :category_id, :merchant_id, :nature, :exchange_rate,
+        tag_ids: []
+      )
+    end
+
+    def location_params
+      params.require(:transaction).permit(:latitude, :longitude)
+    end
+
+    def fuel_log_params
+      params.require(:transaction).permit(
         fuel_log: [
           :fleet_vehicle_id, :odometer, :notes,
           fuel_log_lines_attributes: [ :fuel_type, :brand, :liters, :cost, :_destroy ]
         ]
-      )
+      )[:fuel_log]
     end
 
     def apply_location_to_transaction!(transaction)
-      lat = Float(transaction_params[:latitude], exception: false)
-      lng = Float(transaction_params[:longitude], exception: false)
+      lat = Float(location_params[:latitude], exception: false)
+      lng = Float(location_params[:longitude], exception: false)
       return unless lat && lng && lat.between?(-90.0, 90.0) && lng.between?(-180.0, 180.0)
 
       extra = (transaction.extra || {}).dup
@@ -393,7 +402,7 @@ class Api::V1::TransactionsController < Api::V1::BaseController
     end
 
     def apply_fuel_log_to_entry!(entry)
-      fl_params = transaction_params[:fuel_log]
+      fl_params = fuel_log_params
       return if fl_params.blank?
 
       vehicle = current_family.fleet_vehicles.find_by(id: fl_params[:fleet_vehicle_id])
