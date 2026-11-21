@@ -111,7 +111,7 @@ else
   json.location nil
 end
 
-fuel_log = transaction.entry&.fuel_log
+fuel_log = controller.action_name == "index" ? nil : transaction.entry&.fuel_log
 if fuel_log.present?
   json.fuel_log do
     json.id fuel_log.id

@@ -376,7 +376,7 @@ class Api::V1::TransactionsController < Api::V1::BaseController
         tag_ids: [],
         fuel_log: [
           :fleet_vehicle_id, :odometer, :notes,
-          fuel_log_lines_attributes: [ :id, :fuel_type, :brand, :liters, :cost, :_destroy ]
+          fuel_log_lines_attributes: [ :fuel_type, :brand, :liters, :cost, :_destroy ]
         ]
       )
     end
@@ -408,7 +408,12 @@ class Api::V1::TransactionsController < Api::V1::BaseController
         notes: fl_params[:notes].presence
       )
       if fl_params[:fuel_log_lines_attributes].present?
-        fuel_log.assign_attributes(fuel_log_lines_attributes: fl_params[:fuel_log_lines_attributes])
+        fuel_log.fuel_log_lines.each(&:mark_for_destruction) if fuel_log.persisted?
+        fl_params[:fuel_log_lines_attributes].each do |line_attrs|
+          next if ActiveModel::Type::Boolean.new.cast(line_attrs[:_destroy])
+
+          fuel_log.fuel_log_lines.build(line_attrs.except(:_destroy))
+        end
       end
       fuel_log.save!
       entry.reload
