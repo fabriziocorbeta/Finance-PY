@@ -117,6 +117,17 @@
                     placeholder: t(".note_placeholder"),
                     rows: 5,
                     "data-auto-submit-form-target": "auto" %>
+    <div class="pt-2 space-y-1">
+      <input type="hidden" name="latitude" id="new_tx_latitude" value="" />
+      <input type="hidden" name="longitude" id="new_tx_longitude" value="" />
+      <button type="button"
+              id="new_tx_loc_btn"
+              class="btn btn--outline btn--sm inline-flex items-center gap-1.5"
+              onclick="if(navigator.geolocation){var b=this;b.disabled=true;navigator.geolocation.getCurrentPosition(function(p){document.getElementById('new_tx_latitude').value=p.coords.latitude;document.getElementById('new_tx_longitude').value=p.coords.longitude;b.querySelector('span').textContent='Ubicación capturada ('+p.coords.latitude.toFixed(4)+', '+p.coords.longitude.toFixed(4)+')';b.disabled=false;},function(){b.disabled=false;alert('No se pudo obtener la ubicación.');},{enableHighAccuracy:true,timeout:10000});}">
+        <%= icon "map-pin", size: "xs" %>
+        <span>Usar mi ubicación actual</span>
+      </button>
+    </div>
   <% end %>
 
   <section>

@@ -185,6 +185,51 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    private var pendingLocationCallback: ((Double, Double) -> Unit)? = null
+    private val foregroundLocationLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+        val granted = results[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            results[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        val callback = pendingLocationCallback
+        pendingLocationCallback = null
+        if (granted && callback != null) {
+            fetchCurrentPreciseLocation(callback)
+        }
+    }
+
+    private fun requestCurrentLocation(onLocation: (Double, Double) -> Unit) {
+        val hasFine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val hasCoarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (hasFine || hasCoarse) {
+            fetchCurrentPreciseLocation(onLocation)
+        } else {
+            pendingLocationCallback = onLocation
+            foregroundLocationLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
+    @android.annotation.SuppressLint("MissingPermission")
+    private fun fetchCurrentPreciseLocation(onLocation: (Double, Double) -> Unit) {
+        val client = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(this)
+        val cts = com.google.android.gms.tasks.CancellationTokenSource()
+        client.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, cts.token)
+            .addOnSuccessListener { location ->
+                if (location != null) {
+                    onLocation(location.latitude, location.longitude)
+                } else {
+                    client.lastLocation.addOnSuccessListener { last ->
+                        if (last != null) {
+                            onLocation(last.latitude, last.longitude)
+                        }
+                    }
+                }
+            }
+    }
+
     private val tokenStorage by lazy { AndroidTokenStorage(applicationContext) }
     private val navPreferences by lazy { AndroidNavPreferences(applicationContext) }
     private val dashboardCache by lazy { AndroidDashboardCache(applicationContext) }
@@ -647,6 +692,7 @@ class MainActivity : FragmentActivity() {
                 onPickPdfFile = { onPicked -> pickPdfFile(onPicked) },
                 onPickInvoicePhoto = { onPicked -> pickInvoicePhoto(onPicked) },
                 onTakeInvoicePhoto = { onPicked -> takeInvoicePhoto(onPicked) },
+                onRequestCurrentLocation = { onLocation -> requestCurrentLocation(onLocation) },
                 chatsListViewModelFactory = { py.com.cdco.financespy.screens.ChatsListViewModel(scope = lifecycleScope, api = api, store = offlineStore) },
                 chatViewModelFactory = { chatId -> py.com.cdco.financespy.screens.ChatViewModel(scope = lifecycleScope, api = api, chatId = chatId, store = offlineStore) },
                 onOpenNotificationSettings = {

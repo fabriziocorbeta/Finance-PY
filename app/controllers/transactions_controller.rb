@@ -111,6 +111,8 @@ class TransactionsController < ApplicationController
     @entry = account.entries.new(entry_params)
 
     if @entry.save
+      apply_location_to_transaction!(@entry.transaction)
+      apply_fuel_log_to_entry!(@entry)
       @entry.sync_account_later
       @entry.lock_saved_attributes!
       @entry.mark_user_modified!
@@ -133,6 +135,8 @@ class TransactionsController < ApplicationController
   def update
     if @entry.update(permitted_entry_params)
       transaction = @entry.transaction
+      apply_location_to_transaction!(transaction)
+      apply_fuel_log_to_entry!(@entry)
 
       if needs_rule_notification?(transaction)
         flash[:cta] = {
@@ -448,6 +452,44 @@ class TransactionsController < ApplicationController
 
       transaction.saved_change_to_category_id? && transaction.category_id.present? &&
       transaction.eligible_for_category_rule?
+    end
+
+    def apply_location_to_transaction!(transaction)
+      lat_raw = params[:latitude].presence || params.dig(:entry, :latitude).presence
+      lng_raw = params[:longitude].presence || params.dig(:entry, :longitude).presence
+      lat = Float(lat_raw, exception: false)
+      lng = Float(lng_raw, exception: false)
+      return unless lat && lng && lat.between?(-90.0, 90.0) && lng.between?(-180.0, 180.0)
+
+      extra = (transaction.extra || {}).dup
+      extra["latitude"] = lat
+      extra["longitude"] = lng
+      transaction.update!(extra: extra)
+    end
+
+    def apply_fuel_log_to_entry!(entry)
+      fl_raw = params[:fuel_log]
+      return if fl_raw.blank?
+
+      fl_params = fl_raw.permit(
+        :fleet_vehicle_id, :odometer, :notes,
+        fuel_log_lines_attributes: [ :id, :fuel_type, :brand, :liters, :cost, :_destroy ]
+      )
+      vehicle = Current.family.fleet_vehicles.find_by(id: fl_params[:fleet_vehicle_id])
+      return unless vehicle
+
+      fuel_log = entry.fuel_log || vehicle.fuel_logs.new(entry: entry)
+      fuel_log.assign_attributes(
+        fleet_vehicle: vehicle,
+        account: entry.account,
+        logged_at: entry.date,
+        odometer: fl_params[:odometer].presence,
+        notes: fl_params[:notes].presence
+      )
+      if fl_params[:fuel_log_lines_attributes].present?
+        fuel_log.assign_attributes(fuel_log_lines_attributes: fl_params[:fuel_log_lines_attributes])
+      end
+      fuel_log.save!
     end
 
     def entry_params

@@ -57,6 +57,45 @@ data class TransferInfoDto(
 )
 
 @Serializable
+data class TransactionFuelLogLineDto(
+    val id: String? = null,
+    val fuel_type: String = "nafta",
+    val brand: String? = null,
+    val liters: Double = 0.0,
+    val cost: Double = 0.0
+)
+
+@Serializable
+data class TransactionFuelLogDto(
+    val id: String? = null,
+    val fleet_vehicle_id: String,
+    val vehicle_plate: String? = null,
+    val odometer: Double? = null,
+    val notes: String? = null,
+    val liters: Double = 0.0,
+    val cost: Double = 0.0,
+    val fuel_log_lines: List<TransactionFuelLogLineDto> = emptyList()
+)
+
+@Serializable
+data class TransactionFuelLogLineRequestDto(
+    val id: String? = null,
+    val fuel_type: String,
+    val brand: String? = null,
+    val liters: Double,
+    val cost: Double,
+    val _destroy: Boolean? = null
+)
+
+@Serializable
+data class TransactionFuelLogRequestDto(
+    val fleet_vehicle_id: String,
+    val odometer: Double? = null,
+    val notes: String? = null,
+    val fuel_log_lines_attributes: List<TransactionFuelLogLineRequestDto>
+)
+
+@Serializable
 data class TransactionDetailDto(
     val id: String,
     val date: String,
@@ -73,6 +112,7 @@ data class TransactionDetailDto(
     val tags: List<TagRefDto> = emptyList(),
     val transfer: TransferInfoDto? = null,
     val location: TransactionLocationDto? = null,
+    val fuel_log: TransactionFuelLogDto? = null,
     val has_invoice_photo: Boolean = false,
     val invoice_photo: InvoicePhotoDto? = null,
     val created_at: String,
@@ -95,7 +135,10 @@ data class CreateTransactionBody(
     val currency: String? = null,
     val category_id: String? = null,
     val merchant_id: String? = null,
-    val tag_ids: List<String>? = null
+    val tag_ids: List<String>? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val fuel_log: TransactionFuelLogRequestDto? = null
 )
 
 @Serializable
@@ -114,5 +157,8 @@ data class UpdateTransactionBody(
     val currency: String? = null,
     val category_id: String? = null,
     val merchant_id: String? = null,
-    val tag_ids: List<String>? = null
+    val tag_ids: List<String>? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val fuel_log: TransactionFuelLogRequestDto? = null
 )

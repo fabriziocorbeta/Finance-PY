@@ -111,6 +111,28 @@ else
   json.location nil
 end
 
+fuel_log = transaction.entry&.fuel_log
+if fuel_log.present?
+  json.fuel_log do
+    json.id fuel_log.id
+    json.fleet_vehicle_id fuel_log.fleet_vehicle_id
+    json.vehicle_plate fuel_log.fleet_vehicle&.plate
+    json.odometer fuel_log.odometer&.to_f
+    json.notes fuel_log.notes
+    json.liters fuel_log.liters.to_f
+    json.cost fuel_log.cost.to_f
+    json.fuel_log_lines fuel_log.fuel_log_lines do |line|
+      json.id line.id
+      json.fuel_type line.fuel_type
+      json.brand line.brand
+      json.liters line.liters.to_f
+      json.cost line.cost.to_f
+    end
+  end
+else
+  json.fuel_log nil
+end
+
 json.has_invoice_photo transaction.attachments.attached?
 if transaction.attachments.attached?
   att = transaction.attachments.first

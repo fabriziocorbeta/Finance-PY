@@ -24,7 +24,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -38,6 +41,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -57,6 +61,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.CategoryDto
+import py.com.cdco.financespy.api.dto.FleetVehicleDto
 import py.com.cdco.financespy.api.dto.MerchantDto
 import py.com.cdco.financespy.api.dto.TagDto
 import py.com.cdco.financespy.screens.components.TransactionLocationMap
@@ -75,7 +80,8 @@ fun TransactionFormScreen(
     onSaved: () -> Unit,
     onCancel: () -> Unit,
     onPickInvoicePhoto: ((onPicked: (ByteArray, String, String) -> Unit) -> Unit)? = null,
-    onTakeInvoicePhoto: ((onPicked: (ByteArray, String, String) -> Unit) -> Unit)? = null
+    onTakeInvoicePhoto: ((onPicked: (ByteArray, String, String) -> Unit) -> Unit)? = null,
+    onRequestCurrentLocation: ((onLocation: (Double, Double) -> Unit) -> Unit)? = null
 ) {
     val state by viewModel.state.collectAsState()
     var showPhotoPreviewDialog by remember { mutableStateOf(false) }
@@ -210,11 +216,54 @@ fun TransactionFormScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Only present for transactions the Wallet notification
-                // pipeline captured with the device-location toggle on; null
-                // for everything else, nothing renders here then.
-                state.location?.let { location ->
-                    TransactionLocationMap(location = location)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Ubicación",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = FinancePyColors.textSecondary()
+                    )
+                    state.location?.let { location ->
+                        TransactionLocationMap(location = location)
+                    }
+                    if (onRequestCurrentLocation != null) {
+                        OutlinedButton(
+                            onClick = {
+                                onRequestCurrentLocation { lat, lng ->
+                                    viewModel.setCapturedLocation(lat, lng)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                if (state.location != null) "Actualizar con ubicación actual (precisa)"
+                                else "Usar mi ubicación actual (precisa)"
+                            )
+                        }
+                    }
+                }
+
+                if (state.fleetVehicles.isNotEmpty() || state.isFuelLogEnabled) {
+                    FuelLogSectionCard(
+                        enabled = state.isFuelLogEnabled,
+                        onToggle = viewModel::setFuelLogEnabled,
+                        vehicles = state.fleetVehicles,
+                        selectedVehicleId = state.fuelLogVehicleId,
+                        onSelectVehicle = viewModel::updateFuelLogVehicleId,
+                        odometer = state.fuelLogOdometer,
+                        onOdometerChange = viewModel::updateFuelLogOdometer,
+                        notes = state.fuelLogNotes,
+                        onNotesChange = viewModel::updateFuelLogNotes,
+                        lines = state.fuelLogLines,
+                        onAddLine = viewModel::addFuelLogLine,
+                        onRemoveLine = viewModel::removeFuelLogLine,
+                        onUpdateLine = viewModel::updateFuelLogLine
+                    )
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -461,4 +510,239 @@ private fun ColorDot(hexColor: String) {
             .clip(CircleShape)
             .background(parseHexColor(hexColor))
     )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FuelLogSectionCard(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+    vehicles: List<FleetVehicleDto>,
+    selectedVehicleId: String?,
+    onSelectVehicle: (String?) -> Unit,
+    odometer: String,
+    onOdometerChange: (String) -> Unit,
+    notes: String,
+    onNotesChange: (String) -> Unit,
+    lines: List<FuelLogFormLineState>,
+    onAddLine: () -> Unit,
+    onRemoveLine: (Int) -> Unit,
+    onUpdateLine: (Int, String?, String?, String?, String?) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = FinancePyColors.surface())
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Carga de Combustible (Flota)",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = FinancePyColors.textPrimary()
+                    )
+                    Text(
+                        text = "Desglosá vehículo, odómetro, combustible y litros",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = FinancePyColors.textSecondary()
+                    )
+                }
+                Switch(checked = enabled, onCheckedChange = onToggle)
+            }
+
+            if (enabled) {
+                FleetVehicleDropdown(
+                    vehicles = vehicles,
+                    selectedId = selectedVehicleId,
+                    onSelect = onSelectVehicle
+                )
+
+                AppTextField(
+                    value = odometer,
+                    onValueChange = onOdometerChange,
+                    label = "Odómetro (km)",
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                val fuelTypes = listOf("nafta", "alcohol", "gnc", "diesel")
+                lines.forEachIndexed { index, line ->
+                    var fuelDropdownExpanded by remember(index) { mutableStateOf(false) }
+                    var brandDropdownExpanded by remember(index) { mutableStateOf(false) }
+                    val brandSuggestions = when (line.fuelType) {
+                        "nafta" -> listOf("Podium", "Super 97", "Grid", "Prix")
+                        "diesel" -> listOf("Podium", "Euro 6", "Euro 5")
+                        else -> emptyList()
+                    }
+                    val fuelLabel = when (line.fuelType) {
+                        "nafta" -> "Nafta"
+                        "alcohol" -> "Alcohol"
+                        "gnc" -> "GNC"
+                        "diesel" -> "Diesel"
+                        else -> line.fuelType
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, FinancePyColors.borderPrimary(), RoundedCornerShape(10.dp))
+                            .padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Combustible #${index + 1}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = FinancePyColors.textSecondary()
+                            )
+                            if (lines.size > 1) {
+                                IconButton(
+                                    onClick = { onRemoveLine(index) },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Eliminar línea",
+                                        tint = FinancePyColors.destructive(),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Box {
+                            DropdownTrigger(
+                                text = fuelLabel,
+                                onClick = { fuelDropdownExpanded = true }
+                            )
+                            DropdownMenu(
+                                expanded = fuelDropdownExpanded,
+                                onDismissRequest = { fuelDropdownExpanded = false }
+                            ) {
+                                fuelTypes.forEach { ft ->
+                                    val label = when (ft) {
+                                        "nafta" -> "Nafta"
+                                        "alcohol" -> "Alcohol"
+                                        "gnc" -> "GNC"
+                                        "diesel" -> "Diesel"
+                                        else -> ft
+                                    }
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = {
+                                            val defaultBrand = when (ft) {
+                                                "nafta" -> "Podium"
+                                                "diesel" -> "Euro 6"
+                                                else -> ""
+                                            }
+                                            onUpdateLine(index, ft, defaultBrand, null, null)
+                                            fuelDropdownExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        AppTextField(
+                            value = line.brand,
+                            onValueChange = { onUpdateLine(index, null, it, null, null) },
+                            label = "Marca / Tipo (ej: Podium, Euro 6)",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        if (brandSuggestions.isNotEmpty()) {
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                brandSuggestions.forEach { suggestion ->
+                                    FilterChip(
+                                        selected = line.brand == suggestion,
+                                        onClick = { onUpdateLine(index, null, suggestion, null, null) },
+                                        label = { Text(suggestion) }
+                                    )
+                                }
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            AppTextField(
+                                value = line.litersText,
+                                onValueChange = { onUpdateLine(index, null, null, it, null) },
+                                label = "Litros",
+                                modifier = Modifier.weight(1f)
+                            )
+                            AppTextField(
+                                value = line.costText,
+                                onValueChange = { onUpdateLine(index, null, null, null, it) },
+                                label = "Monto",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+
+                TextButton(onClick = onAddLine) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Agregar otro combustible")
+                }
+
+                AppTextField(
+                    value = notes,
+                    onValueChange = onNotesChange,
+                    label = "Notas de la carga (flota)",
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FleetVehicleDropdown(
+    vehicles: List<FleetVehicleDto>,
+    selectedId: String?,
+    onSelect: (String?) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selected = vehicles.find { it.id == selectedId }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = "Vehículo",
+            style = MaterialTheme.typography.labelMedium,
+            color = FinancePyColors.textSecondary()
+        )
+        Box {
+            DropdownTrigger(
+                text = selected?.let { "${it.plate} · ${it.brand} ${it.model}" } ?: "Seleccioná un vehículo",
+                onClick = { expanded = true }
+            )
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                vehicles.forEach { vehicle ->
+                    DropdownMenuItem(
+                        text = { Text("${vehicle.plate} · ${vehicle.brand} ${vehicle.model}") },
+                        onClick = {
+                            expanded = false
+                            onSelect(vehicle.id)
+                        }
+                    )
+                }
+            }
+        }
+    }
 }
