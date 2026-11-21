@@ -216,24 +216,22 @@ class Api::V1::TransactionsController < Api::V1::BaseController
       return
     end
 
-    @transaction.with_lock do
-      existing_ids = @transaction.attachments.pluck(:id)
-      proxy = @transaction.attachments.attach(file)
+    existing_ids = @transaction.attachments.pluck(:id)
+    @transaction.attachments.attach(file)
 
-      if @transaction.valid?
-        @transaction.attachments.select { |a| existing_ids.include?(a.id) }.each(&:purge) if existing_ids.any?
-        @transaction.reload
-        render :show, status: :ok
-      else
-        errors = @transaction.errors.full_messages
-        Array(proxy).reject { |a| existing_ids.include?(a.id) }.each(&:purge)
-        @transaction.reload
-        render json: {
-          error: "validation_failed",
-          message: errors.first || "Invoice photo could not be uploaded",
-          errors: errors
-        }, status: :unprocessable_entity
-      end
+    if @transaction.valid?
+      @transaction.attachments.where(id: existing_ids).each(&:purge) if existing_ids.any?
+      @transaction.reload
+      render :show, status: :ok
+    else
+      errors = @transaction.errors.full_messages
+      @transaction.attachments.where.not(id: existing_ids).each(&:purge)
+      @transaction.reload
+      render json: {
+        error: "validation_failed",
+        message: errors.first || "Invoice photo could not be uploaded",
+        errors: errors
+      }, status: :unprocessable_entity
     end
   rescue => e
     Rails.logger.error "TransactionsController#upload_invoice_photo error: #{e.message}"
