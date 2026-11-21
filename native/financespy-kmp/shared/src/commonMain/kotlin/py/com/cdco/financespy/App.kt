@@ -176,6 +176,7 @@ fun App(
     onPickPdfFile: ((onPicked: (ByteArray, String) -> Unit) -> Unit)? = null,
     onPickInvoicePhoto: ((onPicked: (ByteArray, String, String) -> Unit) -> Unit)? = null,
     onTakeInvoicePhoto: ((onPicked: (ByteArray, String, String) -> Unit) -> Unit)? = null,
+    onRequestCurrentLocation: ((onLocation: (Double, Double) -> Unit) -> Unit)? = null,
     chatsListViewModelFactory: () -> ChatsListViewModel = { TODO() },
     chatViewModelFactory: (String?) -> ChatViewModel = { _ -> TODO() }
 ) {
@@ -413,7 +414,8 @@ fun App(
                                 },
                                 onCancel = { navController.popBackStack() },
                                 onPickInvoicePhoto = onPickInvoicePhoto,
-                                onTakeInvoicePhoto = onTakeInvoicePhoto
+                                onTakeInvoicePhoto = onTakeInvoicePhoto,
+                                onRequestCurrentLocation = onRequestCurrentLocation
                             )
                         }
                         composable(Routes.RULES) {

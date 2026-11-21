@@ -51,6 +51,8 @@ class FuelLog < ApplicationRecord
     end
 
     def create_associated_entry
+      return if entry_id.present?
+
       transaction = Transaction.new(category: fuel_category)
       entry = account.entries.create!(
         entryable: transaction,

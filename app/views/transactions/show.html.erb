@@ -130,6 +130,162 @@
       <%= render "transactions/attachments", transaction: @entry.transaction, can_upload: can_annotate_entry?, can_delete: can_edit_entry? %>
     <% end %>
 
+    <% tx_extra = @entry.transaction.extra || {} %>
+    <% tx_lat = tx_extra["latitude"] %>
+    <% tx_lng = tx_extra["longitude"] %>
+    <% dialog.with_section(title: "Ubicación", open: tx_lat.present?) do %>
+      <div class="px-3 py-2 space-y-3">
+        <% if tx_lat.present? && tx_lng.present? %>
+          <div class="p-3 rounded-lg border border-secondary bg-container space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <%= icon "map-pin", size: "sm", color: "primary" %>
+                <span class="text-sm font-medium text-primary"><%= format("%.5f, %.5f", tx_lat.to_f, tx_lng.to_f) %></span>
+              </div>
+              <%= link_to "Ver en Maps",
+                    "https://www.google.com/maps?q=#{tx_lat},#{tx_lng}",
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                    class: "text-xs font-medium text-primary underline" %>
+            </div>
+            <% if tx_extra["device"].present? %>
+              <p class="text-xs text-secondary">Dispositivo: <%= tx_extra["device"] %></p>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-xs text-secondary">Este gasto todavía no tiene ubicación registrada.</p>
+        <% end %>
+
+        <% if can_edit_entry? || can_annotate_entry? %>
+          <%= form_with url: transaction_path(@entry), method: :patch, class: "inline-block" do |loc_f| %>
+            <%= loc_f.hidden_field :latitude, value: "", id: "tx_loc_lat_#{@entry.id}" %>
+            <%= loc_f.hidden_field :longitude, value: "", id: "tx_loc_lng_#{@entry.id}" %>
+            <button type="button"
+                    class="btn btn--outline btn--sm inline-flex items-center gap-1.5"
+                    onclick="if(navigator.geolocation){var b=this;b.disabled=true;navigator.geolocation.getCurrentPosition(function(p){document.getElementById('tx_loc_lat_<%= @entry.id %>').value=p.coords.latitude;document.getElementById('tx_loc_lng_<%= @entry.id %>').value=p.coords.longitude;b.form.requestSubmit();},function(){b.disabled=false;alert('No se pudo obtener la ubicación del navegador.');},{enableHighAccuracy:true,timeout:10000});}">
+              <%= icon "crosshair", size: "xs" %>
+              <span><%= tx_lat.present? ? "Actualizar con mi ubicación actual" : "Usar mi ubicación actual" %></span>
+            </button>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% fleet_vehicles = Current.family.fleet_vehicles.order(:plate).to_a %>
+    <% is_fuel_category = @entry.transaction.category&.name&.downcase&.include?("combustible") %>
+    <% if @entry.fuel_log.present? || (fleet_vehicles.any? && !@entry.transaction.transfer?) %>
+      <% existing_fl = @entry.fuel_log %>
+      <% fuel_log_for_form = existing_fl || fleet_vehicles.first.fuel_logs.new(entry: @entry, account: @entry.account, logged_at: @entry.date) %>
+      <% fuel_log_for_form.fuel_log_lines.build(cost: @entry.amount.abs) if fuel_log_for_form.fuel_log_lines.empty? %>
+      <% dialog.with_section(title: "Carga de Combustible (Flota)", open: existing_fl.present? || is_fuel_category) do %>
+        <div class="px-3 py-2">
+          <%= form_with url: transaction_path(@entry), method: :patch, class: "space-y-3" do %>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs font-medium text-secondary uppercase tracking-wide block mb-1">Vehículo</label>
+                <select name="fuel_log[fleet_vehicle_id]" class="form-field__input border border-secondary rounded-md px-2.5 py-1.5 w-full text-sm text-primary bg-container" required>
+                  <% fleet_vehicles.each do |v| %>
+                    <option value="<%= v.id %>" <%= "selected" if v.id == fuel_log_for_form.fleet_vehicle_id %>><%= [v.plate, v.brand, v.model].compact.join(" · ") %></option>
+                  <% end %>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-medium text-secondary uppercase tracking-wide block mb-1">Odómetro (km)</label>
+                <input type="number" step="1" name="fuel_log[odometer]" value="<%= fuel_log_for_form.odometer&.to_i %>" class="form-field__input border border-secondary rounded-md px-2.5 py-1.5 w-full text-sm text-primary bg-container" />
+              </div>
+            </div>
+
+            <div class="space-y-2" data-controller="fuel-log-lines">
+              <label class="text-xs font-medium text-secondary uppercase tracking-wide block">Detalle por tipo de combustible</label>
+              <div data-fuel-log-lines-target="container" class="space-y-2">
+                <% fuel_log_for_form.fuel_log_lines.each_with_index do |line, idx| %>
+                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 rounded-lg border border-secondary bg-container" data-controller="element-removal fuel-type-selector">
+                    <input type="hidden" name="fuel_log[fuel_log_lines_attributes][<%= idx %>][id]" value="<%= line.id %>" />
+                    <div>
+                      <label class="text-[11px] text-secondary block mb-0.5">Tipo</label>
+                      <select name="fuel_log[fuel_log_lines_attributes][<%= idx %>][fuel_type]" class="form-field__input border border-secondary rounded px-2 py-1 w-full text-xs bg-container" data-fuel-type-selector-target="fuelType" data-action="change->fuel-type-selector#updateBrands">
+                        <% FuelLogLine.fuel_types.keys.each do |k| %>
+                          <option value="<%= k %>" <%= "selected" if line.fuel_type == k %>><%= t("fuel_logs.fuel_types.#{k}") %></option>
+                        <% end %>
+                      </select>
+                    </div>
+                    <div class="<%= 'hidden' unless %w[nafta diesel].include?(line.fuel_type.to_s) %>" data-fuel-type-selector-target="brandContainer">
+                      <label class="text-[11px] text-secondary block mb-0.5">Marca</label>
+                      <select name="fuel_log[fuel_log_lines_attributes][<%= idx %>][brand]" class="form-field__input border border-secondary rounded px-2 py-1 w-full text-xs bg-container" data-fuel-type-selector-target="brandSelect" data-prompt="<%= t("fleet_vehicles.show.select_brand") %>">
+                        <option value=""><%= t("fleet_vehicles.show.select_brand") %></option>
+                        <% FuelLogLine.brands_for(line.fuel_type).each do |b| %>
+                          <option value="<%= b %>" <%= "selected" if line.brand == b %>><%= b %></option>
+                        <% end %>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="text-[11px] text-secondary block mb-0.5">Litros</label>
+                      <input type="number" step="any" min="0.01" required name="fuel_log[fuel_log_lines_attributes][<%= idx %>][liters]" value="<%= line.liters %>" class="form-field__input border border-secondary rounded px-2 py-1 w-full text-xs bg-container" />
+                    </div>
+                    <div class="flex items-end gap-1">
+                      <div class="flex-1">
+                        <label class="text-[11px] text-secondary block mb-0.5">Monto</label>
+                        <input type="number" step="any" min="0" required name="fuel_log[fuel_log_lines_attributes][<%= idx %>][cost]" value="<%= line.cost %>" class="form-field__input border border-secondary rounded px-2 py-1 w-full text-xs bg-container" />
+                      </div>
+                      <button type="button" class="text-secondary hover:text-destructive p-1" data-action="click->element-removal#remove" title="Quitar">
+                        <%= icon "trash-2", size: "xs", color: "current" %>
+                      </button>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+
+              <template data-fuel-log-lines-target="template">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 rounded-lg border border-secondary bg-container" data-controller="element-removal fuel-type-selector">
+                  <div>
+                    <label class="text-[11px] text-secondary block mb-0.5">Tipo</label>
+                    <select name="fuel_log[fuel_log_lines_attributes][NEW_RECORD][fuel_type]" class="form-field__input border border-secondary rounded px-2 py-1 w-full text-xs bg-container" data-fuel-type-selector-target="fuelType" data-action="change->fuel-type-selector#updateBrands">
+                      <% FuelLogLine.fuel_types.keys.each do |k| %>
+                        <option value="<%= k %>"><%= t("fuel_logs.fuel_types.#{k}") %></option>
+                      <% end %>
+                    </select>
+                  </div>
+                  <div class="hidden" data-fuel-type-selector-target="brandContainer">
+                    <label class="text-[11px] text-secondary block mb-0.5">Marca</label>
+                    <select name="fuel_log[fuel_log_lines_attributes][NEW_RECORD][brand]" class="form-field__input border border-secondary rounded px-2 py-1 w-full text-xs bg-container" data-fuel-type-selector-target="brandSelect" data-prompt="<%= t("fleet_vehicles.show.select_brand") %>">
+                      <option value=""><%= t("fleet_vehicles.show.select_brand") %></option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="text-[11px] text-secondary block mb-0.5">Litros</label>
+                    <input type="number" step="any" min="0.01" required name="fuel_log[fuel_log_lines_attributes][NEW_RECORD][liters]" class="form-field__input border border-secondary rounded px-2 py-1 w-full text-xs bg-container" />
+                  </div>
+                  <div class="flex items-end gap-1">
+                    <div class="flex-1">
+                      <label class="text-[11px] text-secondary block mb-0.5">Monto</label>
+                      <input type="number" step="any" min="0" required name="fuel_log[fuel_log_lines_attributes][NEW_RECORD][cost]" class="form-field__input border border-secondary rounded px-2 py-1 w-full text-xs bg-container" />
+                    </div>
+                    <button type="button" class="text-secondary hover:text-destructive p-1" data-action="click->element-removal#remove" title="Quitar">
+                      <%= icon "trash-2", size: "xs", color: "current" %>
+                    </button>
+                  </div>
+                </div>
+              </template>
+
+              <button type="button" data-action="click->fuel-log-lines#add" class="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1">
+                <%= icon "plus", size: "xs" %>
+                <span>Agregar otro combustible</span>
+              </button>
+            </div>
+
+            <div>
+              <label class="text-xs font-medium text-secondary uppercase tracking-wide block mb-1">Notas de carga</label>
+              <input type="text" name="fuel_log[notes]" value="<%= fuel_log_for_form.notes %>" class="form-field__input border border-secondary rounded-md px-2.5 py-1.5 w-full text-sm text-primary bg-container" />
+            </div>
+
+            <div class="flex justify-end">
+              <button type="submit" class="btn btn--primary btn--sm">Guardar carga de combustible</button>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+
     <% if (details = build_transaction_extra_details(@entry)) %>
       <% dialog.with_section(title: "Additional details", open: false) do %>
         <div class="px-3 py-2 space-y-3">

@@ -89,11 +89,13 @@ class Api::V1::TransactionsController < Api::V1::BaseController
     @entry = account.entries.new(entry_params_for_create)
 
     if @entry.save
+      apply_location_to_transaction!(@entry.transaction)
+      apply_fuel_log_to_entry!(@entry)
       @entry.sync_account_later
       @entry.lock_saved_attributes!
       @entry.transaction.lock_attr!(:tag_ids) if @entry.transaction.tags.any?
 
-      @transaction = @entry.transaction
+      @transaction = @entry.transaction.reload
       render :show, status: :created
     else
       render json: {
@@ -134,10 +136,13 @@ class Api::V1::TransactionsController < Api::V1::BaseController
           @entry.transaction.lock_attr!(:tag_ids) if @entry.transaction.tags.any?
         end
 
+        apply_location_to_transaction!(@entry.transaction)
+        apply_fuel_log_to_entry!(@entry)
+
         @entry.sync_account_later
         @entry.lock_saved_attributes!
 
-        @transaction = @entry.transaction
+        @transaction = @entry.transaction.reload
         render :show
       else
         render json: {
@@ -367,8 +372,60 @@ class Api::V1::TransactionsController < Api::V1::BaseController
     def transaction_params
       params.require(:transaction).permit(
         :account_id, :date, :amount, :name, :description, :notes, :currency,
-        :category_id, :merchant_id, :nature, :exchange_rate, tag_ids: []
+        :category_id, :merchant_id, :nature, :exchange_rate,
+        tag_ids: []
       )
+    end
+
+    def location_params
+      params.require(:transaction).permit(:latitude, :longitude)
+    end
+
+    def fuel_log_params
+      params.require(:transaction).permit(
+        fuel_log: [
+          :fleet_vehicle_id, :odometer, :notes,
+          fuel_log_lines_attributes: [ :fuel_type, :brand, :liters, :cost, :_destroy ]
+        ]
+      )[:fuel_log]
+    end
+
+    def apply_location_to_transaction!(transaction)
+      lat = Float(location_params[:latitude], exception: false)
+      lng = Float(location_params[:longitude], exception: false)
+      return unless lat && lng && lat.between?(-90.0, 90.0) && lng.between?(-180.0, 180.0)
+
+      extra = (transaction.extra || {}).dup
+      extra["latitude"] = lat
+      extra["longitude"] = lng
+      transaction.update!(extra: extra)
+    end
+
+    def apply_fuel_log_to_entry!(entry)
+      fl_params = fuel_log_params
+      return if fl_params.blank?
+
+      vehicle = current_family.fleet_vehicles.find_by(id: fl_params[:fleet_vehicle_id])
+      return unless vehicle
+
+      fuel_log = entry.fuel_log || vehicle.fuel_logs.new(entry: entry)
+      fuel_log.assign_attributes(
+        fleet_vehicle: vehicle,
+        account: entry.account,
+        logged_at: entry.date,
+        odometer: fl_params[:odometer].presence,
+        notes: fl_params[:notes].presence
+      )
+      if fl_params[:fuel_log_lines_attributes].present?
+        fuel_log.fuel_log_lines.each(&:mark_for_destruction) if fuel_log.persisted?
+        fl_params[:fuel_log_lines_attributes].each do |line_attrs|
+          next if ActiveModel::Type::Boolean.new.cast(line_attrs[:_destroy])
+
+          fuel_log.fuel_log_lines.build(line_attrs.except(:_destroy))
+        end
+      end
+      fuel_log.save!
+      entry.reload
     end
 
     def entry_params_for_create

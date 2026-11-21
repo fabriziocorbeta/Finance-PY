@@ -151,7 +151,9 @@ class MainActivity : FragmentActivity() {
     // as-is (true): Wallet capture then simply never finds the permission
     // granted at capture time and silently skips location, same as if the
     // user had left the toggle off -- no separate "denied" state to track.
-    private val locationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    private val locationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+        val granted = results[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            results[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         // The notification that triggers a capture arrives while this app is
         // in the background, so the plain (foreground-only) grant above is
         // not enough -- the fused provider silently refuses a fix for a
@@ -159,7 +161,7 @@ class MainActivity : FragmentActivity() {
         // location to be requested as ITS OWN separate permission, and only
         // after the foreground one is already granted (requesting both at
         // once is rejected outright on Android 11+), hence chaining it here
-        // rather than requesting it alongside COARSE above.
+        // rather than requesting it alongside foreground location above.
         if (granted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             requestBackgroundLocationIfNeeded()
         }
@@ -181,6 +183,51 @@ class MainActivity : FragmentActivity() {
         ) {
             backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
+    }
+
+    private var pendingLocationCallback: ((Double, Double) -> Unit)? = null
+    private val foregroundLocationLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+        val granted = results[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            results[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        val callback = pendingLocationCallback
+        pendingLocationCallback = null
+        if (granted && callback != null) {
+            fetchCurrentPreciseLocation(callback)
+        }
+    }
+
+    private fun requestCurrentLocation(onLocation: (Double, Double) -> Unit) {
+        val hasFine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val hasCoarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (hasFine || hasCoarse) {
+            fetchCurrentPreciseLocation(onLocation)
+        } else {
+            pendingLocationCallback = onLocation
+            foregroundLocationLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
+    @android.annotation.SuppressLint("MissingPermission")
+    private fun fetchCurrentPreciseLocation(onLocation: (Double, Double) -> Unit) {
+        val client = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(this)
+        val cts = com.google.android.gms.tasks.CancellationTokenSource()
+        client.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, cts.token)
+            .addOnSuccessListener { location ->
+                if (location != null) {
+                    onLocation(location.latitude, location.longitude)
+                } else {
+                    client.lastLocation.addOnSuccessListener { last ->
+                        if (last != null) {
+                            onLocation(last.latitude, last.longitude)
+                        }
+                    }
+                }
+            }
     }
 
     private val tokenStorage by lazy { AndroidTokenStorage(applicationContext) }
@@ -603,14 +650,23 @@ class MainActivity : FragmentActivity() {
                     walletLocationPreferences.setLocationCaptureEnabled(enabled)
                     walletLocationCaptureEnabled.value = enabled
                     if (enabled) {
-                        if (ContextCompat.checkSelfPermission(
-                                this,
-                                Manifest.permission.ACCESS_COARSE_LOCATION
-                            ) != PackageManager.PERMISSION_GRANTED
-                        ) {
+                        val hasFine = ContextCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED
+                        val hasCoarse = ContextCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED
+                        if (!hasFine && !hasCoarse) {
                             // locationPermissionLauncher's own callback chains into the
                             // background request once this one is granted.
-                            locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                            )
                         } else {
                             // Foreground already granted (e.g. re-enabling the toggle) --
                             // nothing will trigger the background request otherwise.
@@ -636,6 +692,7 @@ class MainActivity : FragmentActivity() {
                 onPickPdfFile = { onPicked -> pickPdfFile(onPicked) },
                 onPickInvoicePhoto = { onPicked -> pickInvoicePhoto(onPicked) },
                 onTakeInvoicePhoto = { onPicked -> takeInvoicePhoto(onPicked) },
+                onRequestCurrentLocation = { onLocation -> requestCurrentLocation(onLocation) },
                 chatsListViewModelFactory = { py.com.cdco.financespy.screens.ChatsListViewModel(scope = lifecycleScope, api = api, store = offlineStore) },
                 chatViewModelFactory = { chatId -> py.com.cdco.financespy.screens.ChatViewModel(scope = lifecycleScope, api = api, chatId = chatId, store = offlineStore) },
                 onOpenNotificationSettings = {

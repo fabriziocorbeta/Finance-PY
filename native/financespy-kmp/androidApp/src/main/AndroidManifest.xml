@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Optional, runtime-requested: approximate device location at the
-         moment a bank notification is captured (see WalletCaptureHandler /
-         WalletLocationPreferences). COARSE only: street-level precision is
-         enough, FINE would be unnecessarily invasive for this. -->
+    <!-- Optional, runtime-requested: device location (precise or approximate,
+         user's choice on Android 12+) at the moment a bank notification is
+         captured (see WalletCaptureHandler / WalletLocationPreferences). -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- The notification that triggers a capture arrives while this app is
          in the background (the bank's own app, or the system, has focus):
