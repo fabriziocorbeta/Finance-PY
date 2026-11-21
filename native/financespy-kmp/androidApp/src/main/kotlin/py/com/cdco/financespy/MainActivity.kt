@@ -151,7 +151,9 @@ class MainActivity : FragmentActivity() {
     // as-is (true): Wallet capture then simply never finds the permission
     // granted at capture time and silently skips location, same as if the
     // user had left the toggle off -- no separate "denied" state to track.
-    private val locationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    private val locationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+        val granted = results[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            results[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         // The notification that triggers a capture arrives while this app is
         // in the background, so the plain (foreground-only) grant above is
         // not enough -- the fused provider silently refuses a fix for a
@@ -159,7 +161,7 @@ class MainActivity : FragmentActivity() {
         // location to be requested as ITS OWN separate permission, and only
         // after the foreground one is already granted (requesting both at
         // once is rejected outright on Android 11+), hence chaining it here
-        // rather than requesting it alongside COARSE above.
+        // rather than requesting it alongside foreground location above.
         if (granted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             requestBackgroundLocationIfNeeded()
         }
@@ -603,14 +605,23 @@ class MainActivity : FragmentActivity() {
                     walletLocationPreferences.setLocationCaptureEnabled(enabled)
                     walletLocationCaptureEnabled.value = enabled
                     if (enabled) {
-                        if (ContextCompat.checkSelfPermission(
-                                this,
-                                Manifest.permission.ACCESS_COARSE_LOCATION
-                            ) != PackageManager.PERMISSION_GRANTED
-                        ) {
+                        val hasFine = ContextCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED
+                        val hasCoarse = ContextCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED
+                        if (!hasFine && !hasCoarse) {
                             // locationPermissionLauncher's own callback chains into the
                             // background request once this one is granted.
-                            locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                            )
                         } else {
                             // Foreground already granted (e.g. re-enabling the toggle) --
                             // nothing will trigger the background request otherwise.
