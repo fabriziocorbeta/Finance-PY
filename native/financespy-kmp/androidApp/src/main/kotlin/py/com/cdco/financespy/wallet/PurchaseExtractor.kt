@@ -16,8 +16,11 @@ interface BankNotificationExtractor {
 // <card>". Amount comes comma-grouped ("150,000") -- WebhookClient already
 // strips commas before posting, so left as-is.
 object WalletTapExtractor : BankNotificationExtractor {
+    // Google Wallet uses a non-breaking space (\u00A0) between "Gs." and the
+    // amount (e.g. "Gs.\u00A049.938 con Amex Gold ••2269"); Java Regex \s does
+    // NOT match \u00A0 by default, so include \u00A0 explicitly.
     private val PATTERN = Regex(
-        """(?:PYG|Gs\.?|₲)\s*([\d,.]+)\s+(?:con|with)\s+(.+)""",
+        """(?:PYG|Gs\.?|₲)[\s\u00A0]*([\d,.]+)[\s\u00A0]+(?:con|with)[\s\u00A0]+(.+)""",
         RegexOption.IGNORE_CASE
     )
 

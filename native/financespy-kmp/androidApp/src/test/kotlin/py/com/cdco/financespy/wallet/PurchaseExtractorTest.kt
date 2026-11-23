@@ -27,11 +27,12 @@ class PurchaseExtractorTest {
         assertEquals(1, purchases.size)
         assertEquals("150000", purchases[0].amount)
 
-        // new case 3: Gs. / ₲ / English "with"
-        purchases = extractor.extract("Biggie", "Gs. 45.000 con Amex ••2269")
+        // new case 3: Gs. with NBSP (\u00A0) as sent live by Google Wallet, ₲, English "with"
+        purchases = extractor.extract("CAFSA SA", "Gs.\u00A049.938 con Amex Gold ••2269")
         assertEquals(1, purchases.size)
-        assertEquals("45000", purchases[0].amount)
-        assertEquals("Amex ••2269", purchases[0].cardText)
+        assertEquals("49938", purchases[0].amount)
+        assertEquals("Amex Gold ••2269", purchases[0].cardText)
+        assertEquals("CAFSA SA", purchases[0].merchant)
 
         purchases = extractor.extract("Biggie", "₲45.000 with Amex ••2269")
         assertEquals(1, purchases.size)
