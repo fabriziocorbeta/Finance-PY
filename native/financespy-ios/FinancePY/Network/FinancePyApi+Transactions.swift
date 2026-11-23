@@ -13,6 +13,41 @@ struct TransferInfoDto: Codable {
     let otherAccount: AccountRefDto?
 }
 
+struct TransactionFuelLogLineDto: Codable, Identifiable, Hashable {
+    var id: String?
+    var fuelType: String
+    var brand: String?
+    var liters: Double
+    var cost: Double
+}
+
+struct TransactionFuelLogDto: Codable {
+    let id: String?
+    let fleetVehicleId: String
+    let vehiclePlate: String?
+    let odometer: Double?
+    let notes: String?
+    let liters: Double
+    let cost: Double
+    let fuelLogLines: [TransactionFuelLogLineDto]?
+}
+
+struct TransactionFuelLogLineRequestDto: Codable {
+    let id: String?
+    let fuelType: String
+    let brand: String?
+    let liters: Double
+    let cost: Double
+    let _destroy: Bool?
+}
+
+struct TransactionFuelLogRequestDto: Codable {
+    let fleetVehicleId: String
+    let odometer: Double?
+    let notes: String?
+    let fuelLogLinesAttributes: [TransactionFuelLogLineRequestDto]
+}
+
 struct TransactionDetailDto: Codable {
     let id: String
     let date: String
@@ -29,15 +64,18 @@ struct TransactionDetailDto: Codable {
     let tags: [TagRefDto]
     let transfer: TransferInfoDto?
     let location: TransactionLocationDto?
+    let fuelLog: TransactionFuelLogDto?
+    let hasInvoicePhoto: Bool?
+    let invoicePhoto: InvoicePhotoDto?
     let createdAt: String
     let updatedAt: String
 }
 
-struct CreateTransactionRequest: Encodable {
+struct CreateTransactionRequest: Codable {
     let transaction: CreateTransactionBody
 }
 
-struct CreateTransactionBody: Encodable {
+struct CreateTransactionBody: Codable {
     let accountId: String
     let date: String
     @AnyStringAmount var amount: String?
@@ -48,13 +86,46 @@ struct CreateTransactionBody: Encodable {
     let categoryId: String?
     let merchantId: String?
     let tagIds: [String]?
+    let latitude: Double?
+    let longitude: Double?
+    let fuelLog: TransactionFuelLogRequestDto?
+
+    init(
+        accountId: String,
+        date: String,
+        amount: String?,
+        nature: String,
+        name: String,
+        notes: String?,
+        currency: String?,
+        categoryId: String?,
+        merchantId: String?,
+        tagIds: [String]?,
+        latitude: Double? = nil,
+        longitude: Double? = nil,
+        fuelLog: TransactionFuelLogRequestDto? = nil
+    ) {
+        self.accountId = accountId
+        self.date = date
+        self._amount = AnyStringAmount(wrappedValue: amount)
+        self.nature = nature
+        self.name = name
+        self.notes = notes
+        self.currency = currency
+        self.categoryId = categoryId
+        self.merchantId = merchantId
+        self.tagIds = tagIds
+        self.latitude = latitude
+        self.longitude = longitude
+        self.fuelLog = fuelLog
+    }
 }
 
-struct UpdateTransactionRequest: Encodable {
+struct UpdateTransactionRequest: Codable {
     let transaction: UpdateTransactionBody
 }
 
-struct UpdateTransactionBody: Encodable {
+struct UpdateTransactionBody: Codable {
     let accountId: String?
     let date: String?
     @AnyStringAmount var amount: String?
@@ -65,6 +136,39 @@ struct UpdateTransactionBody: Encodable {
     let categoryId: String?
     let merchantId: String?
     let tagIds: [String]?
+    let latitude: Double?
+    let longitude: Double?
+    let fuelLog: TransactionFuelLogRequestDto?
+
+    init(
+        accountId: String?,
+        date: String?,
+        amount: String?,
+        nature: String?,
+        name: String?,
+        notes: String?,
+        currency: String?,
+        categoryId: String?,
+        merchantId: String?,
+        tagIds: [String]?,
+        latitude: Double? = nil,
+        longitude: Double? = nil,
+        fuelLog: TransactionFuelLogRequestDto? = nil
+    ) {
+        self.accountId = accountId
+        self.date = date
+        self._amount = AnyStringAmount(wrappedValue: amount)
+        self.nature = nature
+        self.name = name
+        self.notes = notes
+        self.currency = currency
+        self.categoryId = categoryId
+        self.merchantId = merchantId
+        self.tagIds = tagIds
+        self.latitude = latitude
+        self.longitude = longitude
+        self.fuelLog = fuelLog
+    }
 }
 
 extension FinancePyApi {
@@ -80,5 +184,32 @@ extension FinancePyApi {
 
     func deleteTransaction(id: String) async throws -> EmptyResponse {
         return try await ApiClient.shared.request(method: "DELETE", path: "/api/v1/transactions/\(id)")
+    }
+
+    func uploadTransactionInvoicePhoto(
+        transactionId: String,
+        fileData: Data,
+        fileName: String,
+        mimeType: String = "image/jpeg"
+    ) async throws -> TransactionDetailDto {
+        try await ApiClient.shared.uploadMultipart(
+            path: "/api/v1/transactions/\(transactionId)/invoice_photo",
+            fields: [:],
+            fileField: "invoice_photo",
+            fileData: fileData,
+            fileName: fileName,
+            mimeType: mimeType
+        )
+    }
+
+    func deleteTransactionInvoicePhoto(transactionId: String) async throws -> TransactionDetailDto {
+        try await ApiClient.shared.request(
+            method: "DELETE",
+            path: "/api/v1/transactions/\(transactionId)/invoice_photo"
+        )
+    }
+
+    func downloadTransactionInvoicePhoto(transactionId: String) async throws -> Data {
+        try await ApiClient.shared.downloadData(path: "/api/v1/transactions/\(transactionId)/invoice_photo")
     }
 }

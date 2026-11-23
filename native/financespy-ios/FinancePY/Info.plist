@@ -22,6 +22,12 @@
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>FinancePY usa Face ID para proteger el acceso a tu información financiera.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>FinancePY necesita acceso a la cámara para tomar fotos de facturas y comprobantes.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FinancePY necesita acceso a tu galería para adjuntar fotos de facturas y comprobantes.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>FinancePY usa tu ubicación precisa para registrar dónde realizaste un gasto.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

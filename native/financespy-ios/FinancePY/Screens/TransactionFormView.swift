@@ -25,12 +25,18 @@ struct TransactionFormView: View {
     @State private var isSaving = false
     @State private var error: String? = nil
 
-    // Approximate DEVICE location at Wallet-capture time (Android-only
-    // capture) -- never the real merchant location. nil for any
-    // transaction not captured that way, and always nil for a new one.
+    @ObservedObject private var locationManager = LocationCaptureManager.shared
     @State private var locationLatitude: Double? = nil
     @State private var locationLongitude: Double? = nil
     @State private var locationDevice: String? = nil
+
+    // Invoice photo state
+    @State private var hasRemoteInvoicePhoto: Bool = false
+    @State private var remoteInvoiceFilename: String? = nil
+    @State private var invoicePhotoData: Data? = nil
+    @State private var pendingPhotoUpload: (data: Data, fileName: String)? = nil
+    @State private var isLoadingPhoto: Bool = false
+    @State private var isUploadingPhoto: Bool = false
 
     init(transactionToEdit: EntryEntity? = nil) {
         self.transactionToEdit = transactionToEdit
@@ -104,13 +110,56 @@ struct TransactionFormView: View {
                     TextField("Introduce una nota", text: $notes)
                 }
 
-                if let latitude = locationLatitude, let longitude = locationLongitude {
-                    Section(header: Text("Ubicación aproximada (dispositivo)")) {
-                        TransactionLocationMapView(
-                            latitude: latitude,
-                            longitude: longitude,
-                            device: locationDevice
-                        )
+                Section(header: Text("Foto de factura")) {
+                    InvoicePhotoSectionView(
+                        title: "Comprobante / Factura",
+                        hasRemotePhoto: hasRemoteInvoicePhoto,
+                        remoteFilename: remoteInvoiceFilename,
+                        imageData: invoicePhotoData,
+                        isLoading: isLoadingPhoto,
+                        isUploading: isUploadingPhoto,
+                        onPickImage: { data, fileName in
+                            invoicePhotoData = data
+                            pendingPhotoUpload = (data, fileName)
+                        },
+                        onDeletePhoto: {
+                            Task { await deleteInvoicePhoto() }
+                        }
+                    )
+                }
+
+                if nature == "expense" || (locationLatitude != nil && locationLongitude != nil) {
+                    Section(header: Text("Ubicación del gasto")) {
+                        if let latitude = locationLatitude, let longitude = locationLongitude {
+                            TransactionLocationMapView(
+                                latitude: latitude,
+                                longitude: longitude,
+                                device: locationDevice
+                            )
+                            Button(role: .destructive) {
+                                locationLatitude = nil
+                                locationLongitude = nil
+                                locationDevice = nil
+                            } label: {
+                                Label("Quitar ubicación", systemImage: "location.slash")
+                            }
+                        } else {
+                            Button {
+                                Task { await captureCurrentLocation() }
+                            } label: {
+                                HStack {
+                                    Label(
+                                        locationManager.isCapturing ? "Obteniendo ubicación..." : "Capturar ubicación actual",
+                                        systemImage: "location.fill"
+                                    )
+                                    if locationManager.isCapturing {
+                                        Spacer()
+                                        ProgressView()
+                                    }
+                                }
+                            }
+                            .disabled(locationManager.isCapturing)
+                        }
                     }
                 }
 
@@ -154,6 +203,57 @@ struct TransactionFormView: View {
                     print("Error fetching merchants: \(error)")
                     #endif
                 }
+                if transactionToEdit == nil,
+                   nature == "expense",
+                   locationManager.isPreciseLocationEnabled,
+                   locationLatitude == nil {
+                    await captureCurrentLocation()
+                }
+                if let txId = transactionToEdit?.transaction?.id {
+                    await loadExistingInvoicePhoto(transactionId: txId)
+                }
+            }
+        }
+    }
+
+    private func captureCurrentLocation() async {
+        if let coord = await locationManager.requestCurrentLocation() {
+            locationLatitude = coord.latitude
+            locationLongitude = coord.longitude
+            locationDevice = "iPhone"
+        }
+    }
+
+    private func loadExistingInvoicePhoto(transactionId: String) async {
+        isLoadingPhoto = true
+        defer { isLoadingPhoto = false }
+        if let data = try? await FinancePyApi.shared.downloadTransactionInvoicePhoto(transactionId: transactionId),
+           !data.isEmpty {
+            invoicePhotoData = data
+            hasRemoteInvoicePhoto = true
+        }
+    }
+
+    private func deleteInvoicePhoto() async {
+        pendingPhotoUpload = nil
+        invoicePhotoData = nil
+        guard hasRemoteInvoicePhoto, let txId = transactionToEdit?.transaction?.id else {
+            hasRemoteInvoicePhoto = false
+            return
+        }
+        isUploadingPhoto = true
+        defer { isUploadingPhoto = false }
+        do {
+            _ = try await FinancePyApi.shared.deleteTransactionInvoicePhoto(transactionId: txId)
+            hasRemoteInvoicePhoto = false
+            remoteInvoiceFilename = nil
+        } catch {
+            if NetworkMonitor.isConnectivityError(error) {
+                OfflineOutbox.shared.enqueue(.deleteInvoicePhoto(entityType: .transaction, entityId: txId))
+                hasRemoteInvoicePhoto = false
+                remoteInvoiceFilename = nil
+            } else {
+                self.error = error.localizedDescription
             }
         }
     }
@@ -172,7 +272,6 @@ struct TransactionFormView: View {
             return
         }
 
-
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let formattedDate = dateFormatter.string(from: date)
@@ -181,41 +280,124 @@ struct TransactionFormView: View {
         error = nil
 
         do {
+            let savedTransactionId: String
             if let tx = transactionToEdit, let transactionId = tx.transaction?.id {
                 let body = UpdateTransactionBody(
                     accountId: accountId,
                     date: formattedDate,
-                    amount: AnyStringAmount(wrappedValue: amountText),
+                    amount: amountText,
                     nature: nature,
                     name: name,
                     notes: notes.isEmpty ? nil : notes,
                     currency: nil,
                     categoryId: categoryId.isEmpty ? nil : categoryId,
                     merchantId: merchantId.isEmpty ? nil : merchantId,
-                    tagIds: nil
+                    tagIds: nil,
+                    latitude: locationLatitude,
+                    longitude: locationLongitude
                 )
 
                 let updated = try await FinancePyApi.shared.updateTransaction(id: transactionId, body: body)
                 updateEntity(updated: updated)
+                savedTransactionId = updated.id
             } else {
                 let body = CreateTransactionBody(
                     accountId: accountId,
                     date: formattedDate,
-                    amount: AnyStringAmount(wrappedValue: amountText),
+                    amount: amountText,
                     nature: nature,
                     name: name,
                     notes: notes.isEmpty ? nil : notes,
-                    currency: nil, // API defaults to family currency if omitted
+                    currency: nil,
                     categoryId: categoryId.isEmpty ? nil : categoryId,
                     merchantId: merchantId.isEmpty ? nil : merchantId,
-                    tagIds: nil
+                    tagIds: nil,
+                    latitude: locationLatitude,
+                    longitude: locationLongitude
                 )
 
                 let created = try await FinancePyApi.shared.createTransaction(body: body)
                 updateEntity(updated: created)
+                savedTransactionId = created.id
             }
+
+            if let pending = pendingPhotoUpload {
+                isUploadingPhoto = true
+                do {
+                    _ = try await FinancePyApi.shared.uploadTransactionInvoicePhoto(
+                        transactionId: savedTransactionId,
+                        fileData: pending.data,
+                        fileName: pending.fileName
+                    )
+                } catch {
+                    if NetworkMonitor.isConnectivityError(error) {
+                        let blobId = OfflineBlobStore.shared.saveBlob(pending.data)
+                        OfflineOutbox.shared.enqueue(.uploadInvoicePhoto(
+                            entityType: .transaction,
+                            entityId: savedTransactionId,
+                            blobId: blobId,
+                            fileName: pending.fileName,
+                            mimeType: "image/jpeg"
+                        ))
+                    } else {
+                        self.error = error.localizedDescription
+                        isUploadingPhoto = false
+                        isSaving = false
+                        return
+                    }
+                }
+                isUploadingPhoto = false
+            }
+
             dismiss()
         } catch {
+            if NetworkMonitor.isConnectivityError(error) {
+                if let tx = transactionToEdit, let transactionId = tx.transaction?.id {
+                    let body = UpdateTransactionBody(
+                        accountId: accountId,
+                        date: formattedDate,
+                        amount: amountText,
+                        nature: nature,
+                        name: name,
+                        notes: notes.isEmpty ? nil : notes,
+                        currency: nil,
+                        categoryId: categoryId.isEmpty ? nil : categoryId,
+                        merchantId: merchantId.isEmpty ? nil : merchantId,
+                        tagIds: nil,
+                        latitude: locationLatitude,
+                        longitude: locationLongitude
+                    )
+                    OfflineOutbox.shared.enqueue(.updateTransaction(id: transactionId, body: body))
+                    if let pending = pendingPhotoUpload {
+                        let blobId = OfflineBlobStore.shared.saveBlob(pending.data)
+                        OfflineOutbox.shared.enqueue(.uploadInvoicePhoto(
+                            entityType: .transaction,
+                            entityId: transactionId,
+                            blobId: blobId,
+                            fileName: pending.fileName,
+                            mimeType: "image/jpeg"
+                        ))
+                    }
+                } else {
+                    let body = CreateTransactionBody(
+                        accountId: accountId,
+                        date: formattedDate,
+                        amount: amountText,
+                        nature: nature,
+                        name: name,
+                        notes: notes.isEmpty ? nil : notes,
+                        currency: nil,
+                        categoryId: categoryId.isEmpty ? nil : categoryId,
+                        merchantId: merchantId.isEmpty ? nil : merchantId,
+                        tagIds: nil,
+                        latitude: locationLatitude,
+                        longitude: locationLongitude
+                    )
+                    OfflineOutbox.shared.enqueue(.createTransaction(body))
+                }
+                dismiss()
+                return
+            }
             self.error = error.localizedDescription
             isSaving = false
         }

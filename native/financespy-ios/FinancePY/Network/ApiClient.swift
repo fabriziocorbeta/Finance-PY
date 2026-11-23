@@ -338,6 +338,51 @@ final class ApiClient {
             throw NetworkError.decodingError(error)
         }
     }
+
+    func downloadData(path: String) async throws -> Data {
+        do {
+            return try await performDownloadData(path: path)
+        } catch NetworkError.unauthorized {
+            do {
+                try await AuthRepository.shared.refreshAccessToken()
+            } catch {
+                tokenStorage.clear()
+                throw NetworkError.unauthorized
+            }
+            return try await performDownloadData(path: path)
+        }
+    }
+
+    private func performDownloadData(path: String) async throws -> Data {
+        let fullUrlString = path.hasPrefix("http://") || path.hasPrefix("https://") ? path : "\(baseUrl)\(path)"
+        guard let url = URL(string: fullUrlString) else {
+            throw NetworkError.invalidUrl
+        }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "GET"
+
+        if let token = tokenStorage.accessToken(), !token.isEmpty {
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (data, response) = try await session.data(for: urlRequest)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw NetworkError.unauthorized
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let errorBody = String(data: data, encoding: .utf8)
+            throw NetworkError.httpError(httpResponse.statusCode, errorBody)
+        }
+
+        return data
+    }
 }
 
 private struct EmptyBody: Encodable {}

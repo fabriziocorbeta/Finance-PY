@@ -12,6 +12,7 @@ final class SyncEngine: ObservableObject {
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
+        self.balanceSheet = OfflineCache.shared.load(BalanceSheetResponse.self, key: "balance_sheet")
     }
 
     func syncAll() async -> Result<Void, Error> {
@@ -20,8 +21,13 @@ final class SyncEngine: ObservableObject {
         var hadError = false
         var accumulatedErrors: [String] = []
 
+        await OfflineOutbox.shared.flush()
+
+        var syncedAccounts: [AccountDto] = []
+        var syncedTransactions: [TransactionListItemDto] = []
+
         do {
-            try await syncAccounts()
+            syncedAccounts = try await syncAccounts()
         } catch {
             hadError = true
             accumulatedErrors.append("Accounts: \(error.localizedDescription)")
@@ -35,7 +41,7 @@ final class SyncEngine: ObservableObject {
         }
 
         do {
-            try await syncTransactions()
+            syncedTransactions = try await syncTransactions()
         } catch {
             hadError = true
             accumulatedErrors.append("Transactions: \(error.localizedDescription)")
@@ -55,6 +61,8 @@ final class SyncEngine: ObservableObject {
             accumulatedErrors.append("Save: \(error.localizedDescription)")
         }
 
+        updateWidgetSnapshot(accounts: syncedAccounts, transactions: syncedTransactions)
+
         isSyncing = false
 
         if hadError {
@@ -69,8 +77,9 @@ final class SyncEngine: ObservableObject {
         }
     }
 
-    private func syncAccounts() async throws {
+    private func syncAccounts() async throws -> [AccountDto] {
         let remoteAccounts = try await api.fetchAllAccounts()
+        OfflineCache.shared.save(remoteAccounts, key: "accounts")
         let remoteIds = Set(remoteAccounts.map { $0.id })
 
         // Fetch existing local accounts
@@ -113,14 +122,16 @@ final class SyncEngine: ObservableObject {
                 modelContext.delete(local)
             }
         }
+        return remoteAccounts
     }
 
     private func syncBalanceSheet() async throws {
         let bs = try await api.fetchBalanceSheet()
         self.balanceSheet = bs
+        OfflineCache.shared.save(bs, key: "balance_sheet")
     }
 
-    private func syncTransactions() async throws {
+    private func syncTransactions() async throws -> [TransactionListItemDto] {
         let calendar = Calendar.current
         let ninetyDaysAgo = calendar.date(byAdding: .day, value: -90, to: Date()) ?? Date()
         let formatter = DateFormatter()
@@ -231,6 +242,54 @@ final class SyncEngine: ObservableObject {
                 modelContext.delete(local)
             }
         }
+        return remoteTransactions
+    }
+
+    private func updateWidgetSnapshot(accounts: [AccountDto], transactions: [TransactionListItemDto]) {
+        let resolvedAccounts = accounts.isEmpty
+            ? (OfflineCache.shared.load([AccountDto].self, key: "accounts") ?? [])
+            : accounts
+        guard !resolvedAccounts.isEmpty || balanceSheet != nil else { return }
+
+        let currency = balanceSheet?.currency ?? resolvedAccounts.first?.currency ?? "PYG"
+        let liquidCents = WidgetDataStore.computeLiquidAvailableCents(from: resolvedAccounts)
+        let netWorthCents = balanceSheet?.netWorth.cents ?? liquidCents
+        let assetsCents = balanceSheet?.assets.cents ?? liquidCents
+        let liabilitiesCents = balanceSheet?.liabilities.cents ?? 0
+
+        let monthPrefix: String = {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM"
+            return formatter.string(from: Date())
+        }()
+
+        let expenses = transactions.filter { $0.signedAmountCents < 0 }
+        let monthlyExpensesCents = expenses
+            .filter { $0.date.hasPrefix(monthPrefix) }
+            .reduce(Int64(0)) { $0 + abs($1.signedAmountCents) }
+
+        let recentExpenses = expenses.prefix(5).map { tx in
+            WidgetExpenseItem(
+                id: tx.id,
+                name: tx.name,
+                date: tx.date,
+                amountCents: abs(tx.signedAmountCents),
+                currency: tx.currency,
+                categoryName: tx.category?.name
+            )
+        }
+
+        let snapshot = WidgetSnapshot(
+            currency: currency,
+            liquidAvailableCents: liquidCents,
+            netWorthCents: netWorthCents,
+            assetsCents: assetsCents,
+            liabilitiesCents: liabilitiesCents,
+            monthlyExpensesCents: monthlyExpensesCents,
+            recentExpenses: recentExpenses,
+            updatedAt: Date()
+        )
+        WidgetDataStore.shared.saveSnapshot(snapshot)
     }
 
     private func syncReceivables() async throws {

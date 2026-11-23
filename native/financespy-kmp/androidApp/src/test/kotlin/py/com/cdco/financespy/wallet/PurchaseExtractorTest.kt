@@ -26,6 +26,17 @@ class PurchaseExtractorTest {
         purchases = extractor.extract("Super6", "PYG 150000 con MiTarjeta")
         assertEquals(1, purchases.size)
         assertEquals("150000", purchases[0].amount)
+
+        // new case 3: Gs. / ₲ / English "with"
+        purchases = extractor.extract("Biggie", "Gs. 45.000 con Amex ••2269")
+        assertEquals(1, purchases.size)
+        assertEquals("45000", purchases[0].amount)
+        assertEquals("Amex ••2269", purchases[0].cardText)
+
+        purchases = extractor.extract("Biggie", "₲45.000 with Amex ••2269")
+        assertEquals(1, purchases.size)
+        assertEquals("45000", purchases[0].amount)
+        assertEquals("Amex ••2269", purchases[0].cardText)
     }
 
     @Test

@@ -13,6 +13,13 @@ struct PurchaseOrderFormView: View {
     @State private var notes = ""
     @State private var items: [PurchaseOrderItemAttributes] = []
 
+    @State private var hasRemoteInvoicePhoto = false
+    @State private var remoteInvoiceFilename: String?
+    @State private var invoicePhotoData: Data?
+    @State private var pendingPhotoUpload: (data: Data, fileName: String)?
+    @State private var isLoadingPhoto = false
+    @State private var isUploadingPhoto = false
+
     var body: some View {
         Form {
             if let errorMessage = errorMessage {
@@ -47,6 +54,24 @@ struct PurchaseOrderFormView: View {
                 Button("Agregar Producto") {
                     items.append(PurchaseOrderItemAttributes(productId: "", quantity: 1, unitCost: 0.0))
                 }
+            }
+
+            Section("Foto de Factura") {
+                InvoicePhotoSectionView(
+                    title: "Factura adjunta",
+                    hasRemotePhoto: hasRemoteInvoicePhoto,
+                    remoteFilename: remoteInvoiceFilename,
+                    imageData: invoicePhotoData,
+                    isLoading: isLoadingPhoto,
+                    isUploading: isUploadingPhoto,
+                    onPickImage: { data, fileName in
+                        invoicePhotoData = data
+                        pendingPhotoUpload = (data, fileName)
+                    },
+                    onDeletePhoto: {
+                        Task { await deleteInvoicePhoto() }
+                    }
+                )
             }
         }
         .navigationTitle(poId == nil ? "Nueva OC" : "Editar OC")
@@ -86,10 +111,43 @@ struct PurchaseOrderFormView: View {
                     PurchaseOrderItemAttributes(id: $0.id, productId: $0.productId, quantity: $0.quantity, unitCost: $0.unitCost)
                 }
             }
+            self.hasRemoteInvoicePhoto = po.hasInvoicePhoto ?? false
+            self.remoteInvoiceFilename = po.invoicePhoto?.filename
+            if self.hasRemoteInvoicePhoto {
+                isLoadingPhoto = true
+                if let data = try? await FinancePyApi.shared.downloadPurchaseOrderInvoicePhoto(purchaseOrderId: id) {
+                    invoicePhotoData = data
+                }
+                isLoadingPhoto = false
+            }
         } catch {
             self.errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    private func deleteInvoicePhoto() async {
+        pendingPhotoUpload = nil
+        invoicePhotoData = nil
+        guard hasRemoteInvoicePhoto, let id = poId else {
+            hasRemoteInvoicePhoto = false
+            return
+        }
+        isUploadingPhoto = true
+        defer { isUploadingPhoto = false }
+        do {
+            _ = try await FinancePyApi.shared.deletePurchaseOrderInvoicePhoto(purchaseOrderId: id)
+            hasRemoteInvoicePhoto = false
+            remoteInvoiceFilename = nil
+        } catch {
+            if NetworkMonitor.isConnectivityError(error) {
+                OfflineOutbox.shared.enqueue(.deleteInvoicePhoto(entityType: .purchaseOrder, entityId: id))
+                hasRemoteInvoicePhoto = false
+                remoteInvoiceFilename = nil
+            } else {
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 
     private func savePurchaseOrder() async {
@@ -104,13 +162,43 @@ struct PurchaseOrderFormView: View {
         )
 
         do {
+            let saved: PurchaseOrderDto
             if let id = poId {
-                _ = try await FinancePyApi.shared.updatePurchaseOrder(id: id, payload: payload)
+                saved = try await FinancePyApi.shared.updatePurchaseOrder(id: id, payload: payload)
             } else {
-                _ = try await FinancePyApi.shared.createPurchaseOrder(payload: payload)
+                saved = try await FinancePyApi.shared.createPurchaseOrder(payload: payload)
+            }
+            if let pending = pendingPhotoUpload {
+                isUploadingPhoto = true
+                do {
+                    _ = try await FinancePyApi.shared.uploadPurchaseOrderInvoicePhoto(
+                        purchaseOrderId: saved.id,
+                        fileData: pending.data,
+                        fileName: pending.fileName
+                    )
+                } catch {
+                    if NetworkMonitor.isConnectivityError(error) {
+                        let blobId = OfflineBlobStore.shared.saveBlob(pending.data)
+                        OfflineOutbox.shared.enqueue(.uploadInvoicePhoto(entityType: .purchaseOrder, entityId: saved.id, blobId: blobId, fileName: pending.fileName, mimeType: "image/jpeg"))
+                    }
+                }
+                isUploadingPhoto = false
             }
             dismiss()
         } catch {
+            if NetworkMonitor.isConnectivityError(error) {
+                if let id = poId {
+                    OfflineOutbox.shared.enqueue(.updatePurchaseOrder(id: id, payload: payload))
+                    if let pending = pendingPhotoUpload {
+                        let blobId = OfflineBlobStore.shared.saveBlob(pending.data)
+                        OfflineOutbox.shared.enqueue(.uploadInvoicePhoto(entityType: .purchaseOrder, entityId: id, blobId: blobId, fileName: pending.fileName, mimeType: "image/jpeg"))
+                    }
+                } else {
+                    OfflineOutbox.shared.enqueue(.createPurchaseOrder(payload))
+                }
+                dismiss()
+                return
+            }
             self.errorMessage = error.localizedDescription
         }
         isLoading = false

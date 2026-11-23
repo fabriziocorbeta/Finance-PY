@@ -335,6 +335,29 @@ class Provider::Openai < Provider
     end
   end
 
+  def analyze_invoice(content:, content_type:, filename: nil, model: "", family: nil)
+    with_provider_response do
+      effective_model = model.presence || (content_type.to_s.downcase.start_with?("image/") ? VISION_MODEL : @default_model)
+
+      trace = create_langfuse_trace(
+        name: "openai.analyze_invoice",
+        input: { content_size: content&.bytesize, content_type: content_type, filename: filename }
+      )
+
+      result = InvoiceAnalyzer.new(
+        client: bank_statement_client,
+        content: content,
+        content_type: content_type,
+        filename: filename,
+        model: effective_model
+      ).analyze
+
+      upsert_langfuse_trace(trace: trace, output: { merchant: result[:merchant], amount: result[:amount], currency: result[:currency] })
+
+      result
+    end
+  end
+
   def chat_response(
     prompt,
     model:,

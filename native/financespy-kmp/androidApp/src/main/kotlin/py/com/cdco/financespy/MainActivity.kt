@@ -214,9 +214,26 @@ class MainActivity : FragmentActivity() {
 
     @android.annotation.SuppressLint("MissingPermission")
     private fun fetchCurrentPreciseLocation(onLocation: (Double, Double) -> Unit) {
+        val hasFine = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
         val client = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(this)
         val cts = com.google.android.gms.tasks.CancellationTokenSource()
-        client.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, cts.token)
+        val requestBuilder = com.google.android.gms.location.CurrentLocationRequest.Builder()
+        if (hasFine) {
+            requestBuilder
+                .setPriority(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY)
+                .setGranularity(com.google.android.gms.location.Granularity.GRANULARITY_FINE)
+                .setMaxUpdateAgeMillis(10_000L)
+                .setDurationMillis(8_000L)
+        } else {
+            requestBuilder
+                .setPriority(com.google.android.gms.location.Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+                .setGranularity(com.google.android.gms.location.Granularity.GRANULARITY_COARSE)
+                .setDurationMillis(5_000L)
+        }
+        client.getCurrentLocation(requestBuilder.build(), cts.token)
             .addOnSuccessListener { location ->
                 if (location != null) {
                     onLocation(location.latitude, location.longitude)

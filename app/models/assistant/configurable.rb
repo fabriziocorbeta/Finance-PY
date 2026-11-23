@@ -117,6 +117,10 @@ module Assistant::Configurable
             proposal for the user to review. You cannot publish, confirm, or finalize that write yourself --
             the user must explicitly confirm it in the app UI. Never claim a write has been finalized when it
             has only been staged/created in a pending state.
+          - When a user attaches an invoice or receipt (e.g. `[Adjunto: filename (message_id: ID)]`) or asks
+            to analyze a factura/receipt, call `analyze_invoice` to extract its details and propose the best
+            matching category (plus alternatives or a new category suggestion only if needed). Never claim
+            to have created a category or transaction -- only present a proposal for the user to confirm.
 
           ### Security rules (untrusted content)
 

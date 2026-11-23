@@ -216,6 +216,12 @@ fun TransactionFormScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // Only present for transactions the Wallet notification
+                // pipeline captured with the device-location toggle on; null
+                // for everything else, nothing renders here then.
+                state.location?.let { location ->
+                    TransactionLocationMap(location = location)
+                }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Ubicación",

@@ -1,4 +1,12 @@
 class UserMessage < Message
+  has_one_attached :attachment, dependent: :purge_later
+
+  MAX_ATTACHMENT_SIZE = 10.megabytes
+  ALLOWED_ATTACHMENT_CONTENT_TYPES = %w[
+    image/jpeg image/jpg image/png image/gif image/webp
+    application/pdf
+  ].freeze
+
   validates :ai_model, presence: true
   validates :content, length: { maximum: Message::MAX_CONTENT_LENGTH }, allow_blank: true
 
@@ -8,11 +16,20 @@ class UserMessage < Message
   # input and must be validated before we act on them, not trusted.
   validate :ai_model_allowed, if: :ai_model?
   validate :llm_quota_available, on: :create
+  validate :validate_attachment, if: -> { attachment.attached? }
 
   after_create_commit :request_response_later
 
   def role
     "user"
+  end
+
+  def prompt_for_llm
+    base = content.to_s
+    return base unless attachment.attached?
+
+    note = "[Adjunto: #{attachment.filename} (message_id: #{id})]"
+    base.present? ? "#{base}\n\n#{note}" : note
   end
 
   def request_response_later
@@ -41,5 +58,18 @@ class UserMessage < Message
       return unless UsageQuota.llm_quota_exceeded?(family)
 
       errors.add(:base, I18n.t("chats.errors.llm_quota_exceeded"))
+    end
+
+    def validate_attachment
+      blob = attachment.blob
+      return unless blob
+
+      unless blob.content_type.in?(ALLOWED_ATTACHMENT_CONTENT_TYPES)
+        errors.add(:attachment, "must be a JPEG, PNG, GIF, WebP image or PDF")
+      end
+
+      if blob.byte_size > MAX_ATTACHMENT_SIZE
+        errors.add(:attachment, "must be less than 10MB")
+      end
     end
 end

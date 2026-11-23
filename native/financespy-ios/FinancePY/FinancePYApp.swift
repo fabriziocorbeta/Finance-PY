@@ -52,6 +52,10 @@ enum ModelContainerFactory {
     @MainActor
     static func clearCache(in container: ModelContainer) {
         UserDefaults.standard.removeObject(forKey: "hasCompletedOnboarding")
+        OfflineCache.shared.clearAll()
+        OfflineBlobStore.shared.clearAll()
+        OfflineOutbox.shared.clearAll()
+        WidgetDataStore.shared.clear()
         let context = container.mainContext
         do {
             try context.delete(model: TransactionEntity.self)
@@ -373,29 +377,32 @@ struct MainTabView: View {
     }
 
     var body: some View {
-        Group {
-            if hasCompletedOnboarding {
-                mainTabs
-            } else if isCheckingAccounts {
-                ProgressView("Cargando...")
-                    .task {
-                        await checkOnboardingStatus()
-                    }
-            } else if shouldShowOnboarding {
-                NavigationStack {
-                    OnboardingView(onComplete: {
-                        hasCompletedOnboarding = true
-                    })
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button("Omitir") {
-                                hasCompletedOnboarding = true
+        VStack(spacing: 0) {
+            OfflineBannerView()
+            Group {
+                if hasCompletedOnboarding {
+                    mainTabs
+                } else if isCheckingAccounts {
+                    ProgressView("Cargando...")
+                        .task {
+                            await checkOnboardingStatus()
+                        }
+                } else if shouldShowOnboarding {
+                    NavigationStack {
+                        OnboardingView(onComplete: {
+                            hasCompletedOnboarding = true
+                        })
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button("Omitir") {
+                                    hasCompletedOnboarding = true
+                                }
                             }
                         }
                     }
+                } else {
+                    mainTabs
                 }
-            } else {
-                mainTabs
             }
         }
     }

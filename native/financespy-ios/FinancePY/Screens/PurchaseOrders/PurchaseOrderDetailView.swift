@@ -11,6 +11,10 @@ struct PurchaseOrderDetailView: View {
     @State private var showReceiveAlert = false
     @State private var showCancelAlert = false
 
+    @State private var invoicePhotoData: Data?
+    @State private var isLoadingPhoto = false
+    @State private var isUploadingPhoto = false
+
     var body: some View {
         Group {
             if isLoading && po == nil {
@@ -50,6 +54,23 @@ struct PurchaseOrderDetailView: View {
                                 }
                             }
                         }
+                    }
+
+                    Section("Foto de Factura") {
+                        InvoicePhotoSectionView(
+                            title: "Factura adjunta",
+                            hasRemotePhoto: po.hasInvoicePhoto ?? false,
+                            remoteFilename: po.invoicePhoto?.filename,
+                            imageData: invoicePhotoData,
+                            isLoading: isLoadingPhoto,
+                            isUploading: isUploadingPhoto,
+                            onPickImage: { data, fileName in
+                                Task { await uploadInvoicePhoto(data: data, fileName: fileName) }
+                            },
+                            onDeletePhoto: {
+                                Task { await deleteInvoicePhoto() }
+                            }
+                        )
                     }
 
                     Section("Acciones") {
@@ -104,20 +125,80 @@ struct PurchaseOrderDetailView: View {
 
     private func fetchPurchaseOrder() async {
         isLoading = true
+        if po == nil {
+            po = OfflineCache.shared.load(PurchaseOrderDto.self, key: "purchase_order_\(poId)")
+        }
         do {
-            po = try await FinancePyApi.shared.fetchPurchaseOrder(id: poId)
+            let fetched = try await FinancePyApi.shared.fetchPurchaseOrder(id: poId)
+            po = fetched
+            OfflineCache.shared.save(fetched, key: "purchase_order_\(poId)")
+            if fetched.hasInvoicePhoto == true {
+                await loadInvoicePhoto()
+            }
         } catch {
-            errorMessage = error.localizedDescription
+            if po == nil {
+                errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
+    }
+
+    private func loadInvoicePhoto() async {
+        isLoadingPhoto = true
+        defer { isLoadingPhoto = false }
+        if let data = try? await FinancePyApi.shared.downloadPurchaseOrderInvoicePhoto(purchaseOrderId: poId) {
+            invoicePhotoData = data
+        }
+    }
+
+    private func uploadInvoicePhoto(data: Data, fileName: String) async {
+        invoicePhotoData = data
+        isUploadingPhoto = true
+        defer { isUploadingPhoto = false }
+        do {
+            let updated = try await FinancePyApi.shared.uploadPurchaseOrderInvoicePhoto(purchaseOrderId: poId, fileData: data, fileName: fileName)
+            po = updated
+            OfflineCache.shared.save(updated, key: "purchase_order_\(poId)")
+        } catch {
+            if NetworkMonitor.isConnectivityError(error) {
+                let blobId = OfflineBlobStore.shared.saveBlob(data)
+                OfflineOutbox.shared.enqueue(.uploadInvoicePhoto(entityType: .purchaseOrder, entityId: poId, blobId: blobId, fileName: fileName, mimeType: "image/jpeg"))
+            } else {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func deleteInvoicePhoto() async {
+        isUploadingPhoto = true
+        defer { isUploadingPhoto = false }
+        do {
+            let updated = try await FinancePyApi.shared.deletePurchaseOrderInvoicePhoto(purchaseOrderId: poId)
+            po = updated
+            invoicePhotoData = nil
+            OfflineCache.shared.save(updated, key: "purchase_order_\(poId)")
+        } catch {
+            if NetworkMonitor.isConnectivityError(error) {
+                OfflineOutbox.shared.enqueue(.deleteInvoicePhoto(entityType: .purchaseOrder, entityId: poId))
+                invoicePhotoData = nil
+            } else {
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 
     private func receivePurchaseOrder() async {
         isLoading = true
         do {
-            po = try await FinancePyApi.shared.receivePurchaseOrder(id: poId)
+            let updated = try await FinancePyApi.shared.receivePurchaseOrder(id: poId)
+            po = updated
+            OfflineCache.shared.save(updated, key: "purchase_order_\(poId)")
         } catch {
-            errorMessage = error.localizedDescription
+            if NetworkMonitor.isConnectivityError(error) {
+                OfflineOutbox.shared.enqueue(.receivePurchaseOrder(id: poId))
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }
@@ -125,9 +206,15 @@ struct PurchaseOrderDetailView: View {
     private func cancelPurchaseOrder() async {
         isLoading = true
         do {
-            po = try await FinancePyApi.shared.cancelPurchaseOrder(id: poId)
+            let updated = try await FinancePyApi.shared.cancelPurchaseOrder(id: poId)
+            po = updated
+            OfflineCache.shared.save(updated, key: "purchase_order_\(poId)")
         } catch {
-            errorMessage = error.localizedDescription
+            if NetworkMonitor.isConnectivityError(error) {
+                OfflineOutbox.shared.enqueue(.cancelPurchaseOrder(id: poId))
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }

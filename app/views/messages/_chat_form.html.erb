@@ -15,18 +15,35 @@
                   data: { chat_target: "input", action: "input->chat#autoResize keydown->chat#handleInputKeyDown" },
                   rows: 1 %>
 
+    <div id="chat-attachment-preview" class="hidden items-center gap-1.5 px-2 py-1 text-xs text-secondary bg-surface-inset rounded-md w-fit">
+      <%= icon("paperclip", size: "xs") %>
+      <span id="chat-attachment-filename" class="truncate max-w-[200px]"></span>
+    </div>
+
     <div class="flex items-center justify-between gap-1">
-      <div class="items-center gap-1 hidden lg:flex">
-        <%= render DS::Link.new(
-          icon: "plus",
-          variant: "icon",
-          href: new_import_path(type: "PdfImport"),
-          frame: "modal"
-        ) %>
-        <%# These are disabled for now, but in the future, will all open specific menus with their own context and search %>
-        <% ["command", "at-sign", "mouse-pointer-click"].each do |icon| %>
-          <%= icon(icon, as_button: true, disabled: true, class: "cursor-not-allowed", title: "Coming soon") %>
-        <% end %>
+      <div class="items-center gap-1 flex">
+        <label for="chat-attachment-input"
+               class="inline-flex items-center justify-center p-1.5 rounded-md text-secondary hover:text-primary hover:bg-surface-hover cursor-pointer"
+               title="Adjuntar factura (imagen o PDF)">
+          <%= icon("paperclip", size: "sm") %>
+          <%= f.file_field :attachment,
+                id: "chat-attachment-input",
+                accept: "image/jpeg,image/png,image/gif,image/webp,application/pdf",
+                class: "hidden",
+                onchange: "const p=document.getElementById('chat-attachment-preview'),n=document.getElementById('chat-attachment-filename'); if(this.files&&this.files[0]){n.textContent=this.files[0].name;p.classList.remove('hidden');p.classList.add('flex');}else{p.classList.add('hidden');p.classList.remove('flex');}" %>
+        </label>
+        <div class="items-center gap-1 hidden lg:flex">
+          <%= render DS::Link.new(
+            icon: "plus",
+            variant: "icon",
+            href: new_import_path(type: "PdfImport"),
+            frame: "modal"
+          ) %>
+          <%# These are disabled for now, but in the future, will all open specific menus with their own context and search %>
+          <% ["command", "at-sign", "mouse-pointer-click"].each do |icon| %>
+            <%= icon(icon, as_button: true, disabled: true, class: "cursor-not-allowed", title: "Coming soon") %>
+          <% end %>
+        </div>
       </div>
 
       <%= icon("arrow-up", as_button: true, type: "submit") %>

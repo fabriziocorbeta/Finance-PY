@@ -9,6 +9,7 @@ class MessagesController < ApplicationController
       content: message_params[:content],
       ai_model: message_params[:ai_model].presence || Chat.default_model
     )
+    @message.attachment.attach(message_params[:attachment]) if message_params[:attachment].present?
 
     if @message.save
       redirect_to chat_path(@chat, thinking: true)
@@ -25,6 +26,6 @@ class MessagesController < ApplicationController
     end
 
     def message_params
-      params.require(:message).permit(:content, :ai_model)
+      params.require(:message).permit(:content, :ai_model, :attachment)
     end
 end

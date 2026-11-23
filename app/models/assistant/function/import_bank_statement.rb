@@ -130,7 +130,6 @@ class Assistant::Function::ImportBankStatement < Assistant::Function
 
     response = provider.extract_bank_statement(
       pdf_content: pdf_import.pdf_file_content,
-      model: openai_model,
       family: family
     )
 
@@ -223,10 +222,6 @@ class Assistant::Function::ImportBankStatement < Assistant::Function
           ]
         end
       end
-    end
-
-    def openai_model
-      ENV["OPENAI_MODEL"].presence || Provider::Openai::DEFAULT_MODEL
     end
 
     # Cheap local page count (no network/AI call), same approach as

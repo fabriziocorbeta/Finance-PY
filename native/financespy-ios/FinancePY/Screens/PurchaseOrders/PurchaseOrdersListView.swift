@@ -2,46 +2,78 @@ import SwiftUI
 
 struct PurchaseOrdersListView: View {
     @State private var purchaseOrders: [PurchaseOrderDto] = []
+    @State private var selectedStatus: String = "all"
     @State private var isLoading = false
     @State private var errorMessage: String?
 
+    private var filteredPurchaseOrders: [PurchaseOrderDto] {
+        if selectedStatus == "all" { return purchaseOrders }
+        return purchaseOrders.filter { $0.status == selectedStatus }
+    }
+
     var body: some View {
         NavigationStack {
-            Group {
-                if isLoading && purchaseOrders.isEmpty {
-                    ProgressView("Cargando órdenes de compra...")
-                } else if let errorMessage = errorMessage {
-                    VStack {
-                        Text("Error: \(errorMessage)")
-                            .foregroundColor(.red)
-                        Button("Reintentar") {
-                            Task { await fetchPurchaseOrders() }
-                        }
-                        .padding()
-                    }
-                } else if purchaseOrders.isEmpty {
-                    Text("No hay órdenes de compra registradas.")
-                        .foregroundColor(.secondary)
-                } else {
-                    List(purchaseOrders) { po in
-                        NavigationLink(destination: PurchaseOrderDetailView(poId: po.id)) {
-                            VStack(alignment: .leading) {
-                                Text(po.supplierName ?? "Sin proveedor")
-                                    .font(.headline)
-                                HStack {
-                                    Text(Formatters.purchaseOrderStatusLabel(po.status))
-                                        .font(.caption)
-                                        .foregroundColor(statusColor(for: po.status))
-                                    Spacer()
-                                    Text(money(po.total, po.currency))
-                                        .font(.subheadline)
-                                        .bold()
-                                }
+            VStack(spacing: 0) {
+                Picker("Estado", selection: $selectedStatus) {
+                    Text("Todas").tag("all")
+                    Text("Borrador").tag("draft")
+                    Text("Recibidas").tag("received")
+                    Text("Canceladas").tag("cancelled")
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+
+                Group {
+                    if isLoading && purchaseOrders.isEmpty {
+                        ProgressView("Cargando órdenes de compra...")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if let errorMessage = errorMessage, purchaseOrders.isEmpty {
+                        VStack {
+                            Text("Error: \(errorMessage)")
+                                .foregroundColor(.red)
+                            Button("Reintentar") {
+                                Task { await fetchPurchaseOrders() }
                             }
-                            .padding(.vertical, 4)
+                            .padding()
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if filteredPurchaseOrders.isEmpty {
+                        Text("No hay órdenes de compra registradas.")
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        List(filteredPurchaseOrders) { po in
+                            NavigationLink(destination: PurchaseOrderDetailView(poId: po.id)) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text(po.supplierName ?? "Sin proveedor")
+                                            .font(.headline)
+                                        Spacer()
+                                        if po.hasInvoicePhoto == true {
+                                            Image(systemName: "doc.text.image")
+                                                .font(.caption)
+                                                .foregroundColor(.blue)
+                                        }
+                                    }
+                                    HStack {
+                                        Text(Formatters.purchaseOrderStatusLabel(po.status))
+                                            .font(.caption)
+                                            .foregroundColor(statusColor(for: po.status))
+                                        Spacer()
+                                        Text(money(po.total, po.currency))
+                                            .font(.subheadline)
+                                            .bold()
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                        .listStyle(.plain)
+                        .refreshable {
+                            await fetchPurchaseOrders()
                         }
                     }
-                    .listStyle(.plain)
                 }
             }
             .navigationTitle("Órdenes de Compra")
@@ -68,10 +100,17 @@ struct PurchaseOrdersListView: View {
     private func fetchPurchaseOrders() async {
         isLoading = true
         errorMessage = nil
+        if purchaseOrders.isEmpty, let cached = OfflineCache.shared.load([PurchaseOrderDto].self, key: "purchase_orders_list") {
+            purchaseOrders = cached
+        }
         do {
-            purchaseOrders = try await FinancePyApi.shared.fetchPurchaseOrders()
+            let fetched = try await FinancePyApi.shared.fetchPurchaseOrders()
+            purchaseOrders = fetched
+            OfflineCache.shared.save(fetched, key: "purchase_orders_list")
         } catch {
-            errorMessage = error.localizedDescription
+            if purchaseOrders.isEmpty {
+                errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }

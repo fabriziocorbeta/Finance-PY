@@ -28,7 +28,13 @@ struct PurchaseOrderDto: Codable, Identifiable {
     let total: Double
     let createdAt: String?
     let updatedAt: String?
+    let hasInvoicePhoto: Bool?
+    let invoicePhoto: InvoicePhotoDto?
     let purchaseOrderItems: [PurchaseOrderItemDto]?
+}
+
+struct PurchaseOrderResponseDto: Codable {
+    let data: PurchaseOrderDto
 }
 
 struct PurchaseOrdersResponseDto: Codable {
@@ -100,5 +106,34 @@ extension FinancePyApi {
     func cancelPurchaseOrder(id: String) async throws -> PurchaseOrderDto {
         let response: PurchaseOrderDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/purchase_orders/\(id)/cancel")
         return response
+    }
+
+    func uploadPurchaseOrderInvoicePhoto(
+        purchaseOrderId: String,
+        fileData: Data,
+        fileName: String,
+        mimeType: String = "image/jpeg"
+    ) async throws -> PurchaseOrderDto {
+        let response: PurchaseOrderResponseDto = try await ApiClient.shared.uploadMultipart(
+            path: "/api/v1/purchase_orders/\(purchaseOrderId)/invoice_photo",
+            fields: [:],
+            fileField: "invoice_photo",
+            fileData: fileData,
+            fileName: fileName,
+            mimeType: mimeType
+        )
+        return response.data
+    }
+
+    func deletePurchaseOrderInvoicePhoto(purchaseOrderId: String) async throws -> PurchaseOrderDto {
+        let response: PurchaseOrderResponseDto = try await ApiClient.shared.request(
+            method: "DELETE",
+            path: "/api/v1/purchase_orders/\(purchaseOrderId)/invoice_photo"
+        )
+        return response.data
+    }
+
+    func downloadPurchaseOrderInvoicePhoto(purchaseOrderId: String) async throws -> Data {
+        try await ApiClient.shared.downloadData(path: "/api/v1/purchase_orders/\(purchaseOrderId)/invoice_photo")
     }
 }

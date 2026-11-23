@@ -36,7 +36,7 @@ fun TransactionLocationMap(location: TransactionLocationDto) {
     AppCard {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                text = "Ubicación aproximada (dispositivo)",
+                text = "Ubicación del dispositivo",
                 style = MaterialTheme.typography.labelMedium,
                 color = FinancePyColors.textSecondary()
             )
