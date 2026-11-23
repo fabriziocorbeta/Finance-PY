@@ -135,8 +135,10 @@ class TransactionsController < ApplicationController
   def update
     if @entry.update(permitted_entry_params)
       transaction = @entry.transaction
-      apply_location_to_transaction!(transaction)
-      apply_fuel_log_to_entry!(@entry)
+      if can_annotate_entry?
+        apply_location_to_transaction!(transaction)
+        fuel_log_saved = apply_fuel_log_to_entry!(@entry)
+      end
 
       if needs_rule_notification?(transaction)
         flash[:cta] = {
@@ -155,6 +157,8 @@ class TransactionsController < ApplicationController
 
       # Reload to ensure fresh state for turbo stream rendering
       @entry.reload
+
+      flash.now[:notice] = "Carga de combustible guardada" if params[:fuel_log].present? && fuel_log_saved
 
       respond_to do |format|
         format.html { redirect_back_or_to account_path(@entry.account), notice: "Transaction updated" }
@@ -175,6 +179,11 @@ class TransactionsController < ApplicationController
               partial: "transactions/notes",
               locals: { entry: @entry, can_annotate: can_annotate_entry? }
             ) if params[:entry]&.key?(:notes) && notes_changed),
+            (turbo_stream.replace(
+              dom_id(@entry, :fuel_log_section),
+              partial: "transactions/fuel_log_form",
+              locals: { entry: @entry, fleet_vehicles: Current.family.fleet_vehicles.order(:plate).to_a }
+            ) if params[:fuel_log].present?),
             turbo_stream.replace(@entry),
             *flash_notification_stream_items
           ].compact
@@ -469,14 +478,14 @@ class TransactionsController < ApplicationController
 
     def apply_fuel_log_to_entry!(entry)
       fl_raw = params[:fuel_log]
-      return if fl_raw.blank?
+      return false if fl_raw.blank?
 
       fl_params = fl_raw.permit(
         :fleet_vehicle_id, :odometer, :notes,
         fuel_log_lines_attributes: [ :id, :fuel_type, :brand, :liters, :cost, :_destroy ]
       )
       vehicle = Current.family.fleet_vehicles.find_by(id: fl_params[:fleet_vehicle_id])
-      return unless vehicle
+      return false unless vehicle
 
       fuel_log = entry.fuel_log || vehicle.fuel_logs.new(entry: entry)
       fuel_log.assign_attributes(
@@ -489,10 +498,19 @@ class TransactionsController < ApplicationController
       if fl_params[:fuel_log_lines_attributes].present?
         fuel_log.assign_attributes(fuel_log_lines_attributes: fl_params[:fuel_log_lines_attributes])
       end
-      fuel_log.save!
+
+      unless fuel_log.save
+        flash.now[:alert] = fuel_log.errors.full_messages.to_sentence
+        return false
+      end
+
+      true
     end
 
     def entry_params
+      # Fuel log and geolocation sub-forms in the transaction drawer PATCH without an entry[] wrapper
+      return {} if params[:entry].blank? && (params[:fuel_log].present? || params[:latitude].present?)
+
       entry_params = params.require(:entry).permit(
         :name, :date, :amount, :currency, :excluded, :notes, :nature, :entryable_type,
         entryable_attributes: [ :id, :category_id, :merchant_id, :kind, :investment_activity_label, :exchange_rate, { tag_ids: [], attachments: [] } ]
