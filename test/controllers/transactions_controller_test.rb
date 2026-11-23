@@ -655,4 +655,31 @@ end
     assert created_entry.transaction.attachments.attached?
     assert_equal "receipt.jpg", created_entry.transaction.attachments.first.filename.to_s
   end
+
+  test "updates fuel log on transaction without entry params" do
+    vehicle = @user.family.fleet_vehicles.create!(plate: "XYZ-123", brand: "Kia", model: "Sportage")
+
+    assert_difference [ "FuelLog.count", "FuelLogLine.count" ], 1 do
+      patch transaction_url(@entry), params: {
+        fuel_log: {
+          fleet_vehicle_id: vehicle.id,
+          odometer: 12500,
+          notes: "Carga completa",
+          fuel_log_lines_attributes: {
+            "0" => { id: "", fuel_type: "nafta", brand: "Super 97", liters: "35.5", cost: "297881" }
+          }
+        }
+      }, as: :turbo_stream
+    end
+
+    assert_response :success
+    fuel_log = @entry.reload.fuel_log
+    assert_not_nil fuel_log
+    assert_equal vehicle.id, fuel_log.fleet_vehicle_id
+    assert_equal 12500, fuel_log.odometer
+    assert_equal "Carga completa", fuel_log.notes
+    assert_equal 35.5, fuel_log.liters.to_f
+    assert_equal 297881.0, fuel_log.cost.to_f
+    assert_includes response.body, dom_id(@entry, :fuel_log_section)
+  end
 end
