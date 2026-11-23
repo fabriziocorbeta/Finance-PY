@@ -86,6 +86,12 @@ class PendingCaptureStore(
         writeAll(current)
     }
 
+    fun update(capture: PendingCapture) {
+        ensureOwnerScope()
+        val current = readAllInternal().map { if (it.id == capture.id) capture else it }
+        writeAll(current)
+    }
+
     fun remove(id: String) {
         ensureOwnerScope()
         val current = readAllInternal().filterNot { it.id == id }

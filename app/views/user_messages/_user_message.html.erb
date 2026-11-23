@@ -1,5 +1,13 @@
 <%# locals: (user_message:) %>
 
 <div id="<%= dom_id(user_message) %>" class="bg-surface-inset px-3 py-2 rounded-lg max-w-[85%] w-fit ml-auto mb-6">
-  <div class="prose prose--ai-chat"><%= markdown(user_message.content) %></div>
+  <% if user_message.attachment.attached? %>
+    <div class="flex items-center gap-1.5 text-xs text-secondary mb-1.5 pb-1.5 border-b border-alpha-black-100">
+      <%= icon("paperclip", size: "xs") %>
+      <span class="truncate max-w-[240px]"><%= user_message.attachment.filename.to_s %></span>
+    </div>
+  <% end %>
+  <% if user_message.content.present? %>
+    <div class="prose prose--ai-chat"><%= markdown(user_message.content) %></div>
+  <% end %>
 </div>

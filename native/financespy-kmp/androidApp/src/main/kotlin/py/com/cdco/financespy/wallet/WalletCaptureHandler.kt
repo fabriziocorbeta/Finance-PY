@@ -4,8 +4,10 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.CurrentLocationRequest
+import com.google.android.gms.location.Granularity
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
@@ -23,6 +25,7 @@ import kotlin.coroutines.resume
 // Necesario porque NotificationListenerService puede ser iniciado por el OS
 // con el proceso en frío.
 object WalletCaptureHandler {
+    private const val TAG = "WalletCaptureHandler"
     private val executor = Executors.newSingleThreadExecutor()
 
     // Optional native listener callback if UI or logger wants to observe capture events.
@@ -30,7 +33,11 @@ object WalletCaptureHandler {
 
     fun handle(context: Context, packageName: String, title: String, text: String) {
         executor.execute {
-            handleBlocking(context, packageName, title, text)
+            try {
+                handleBlocking(context, packageName, title, text)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Unhandled error in handleBlocking($packageName)", t)
+            }
         }
     }
 
@@ -38,6 +45,14 @@ object WalletCaptureHandler {
     // ContinentalSmsExtractor -- bundled SMS notifications). Each extracted
     // Purchase is captured/posted independently: a dropped or queued one
     // must not block the others in the same notification.
+    //
+    // Write-ahead durability: every extracted purchase is persisted to
+    // PendingCaptureStore BEFORE fetching GPS or making any network call.
+    // Samsung One UI's FreecessController freezes background processes ~6s
+    // after INotificationListener unfreezes them; persisting first guarantees
+    // a transaction can NEVER be lost if the OS freezes/kills the process
+    // mid-GPS or mid-HTTP. It is only removed from disk once the webhook
+    // returns Success.
     private fun handleBlocking(context: Context, packageName: String, title: String, text: String) {
         val extractors = BankNotificationExtractors.forPackage(packageName)
         val purchases = extractors.flatMap { it.extract(title, text) }
@@ -45,13 +60,13 @@ object WalletCaptureHandler {
 
         val capturedAt = Instant.now().toString()
         val store = PendingCaptureStore(context)
-        val token = runBlocking { AndroidTokenStorage(context).accessToken() }
+        val tokenStorage = AndroidTokenStorage(context)
         val device = "${Build.MANUFACTURER} ${Build.MODEL}".trim()
-        val location = runBlocking { fetchLocationBestEffort(context) }
 
-        purchases.forEach { purchase ->
+        // Step 1: Resolve accounts and persist every purchase to disk immediately
+        // (milliseconds, before any GPS wait or network I/O).
+        val persisted = purchases.map { purchase ->
             val accountId = AccountMapping.accountIdFor(context, purchase.cardText)
-
             val capture = PendingCapture(
                 id = UUID.randomUUID().toString(),
                 capturedAt = capturedAt,
@@ -59,40 +74,47 @@ object WalletCaptureHandler {
                 amount = purchase.amount,
                 merchant = purchase.merchant,
                 item = purchase.cardText,
-                latitude = location?.first,
-                longitude = location?.second,
+                latitude = null,
+                longitude = null,
                 device = device,
                 nature = purchase.nature
             )
+            store.add(capture)
+            capture
+        }
 
-            // No account matched this card. Queue it instead of dropping it:
-            // this used to `return@forEach` and the purchase was gone for
-            // good, with nothing on disk and no way to notice. It cost two
-            // real Google Pay purchases on 2026-10-18, after the matching
-            // account was renamed ("Amex Gold" -> "Amex - Glod") and
-            // AccountMapping -- which compares the card text against the
-            // account NAME -- stopped matching. retryPending() re-resolves
-            // the account on every app open, so the capture lands by itself
-            // once an account matches again.
-            if (accountId == null) {
-                store.add(capture)
-                onResult?.invoke("unrecognized_card", purchase.cardText)
+        // Step 2: Best-effort GPS (short timeout so it finishes well before
+        // Samsung's ~6s background freeze window). If a fix arrives, enrich the
+        // already-persisted captures on disk.
+        val location = runBlocking { fetchLocationBestEffort(context) }
+        val enriched = if (location != null) {
+            persisted.map { capture ->
+                val withLoc = capture.copy(latitude = location.first, longitude = location.second)
+                store.update(withLoc)
+                withLoc
+            }
+        } else {
+            persisted
+        }
+
+        // Step 3: Post each capture and remove from PendingCaptureStore only on Success.
+        enriched.forEach { capture ->
+            if (capture.accountId == null) {
+                Log.w(TAG, "Unrecognized card '${capture.item}' (${capture.merchant}, ${capture.amount}); kept in queue")
+                onResult?.invoke("unrecognized_card", capture.item)
                 return@forEach
             }
 
-            if (token.isNullOrBlank()) {
-                store.add(capture)
-                onResult?.invoke("token_missing", purchase.cardText)
-                return@forEach
-            }
-
-            when (val result = WebhookClient(token).post(capture, rawText = text)) {
+            when (val result = postWithTokenRefresh(tokenStorage, capture, rawText = text)) {
                 is WebhookResult.Success -> {
-                    onResult?.invoke(if (result.duplicate) "duplicate" else "created", purchase.cardText)
+                    store.remove(capture.id)
+                    val status = if (result.duplicate) "duplicate" else "created"
+                    Log.i(TAG, "Capture $status for '${capture.item}' (${capture.merchant}, ${capture.amount})")
+                    onResult?.invoke(status, capture.item)
                 }
                 is WebhookResult.Failure -> {
-                    store.add(capture)
-                    onResult?.invoke("queued", result.error)
+                    Log.w(TAG, "Capture kept in queue for '${capture.item}' (${capture.merchant}): ${result.error}")
+                    onResult?.invoke(if (result.error == "token_missing") "token_missing" else "queued", result.error)
                 }
             }
         }
@@ -102,44 +124,104 @@ object WalletCaptureHandler {
     // para que las mutaciones de PendingCaptureStore queden serializadas.
     fun retryPending(context: Context, callback: ((applied: Int) -> Unit)? = null) {
         executor.execute {
-            val store = PendingCaptureStore(context)
-            val token = runBlocking { AndroidTokenStorage(context).accessToken() }
-            if (token.isNullOrBlank()) {
-                callback?.invoke(0)
-                return@execute
-            }
-            val client = WebhookClient(token)
-            var applied = 0
+            try {
+                val store = PendingCaptureStore(context)
+                val pending = store.readAll()
+                if (pending.isEmpty()) {
+                    callback?.invoke(0)
+                    return@execute
+                }
 
-            store.readAll().forEach { capture ->
-                // A capture queued with no account (unrecognized card) gets
-                // its mapping retried here, not just its POST: the account it
-                // belongs to may have been renamed or created since. Still
-                // unresolved means leave it queued -- never drop it.
-                val resolved = capture.accountId
-                    ?: AccountMapping.accountIdFor(context, capture.item)
-                    ?: return@forEach
+                val tokenStorage = AndroidTokenStorage(context)
+                var applied = 0
 
-                when (client.post(capture.copy(accountId = resolved))) {
-                    is WebhookResult.Success -> {
-                        store.remove(capture.id)
-                        applied++
-                    }
-                    is WebhookResult.Failure -> {
-                        // se queda en la cola, se reintenta en la próxima llamada
+                pending.forEach { capture ->
+                    // A capture queued with no account (unrecognized card) gets
+                    // its mapping retried here, not just its POST: the account it
+                    // belongs to may have been renamed or created since. Still
+                    // unresolved means leave it queued -- never drop it.
+                    val resolved = capture.accountId
+                        ?: AccountMapping.accountIdFor(context, capture.item)
+                        ?: run {
+                            Log.w(TAG, "Retry skipped (unrecognized card '${capture.item}'): ${capture.merchant}")
+                            return@forEach
+                        }
+
+                    when (val result = postWithTokenRefresh(tokenStorage, capture.copy(accountId = resolved))) {
+                        is WebhookResult.Success -> {
+                            store.remove(capture.id)
+                            applied++
+                            Log.i(TAG, "Retry succeeded (${if (result.duplicate) "duplicate" else "created"}): ${capture.merchant}")
+                        }
+                        is WebhookResult.Failure -> {
+                            Log.w(TAG, "Retry failed for ${capture.merchant}: ${result.error}")
+                            // se queda en la cola, se reintenta en la próxima llamada
+                        }
                     }
                 }
-            }
 
-            callback?.invoke(applied)
+                callback?.invoke(applied)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Unhandled error in retryPending", t)
+                callback?.invoke(0)
+            }
         }
+    }
+
+    // Posts a capture and transparently handles expired OAuth access tokens
+    // (Doorkeeper TTL = 2h). NotificationListenerService fires in the
+    // background long after the last foreground session, and MainActivity's
+    // onResume() calls retryPending() before ApiClient refreshes its token —
+    // without refreshing here, captures got stuck with 401 Unauthorized.
+    private fun postWithTokenRefresh(
+        tokenStorage: AndroidTokenStorage,
+        capture: PendingCapture,
+        rawText: String? = null
+    ): WebhookResult {
+        var token = runBlocking { tokenStorage.accessToken() }
+        if (token.isNullOrBlank()) {
+            token = refreshAndSaveToken(tokenStorage) ?: return WebhookResult.Failure("token_missing")
+        }
+
+        val firstAttempt = WebhookClient(token).post(capture, rawText = rawText)
+        if (firstAttempt !is WebhookResult.Failure || !firstAttempt.unauthorized) {
+            return firstAttempt
+        }
+
+        // Before consuming the refresh_token, check if ApiClient already
+        // refreshed the access_token concurrently on another thread.
+        val latestStored = runBlocking { tokenStorage.accessToken() }
+        val retryToken = if (!latestStored.isNullOrBlank() && latestStored != token) {
+            Log.i(TAG, "Detected concurrently refreshed access token; retrying webhook")
+            latestStored
+        } else {
+            refreshAndSaveToken(tokenStorage) ?: return firstAttempt
+        }
+
+        return WebhookClient(retryToken).post(capture, rawText = rawText)
+    }
+
+    private fun refreshAndSaveToken(tokenStorage: AndroidTokenStorage): String? {
+        val refreshToken = runBlocking { tokenStorage.refreshToken() } ?: return null
+        val refreshed = WebhookClient.refreshAccessToken(refreshToken) ?: run {
+            Log.w(TAG, "OAuth token refresh failed")
+            return null
+        }
+        runBlocking { tokenStorage.save(refreshed.first, refreshed.second) }
+        Log.i(TAG, "OAuth access token refreshed successfully for webhook")
+        return refreshed.first
     }
 
     // Best-effort device location for the current capture -- never blocks or
     // degrades the rest of the pipeline. Returns null (not an error) if the
     // user hasn't opted in via WalletLocationPreferences, hasn't granted
-    // ACCESS_COARSE_LOCATION, or no fix arrives within the timeout.
-    private const val LOCATION_TIMEOUT_MS = 4_000L
+    // location permission, or no fix arrives within the timeout.
+    // When the user granted ACCESS_FINE_LOCATION, always enforce GRANULARITY_FINE,
+    // PRIORITY_HIGH_ACCURACY, and a fresh fix (maxUpdateAgeMillis) so Android
+    // never silently downgrades to a stale or coarse cell-tower location.
+    private const val LOCATION_TIMEOUT_FINE_MS = 3_000L
+    private const val LOCATION_TIMEOUT_COARSE_MS = 2_000L
+    private const val LOCATION_MAX_AGE_FINE_MS = 30_000L
 
     private suspend fun fetchLocationBestEffort(context: Context): Pair<Double, Double>? {
         if (!WalletLocationPreferences(context).isLocationCaptureEnabled()) return null
@@ -154,21 +236,27 @@ object WalletCaptureHandler {
         ) == PackageManager.PERMISSION_GRANTED
         if (!hasFine && !hasCoarse) return null
 
-        val priority = if (hasFine) {
-            Priority.PRIORITY_HIGH_ACCURACY
+        val timeoutMs = if (hasFine) LOCATION_TIMEOUT_FINE_MS else LOCATION_TIMEOUT_COARSE_MS
+        val requestBuilder = CurrentLocationRequest.Builder()
+            .setDurationMillis(timeoutMs)
+
+        if (hasFine) {
+            requestBuilder
+                .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                .setGranularity(Granularity.GRANULARITY_FINE)
+                .setMaxUpdateAgeMillis(LOCATION_MAX_AGE_FINE_MS)
         } else {
-            Priority.PRIORITY_BALANCED_POWER_ACCURACY
+            requestBuilder
+                .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+                .setGranularity(Granularity.GRANULARITY_COARSE)
         }
 
-        return withTimeoutOrNull(LOCATION_TIMEOUT_MS) {
+        val request = requestBuilder.build()
+
+        return withTimeoutOrNull(timeoutMs) {
             suspendCancellableCoroutine { continuation ->
                 val cancellationSource = CancellationTokenSource()
                 continuation.invokeOnCancellation { cancellationSource.cancel() }
-
-                val request = CurrentLocationRequest.Builder()
-                    .setPriority(priority)
-                    .setDurationMillis(LOCATION_TIMEOUT_MS)
-                    .build()
 
                 try {
                     LocationServices.getFusedLocationProviderClient(context)

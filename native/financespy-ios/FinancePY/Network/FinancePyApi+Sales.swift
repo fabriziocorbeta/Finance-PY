@@ -2,6 +2,13 @@ import Foundation
 
 // MARK: - DTOs
 
+struct InvoicePhotoDto: Codable, Hashable {
+    let filename: String
+    let contentType: String
+    let byteSize: Int64?
+    let url: String
+}
+
 struct SaleItemDto: Codable, Identifiable, Hashable {
     var id: String?
     var saleId: String?
@@ -33,7 +40,13 @@ struct SaleDto: Codable, Identifiable {
     let total: Double
     let createdAt: String?
     let updatedAt: String?
+    let hasInvoicePhoto: Bool?
+    let invoicePhoto: InvoicePhotoDto?
     let saleItems: [SaleItemDto]?
+}
+
+struct SaleResponseDto: Codable {
+    let data: SaleDto
 }
 
 struct SalesResponseDto: Codable {
@@ -104,5 +117,34 @@ extension FinancePyApi {
     func cancelSale(id: String) async throws -> SaleDto {
         let response: SaleDto = try await ApiClient.shared.request(method: "POST", path: "/api/v1/sales/\(id)/cancel")
         return response
+    }
+
+    func uploadSaleInvoicePhoto(
+        saleId: String,
+        fileData: Data,
+        fileName: String,
+        mimeType: String = "image/jpeg"
+    ) async throws -> SaleDto {
+        let response: SaleResponseDto = try await ApiClient.shared.uploadMultipart(
+            path: "/api/v1/sales/\(saleId)/invoice_photo",
+            fields: [:],
+            fileField: "invoice_photo",
+            fileData: fileData,
+            fileName: fileName,
+            mimeType: mimeType
+        )
+        return response.data
+    }
+
+    func deleteSaleInvoicePhoto(saleId: String) async throws -> SaleDto {
+        let response: SaleResponseDto = try await ApiClient.shared.request(
+            method: "DELETE",
+            path: "/api/v1/sales/\(saleId)/invoice_photo"
+        )
+        return response.data
+    }
+
+    func downloadSaleInvoicePhoto(saleId: String) async throws -> Data {
+        try await ApiClient.shared.downloadData(path: "/api/v1/sales/\(saleId)/invoice_photo")
     }
 }

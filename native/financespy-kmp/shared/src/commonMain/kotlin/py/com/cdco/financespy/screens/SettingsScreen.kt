@@ -567,7 +567,7 @@ fun SettingsScreen(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
-                                                text = "Ubicación aproximada en transacciones capturadas",
+                                                text = "Ubicación en transacciones capturadas",
                                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                                                 color = FinancePyColors.textPrimary(),
                                                 modifier = Modifier.weight(1f)
@@ -584,7 +584,7 @@ fun SettingsScreen(
                                             )
                                         }
                                         Text(
-                                            text = "Guarda la ubicación del dispositivo (precisa o aproximada según tu elección, no la del comercio) al detectar una notificación bancaria. Desactivado por defecto; pedirá permiso de ubicación la primera vez. Para que funcione, elegí \"Permitir todo el tiempo\" cuando el sistema lo pregunte: la notificación llega con la app en segundo plano.",
+                                            text = "Guarda la ubicación del dispositivo (precisa si concedés ubicación precisa, o aproximada según tu elección) al detectar una notificación bancaria. Desactivado por defecto; pedirá permiso de ubicación la primera vez. Para que funcione, elegí \"Permitir todo el tiempo\" cuando el sistema lo pregunte: la notificación llega con la app en segundo plano.",
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = FinancePyColors.textSecondary()
                                         )

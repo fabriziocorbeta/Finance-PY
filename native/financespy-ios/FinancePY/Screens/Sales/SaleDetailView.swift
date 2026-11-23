@@ -11,6 +11,10 @@ struct SaleDetailView: View {
     @State private var showCompleteAlert = false
     @State private var showCancelAlert = false
 
+    @State private var invoicePhotoData: Data?
+    @State private var isLoadingPhoto = false
+    @State private var isUploadingPhoto = false
+
     var body: some View {
         Group {
             if isLoading && sale == nil {
@@ -47,6 +51,23 @@ struct SaleDetailView: View {
                                 }
                             }
                         }
+                    }
+
+                    Section("Foto de Factura") {
+                        InvoicePhotoSectionView(
+                            title: "Factura adjunta",
+                            hasRemotePhoto: sale.hasInvoicePhoto ?? false,
+                            remoteFilename: sale.invoicePhoto?.filename,
+                            imageData: invoicePhotoData,
+                            isLoading: isLoadingPhoto,
+                            isUploading: isUploadingPhoto,
+                            onPickImage: { data, fileName in
+                                Task { await uploadInvoicePhoto(data: data, fileName: fileName) }
+                            },
+                            onDeletePhoto: {
+                                Task { await deleteInvoicePhoto() }
+                            }
+                        )
                     }
 
                     Section("Acciones") {
@@ -101,20 +122,80 @@ struct SaleDetailView: View {
 
     private func fetchSale() async {
         isLoading = true
+        if sale == nil {
+            sale = OfflineCache.shared.load(SaleDto.self, key: "sale_\(saleId)")
+        }
         do {
-            sale = try await FinancePyApi.shared.fetchSale(id: saleId)
+            let fetched = try await FinancePyApi.shared.fetchSale(id: saleId)
+            sale = fetched
+            OfflineCache.shared.save(fetched, key: "sale_\(saleId)")
+            if fetched.hasInvoicePhoto == true {
+                await loadInvoicePhoto()
+            }
         } catch {
-            errorMessage = error.localizedDescription
+            if sale == nil {
+                errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
+    }
+
+    private func loadInvoicePhoto() async {
+        isLoadingPhoto = true
+        defer { isLoadingPhoto = false }
+        if let data = try? await FinancePyApi.shared.downloadSaleInvoicePhoto(saleId: saleId) {
+            invoicePhotoData = data
+        }
+    }
+
+    private func uploadInvoicePhoto(data: Data, fileName: String) async {
+        invoicePhotoData = data
+        isUploadingPhoto = true
+        defer { isUploadingPhoto = false }
+        do {
+            let updated = try await FinancePyApi.shared.uploadSaleInvoicePhoto(saleId: saleId, fileData: data, fileName: fileName)
+            sale = updated
+            OfflineCache.shared.save(updated, key: "sale_\(saleId)")
+        } catch {
+            if NetworkMonitor.isConnectivityError(error) {
+                let blobId = OfflineBlobStore.shared.saveBlob(data)
+                OfflineOutbox.shared.enqueue(.uploadInvoicePhoto(entityType: .sale, entityId: saleId, blobId: blobId, fileName: fileName, mimeType: "image/jpeg"))
+            } else {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func deleteInvoicePhoto() async {
+        isUploadingPhoto = true
+        defer { isUploadingPhoto = false }
+        do {
+            let updated = try await FinancePyApi.shared.deleteSaleInvoicePhoto(saleId: saleId)
+            sale = updated
+            invoicePhotoData = nil
+            OfflineCache.shared.save(updated, key: "sale_\(saleId)")
+        } catch {
+            if NetworkMonitor.isConnectivityError(error) {
+                OfflineOutbox.shared.enqueue(.deleteInvoicePhoto(entityType: .sale, entityId: saleId))
+                invoicePhotoData = nil
+            } else {
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 
     private func completeSale() async {
         isLoading = true
         do {
-            sale = try await FinancePyApi.shared.completeSale(id: saleId)
+            let updated = try await FinancePyApi.shared.completeSale(id: saleId)
+            sale = updated
+            OfflineCache.shared.save(updated, key: "sale_\(saleId)")
         } catch {
-            errorMessage = error.localizedDescription
+            if NetworkMonitor.isConnectivityError(error) {
+                OfflineOutbox.shared.enqueue(.completeSale(id: saleId))
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }
@@ -122,9 +203,15 @@ struct SaleDetailView: View {
     private func cancelSale() async {
         isLoading = true
         do {
-            sale = try await FinancePyApi.shared.cancelSale(id: saleId)
+            let updated = try await FinancePyApi.shared.cancelSale(id: saleId)
+            sale = updated
+            OfflineCache.shared.save(updated, key: "sale_\(saleId)")
         } catch {
-            errorMessage = error.localizedDescription
+            if NetworkMonitor.isConnectivityError(error) {
+                OfflineOutbox.shared.enqueue(.cancelSale(id: saleId))
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }

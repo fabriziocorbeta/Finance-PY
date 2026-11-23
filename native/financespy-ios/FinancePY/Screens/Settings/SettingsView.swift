@@ -21,6 +21,8 @@ struct SettingsView: View {
     @AppStorage("appLockEnabled") private var appLockEnabled = false
     @State private var showAppLockUnavailableAlert = false
     @State private var appLockUnavailableMessage: String? = nil
+    @ObservedObject private var locationManager = LocationCaptureManager.shared
+    @ObservedObject private var outbox = OfflineOutbox.shared
 
     private var appLockEnabledBinding: Binding<Bool> {
         Binding(
@@ -118,6 +120,28 @@ struct SettingsView: View {
 
                         Section(header: Text("Seguridad")) {
                             Toggle("Bloqueo con Face ID / código", isOn: appLockEnabledBinding)
+                        }
+
+                        Section(
+                            header: Text("Gastos y ubicación"),
+                            footer: Text("Guarda las coordenadas GPS al registrar un gasto para verlo en el mapa.")
+                        ) {
+                            Toggle("Ubicación precisa en gastos", isOn: $locationManager.isPreciseLocationEnabled)
+                                .onChange(of: locationManager.isPreciseLocationEnabled) { _, enabled in
+                                    if enabled {
+                                        locationManager.requestPermissionIfNeeded()
+                                    }
+                                }
+                        }
+
+                        Section(header: Text("Sincronización offline")) {
+                            LabeledContent("Cambios pendientes", value: "\(outbox.pendingCount)")
+                            if outbox.pendingCount > 0 {
+                                Button(outbox.isFlushing ? "Sincronizando..." : "Sincronizar ahora") {
+                                    Task { await outbox.flush() }
+                                }
+                                .disabled(outbox.isFlushing)
+                            }
                         }
 
                         if let usage = usage {

@@ -108,6 +108,8 @@ struct TransactionListItemDto: Codable {
     let category: CategoryRefDto?
     let merchant: MerchantRefDto?
     let location: TransactionLocationDto?
+    let hasInvoicePhoto: Bool?
+    let invoicePhoto: InvoicePhotoDto?
     let createdAt: String
     let updatedAt: String
 }

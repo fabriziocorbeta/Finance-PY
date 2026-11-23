@@ -84,3 +84,35 @@ jobs:
             -destination "platform=iOS Simulator,id=${SIMULATOR_ID}" \
             -configuration Debug \
             test
+
+      - name: Build unsigned IPA (Release)
+        run: |
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "generic/platform=iOS" \
+            -configuration Release \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+          APP_PATH="build/DerivedData/Build/Products/Release-iphoneos/FinancePY.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "Built .app not found at $APP_PATH"
+            exit 1
+          fi
+
+          rm -rf build/Payload build/FinancePY-unsigned.ipa
+          mkdir -p build/Payload
+          cp -R "$APP_PATH" build/Payload/
+          (cd build && zip -qr FinancePY-unsigned.ipa Payload)
+          ls -lh build/FinancePY-unsigned.ipa
+
+      - name: Upload unsigned IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FinancePY-unsigned-ipa
+          path: native/financespy-ios/build/FinancePY-unsigned.ipa
+          retention-days: 14

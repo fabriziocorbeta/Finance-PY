@@ -27,7 +27,7 @@ class Assistant::FunctionToolCaller
       fn.call(fn_args)
     rescue => e
       raise FunctionExecutionError.new(
-        "Error calling function #{fn.name} with arguments #{fn_args}: #{e.message}"
+        "Error calling function #{fn&.name || function_request.function_name} with arguments #{fn_args}: #{e.message}"
       )
     end
 

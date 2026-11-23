@@ -79,8 +79,10 @@ class Assistant::Responder
     end
 
     def get_llm_response(streamer:, function_results: [], previous_response_id: nil, provider: llm)
+      prompt_text = message.respond_to?(:prompt_for_llm) ? message.prompt_for_llm : message.content
+
       response = provider.chat_response(
-        message.content,
+        prompt_text,
         model: model,
         instructions: instructions,
         functions: function_tool_caller.function_definitions,
@@ -157,8 +159,11 @@ class Assistant::Responder
             }
           end
 
-        elsif !chat_message.content.blank?
-          messages << { role: chat_message.role, content: chat_message.content || "" }
+        else
+          msg_content = chat_message.respond_to?(:prompt_for_llm) ? chat_message.prompt_for_llm : chat_message.content
+          if msg_content.present?
+            messages << { role: chat_message.role, content: msg_content }
+          end
         end
       end
       messages
