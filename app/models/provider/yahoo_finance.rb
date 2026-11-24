@@ -362,10 +362,7 @@ class Provider::YahooFinance < Provider
         return cached
       end
 
-      check_rate_limit!
-      throttle_request
-
-      data = fetch_authenticated_chart(normalized_sym, {
+      data = fetch_chart_with_fallback(normalized_sym, {
         "range" => range,
         "interval" => interval,
         "includePrePost" => false
@@ -447,6 +444,29 @@ class Provider::YahooFinance < Provider
 
     def base_url
       ENV["YAHOO_FINANCE_URL"] || "https://query1.finance.yahoo.com"
+    end
+
+    # Fetches /v8/finance/chart/:symbol preferring query2 (which serves chart
+    # data without cookie/crumb and is far less prone to 429s), falling back
+    # to authenticated query1 if needed.
+    def fetch_chart_with_fallback(symbol, params)
+      encoded_symbol = ERB::Util.url_encode(symbol)
+      [ "https://query2.finance.yahoo.com", base_url ].uniq.each do |host|
+        throttle_request
+        response = client.get("#{host}/v8/finance/chart/#{encoded_symbol}") do |req|
+          params.each { |k, v| req.params[k] = v }
+        end
+        next if response.status == 429 || response.status == 401
+
+        parsed = JSON.parse(response.body)
+        return parsed if parsed.dig("chart", "result", 0).present?
+      rescue Faraday::Error, JSON::ParserError
+        next
+      end
+
+      check_rate_limit!
+      throttle_request
+      fetch_authenticated_chart(symbol, params)
     end
 
     # ================================
