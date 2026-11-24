@@ -136,20 +136,26 @@
     <% dialog.with_section(title: "Ubicación", open: tx_lat.present?) do %>
       <div class="px-3 py-2 space-y-3">
         <% if tx_lat.present? && tx_lng.present? %>
-          <div class="p-3 rounded-lg border border-secondary bg-container space-y-2">
-            <div class="flex items-center justify-between gap-2">
+          <div class="rounded-lg border border-secondary bg-container overflow-hidden">
+            <div class="flex items-center justify-between gap-2 px-3 py-2 border-b border-secondary">
               <div class="flex items-center gap-2">
                 <%= icon "map-pin", size: "sm", color: "primary" %>
                 <span class="text-sm font-medium text-primary"><%= format("%.5f, %.5f", tx_lat.to_f, tx_lng.to_f) %></span>
               </div>
               <%= link_to "Ver en Maps",
-                    "https://www.google.com/maps?q=#{tx_lat},#{tx_lng}",
+                    "https://maps.google.com/maps?q=#{tx_lat.to_f},#{tx_lng.to_f}",
                     target: "_blank",
                     rel: "noopener noreferrer",
                     class: "text-xs font-medium text-primary underline" %>
             </div>
+            <iframe
+              title="Ubicación de la operación"
+              src="https://maps.google.com/maps?q=<%= tx_lat.to_f %>,<%= tx_lng.to_f %>&z=16&output=embed"
+              class="w-full h-44 border-0"
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"></iframe>
             <% if tx_extra["device"].present? %>
-              <p class="text-xs text-secondary">Dispositivo: <%= tx_extra["device"] %></p>
+              <p class="px-3 py-1.5 text-xs text-secondary border-t border-secondary">Dispositivo: <%= tx_extra["device"] %></p>
             <% end %>
           </div>
         <% else %>

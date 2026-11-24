@@ -20,12 +20,12 @@ class EnforceDualLegRlsOnTransfers < ActiveRecord::Migration[7.2]
             EXISTS (
               SELECT 1 FROM transactions
               WHERE transactions.id = #{table}.inflow_transaction_id
-                AND transactions.family_id = public.current_family_id()
+                AND transactions.family_id = current_family_id()
             )
             AND EXISTS (
               SELECT 1 FROM transactions
               WHERE transactions.id = #{table}.outflow_transaction_id
-                AND transactions.family_id = public.current_family_id()
+                AND transactions.family_id = current_family_id()
             )
           )
           OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)
@@ -35,12 +35,12 @@ class EnforceDualLegRlsOnTransfers < ActiveRecord::Migration[7.2]
             EXISTS (
               SELECT 1 FROM transactions
               WHERE transactions.id = #{table}.inflow_transaction_id
-                AND transactions.family_id = public.current_family_id()
+                AND transactions.family_id = current_family_id()
             )
             AND EXISTS (
               SELECT 1 FROM transactions
               WHERE transactions.id = #{table}.outflow_transaction_id
-                AND transactions.family_id = public.current_family_id()
+                AND transactions.family_id = current_family_id()
             )
           )
           OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)
@@ -56,7 +56,7 @@ class EnforceDualLegRlsOnTransfers < ActiveRecord::Migration[7.2]
         DROP POLICY IF EXISTS #{policy} ON #{table};
         CREATE POLICY #{policy} ON #{table}
         USING (
-          (public.current_family_id() IN (
+          (current_family_id() IN (
             SELECT transactions.family_id
             FROM transactions
             WHERE transactions.id = ANY (ARRAY[#{table}.inflow_transaction_id, #{table}.outflow_transaction_id])
@@ -64,7 +64,7 @@ class EnforceDualLegRlsOnTransfers < ActiveRecord::Migration[7.2]
           OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)
         )
         WITH CHECK (
-          (public.current_family_id() IN (
+          (current_family_id() IN (
             SELECT transactions.family_id
             FROM transactions
             WHERE transactions.id = ANY (ARRAY[#{table}.inflow_transaction_id, #{table}.outflow_transaction_id])

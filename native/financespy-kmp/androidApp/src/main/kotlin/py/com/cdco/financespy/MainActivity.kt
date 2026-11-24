@@ -1294,6 +1294,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onResume() {
         super.onResume()
+        walletLocationCaptureEnabled.value = walletLocationPreferences.isLocationCaptureEnabled()
         WalletCaptureHandler.retryPending(applicationContext)
         // Re-check in case the user just set up a screen lock from the
         // "Abrir configuración" redirect -- otherwise they'd be stuck on

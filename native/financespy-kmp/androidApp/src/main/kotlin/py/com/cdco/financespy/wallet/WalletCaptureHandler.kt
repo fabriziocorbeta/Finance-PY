@@ -227,15 +227,27 @@ object WalletCaptureHandler {
     // degrades the rest of the pipeline. Returns null (not an error) if the
     // user hasn't opted in via WalletLocationPreferences, hasn't granted
     // location permission, or no fix arrives within the timeout.
-    // When the user granted ACCESS_FINE_LOCATION, always enforce GRANULARITY_FINE,
-    // PRIORITY_HIGH_ACCURACY, and a fresh fix (maxUpdateAgeMillis) so Android
-    // never silently downgrades to a stale or coarse cell-tower location.
-    private const val LOCATION_TIMEOUT_FINE_MS = 3_000L
-    private const val LOCATION_TIMEOUT_COARSE_MS = 2_000L
-    private const val LOCATION_MAX_AGE_FINE_MS = 30_000L
+    //
+    // Strategy tuned for background captures inside stores (often indoors with
+    // Samsung's ~6s FreecessController window):
+    // 1. Try getCurrentLocation with HIGH_ACCURACY/FINE (or BALANCED/COARSE)
+    //    allowing cached fixes up to 2 minutes old (2.5s timeout).
+    // 2. If that times out or returns null (common for cold GPS indoors), fall
+    //    back to FusedLocationProviderClient.lastLocation if <= 15 minutes old.
+    // 3. If still missing and fine permission is held, try a quick 1s
+    //    BALANCED_POWER_ACCURACY fix (Wi-Fi/cell, responds in <500ms indoors).
+    private const val LOCATION_TIMEOUT_FINE_MS = 2_500L
+    private const val LOCATION_TIMEOUT_COARSE_MS = 1_800L
+    private const val LOCATION_TIMEOUT_FALLBACK_BALANCED_MS = 1_000L
+    private const val LOCATION_TIMEOUT_LAST_KNOWN_MS = 500L
+    private const val LOCATION_MAX_AGE_CURRENT_MS = 120_000L
+    private const val LOCATION_MAX_AGE_LAST_KNOWN_MS = 15 * 60_000L
 
     private suspend fun fetchLocationBestEffort(context: Context): Pair<Double, Double>? {
-        if (!WalletLocationPreferences(context).isLocationCaptureEnabled()) return null
+        if (!WalletLocationPreferences(context).isLocationCaptureEnabled()) {
+            Log.i(TAG, "Location skipped: capture toggle is disabled")
+            return null
+        }
 
         val hasFine = ContextCompat.checkSelfPermission(
             context,
@@ -245,46 +257,127 @@ object WalletCaptureHandler {
             context,
             Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
-        if (!hasFine && !hasCoarse) return null
-
-        val timeoutMs = if (hasFine) LOCATION_TIMEOUT_FINE_MS else LOCATION_TIMEOUT_COARSE_MS
-        val requestBuilder = CurrentLocationRequest.Builder()
-            .setDurationMillis(timeoutMs)
-
-        if (hasFine) {
-            requestBuilder
-                .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
-                .setGranularity(Granularity.GRANULARITY_FINE)
-                .setMaxUpdateAgeMillis(LOCATION_MAX_AGE_FINE_MS)
-        } else {
-            requestBuilder
-                .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
-                .setGranularity(Granularity.GRANULARITY_COARSE)
+        if (!hasFine && !hasCoarse) {
+            Log.w(TAG, "Location skipped: missing ACCESS_FINE/COARSE_LOCATION")
+            return null
         }
 
-        val request = requestBuilder.build()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val hasBg = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!hasBg) {
+                Log.w(TAG, "ACCESS_BACKGROUND_LOCATION not granted; background fix may fail")
+            }
+        }
 
+        val client = LocationServices.getFusedLocationProviderClient(context)
+        val timeoutMs = if (hasFine) LOCATION_TIMEOUT_FINE_MS else LOCATION_TIMEOUT_COARSE_MS
+        val primaryRequest = CurrentLocationRequest.Builder()
+            .setDurationMillis(timeoutMs)
+            .setMaxUpdateAgeMillis(LOCATION_MAX_AGE_CURRENT_MS)
+            .apply {
+                if (hasFine) {
+                    setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                    setGranularity(Granularity.GRANULARITY_FINE)
+                } else {
+                    setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+                    setGranularity(Granularity.GRANULARITY_COARSE)
+                }
+            }
+            .build()
+
+        val primaryLoc = awaitCurrentLocation(client, primaryRequest, timeoutMs)
+        if (primaryLoc != null) {
+            Log.i(TAG, "Location captured via primary currentLocation (acc=${primaryLoc.accuracy}m)")
+            return primaryLoc.latitude to primaryLoc.longitude
+        }
+
+        val lastLoc = awaitLastLocation(client, LOCATION_TIMEOUT_LAST_KNOWN_MS)
+        if (lastLoc != null) {
+            val ageMs = locationAgeMillis(lastLoc)
+            if (isRecentEnoughLocation(ageMs, LOCATION_MAX_AGE_LAST_KNOWN_MS)) {
+                Log.i(TAG, "Location captured via lastLocation fallback (acc=${lastLoc.accuracy}m, ageMs=$ageMs)")
+                return lastLoc.latitude to lastLoc.longitude
+            } else {
+                Log.i(TAG, "lastLocation too stale (ageMs=$ageMs); trying balanced fallback")
+            }
+        }
+
+        if (hasFine) {
+            val balancedRequest = CurrentLocationRequest.Builder()
+                .setDurationMillis(LOCATION_TIMEOUT_FALLBACK_BALANCED_MS)
+                .setMaxUpdateAgeMillis(LOCATION_MAX_AGE_CURRENT_MS)
+                .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+                .setGranularity(Granularity.GRANULARITY_FINE)
+                .build()
+            val balancedLoc = awaitCurrentLocation(client, balancedRequest, LOCATION_TIMEOUT_FALLBACK_BALANCED_MS)
+            if (balancedLoc != null) {
+                Log.i(TAG, "Location captured via balanced indoor fallback (acc=${balancedLoc.accuracy}m)")
+                return balancedLoc.latitude to balancedLoc.longitude
+            }
+        }
+
+        Log.w(TAG, "Location unavailable: primary, lastLocation, and balanced fallbacks returned null")
+        return null
+    }
+
+    private suspend fun awaitCurrentLocation(
+        client: com.google.android.gms.location.FusedLocationProviderClient,
+        request: CurrentLocationRequest,
+        timeoutMs: Long
+    ): android.location.Location? {
         return withTimeoutOrNull(timeoutMs) {
             suspendCancellableCoroutine { continuation ->
                 val cancellationSource = CancellationTokenSource()
                 continuation.invokeOnCancellation { cancellationSource.cancel() }
 
                 try {
-                    LocationServices.getFusedLocationProviderClient(context)
-                        .getCurrentLocation(request, cancellationSource.token)
+                    client.getCurrentLocation(request, cancellationSource.token)
                         .addOnSuccessListener { location ->
-                            val result = location?.let { it.latitude to it.longitude }
-                            if (continuation.isActive) continuation.resume(result)
+                            if (continuation.isActive) continuation.resume(location)
                         }
                         .addOnFailureListener {
                             if (continuation.isActive) continuation.resume(null)
                         }
                 } catch (e: SecurityException) {
-                    // Permission revoked between the check above and this call --
-                    // rare race, treat the same as "no permission."
                     if (continuation.isActive) continuation.resume(null)
                 }
             }
         }
     }
+
+    private suspend fun awaitLastLocation(
+        client: com.google.android.gms.location.FusedLocationProviderClient,
+        timeoutMs: Long
+    ): android.location.Location? {
+        return withTimeoutOrNull(timeoutMs) {
+            suspendCancellableCoroutine { continuation ->
+                try {
+                    client.lastLocation
+                        .addOnSuccessListener { location ->
+                            if (continuation.isActive) continuation.resume(location)
+                        }
+                        .addOnFailureListener {
+                            if (continuation.isActive) continuation.resume(null)
+                        }
+                } catch (e: SecurityException) {
+                    if (continuation.isActive) continuation.resume(null)
+                }
+            }
+        }
+    }
+
+    private fun locationAgeMillis(location: android.location.Location): Long {
+        val elapsedNanos = android.os.SystemClock.elapsedRealtimeNanos() - location.elapsedRealtimeNanos
+        return if (elapsedNanos >= 0L) {
+            elapsedNanos / 1_000_000L
+        } else {
+            (System.currentTimeMillis() - location.time).coerceAtLeast(0L)
+        }
+    }
+
+    internal fun isRecentEnoughLocation(ageMs: Long, maxAgeMs: Long): Boolean =
+        ageMs in 0L..maxAgeMs
 }
