@@ -6,6 +6,15 @@
       <h2 class="text-lg font-medium text-primary"><%= t("investments.portfolio.title") %></h2>
       <p class="text-xs text-secondary"><%= t("investments.portfolio.subtitle") %></p>
     </div>
+
+    <% if investment_statement.investment_accounts.any? %>
+      <%= link_to new_trade_investments_path,
+                  data: { turbo_frame: :modal },
+                  class: "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-inverse bg-inverse hover:bg-inverse-hover transition-colors self-start sm:self-auto" do %>
+        <%= icon("plus", size: "sm", color: "current") %>
+        <span><%= t("investments.portfolio.add_holding") %></span>
+      <% end %>
+    <% end %>
   </div>
 
   <% if investment_statement.investment_accounts.any? %>
@@ -66,23 +75,32 @@
 
     <% if holdings.any? %>
       <div class="bg-container-inset rounded-xl p-1 overflow-x-auto">
-        <div class="rounded-lg shadow-border-xs bg-container overflow-hidden min-w-[760px]">
+        <div class="rounded-lg shadow-border-xs bg-container overflow-hidden min-w-[960px]">
           <table class="w-full">
             <thead class="bg-container-inset">
               <tr class="uppercase text-xs font-medium text-secondary">
                 <th class="px-4 py-2.5 text-left font-medium"><%= t("investments.portfolio.columns.asset") %></th>
-                <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.portfolio.columns.price") %></th>
-                <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.portfolio.columns.day_change") %></th>
-                <th class="px-4 py-2.5 text-center font-medium"><%= t("investments.portfolio.columns.trend_1m") %></th>
                 <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.portfolio.columns.shares") %></th>
+                <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.portfolio.columns.price") %></th>
+                <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.portfolio.columns.avg_cost") %></th>
+                <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.portfolio.columns.total_cost") %></th>
                 <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.portfolio.columns.value") %></th>
+                <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.portfolio.columns.day_change") %></th>
                 <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.portfolio.columns.return") %></th>
+                <th class="px-4 py-2.5 text-center font-medium"><%= t("investments.portfolio.columns.trend_1m") %></th>
                 <th class="px-4 py-2.5 text-right font-medium"></th>
               </tr>
             </thead>
             <tbody class="text-sm">
               <% holdings.each_with_index do |holding, idx| %>
                 <% quote = holding_quotes[holding.security_id] %>
+                <% avg_cost_money = holding.avg_cost %>
+                <% total_cost_money = avg_cost_money ? Money.new(avg_cost_money.amount * holding.qty, holding.currency) : nil %>
+                <% live_price = quote&.current_price %>
+                <% market_value_money = live_price ? Money.new(live_price.to_d * holding.qty.to_d, holding.currency) : holding.amount_money %>
+                <% day_gain_amount = (quote&.change && holding.qty.to_d.positive?) ? (quote.change.to_d * holding.qty.to_d) : nil %>
+                <% total_gain_amount = total_cost_money ? (market_value_money.amount - total_cost_money.amount) : holding.trend&.value %>
+                <% total_gain_pct = (total_cost_money && total_cost_money.amount.positive?) ? ((total_gain_amount / total_cost_money.amount) * 100).round(2) : holding.trend&.percent %>
                 <tr class="<%= idx < holdings.size - 1 ? 'table-divider' : '' %> hover:bg-surface-hover transition-colors">
                   <td class="px-4 py-3">
                     <%= link_to quote_investments_path(ticker: holding.ticker, mic: holding.security.exchange_operating_mic, range: range),
@@ -104,26 +122,59 @@
                             </span>
                           <% end %>
                         </div>
-                        <p class="text-xs text-secondary truncate max-w-48"><%= holding.name %> · <%= holding.account.name %></p>
+                        <p class="text-xs text-secondary truncate max-w-40"><%= holding.name %> · <%= holding.account.name %></p>
                       </div>
                     <% end %>
                   </td>
 
+                  <td class="px-4 py-3 text-right tabular-nums text-primary font-medium privacy-sensitive">
+                    <%= number_with_precision(holding.qty, precision: 6, strip_insignificant_zeros: true) %>
+                  </td>
+
                   <td class="px-4 py-3 text-right tabular-nums font-medium text-primary">
-                    <% if quote&.current_price %>
-                      <%= number_with_delimiter(number_with_precision(quote.current_price, precision: 2)) %>
+                    <% if live_price %>
+                      <%= number_with_delimiter(number_with_precision(live_price, precision: 2)) %>
                       <span class="text-xs text-secondary"><%= quote.currency %></span>
                     <% else %>
                       <%= format_money(Money.new(holding.price, holding.currency)) %>
                     <% end %>
                   </td>
 
-                  <td class="px-4 py-3 text-right tabular-nums">
+                  <td class="px-4 py-3 text-right tabular-nums text-secondary privacy-sensitive">
+                    <%= avg_cost_money ? format_money(avg_cost_money) : "—" %>
+                  </td>
+
+                  <td class="px-4 py-3 text-right tabular-nums text-secondary privacy-sensitive">
+                    <%= total_cost_money ? format_money(total_cost_money) : "—" %>
+                  </td>
+
+                  <td class="px-4 py-3 text-right tabular-nums font-medium text-primary privacy-sensitive">
+                    <%= format_money(market_value_money) %>
+                  </td>
+
+                  <td class="px-4 py-3 text-right tabular-nums privacy-sensitive">
                     <% if quote&.change_percent %>
                       <% c_cls = quote.positive? ? "text-green-600" : "text-red-600" %>
-                      <span class="font-medium <%= c_cls %>">
-                        <%= quote.change_percent >= 0 ? "+" : "" %><%= number_with_precision(quote.change_percent, precision: 2) %>%
-                      </span>
+                      <div class="<%= c_cls %>">
+                        <p class="font-medium"><%= quote.change_percent >= 0 ? "+" : "" %><%= number_with_precision(quote.change_percent, precision: 2) %>%</p>
+                        <% if day_gain_amount %>
+                          <p class="text-xs"><%= day_gain_amount >= 0 ? "+" : "" %><%= format_money(Money.new(day_gain_amount, holding.currency)) %></p>
+                        <% end %>
+                      </div>
+                    <% else %>
+                      <span class="text-secondary">—</span>
+                    <% end %>
+                  </td>
+
+                  <td class="px-4 py-3 text-right tabular-nums privacy-sensitive">
+                    <% if total_gain_amount %>
+                      <% g_cls = total_gain_amount >= 0 ? "text-green-600" : "text-red-600" %>
+                      <div class="<%= g_cls %>">
+                        <% if total_gain_pct %>
+                          <p class="font-medium"><%= total_gain_pct >= 0 ? "+" : "" %><%= number_with_precision(total_gain_pct, precision: 2) %>%</p>
+                        <% end %>
+                        <p class="text-xs"><%= total_gain_amount >= 0 ? "+" : "" %><%= format_money(Money.new(total_gain_amount, holding.currency)) %></p>
+                      </div>
                     <% else %>
                       <span class="text-secondary">—</span>
                     <% end %>
@@ -142,30 +193,20 @@
                     <% end %>
                   </td>
 
-                  <td class="px-4 py-3 text-right tabular-nums text-secondary privacy-sensitive">
-                    <%= format_quantity(holding.qty) %>
-                  </td>
-
-                  <td class="px-4 py-3 text-right tabular-nums font-medium text-primary privacy-sensitive">
-                    <%= format_money(holding.amount_money) %>
-                  </td>
-
-                  <td class="px-4 py-3 text-right tabular-nums privacy-sensitive">
-                    <% if holding.trend %>
-                      <span class="font-medium" style="color: <%= holding.trend.color %>">
-                        <%= holding.trend.percent_formatted %>
-                      </span>
-                    <% else %>
-                      <span class="text-secondary">—</span>
-                    <% end %>
-                  </td>
-
                   <td class="px-4 py-3 text-right">
-                    <%= link_to holding_path(holding),
-                                data: { turbo_frame: :drawer },
-                                class: "text-xs font-medium text-secondary hover:text-primary" do %>
-                      <%= icon("chevron-right", size: "sm") %>
-                    <% end %>
+                    <div class="flex items-center justify-end gap-1">
+                      <%= link_to new_trade_investments_path(ticker: holding.ticker, price: live_price, account_id: holding.account_id),
+                                  data: { turbo_frame: :modal },
+                                  class: "px-2 py-1 rounded text-xs font-medium text-primary border border-secondary hover:bg-surface-hover",
+                                  title: t("investments.portfolio.add_more") do %>
+                        +
+                      <% end %>
+                      <%= link_to holding_path(holding),
+                                  data: { turbo_frame: :drawer },
+                                  class: "p-1 text-secondary hover:text-primary" do %>
+                        <%= icon("chevron-right", size: "sm") %>
+                      <% end %>
+                    </div>
                   </td>
                 </tr>
               <% end %>

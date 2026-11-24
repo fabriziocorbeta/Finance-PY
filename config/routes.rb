@@ -440,6 +440,8 @@ Rails.application.routes.draw do
     collection do
       get :quote
       post :sync
+      get :new_trade
+      post :create_trade
     end
   end
 

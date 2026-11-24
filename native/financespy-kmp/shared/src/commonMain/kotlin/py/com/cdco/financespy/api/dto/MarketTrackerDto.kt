@@ -62,3 +62,19 @@ data class WatchlistItemDto(
 data class CreateWatchlistItemResponseDto(
     val watchlist_item: WatchlistItemDto
 )
+
+@Serializable
+data class CreateTradeBody(
+    val account_id: String,
+    val type: String = "buy",
+    val ticker: String,
+    val qty: String,
+    val price: String,
+    val date: String,
+    val fee: String = "0"
+)
+
+@Serializable
+data class CreateTradeRequest(
+    val trade: CreateTradeBody
+)

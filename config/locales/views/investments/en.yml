@@ -36,9 +36,25 @@ en:
       week52_range: 52-week range
       volume: Volume
       unavailable: Market data is currently unavailable
+    new_trade:
+      title: Record buy / position
+      account: Investment account
+      type: Type
+      buy: Buy
+      sell: Sell
+      date: Date
+      ticker: Ticker (ETF or stock)
+      qty: Shares / Fractions
+      price: Price per share
+      fee: Fee (optional)
+      submit: Save position
+      success: Position recorded successfully
+      no_account: Create an investment account first to record a position.
     portfolio:
       title: My Investments (ETFs & Stocks)
       subtitle: Consolidated holdings across all your investment accounts
+      add_holding: Add holding
+      add_more: Buy / Sell more
       total_value: Portfolio value
       total_return: Total return
       day_change: Day change
@@ -49,12 +65,14 @@ en:
       no_accounts_description: Track your ETFs, stocks, and funds with live market prices.
       columns:
         asset: Asset
-        price: Price
+        price: Mkt Price
+        avg_cost: AC/Share
+        total_cost: Total Cost
         day_change: 1D Change
         trend_1m: 1M Trend
         shares: Shares
-        value: Value
-        return: Return
+        value: Mkt Value
+        return: Total Gain
     watchlist:
       title: Watchlist
       subtitle: Track ETFs, stocks, and market indices just like Yahoo Finance or Google Finance
@@ -63,6 +81,7 @@ en:
       ticker_placeholder: "Ticker (e.g. VOO, ^GSPC)"
       add_ticker_button: Watch ticker
       quick_add: "Quick add:"
+      buy_position: Position
       remove: Remove
       remove_confirm: "Remove %{ticker} from your watchlist?"
       empty_title: Your watchlist is empty

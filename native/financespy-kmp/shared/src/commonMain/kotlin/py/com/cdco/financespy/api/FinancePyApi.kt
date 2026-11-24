@@ -52,6 +52,7 @@ import py.com.cdco.financespy.api.dto.CreateFleetVehicleRequest
 import py.com.cdco.financespy.api.dto.CreateFuelLogBody
 import py.com.cdco.financespy.api.dto.CreateFuelLogRequest
 import py.com.cdco.financespy.api.dto.CreateGoalPledgeRequest
+import py.com.cdco.financespy.api.dto.CreateTradeRequest
 import py.com.cdco.financespy.api.dto.CreateWatchlistItemRequest
 import py.com.cdco.financespy.api.dto.CreateWatchlistItemResponseDto
 import py.com.cdco.financespy.api.dto.DashboardDto
@@ -975,5 +976,12 @@ open class FinancePyApi(private val http: HttpClient) {
 
     open suspend fun deleteWatchlistItem(id: String) {
         http.delete("/api/v1/watchlist_items/$id")
+    }
+
+    open suspend fun createTrade(request: CreateTradeRequest) {
+        http.post("/api/v1/trades") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
     }
 }

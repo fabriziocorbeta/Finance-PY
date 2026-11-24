@@ -6,6 +6,7 @@ class Api::V1::TradesController < Api::V1::BaseController
   before_action :ensure_read_scope, only: [ :index, :show ]
   before_action :ensure_write_scope, only: [ :create, :update, :destroy ]
   before_action :set_trade, only: [ :show, :update, :destroy ]
+  before_action :ensure_writable_trade_account!, only: [ :update, :destroy ]
 
   def index
     family = current_family
@@ -63,6 +64,10 @@ class Api::V1::TradesController < Api::V1::BaseController
       model.mark_user_modified!
       model.sync_account_later
       @trade = model.trade
+      if @trade&.security_id
+        strategy = account.linked? ? :reverse : :forward
+        Balance::Materializer.new(account, strategy: strategy, security_ids: [ @trade.security_id ]).materialize_balances
+      end
     else
       @trade = model
     end
@@ -121,6 +126,12 @@ class Api::V1::TradesController < Api::V1::BaseController
 
     def ensure_write_scope
       authorize_scope!(:write)
+    end
+
+    def ensure_writable_trade_account!
+      return if current_family.accounts.writable_by(current_resource_owner).exists?(id: @entry.account_id)
+
+      render json: { error: "forbidden", message: "You do not have write access to this account" }, status: :forbidden
     end
 
     def apply_filters(query)
@@ -183,6 +194,7 @@ class Api::V1::TradesController < Api::V1::BaseController
         is_sell = type_or_nature.present? ? trade_sell_from_type_or_nature?(type_or_nature) : @trade.qty.negative?
         signed_qty = is_sell ? -qty.to_d.abs : qty.to_d.abs
         entry_params[:entryable_attributes][:qty] = signed_qty
+        entry_params[:entryable_attributes][:price] = price.to_d
         entry_params[:amount] = signed_qty * price.to_d
         ticker = @trade.security&.ticker
         entry_params[:name] = Trade.build_name(is_sell ? "sell" : "buy", signed_qty.abs, ticker) if ticker.present?

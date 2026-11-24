@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -37,6 +38,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -92,9 +94,32 @@ fun InvestmentsListScreen(
 ) {
     val state by viewModel.state.collectAsState()
     var tickerInput by remember { mutableStateOf("") }
+    var showTradeDialog by remember { mutableStateOf(false) }
+    var tradeInitialTicker by remember { mutableStateOf("") }
+    var tradeInitialPrice by remember { mutableStateOf("") }
+
+    val openTradeDialog: (String, Double?) -> Unit = { ticker, price ->
+        tradeInitialTicker = ticker
+        tradeInitialPrice = price?.let { formatQuoteNumber(it) } ?: ""
+        showTradeDialog = true
+    }
 
     LaunchedEffect(Unit) {
         viewModel.refresh()
+    }
+
+    if (showTradeDialog && state.investmentAccounts.isNotEmpty()) {
+        RecordTradeDialog(
+            accounts = state.investmentAccounts,
+            initialTicker = tradeInitialTicker,
+            initialPrice = tradeInitialPrice,
+            defaultDate = state.featuredQuote?.points?.lastOrNull()?.date ?: "2026-11-24",
+            onDismiss = { showTradeDialog = false },
+            onSave = { accountId, type, ticker, qty, price, date ->
+                showTradeDialog = false
+                viewModel.recordTrade(accountId, type, ticker, qty, price, date)
+            }
+        )
     }
 
     Scaffold(
@@ -156,22 +181,39 @@ fun InvestmentsListScreen(
                             quote = state.featuredQuote,
                             selectedRange = state.selectedRange,
                             isLoading = state.isLoadingMarket,
+                            canRecordTrade = state.investmentAccounts.isNotEmpty(),
                             onSelectRange = { range ->
                                 viewModel.selectQuote(state.selectedTicker, range)
                             },
                             onAddToWatchlist = { ticker ->
                                 viewModel.addToWatchlist(ticker)
+                            },
+                            onAddPosition = { ticker, price ->
+                                openTradeDialog(ticker, price)
                             }
                         )
                     }
 
                     // 3. Portfolio Summary & Holdings
                     item {
-                        Text(
-                            text = "Mis Inversiones",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = FinancePyColors.textPrimary()
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Mis Inversiones",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = FinancePyColors.textPrimary()
+                            )
+                            if (state.investmentAccounts.isNotEmpty()) {
+                                AppButton(
+                                    text = "+ Posición",
+                                    onClick = { openTradeDialog("", null) },
+                                    variant = ButtonVariant.Secondary
+                                )
+                            }
+                        }
                     }
 
                     if (state.investmentAccounts.isNotEmpty()) {
@@ -236,6 +278,7 @@ fun InvestmentsListScreen(
                             watchlistQuotes = state.watchlistQuotes,
                             tickerInput = tickerInput,
                             isMutating = state.isMutatingWatchlist,
+                            canRecordTrade = state.investmentAccounts.isNotEmpty(),
                             marketError = state.marketError,
                             onTickerInputChange = { tickerInput = it },
                             onAddTicker = { ticker ->
@@ -243,6 +286,7 @@ fun InvestmentsListScreen(
                                 tickerInput = ""
                             },
                             onSelectQuote = { ticker -> viewModel.selectQuote(ticker) },
+                            onAddPosition = { ticker, price -> openTradeDialog(ticker, price) },
                             onRemoveQuote = { id -> viewModel.removeFromWatchlist(id) }
                         )
                     }
@@ -330,8 +374,10 @@ private fun FeaturedQuoteChartCard(
     quote: MarketQuoteDto?,
     selectedRange: String,
     isLoading: Boolean,
+    canRecordTrade: Boolean,
     onSelectRange: (String) -> Unit,
-    onAddToWatchlist: (String) -> Unit
+    onAddToWatchlist: (String) -> Unit,
+    onAddPosition: (String, Double?) -> Unit
 ) {
     AppCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -382,12 +428,21 @@ private fun FeaturedQuoteChartCard(
                         )
                     }
 
-                    if (quote.watchlist_item_id == null) {
-                        AppButton(
-                            text = "+ Seguir",
-                            onClick = { onAddToWatchlist(quote.ticker) },
-                            variant = ButtonVariant.Secondary
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (canRecordTrade && quote.category != "index") {
+                            AppButton(
+                                text = "+ Posición",
+                                onClick = { onAddPosition(quote.ticker, quote.current_price) },
+                                variant = ButtonVariant.Primary
+                            )
+                        }
+                        if (quote.watchlist_item_id == null) {
+                            AppButton(
+                                text = "+ Seguir",
+                                onClick = { onAddToWatchlist(quote.ticker) },
+                                variant = ButtonVariant.Secondary
+                            )
+                        }
                     }
                 }
 
@@ -495,10 +550,12 @@ private fun WatchlistSectionCard(
     watchlistQuotes: List<MarketQuoteDto>,
     tickerInput: String,
     isMutating: Boolean,
+    canRecordTrade: Boolean,
     marketError: String?,
     onTickerInputChange: (String) -> Unit,
     onAddTicker: (String) -> Unit,
     onSelectQuote: (String) -> Unit,
+    onAddPosition: (String, Double?) -> Unit,
     onRemoveQuote: (String) -> Unit
 ) {
     AppCard(modifier = Modifier.fillMaxWidth()) {
@@ -584,7 +641,9 @@ private fun WatchlistSectionCard(
                     }
                     WatchlistQuoteRow(
                         quote = quote,
+                        canRecordTrade = canRecordTrade,
                         onClick = { onSelectQuote(quote.ticker) },
+                        onAddPosition = { onAddPosition(quote.ticker, quote.current_price) },
                         onRemove = { quote.watchlist_item_id?.let(onRemoveQuote) }
                     )
                 }
@@ -596,7 +655,9 @@ private fun WatchlistSectionCard(
 @Composable
 private fun WatchlistQuoteRow(
     quote: MarketQuoteDto,
+    canRecordTrade: Boolean,
     onClick: () -> Unit,
+    onAddPosition: () -> Unit,
     onRemove: () -> Unit
 ) {
     val positive = (quote.change_percent ?: 0.0) >= 0.0
@@ -651,6 +712,17 @@ private fun WatchlistQuoteRow(
                     text = "${if (pct >= 0) "+" else ""}${formatPercent(pct)}",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                     color = dayColor
+                )
+            }
+        }
+
+        if (canRecordTrade && quote.category != "index") {
+            IconButton(onClick = onAddPosition, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Registrar posición",
+                    tint = FinancePyColors.textPrimary(),
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
@@ -854,7 +926,12 @@ private fun HoldingSecurityRow(
                 }
             }
             Text(
-                text = holding.name,
+                text = buildString {
+                    append("${formatShareQty(holding.qty)} acc.")
+                    holding.avgCostCents?.let { ac ->
+                        append(" · Prom: ${formatMoney(ac, holding.currency)}")
+                    }
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = FinancePyColors.textSecondary(),
                 maxLines = 1,
@@ -870,20 +947,146 @@ private fun HoldingSecurityRow(
             )
         }
 
+        val liveValueCents = quote?.current_price?.let { (it * holding.qty * 100.0).roundToLong() } ?: holding.amountCents
+        val totalCostCents = holding.avgCostCents?.let { (it * holding.qty).roundToLong() }
+        val gainCents = totalCostCents?.let { liveValueCents - it }
+        val gainPct = if (totalCostCents != null && totalCostCents > 0L && gainCents != null) {
+            (gainCents * 100.0) / totalCostCents
+        } else null
+        val gainColor = if ((gainCents ?: 0L) >= 0L) Color(0xFF16A34A) else Color(0xFFE11D48)
+
         Column(
             horizontalAlignment = Alignment.End,
             modifier = Modifier.clickable(onClick = onDetailClick)
         ) {
             Text(
-                text = formatMoney(holding.amountCents, holding.currency),
+                text = formatMoney(liveValueCents, holding.currency),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 color = FinancePyColors.textPrimary()
             )
-            Text(
-                text = "${formatPercent(weightPct)} del portafolio",
-                style = MaterialTheme.typography.labelSmall,
-                color = FinancePyColors.textSecondary()
-            )
+            if (gainCents != null && gainPct != null) {
+                Text(
+                    text = "${if (gainCents >= 0) "+" else ""}${formatMoney(gainCents, holding.currency)} (${if (gainPct >= 0) "+" else ""}${formatPercent(gainPct)})",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = gainColor
+                )
+            } else {
+                Text(
+                    text = "${formatPercent(weightPct)} del portafolio",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = FinancePyColors.textSecondary()
+                )
+            }
         }
     }
+}
+
+private fun formatShareQty(qty: Double): String {
+    val scaled = (qty * 1_000_000.0).roundToLong()
+    val whole = scaled / 1_000_000
+    val frac = kotlin.math.abs(scaled % 1_000_000)
+    if (frac == 0L) return whole.toString()
+    val fracStr = frac.toString().padStart(6, '0').trimEnd('0')
+    return "$whole.$fracStr"
+}
+
+@Composable
+private fun RecordTradeDialog(
+    accounts: List<AccountDto>,
+    initialTicker: String,
+    initialPrice: String,
+    defaultDate: String,
+    onDismiss: () -> Unit,
+    onSave: (accountId: String, type: String, ticker: String, qty: String, price: String, date: String) -> Unit
+) {
+    var selectedAccountId by remember { mutableStateOf(accounts.first().id) }
+    var tradeType by remember { mutableStateOf("buy") }
+    var ticker by remember { mutableStateOf(initialTicker) }
+    var qty by remember { mutableStateOf("") }
+    var price by remember { mutableStateOf(initialPrice) }
+    var date by remember { mutableStateOf(defaultDate) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Registrar posición", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (accounts.size > 1) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        accounts.forEach { acc ->
+                            FilterChip(
+                                selected = selectedAccountId == acc.id,
+                                onClick = { selectedAccountId = acc.id },
+                                label = { Text(acc.name) }
+                            )
+                        }
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = tradeType == "buy",
+                        onClick = { tradeType = "buy" },
+                        label = { Text("Compra") }
+                    )
+                    FilterChip(
+                        selected = tradeType == "sell",
+                        onClick = { tradeType = "sell" },
+                        label = { Text("Venta") }
+                    )
+                }
+
+                OutlinedTextField(
+                    value = ticker,
+                    onValueChange = { ticker = it.uppercase() },
+                    label = { Text("Ticker (ej. QQQ, SPY, AAPL)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = qty,
+                        onValueChange = { qty = it },
+                        label = { Text("Acciones / Fracc.") },
+                        placeholder = { Text("0.0085") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = price,
+                        onValueChange = { price = it },
+                        label = { Text("Precio") },
+                        placeholder = { Text("682.93") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                OutlinedTextField(
+                    value = date,
+                    onValueChange = { date = it },
+                    label = { Text("Fecha (AAAA-MM-DD)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSave(selectedAccountId, tradeType, ticker, qty, price, date) },
+                enabled = ticker.isNotBlank() && qty.isNotBlank() && price.isNotBlank() && date.isNotBlank()
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
