@@ -21,12 +21,17 @@ class Rule::ActionExecutor::SetAsTransferOrPayment < Rule::ActionExecutor
 
           # Use DESTINATION (inflow) account for kind, matching Transfer::Creator logic
           destination_account = transfer.inflow_transaction.entry.account
+          source_account = transfer.outflow_transaction.entry.account
           outflow_kind = Transfer.kind_for_account(destination_account)
           outflow_attrs = { kind: outflow_kind }
 
-          if outflow_kind == "investment_contribution"
-            category = destination_account.family.investment_contributions_category
-            outflow_attrs[:category] = category if category.present? && transfer.outflow_transaction.category_id.blank?
+          if transfer.outflow_transaction.category_id.blank?
+            auto_category = Transfer.auto_category_for(
+              kind: outflow_kind,
+              source_account: source_account,
+              destination_account: destination_account
+            )
+            outflow_attrs[:category] = auto_category if auto_category.present?
           end
 
           transfer.outflow_transaction.update!(outflow_attrs)

@@ -161,8 +161,12 @@ class Account::ProviderImportAdapter
       elsif detected_label == "Contribution"
         auto_kind = "investment_contribution"
         auto_category = account.family.investment_contributions_category
+      elsif detected_label == "Withdrawal"
+        auto_kind = "investment_contribution"
+        auto_category = account.family.investment_withdrawals_category
       elsif account.accountable_type == "Loan" && amount.negative?
         auto_kind = "loan_payment"
+        auto_category = account.family.loan_payments_category
       elsif account.accountable_type == "CreditCard" && amount.negative?
         auto_kind = "cc_payment"
       end

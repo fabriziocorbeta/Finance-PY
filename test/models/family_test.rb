@@ -165,6 +165,38 @@ class FamilyTest < ActiveSupport::TestCase
     end
   end
 
+  test "loan_payments_category creates and reuses category in family locale" do
+    family = families(:dylan_family)
+    family.update!(locale: "es")
+    family.categories.where(name: Category.all_loan_payments_names).destroy_all
+
+    category = family.loan_payments_category
+
+    assert category.persisted?
+    assert_equal "Pago de préstamos", category.name
+    assert_equal "#e11d48", category.color
+    assert_equal "credit-card", category.lucide_icon
+    assert_no_difference "Category.count" do
+      assert_equal category, family.loan_payments_category
+    end
+  end
+
+  test "investment_withdrawals_category creates and reuses category in family locale" do
+    family = families(:dylan_family)
+    family.update!(locale: "es")
+    family.categories.where(name: Category.all_investment_withdrawals_names).destroy_all
+
+    category = family.investment_withdrawals_category
+
+    assert category.persisted?
+    assert_equal "Retiro de inversiones", category.name
+    assert_equal "#f59e0b", category.color
+    assert_equal "trending-down", category.lucide_icon
+    assert_no_difference "Category.count" do
+      assert_equal category, family.investment_withdrawals_category
+    end
+  end
+
   test "moniker helpers return expected singular and plural labels" do
     family = families(:dylan_family)
 

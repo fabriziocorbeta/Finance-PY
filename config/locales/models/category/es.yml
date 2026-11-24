@@ -3,6 +3,7 @@ es:
   models:
     category:
       investment_contributions: Aportaciones a inversiones
+      investment_withdrawals: Retiro de inversiones
       other_investments: Otras inversiones
       uncategorized: Sin clasificar
       default_income: Ingresos

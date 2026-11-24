@@ -39,7 +39,11 @@ class Transfer::Creator
 
       Transaction.new(
         kind: kind,
-        category: (investment_contributions_category if kind == "investment_contribution" && destination_is_investment? && !source_is_investment?),
+        category: Transfer.auto_category_for(
+          kind: kind,
+          source_account: source_account,
+          destination_account: destination_account
+        ),
         # InvestmentFlowStatement#period_totals (the "Contribuciones del Período"
         # widget on Reportes, web and native) only counts transactions tagged
         # investment_activity_label: "Contribution" -- without this, a transfer
@@ -54,10 +58,6 @@ class Transfer::Creator
           user_modified: true, # Protect from provider sync claiming this entry
         )
       )
-    end
-
-    def investment_contributions_category
-      source_account.family.investment_contributions_category
     end
 
     def investment_activity_label_for(kind)
