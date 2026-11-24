@@ -43,6 +43,7 @@ data class InvestmentsListState(
     val watchlistQuotes: List<MarketQuoteDto> = emptyList(),
     val holdingQuotesBySecurity: Map<String, MarketQuoteDto> = emptyMap(),
     val featuredQuote: MarketQuoteDto? = null,
+    val dialogQuote: MarketQuoteDto? = null,
     val selectedTicker: String = "^GSPC",
     val selectedRange: String = "1mo"
 )
@@ -211,6 +212,22 @@ class InvestmentsListViewModel(
                         marketError = e.message ?: "No se pudo eliminar de seguimiento"
                     )
                 }
+            }
+        }
+    }
+
+    fun lookupQuoteForDialog(ticker: String) {
+        val clean = ticker.trim().uppercase()
+        if (clean.isEmpty()) {
+            _state.update { it.copy(dialogQuote = null) }
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val response = api.fetchMarketQuote(ticker = clean, range = "1mo")
+                _state.update { it.copy(dialogQuote = response.quote) }
+            } catch (_: Exception) {
+                // Ignore transient lookup errors while typing
             }
         }
     }

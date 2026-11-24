@@ -113,7 +113,9 @@ fun InvestmentsListScreen(
             accounts = state.investmentAccounts,
             initialTicker = tradeInitialTicker,
             initialPrice = tradeInitialPrice,
+            liveQuote = state.dialogQuote,
             defaultDate = state.featuredQuote?.points?.lastOrNull()?.date ?: "2026-11-24",
+            onLookupTicker = { viewModel.lookupQuoteForDialog(it) },
             onDismiss = { showTradeDialog = false },
             onSave = { accountId, type, ticker, qty, price, date ->
                 showTradeDialog = false
@@ -995,7 +997,9 @@ private fun RecordTradeDialog(
     accounts: List<AccountDto>,
     initialTicker: String,
     initialPrice: String,
+    liveQuote: MarketQuoteDto?,
     defaultDate: String,
+    onLookupTicker: (String) -> Unit,
     onDismiss: () -> Unit,
     onSave: (accountId: String, type: String, ticker: String, qty: String, price: String, date: String) -> Unit
 ) {
@@ -1004,13 +1008,64 @@ private fun RecordTradeDialog(
     var ticker by remember { mutableStateOf(initialTicker) }
     var qty by remember { mutableStateOf("") }
     var price by remember { mutableStateOf(initialPrice) }
+    var priceManuallyEdited by remember { mutableStateOf(false) }
     var date by remember { mutableStateOf(defaultDate) }
+
+    LaunchedEffect(ticker) {
+        if (ticker.isNotBlank()) {
+            kotlinx.coroutines.delay(400)
+            onLookupTicker(ticker)
+        } else {
+            onLookupTicker("")
+        }
+    }
+
+    LaunchedEffect(liveQuote) {
+        val current = liveQuote?.current_price
+        if (current != null && liveQuote.ticker.equals(ticker.trim(), ignoreCase = true) && !priceManuallyEdited) {
+            price = formatQuoteNumber(current)
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Registrar posición", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (liveQuote != null && liveQuote.current_price != null && liveQuote.ticker.equals(ticker.trim(), ignoreCase = true)) {
+                    val pct = liveQuote.change_percent
+                    val pctColor = if ((pct ?: 0.0) >= 0.0) Color(0xFF16A34A) else Color(0xFFE11D48)
+                    Surface(shape = RoundedCornerShape(8.dp), color = FinancePyColors.surface()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "${liveQuote.ticker} · ${liveQuote.name}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = FinancePyColors.textSecondary(),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = "${formatQuoteNumber(liveQuote.current_price)} ${liveQuote.currency}",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = FinancePyColors.textPrimary()
+                                )
+                            }
+                            pct?.let {
+                                Text(
+                                    text = "${if (it >= 0) "+" else ""}${formatPercent(it)}",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = pctColor
+                                )
+                            }
+                        }
+                    }
+                }
+
                 if (accounts.size > 1) {
                     Row(
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -1041,7 +1096,10 @@ private fun RecordTradeDialog(
 
                 OutlinedTextField(
                     value = ticker,
-                    onValueChange = { ticker = it.uppercase() },
+                    onValueChange = {
+                        ticker = it.uppercase()
+                        priceManuallyEdited = false
+                    },
                     label = { Text("Ticker (ej. QQQ, SPY, AAPL)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -1058,7 +1116,10 @@ private fun RecordTradeDialog(
                     )
                     OutlinedTextField(
                         value = price,
-                        onValueChange = { price = it },
+                        onValueChange = {
+                            price = it
+                            priceManuallyEdited = true
+                        },
                         label = { Text("Precio") },
                         placeholder = { Text("682.93") },
                         singleLine = true,

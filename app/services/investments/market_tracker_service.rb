@@ -18,7 +18,7 @@ module Investments
       "5y" => { range: "5y", interval: "1wk" }
     }.freeze
 
-    FETCH_TIMEOUT = 10.seconds
+    FETCH_TIMEOUT = 20.seconds
 
     QuoteCard = Data.define(
       :ticker,

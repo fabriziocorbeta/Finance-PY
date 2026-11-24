@@ -13,10 +13,33 @@
         <% end %>
       </div>
     <% else %>
-      <%= form_with url: create_trade_investments_path, method: :post, class: "space-y-4" do |f| %>
+      <%= form_with url: create_trade_investments_path,
+                    method: :post,
+                    data: {
+                      controller: "trade-quote-lookup",
+                      trade_quote_lookup_url_value: quote_lookup_investments_path
+                    },
+                    class: "space-y-4" do |f| %>
         <% if @model&.errors&.any? %>
           <%= render "shared/form_errors", model: @model %>
         <% end %>
+
+        <%# Live Market Quote Banner (Google/Yahoo Finance style) %>
+        <div data-trade-quote-lookup-target="banner"
+             class="hidden rounded-lg bg-container-inset px-3 py-2.5 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <p data-trade-quote-lookup-target="name" class="text-xs font-medium text-primary truncate"></p>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <span data-trade-quote-lookup-target="livePrice" class="text-sm font-semibold text-primary tabular-nums"></span>
+              <span data-trade-quote-lookup-target="change" class="text-xs font-medium tabular-nums"></span>
+            </div>
+          </div>
+          <button type="button"
+                  data-action="click->trade-quote-lookup#useCurrentPrice"
+                  class="shrink-0 text-xs font-medium text-secondary hover:text-primary underline cursor-pointer">
+            <%= t("investments.new_trade.use_current_price", default: "Usar precio actual") %>
+          </button>
+        </div>
 
         <div>
           <label class="block text-xs font-medium text-secondary mb-1"><%= t("investments.new_trade.account") %></label>
@@ -46,6 +69,10 @@
           <%= text_field_tag :ticker, @ticker,
                              placeholder: "VOO, QQQ, SPY, AAPL",
                              required: true,
+                             data: {
+                               trade_quote_lookup_target: "ticker",
+                               action: "input->trade-quote-lookup#onTickerInput"
+                             },
                              class: "w-full px-3 py-2 rounded-lg text-sm border border-primary bg-container-inset text-primary uppercase" %>
         </div>
 
@@ -67,6 +94,10 @@
                                  step: "any",
                                  min: "0",
                                  required: true,
+                                 data: {
+                                   trade_quote_lookup_target: "price",
+                                   action: "input->trade-quote-lookup#onPriceInput"
+                                 },
                                  class: "w-full px-3 py-2 rounded-lg text-sm border border-primary bg-container-inset text-primary" %>
           </div>
         </div>

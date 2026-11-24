@@ -439,6 +439,7 @@ Rails.application.routes.draw do
   resources :investments, only: %i[index new create edit update] do
     collection do
       get :quote
+      get :quote_lookup
       post :sync
       get :new_trade
       post :create_trade
