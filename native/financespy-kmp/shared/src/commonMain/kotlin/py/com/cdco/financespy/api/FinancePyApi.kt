@@ -52,7 +52,11 @@ import py.com.cdco.financespy.api.dto.CreateFleetVehicleRequest
 import py.com.cdco.financespy.api.dto.CreateFuelLogBody
 import py.com.cdco.financespy.api.dto.CreateFuelLogRequest
 import py.com.cdco.financespy.api.dto.CreateGoalPledgeRequest
+import py.com.cdco.financespy.api.dto.CreateWatchlistItemRequest
+import py.com.cdco.financespy.api.dto.CreateWatchlistItemResponseDto
 import py.com.cdco.financespy.api.dto.DashboardDto
+import py.com.cdco.financespy.api.dto.MarketQuoteResponseDto
+import py.com.cdco.financespy.api.dto.MarketTrackerResponseDto
 import py.com.cdco.financespy.api.dto.FleetVehicleDto
 import py.com.cdco.financespy.api.dto.FleetVehicleEnvelope
 import py.com.cdco.financespy.api.dto.FleetVehiclesEnvelope
@@ -118,6 +122,13 @@ import py.com.cdco.financespy.api.dto.UpdateUserBody
 import py.com.cdco.financespy.api.dto.UpdateUserRequest
 
 open class FinancePyApi(private val http: HttpClient) {
+    /** Public app version & update-policy check (short timeout, callers fail-open offline). */
+    open suspend fun fetchAppConfig(): py.com.cdco.financespy.api.dto.AppConfigDto {
+        return http.get("/api/v1/app_config") {
+            timeout { requestTimeoutMillis = 3_000; connectTimeoutMillis = 3_000 }
+        }.body()
+    }
+
     /** True if the server (or its proxy) answers with anything below 5xx within 3s. */
     open suspend fun isServerReachable(): Boolean = try {
         http.get("/up") {
@@ -304,18 +315,34 @@ open class FinancePyApi(private val http: HttpClient) {
     }
 
     open suspend fun fetchRuleRuns(ruleId: String): List<RuleRunDto> {
-        val response: RuleRunsEnvelope = http.get("/api/v1/rule_runs") {
-            parameter("rule_id", ruleId)
-            parameter("per_page", 100)
-        }.body()
-        return response.data
+        val all = mutableListOf<RuleRunDto>()
+        var page = 1
+        while (true) {
+            val response: RuleRunsEnvelope = http.get("/api/v1/rule_runs") {
+                parameter("rule_id", ruleId)
+                parameter("page", page)
+                parameter("per_page", 100)
+            }.body()
+            all += response.data
+            val next = response.meta.next_page ?: break
+            page = next
+        }
+        return all
     }
 
     open suspend fun fetchCategories(): List<CategoryDto> {
-        val response: CategoriesResponse = http.get("/api/v1/categories") {
-            parameter("per_page", 100)
-        }.body()
-        return response.categories
+        val all = mutableListOf<CategoryDto>()
+        var page = 1
+        while (true) {
+            val response: CategoriesResponse = http.get("/api/v1/categories") {
+                parameter("page", page)
+                parameter("per_page", 100)
+            }.body()
+            all += response.categories
+            if (page >= response.pagination.total_pages) break
+            page++
+        }
+        return all
     }
 
     open suspend fun fetchMerchants(): List<MerchantDto> = http.get("/api/v1/merchants").body()
@@ -553,10 +580,18 @@ open class FinancePyApi(private val http: HttpClient) {
 
     // --- Products ---
     open suspend fun fetchAllProducts(): List<ProductDto> {
-        val response: ProductsResponseDto = http.get("/api/v1/products") {
-            parameter("per_page", 100)
-        }.body()
-        return response.data
+        val all = mutableListOf<ProductDto>()
+        var page = 1
+        while (true) {
+            val response: ProductsResponseDto = http.get("/api/v1/products") {
+                parameter("page", page)
+                parameter("per_page", 100)
+            }.body()
+            all += response.data
+            val next = response.meta?.next_page ?: break
+            page = next
+        }
+        return all
     }
 
     open suspend fun fetchProduct(id: String): ProductDto {
@@ -586,10 +621,18 @@ open class FinancePyApi(private val http: HttpClient) {
 
     // --- Sales ---
     open suspend fun fetchAllSales(): List<SaleDto> {
-        val response: SalesResponseDto = http.get("/api/v1/sales") {
-            parameter("per_page", 100)
-        }.body()
-        return response.data
+        val all = mutableListOf<SaleDto>()
+        var page = 1
+        while (true) {
+            val response: SalesResponseDto = http.get("/api/v1/sales") {
+                parameter("page", page)
+                parameter("per_page", 100)
+            }.body()
+            all += response.data
+            val next = response.meta?.next_page ?: break
+            page = next
+        }
+        return all
     }
 
     open suspend fun fetchSale(id: String): SaleDto {
@@ -656,10 +699,18 @@ open class FinancePyApi(private val http: HttpClient) {
 
     // --- Purchase Orders ---
     open suspend fun fetchAllPurchaseOrders(): List<PurchaseOrderDto> {
-        val response: PurchaseOrdersResponseDto = http.get("/api/v1/purchase_orders") {
-            parameter("per_page", 100)
-        }.body()
-        return response.data
+        val all = mutableListOf<PurchaseOrderDto>()
+        var page = 1
+        while (true) {
+            val response: PurchaseOrdersResponseDto = http.get("/api/v1/purchase_orders") {
+                parameter("page", page)
+                parameter("per_page", 100)
+            }.body()
+            all += response.data
+            val next = response.meta?.next_page ?: break
+            page = next
+        }
+        return all
     }
 
     open suspend fun fetchPurchaseOrder(id: String): PurchaseOrderDto {
@@ -887,5 +938,42 @@ open class FinancePyApi(private val http: HttpClient) {
 
     open suspend fun retryMessage(chatId: String): MessageRetryResponseDto {
         return http.post("/api/v1/chats/$chatId/messages/retry").body()
+    }
+
+    // --- Market Tracker & Watchlist ---
+    open suspend fun fetchMarketTracker(
+        ticker: String = "^GSPC",
+        range: String = "1mo",
+        refresh: Boolean = false
+    ): MarketTrackerResponseDto {
+        return http.get("/api/v1/market_tracker") {
+            parameter("ticker", ticker)
+            parameter("range", range)
+            if (refresh) parameter("refresh", "1")
+        }.body()
+    }
+
+    open suspend fun fetchMarketQuote(
+        ticker: String,
+        range: String = "1mo"
+    ): MarketQuoteResponseDto {
+        return http.get("/api/v1/market_tracker/quote") {
+            parameter("ticker", ticker)
+            parameter("range", range)
+        }.body()
+    }
+
+    open suspend fun addWatchlistItem(
+        ticker: String,
+        exchangeOperatingMic: String? = null
+    ): CreateWatchlistItemResponseDto {
+        return http.post("/api/v1/watchlist_items") {
+            contentType(ContentType.Application.Json)
+            setBody(CreateWatchlistItemRequest(ticker = ticker, exchange_operating_mic = exchangeOperatingMic))
+        }.body()
+    }
+
+    open suspend fun deleteWatchlistItem(id: String) {
+        http.delete("/api/v1/watchlist_items/$id")
     }
 }

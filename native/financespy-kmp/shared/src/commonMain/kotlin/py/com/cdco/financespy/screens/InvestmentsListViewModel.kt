@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.AccountDto
 import py.com.cdco.financespy.api.dto.DashboardDto
+import py.com.cdco.financespy.api.dto.MarketQuoteDto
 import py.com.cdco.financespy.api.dto.PortfolioHoldingDto
 import py.com.cdco.financespy.sync.OfflineCache
 import py.com.cdco.financespy.sync.OfflineCacheKeys
@@ -26,11 +27,20 @@ data class AggregatedHolding(
 
 data class InvestmentsListState(
     val isLoading: Boolean = false,
+    val isLoadingMarket: Boolean = false,
+    val isMutatingWatchlist: Boolean = false,
     val error: String? = null,
+    val marketError: String? = null,
     val investmentAccounts: List<AccountDto> = emptyList(),
     val holdingsBySecurity: List<AggregatedHolding> = emptyList(),
     val totalPortfolioValueCents: Long = 0,
-    val currency: String = "PYG"
+    val currency: String = "PYG",
+    val indexQuotes: List<MarketQuoteDto> = emptyList(),
+    val watchlistQuotes: List<MarketQuoteDto> = emptyList(),
+    val holdingQuotesBySecurity: Map<String, MarketQuoteDto> = emptyMap(),
+    val featuredQuote: MarketQuoteDto? = null,
+    val selectedTicker: String = "^GSPC",
+    val selectedRange: String = "1mo"
 )
 
 class InvestmentsListViewModel(
@@ -101,9 +111,9 @@ class InvestmentsListViewModel(
         }
     }
 
-    fun refresh() {
+    fun refresh(forceMarketRefresh: Boolean = false) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
+            _state.update { it.copy(isLoading = true, isLoadingMarket = true, error = null, marketError = null) }
             try {
                 val allAccounts = api.fetchAllAccounts()
                 cache.putList(OfflineCacheKeys.ACCOUNTS_LIST, AccountDto.serializer(), allAccounts)
@@ -121,6 +131,98 @@ class InvestmentsListViewModel(
                         error = if (!hasCached) (e.message ?: "Error al cargar inversiones") else null
                     )
                 }
+            }
+
+            loadMarketTracker(forceRefresh = forceMarketRefresh)
+        }
+    }
+
+    fun selectQuote(ticker: String, range: String = _state.value.selectedRange) {
+        viewModelScope.launch {
+            _state.update { it.copy(selectedTicker = ticker, selectedRange = range, isLoadingMarket = true, marketError = null) }
+            try {
+                val response = api.fetchMarketQuote(ticker = ticker, range = range)
+                _state.update {
+                    it.copy(
+                        isLoadingMarket = false,
+                        featuredQuote = response.quote ?: it.featuredQuote
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isLoadingMarket = false,
+                        marketError = e.message ?: "Error al cargar cotización"
+                    )
+                }
+            }
+        }
+    }
+
+    fun addToWatchlist(ticker: String) {
+        val clean = ticker.trim().uppercase()
+        if (clean.isEmpty()) return
+
+        viewModelScope.launch {
+            _state.update { it.copy(isMutatingWatchlist = true, marketError = null) }
+            try {
+                api.addWatchlistItem(ticker = clean)
+                _state.update { it.copy(selectedTicker = clean, isMutatingWatchlist = false) }
+                loadMarketTracker(forceRefresh = false)
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isMutatingWatchlist = false,
+                        marketError = e.message ?: "No se pudo agregar $clean"
+                    )
+                }
+            }
+        }
+    }
+
+    fun removeFromWatchlist(watchlistItemId: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(isMutatingWatchlist = true, marketError = null) }
+            try {
+                api.deleteWatchlistItem(watchlistItemId)
+                _state.update { it.copy(isMutatingWatchlist = false) }
+                loadMarketTracker(forceRefresh = false)
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isMutatingWatchlist = false,
+                        marketError = e.message ?: "No se pudo eliminar de seguimiento"
+                    )
+                }
+            }
+        }
+    }
+
+    private suspend fun loadMarketTracker(forceRefresh: Boolean) {
+        try {
+            val current = _state.value
+            val tracker = api.fetchMarketTracker(
+                ticker = current.selectedTicker,
+                range = current.selectedRange,
+                refresh = forceRefresh
+            )
+            _state.update {
+                it.copy(
+                    isLoadingMarket = false,
+                    indexQuotes = tracker.index_quotes,
+                    watchlistQuotes = tracker.watchlist_quotes,
+                    holdingQuotesBySecurity = tracker.holding_quotes
+                        .filter { q -> q.security_id != null }
+                        .associateBy { q -> q.security_id!! },
+                    featuredQuote = tracker.featured_quote ?: it.featuredQuote
+                )
+            }
+        } catch (e: Exception) {
+            _state.update {
+                it.copy(
+                    isLoadingMarket = false,
+                    marketError = e.message
+                )
             }
         }
     }
