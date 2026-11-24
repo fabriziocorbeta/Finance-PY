@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.MoneyOff
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.filled.Rule
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -29,6 +30,7 @@ data class NavItem(
 object NavItems {
     val DASHBOARD = NavItem("dashboard", "Dashboard", Routes.DASHBOARD, Icons.Filled.PieChart)
     val TRANSACTIONS = NavItem("transactions", "Transacciones", Routes.TRANSACTIONS, Icons.Filled.CreditCard)
+    val INVESTMENTS = NavItem("investments", "Inversiones", Routes.INVESTMENTS, Icons.AutoMirrored.Filled.TrendingUp)
     val REPORTS = NavItem("reports", "Reportes", Routes.REPORTS, Icons.Filled.BarChart)
     val BUDGETS = NavItem("budgets", "Presupuestos", Routes.BUDGETS, Icons.Filled.Map)
     val GOALS = NavItem("goals", "Metas", Routes.GOALS, Icons.Filled.TrackChanges)
@@ -48,14 +50,14 @@ object NavItems {
     // decía "7 ítems" pero la lista se quedó en 6, así que "Asistente" nunca
     // aparecía en la barra por defecto, solo si se agregaba a mano en
     // personalización.
-    val CORE_DEFAULT_ORDER = listOf(DASHBOARD, TRANSACTIONS, REPORTS, BUDGETS, GOALS, RECEIVABLES, CHAT).map { it.id }
+    val CORE_DEFAULT_ORDER = listOf(DASHBOARD, TRANSACTIONS, INVESTMENTS, REPORTS, BUDGETS, GOALS, RECEIVABLES, CHAT).map { it.id }
 
     // Todos los ítems core (sin depender de business_mode) + los de modo negocio,
     // que solo se ofrecen como opción si la family los tiene habilitados. DEBTS
     // queda afuera de CORE_DEFAULT_ORDER a propósito (ese default replica
     // exactamente la barra mobile de la web) pero disponible acá para agregar
     // vía personalización o "Más opciones".
-    val CORE = listOf(DASHBOARD, TRANSACTIONS, REPORTS, BUDGETS, GOALS, RECEIVABLES, DEBTS, RULES, CHAT)
+    val CORE = listOf(DASHBOARD, TRANSACTIONS, INVESTMENTS, REPORTS, BUDGETS, GOALS, RECEIVABLES, DEBTS, RULES, CHAT)
     val BUSINESS = listOf(PRODUCTS, SALES, PURCHASE_ORDERS, FLEET)
 
     fun byId(id: String): NavItem? = (CORE + BUSINESS).find { it.id == id }
