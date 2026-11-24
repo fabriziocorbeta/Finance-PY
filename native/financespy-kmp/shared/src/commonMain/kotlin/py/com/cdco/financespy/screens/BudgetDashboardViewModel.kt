@@ -346,9 +346,9 @@ class BudgetDashboardViewModel(
                         }
 
                         val statusText = when (status) {
-                            BudgetCategoryStatus.OVER_BUDGET -> "$currencyFormat ${(aSpend - bSpend).toInt()} de más"
-                            BudgetCategoryStatus.NEAR_LIMIT -> "$currencyFormat ${avail.toInt()} disponible"
-                            BudgetCategoryStatus.ON_TRACK -> "$currencyFormat ${avail.toInt()} disponible"
+                            BudgetCategoryStatus.OVER_BUDGET -> "${py.com.cdco.financespy.utils.formatMoney(aSpend - bSpend, currencyFormat)} de más"
+                            BudgetCategoryStatus.NEAR_LIMIT -> "${py.com.cdco.financespy.utils.formatMoney(avail, currencyFormat)} disponible"
+                            BudgetCategoryStatus.ON_TRACK -> "${py.com.cdco.financespy.utils.formatMoney(avail, currencyFormat)} disponible"
                         }
 
                         val dailyUi = c.suggested_daily_spending?.let { d ->

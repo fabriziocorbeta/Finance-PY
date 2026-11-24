@@ -7,18 +7,26 @@ class InactiveFamilyCleanerJob < ApplicationJob
   def perform(dry_run: false)
     return unless Rails.application.config.app_mode.managed?
 
-    families = Family.inactive_trial_for_cleanup.limit(BATCH_SIZE)
-    count = families.count
+    cutoff_with_sub = Family::CLEANUP_GRACE_PERIOD.ago
+    cutoff_without_sub = (Subscription::TRIAL_DAYS.days + Family::CLEANUP_GRACE_PERIOD).ago
+    # Broad candidate query on `families` only (never join FORCE-RLS `subscriptions`
+    # without an active family context, or paying families look like subscription=NULL).
+    candidate_families = Family.where("families.created_at < ?", cutoff_with_sub).limit(BATCH_SIZE)
 
-    if count == 0
-      Rails.logger.info("InactiveFamilyCleanerJob: No inactive families to clean up")
-      return
-    end
+    processed = 0
 
-    Rails.logger.info("InactiveFamilyCleanerJob: Found #{count} inactive families to clean up#{' (dry run)' if dry_run}")
-
-    families.find_each do |family|
+    candidate_families.find_each do |family|
       RlsContext.with_family(family) do
+        sub = family.subscription
+        eligible = if sub.present?
+          sub.status.in?(%w[paused trialing]) && sub.trial_ends_at.present? && sub.trial_ends_at < cutoff_with_sub
+        else
+          family.created_at < cutoff_without_sub
+        end
+        next unless eligible
+
+        processed += 1
+
         if family.requires_data_archive?
           if dry_run
             Rails.logger.info("InactiveFamilyCleanerJob: Would archive data for family #{family.id}")
@@ -31,19 +39,12 @@ class InactiveFamilyCleanerJob < ApplicationJob
           Rails.logger.info("InactiveFamilyCleanerJob: Would destroy family #{family.id} (created: #{family.created_at})")
         else
           Rails.logger.info("InactiveFamilyCleanerJob: Destroying family #{family.id} (created: #{family.created_at})")
-          # FamilyPurger (E8) does what a plain family.destroy does not:
-          # purges ActiveStorage blobs, cleans up rows with no cascading
-          # has_many on Family (Consent, FamilyMerchantAssociation) and no
-          # dependent: :destroy (PaperTrail::Version), and writes an
-          # anonymous DeletionRecord audit entry. It sets its own
-          # RlsContext.with_family internally, so the outer one here is
-          # redundant but harmless.
-          FamilyPurger.purge!(family)
+          FamilyPurger.purge!(family, allow_active_subscription: false)
         end
       end
     end
 
-    Rails.logger.info("InactiveFamilyCleanerJob: Completed cleanup of #{count} families#{' (dry run)' if dry_run}")
+    Rails.logger.info("InactiveFamilyCleanerJob: Completed cleanup of #{processed} families#{' (dry run)' if dry_run}")
   end
 
   private

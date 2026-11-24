@@ -4,20 +4,65 @@
 #   cp .env.production.example .env && editar valores
 #   docker compose -f compose.prod.yml up -d --build
 
+x-logging: &default_logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 x-rails-env: &rails_env
   SECRET_KEY_BASE: ${SECRET_KEY_BASE:?SECRET_KEY_BASE requerido en .env}
   DATABASE_URL: ${DATABASE_URL:?DATABASE_URL requerido en .env (Supabase session pooler)}
-  SELF_HOSTED: "true"
+  SELF_HOSTED: ${SELF_HOSTED:-true}
   RAILS_FORCE_SSL: "false"
   RAILS_ASSUME_SSL: "true"
+  REVERSE_PROXY_HANDLES_COMPRESSION: "true"
   APP_DOMAIN: ${APP_DOMAIN:-finance.cd-co.com.py}
   PRODUCT_NAME: ${PRODUCT_NAME:-FinancePY}
   BRAND_NAME: ${BRAND_NAME:-CD & Co.}
-  REDIS_URL: redis://redis:6379/1
+  # Sidekiq queues/retries/cron live on dedicated noeviction + AOF Redis;
+  # Rails.cache & Rack::Attack live on separate allkeys-lru Redis cache.
+  REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD requerido en .env}@redis:6379/1
+  REDIS_CACHE_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD requerido en .env}@redis-cache:6379/0
   ONBOARDING_STATE: ${ONBOARDING_STATE:-closed}
   EXCHANGE_RATE_PROVIDER: ${EXCHANGE_RATE_PROVIDER:-yahoo_finance}
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://finance.cd-co.com.py}
   CSP_REPORT_ONLY: ${CSP_REPORT_ONLY:-false}
+  # Active Storage (recomendado: cloudflare / amazon / google para VM descartable)
+  ACTIVE_STORAGE_SERVICE: ${ACTIVE_STORAGE_SERVICE:-local}
+  CLOUDFLARE_ACCOUNT_ID: ${CLOUDFLARE_ACCOUNT_ID:-}
+  CLOUDFLARE_ACCESS_KEY_ID: ${CLOUDFLARE_ACCESS_KEY_ID:-}
+  CLOUDFLARE_SECRET_ACCESS_KEY: ${CLOUDFLARE_SECRET_ACCESS_KEY:-}
+  CLOUDFLARE_BUCKET: ${CLOUDFLARE_BUCKET:-}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+  S3_REGION: ${S3_REGION:-us-east-1}
+  S3_BUCKET: ${S3_BUCKET:-}
+  GCS_PROJECT: ${GCS_PROJECT:-}
+  GCS_BUCKET: ${GCS_BUCKET:-}
+  GCS_KEYFILE_JSON: ${GCS_KEYFILE_JSON:-}
+  # SMTP (resets de contraseña, invitaciones, reportes)
+  SMTP_ADDRESS: ${SMTP_ADDRESS:-}
+  SMTP_PORT: ${SMTP_PORT:-465}
+  SMTP_USERNAME: ${SMTP_USERNAME:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_TLS_ENABLED: ${SMTP_TLS_ENABLED:-true}
+  SMTP_TLS_SKIP_VERIFY: ${SMTP_TLS_SKIP_VERIFY:-false}
+  EMAIL_SENDER: ${EMAIL_SENDER:-}
+  # Observabilidad
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  # Mobile Version Check (GET /api/v1/app_config)
+  MOBILE_MIN_SUPPORTED_VERSION: ${MOBILE_MIN_SUPPORTED_VERSION:-0.2.0}
+  MOBILE_LATEST_VERSION: ${MOBILE_LATEST_VERSION:-0.2.0}
+  MOBILE_MIN_ANDROID_VERSION_CODE: ${MOBILE_MIN_ANDROID_VERSION_CODE:-5}
+  MOBILE_LATEST_ANDROID_VERSION_CODE: ${MOBILE_LATEST_ANDROID_VERSION_CODE:-5}
+  MOBILE_MIN_IOS_BUILD: ${MOBILE_MIN_IOS_BUILD:-1}
+  MOBILE_LATEST_IOS_BUILD: ${MOBILE_LATEST_IOS_BUILD:-1}
+  MOBILE_ANDROID_STORE_URL: ${MOBILE_ANDROID_STORE_URL:-https://play.google.com/store/apps/details?id=py.com.cdco.financespy}
+  MOBILE_IOS_STORE_URL: ${MOBILE_IOS_STORE_URL:-}
+  MOBILE_DIRECT_APK_URL: ${MOBILE_DIRECT_APK_URL:-}
+  MOBILE_FORCE_UPDATE: ${MOBILE_FORCE_UPDATE:-false}
+  MOBILE_RELEASE_NOTES: ${MOBILE_RELEASE_NOTES:-}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   # AI Assistant vía NVIDIA API Catalog (endpoint OpenAI-compatible, modelos open-weight)
   OPENAI_ACCESS_TOKEN: ${OPENAI_ACCESS_TOKEN:-}
@@ -29,20 +74,16 @@ x-rails-env: &rails_env
   ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY: ${ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY:?ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY requerido en .env}
   ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY: ${ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY:?ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY requerido en .env}
   ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT: ${ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT:?ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT requerido en .env}
-  # Sidekiq Web basic auth. `:-` and not `:?` on purpose: a missing value
-  # must lock the panel, never stop the stack from booting.
+  # Sidekiq Web basic auth. `:-` and not `:?` on purpose: a missing/empty value
+  # locks the panel via random credentials in config/initializers/sidekiq.rb.
   SIDEKIQ_WEB_USERNAME: ${SIDEKIQ_WEB_USERNAME:-}
   SIDEKIQ_WEB_PASSWORD: ${SIDEKIQ_WEB_PASSWORD:-}
 
 services:
-  # Resource limits below (mem_limit/cpus) exist because this stack shares a
-  # machine other people use normally (a household PC, not a dedicated VM) --
-  # without a cap, Puma/Sidekiq/Redis have no reason not to grow into all
-  # available RAM/CPU. Budget: ~2.7GB total, well under the ~4-5GB ceiling
-  # agreed for the whole app so the rest of the machine stays responsive.
   caddy:
-    image: caddy:2
+    image: caddy:2-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
     restart: unless-stopped
+    logging: *default_logging
     mem_limit: 128m
     cpus: 0.25
     ports:
@@ -53,12 +94,20 @@ services:
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
-      - web
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/up"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - financespy_net
 
   web:
     build: .
+    logging: *default_logging
     mem_limit: 1536m
     cpus: 1.0
     volumes:
@@ -70,6 +119,14 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -79,6 +136,7 @@ services:
   worker:
     build: .
     command: bundle exec sidekiq -c 5
+    logging: *default_logging
     mem_limit: 768m
     cpus: 0.5
     volumes:
@@ -87,8 +145,18 @@ services:
     environment:
       <<: *rails_env
     depends_on:
+      web:
+        condition: service_healthy
       redis:
         condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'sidekiq' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -96,15 +164,37 @@ services:
       - financespy_net
 
   redis:
-    image: redis:8.8
+    image: redis:8.8@sha256:0808d25ce768580377c7db21c2a2c63e47f51d9bccf43713bd1e3744061dd7f2
     restart: unless-stopped
+    logging: *default_logging
     mem_limit: 256m
     cpus: 0.25
-    command: redis-server --maxmemory 200mb --maxmemory-policy allkeys-lru
+    # Dedicated Sidekiq Redis: MUST use noeviction + AOF persistence + auth.
+    command: redis-server --maxmemory 200mb --maxmemory-policy noeviction --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD requerido en .env}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD requerido en .env}
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - financespy_net
+
+  redis-cache:
+    image: redis:8.8@sha256:0808d25ce768580377c7db21c2a2c63e47f51d9bccf43713bd1e3744061dd7f2
+    restart: unless-stopped
+    logging: *default_logging
+    mem_limit: 128m
+    cpus: 0.15
+    # Ephemeral cache + Rack::Attack store: safe to evict via allkeys-lru.
+    command: redis-server --maxmemory 96mb --maxmemory-policy allkeys-lru --save "" --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD requerido en .env}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD requerido en .env}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 5s
       timeout: 5s
       retries: 5

@@ -46,6 +46,8 @@ class Family < ApplicationRecord
 
   has_many :budgets, dependent: :destroy
   has_many :budget_categories, through: :budgets
+  has_many :watchlist_items, dependent: :destroy
+  has_many :watched_securities, through: :watchlist_items, source: :security
 
   has_many :llm_usages, dependent: :destroy
   has_many :recurring_transactions, dependent: :destroy
@@ -192,42 +194,34 @@ class Family < ApplicationRecord
   # This is used for auto-categorizing transfers to investment accounts.
   # Always uses the family's locale to ensure consistent category naming across all users.
   def investment_contributions_category
-    # Find ALL legacy categories (created under old request-locale behavior)
-    legacy = categories.where(name: Category.all_investment_contributions_names).order(:created_at).to_a
+    find_or_create_system_category(
+      all_names: Category.all_investment_contributions_names,
+      target_name_proc: -> { Category.investment_contributions_name },
+      color: "#0d9488",
+      lucide_icon: "trending-up"
+    )
+  end
 
-    if legacy.any?
-      keeper = legacy.first
-      duplicates = legacy[1..]
+  # Returns the Investment Withdrawals category for this family, creating it if it doesn't exist.
+  # Used for auto-categorizing withdrawals from investment accounts.
+  def investment_withdrawals_category
+    find_or_create_system_category(
+      all_names: Category.all_investment_withdrawals_names,
+      target_name_proc: -> { Category.investment_withdrawals_name },
+      color: "#f59e0b",
+      lucide_icon: "trending-down"
+    )
+  end
 
-      # Reassign transactions and subcategories from duplicates to keeper
-      if duplicates.any?
-        duplicate_ids = duplicates.map(&:id)
-        categories.where(parent_id: duplicate_ids).update_all(parent_id: keeper.id)
-        Transaction.where(category_id: duplicate_ids).update_all(category_id: keeper.id)
-        BudgetCategory.where(category_id: duplicate_ids).update_all(category_id: keeper.id)
-        categories.where(id: duplicate_ids).delete_all
-      end
-
-      # Rename keeper to family's locale name if needed
-      I18n.with_locale(locale) do
-        correct_name = Category.investment_contributions_name
-        keeper.update!(name: correct_name) unless keeper.name == correct_name
-      end
-      return keeper
-    end
-
-    # Create new category using family's locale
-    I18n.with_locale(locale) do
-      categories.find_or_create_by!(name: Category.investment_contributions_name) do |cat|
-        cat.color = "#0d9488"
-        cat.lucide_icon = "trending-up"
-      end
-    end
-  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
-    # Handle race condition: another process created the category
-    I18n.with_locale(locale) do
-      categories.find_by!(name: Category.investment_contributions_name)
-    end
+  # Returns the Loan Payments category for this family, creating it if it doesn't exist.
+  # Used for auto-categorizing payments to loan accounts.
+  def loan_payments_category
+    find_or_create_system_category(
+      all_names: Category.all_loan_payments_names,
+      target_name_proc: -> { Category.loan_payments_name },
+      color: "#e11d48",
+      lucide_icon: "credit-card"
+    )
   end
 
   # Returns account IDs for tax-advantaged accounts (401k, IRA, HSA, etc.)
@@ -399,14 +393,23 @@ class Family < ApplicationRecord
     ids = account_ids || goal_linked_account_ids
     return 0 if ids.empty?
 
-    net = Entry
+    sums_by_currency = Entry
       .joins("INNER JOIN transactions ON transactions.id = entries.entryable_id AND entries.entryable_type = 'Transaction'")
       .where(account_id: ids, date: range)
       .where(excluded: false)
       .merge(Transaction.excluding_pending)
+      .group(:currency)
       .sum(:amount)
 
-    -net.to_d
+    target_currency = currency.to_s.upcase
+    rates = ExchangeRate.rates_for(sums_by_currency.keys.map { |c| c.to_s.upcase }, to: target_currency)
+    net = sums_by_currency.sum(BigDecimal("0")) do |curr, amount|
+      code = curr.to_s.upcase
+      rate = code == target_currency ? BigDecimal("1") : BigDecimal((rates[code] || 1).to_s)
+      BigDecimal(amount.to_s) * rate
+    end
+
+    -net
   end
 
   def savings_inflow_windows(window_days: 30, now: Date.current)
@@ -420,30 +423,37 @@ class Family < ApplicationRecord
   def sync_inventory_account!
     return unless business_mode_enabled
 
-    account = accounts.find_or_create_by!(name: "Mercadería", accountable_type: "OtherAsset") do |acc|
-      acc.accountable = OtherAsset.new
-      acc.currency = self.currency
-      acc.balance = 0
+    Account.transaction do
+      # Serialize concurrent inventory account syncs per family to prevent duplicate
+      # "Mercadería" accounts and stale balance anchor races.
+      lock_key = Zlib.crc32("sync_inventory_account:#{id}").to_i
+      self.class.connection.execute(
+        ActiveRecord::Base.sanitize_sql_array([ "SELECT pg_advisory_xact_lock(?)", lock_key ])
+      )
+
+      account = accounts.find_or_create_by!(name: "Mercadería", accountable_type: "OtherAsset") do |acc|
+        acc.accountable = OtherAsset.new
+        acc.currency = self.currency
+        acc.balance = 0
+      end
+      account.lock!
+
+      balances_by_currency = products.group(:currency).sum("stock * buy_price")
+
+      total_balance = BigDecimal("0")
+      target_currency = self.currency&.upcase
+      upcased_currencies = balances_by_currency.keys.map { |c| c&.upcase }
+      rates = ExchangeRate.rates_for(upcased_currencies, to: target_currency)
+
+      balances_by_currency.each do |currency, amount|
+        code = currency&.upcase
+        rate = code == target_currency ? BigDecimal("1") : BigDecimal((rates[code] || 1).to_s)
+        total_balance += BigDecimal(amount.to_s) * rate
+      end
+
+      precision = Money::Currency.new(self.currency).default_precision
+      account.set_current_balance(total_balance.round(precision))
     end
-
-    balances_by_currency = products.group(:currency).sum("stock * buy_price")
-
-    total_balance = 0
-
-    upcased_currencies = balances_by_currency.keys.map { |c| c&.upcase }
-    rates = ExchangeRate.rates_for(upcased_currencies, to: self.currency&.upcase)
-
-    balances_by_currency.each do |currency, amount|
-      rate = rates[currency&.upcase] || 1
-      total_balance += amount * rate
-    end
-
-    # account.balance is a cached/derived value that Account::Syncer recomputes
-    # from the account's valuation anchors - a plain `update!(balance:)` gets
-    # silently overwritten back to 0 the next time the account syncs, since an
-    # OtherAsset account with no anchor has no valuation history to derive from.
-    # set_current_balance creates/updates that anchor so the value sticks.
-    account.set_current_balance(total_balance)
   end
 
   private
@@ -478,5 +488,39 @@ class Family < ApplicationRecord
       Money::Currency.new(value).iso_code
     rescue Money::Currency::UnknownCurrencyError, ArgumentError
       nil
+    end
+
+    def find_or_create_system_category(all_names:, target_name_proc:, color:, lucide_icon:)
+      legacy = categories.where(name: all_names).order(:created_at).to_a
+
+      if legacy.any?
+        keeper = legacy.first
+        duplicates = legacy[1..]
+
+        if duplicates.any?
+          duplicate_ids = duplicates.map(&:id)
+          categories.where(parent_id: duplicate_ids).update_all(parent_id: keeper.id)
+          Transaction.where(category_id: duplicate_ids).update_all(category_id: keeper.id)
+          BudgetCategory.where(category_id: duplicate_ids).update_all(category_id: keeper.id)
+          categories.where(id: duplicate_ids).delete_all
+        end
+
+        I18n.with_locale(locale) do
+          correct_name = target_name_proc.call
+          keeper.update!(name: correct_name) unless keeper.name == correct_name
+        end
+        return keeper
+      end
+
+      I18n.with_locale(locale) do
+        categories.find_or_create_by!(name: target_name_proc.call) do |cat|
+          cat.color = color
+          cat.lucide_icon = lucide_icon
+        end
+      end
+    rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
+      I18n.with_locale(locale) do
+        categories.find_by!(name: target_name_proc.call)
+      end
     end
 end

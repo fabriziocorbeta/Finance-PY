@@ -1,0 +1,59 @@
+<%# locals: (index_quotes:, selected_ticker:, range:) %>
+
+<section class="space-y-3">
+  <div class="flex items-center justify-between">
+    <h2 class="text-sm font-medium uppercase tracking-wide text-secondary">
+      <%= t("investments.index.market_indices") %>
+    </h2>
+  </div>
+
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    <% index_quotes.each do |idx| %>
+      <% active = idx.ticker.casecmp?(selected_ticker.to_s) %>
+      <% positive = idx.positive? %>
+      <% trend_color = positive ? "text-green-600" : "text-red-600" %>
+      <% badge_bg = positive ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600" %>
+
+      <%= link_to quote_investments_path(ticker: idx.ticker, range: range),
+                  data: { turbo_frame: "market_quote_detail" },
+                  class: class_names(
+                    "group block rounded-xl p-3.5 bg-container shadow-border-xs transition-all hover:bg-surface-hover",
+                    "ring-2 ring-primary" => active
+                  ) do %>
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <div class="min-w-0">
+            <p class="text-xs font-medium text-secondary truncate"><%= idx.name %></p>
+            <p class="text-[11px] text-subdued font-mono"><%= idx.ticker %></p>
+          </div>
+          <% if idx.change_percent.present? %>
+            <span class="shrink-0 text-[11px] font-medium px-1.5 py-0.5 rounded-md <%= badge_bg %>">
+              <%= idx.change_percent >= 0 ? "+" : "" %><%= number_with_precision(idx.change_percent, precision: 2) %>%
+            </span>
+          <% end %>
+        </div>
+
+        <div class="flex items-end justify-between gap-2">
+          <div>
+            <p class="text-base font-semibold text-primary tabular-nums">
+              <%= idx.current_price ? number_with_delimiter(number_with_precision(idx.current_price, precision: 2)) : "—" %>
+            </p>
+            <% if idx.change.present? %>
+              <p class="text-xs font-medium tabular-nums <%= trend_color %>">
+                <%= idx.change >= 0 ? "+" : "" %><%= number_with_precision(idx.change, precision: 2) %>
+              </p>
+            <% end %>
+          </div>
+
+          <% if idx.series %>
+            <div class="w-16 h-8 shrink-0">
+              <%= render "shared/sparkline",
+                         id: "index-sparkline-#{idx.ticker.parameterize}",
+                         series: idx.series,
+                         stroke_width: 1.5 %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</section>

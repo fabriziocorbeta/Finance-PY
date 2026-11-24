@@ -270,7 +270,7 @@ class ExchangeRate::Importer
     # Normalizes an end date so that it never exceeds today's date in the
     # America/New_York timezone.
     def normalize_end_date(requested_end_date)
-      today_est = Date.current.in_time_zone("America/New_York").to_date
+      today_est = Time.current.in_time_zone("America/New_York").to_date
       [ requested_end_date, today_est ].min
     end
 end

@@ -156,7 +156,7 @@ module Reports
         return value if value.blank?
 
         string_value = value.to_s
-        string_value.match?(/\A[=+\-@]/) ? "'#{string_value}" : string_value
+        string_value.match?(/\A[\t\r\n ]*[=+\-@\t\r]/) ? "'#{string_value}" : string_value
       end
 
       def parse_dates(start_date_param, end_date_param)

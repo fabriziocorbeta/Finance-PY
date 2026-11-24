@@ -3,12 +3,14 @@ package py.com.cdco.financespy.cache
 import android.content.Context
 import py.com.cdco.financespy.security.EncryptedPrefsFactory
 import py.com.cdco.financespy.security.OwnerScope
+import py.com.cdco.financespy.widgets.WidgetUpdater
 
 class AndroidDashboardCache(
     context: Context,
     private val ownerId: () -> String? = { OwnerScope.currentOwnerId(context.applicationContext) }
 ) : DashboardCache {
-    private val prefs = EncryptedPrefsFactory.create(context.applicationContext, "financespy_dashboard_cache")
+    private val appContext = context.applicationContext
+    private val prefs = EncryptedPrefsFactory.create(appContext, "financespy_dashboard_cache")
 
     @Volatile private var lastCheckedOwner: String? = null
 
@@ -20,12 +22,14 @@ class AndroidDashboardCache(
     override fun save(periodKey: String?, json: String) {
         ensureOwnerScope()
         prefs.edit().putString(keyFor(periodKey), json).apply()
+        runCatching { WidgetUpdater.updateAll(appContext) }
     }
 
     /** Drops every cached dashboard period. */
     fun wipeAll() {
         prefs.edit().clear().apply()
         lastCheckedOwner = null
+        runCatching { WidgetUpdater.updateAll(appContext) }
     }
 
     private fun keyFor(periodKey: String?) = "dashboard_${periodKey ?: "default"}"

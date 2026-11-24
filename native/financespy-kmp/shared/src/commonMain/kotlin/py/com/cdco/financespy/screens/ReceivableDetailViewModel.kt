@@ -109,7 +109,8 @@ class ReceivableDetailViewModel(
         val current = _state.value
         val fromAccountId = current.paymentFromAccountId
         val toAccountId = current.receivableAccountId
-        val amount = current.paymentAmount.toDoubleOrNull()
+        val receivableCurrency = current.receivable?.currency ?: "PYG"
+        val amount = py.com.cdco.financespy.utils.AmountParser.parse(current.paymentAmount, receivableCurrency)
 
         if (fromAccountId == null || toAccountId == null || amount == null || amount <= 0.0) {
             _state.update { it.copy(paymentError = "Completá cuenta e importe válido") }

@@ -10,7 +10,8 @@ class ApiKey < ApplicationRecord
 
   # Constants
   SOURCES = [ "web", "mobile", "monitoring" ].freeze
-  DEMO_MONITORING_KEY = "demo_monitoring_key_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+  DEMO_MONITORING_KEY = ENV["DEMO_MONITORING_KEY"].presence ||
+    (Rails.env.production? ? SecureRandom.hex(32) : "demo_monitoring_key_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6")
 
   # "web" keys are the ones a user generates themselves in Settings and can
   # end up embedded in a URL outside the app's control (e.g. pasted into a

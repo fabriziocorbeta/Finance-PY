@@ -1,6 +1,78 @@
 ---
 es:
+  watchlist_items:
+    create:
+      success: "%{ticker} agregado a tu lista de seguimiento"
+      not_found: "No se pudo encontrar el instrumento seleccionado"
+    destroy:
+      success: "%{ticker} eliminado de tu lista de seguimiento"
   investments:
+    index:
+      title: Inversiones y Mercados
+      refresh_prices: Actualizar precios
+      new_account: Nueva cuenta de inversión
+      market_indices: Índices de mercado
+      synced: Precios de mercado actualizados
+    categories:
+      index: Índice
+      etf: ETF
+      equity: Acción
+      crypto: Cripto
+      fund: Fondo
+    ranges:
+      5d: 5D
+      1mo: 1M
+      3mo: 3M
+      6mo: 6M
+      ytd: YTD
+      1y: 1A
+      5y: 5A
+    quote_detail:
+      today: Hoy
+      add_to_watchlist: Seguir
+      no_chart_data: Sin datos históricos disponibles para este rango
+      previous_close: Cierre anterior
+      day_range: Rango del día
+      week52_range: Rango 52 semanas
+      volume: Volumen
+      unavailable: No se pudieron obtener datos de mercado en este momento
+    portfolio:
+      title: Mis Inversiones (ETFs y Acciones)
+      subtitle: Posiciones consolidadas de todas tus cuentas de inversión
+      total_value: Valor del portafolio
+      total_return: Retorno total
+      day_change: Cambio del día
+      cash_balance: Efectivo disponible
+      no_holdings_title: Aún no tienes posiciones registradas
+      no_holdings_description: Agrega operaciones de compra en tus cuentas de inversión para ver el seguimiento aquí.
+      no_accounts_title: Crea tu primera cuenta de inversión
+      no_accounts_description: Registra tus ETFs, acciones o fondos para seguir su rendimiento en tiempo real.
+      columns:
+        asset: Activo
+        price: Precio
+        day_change: Cambio 1D
+        trend_1m: Tendencia 1M
+        shares: Acciones
+        value: Valor
+        return: Retorno
+    watchlist:
+      title: Lista de Seguimiento
+      subtitle: Sigue ETFs, acciones e índices como en Yahoo Finance o Google Finance
+      search_placeholder: Buscar ETF, acción o índice...
+      add_button: Agregar
+      ticker_placeholder: "Ticker (ej. VOO, ^GSPC)"
+      add_ticker_button: Seguir ticker
+      quick_add: "Sugeridos:"
+      remove: Eliminar
+      remove_confirm: "¿Eliminar %{ticker} de tu lista de seguimiento?"
+      empty_title: Tu lista de seguimiento está vacía
+      empty_description: Busca o ingresa un ticker (ej. SPY, QQQ, VOO, AAPL, ^GSPC) para seguir su cotización.
+      columns:
+        symbol: Símbolo
+        price: Precio
+        day_change: Cambio 1D
+        month_change: Cambio 1M
+        trend_1m: Tendencia 1M
     edit:
       edit: Editar %{account}
     form:

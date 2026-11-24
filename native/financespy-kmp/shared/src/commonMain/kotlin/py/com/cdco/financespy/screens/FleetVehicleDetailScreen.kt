@@ -508,13 +508,14 @@ private fun FuelLogDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val liters = litersText.toDoubleOrNull()
-                    val cost = costText.toDoubleOrNull()
+                    val accountCurrency = accounts.firstOrNull { it.id == selectedAccountId }?.currency ?: "PYG"
+                    val liters = py.com.cdco.financespy.utils.AmountParser.parse(litersText, "USD")
+                    val cost = py.com.cdco.financespy.utils.AmountParser.parse(costText, accountCurrency)
                     if (selectedAccountId.isNotBlank() && liters != null && liters > 0 && cost != null && cost >= 0) {
                         onConfirm(
                             selectedAccountId,
                             dateText.ifBlank { currentIsoDate() },
-                            odometerText.toDoubleOrNull(),
+                            py.com.cdco.financespy.utils.AmountParser.parse(odometerText, "PYG"),
                             selectedFuelType,
                             brand.ifBlank { null },
                             liters,

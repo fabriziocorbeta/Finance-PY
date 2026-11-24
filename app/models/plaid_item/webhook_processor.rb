@@ -15,19 +15,21 @@ class PlaidItem::WebhookProcessor
       return
     end
 
-    case [ webhook_type, webhook_code ]
-    when [ "TRANSACTIONS", "SYNC_UPDATES_AVAILABLE" ]
-      plaid_item.sync_later
-    when [ "INVESTMENTS_TRANSACTIONS", "DEFAULT_UPDATE" ]
-      plaid_item.sync_later
-    when [ "HOLDINGS", "DEFAULT_UPDATE" ]
-      plaid_item.sync_later
-    when [ "ITEM", "ERROR" ]
-      if error["error_code"] == "ITEM_LOGIN_REQUIRED"
-        plaid_item.update!(status: :requires_update)
+    RlsContext.with_family(plaid_item.family_id) do
+      case [ webhook_type, webhook_code ]
+      when [ "TRANSACTIONS", "SYNC_UPDATES_AVAILABLE" ]
+        plaid_item.sync_later
+      when [ "INVESTMENTS_TRANSACTIONS", "DEFAULT_UPDATE" ]
+        plaid_item.sync_later
+      when [ "HOLDINGS", "DEFAULT_UPDATE" ]
+        plaid_item.sync_later
+      when [ "ITEM", "ERROR" ]
+        if error["error_code"] == "ITEM_LOGIN_REQUIRED"
+          plaid_item.update!(status: :requires_update)
+        end
+      else
+        Rails.logger.warn("Unhandled Plaid webhook type: #{webhook_type}:#{webhook_code}")
       end
-    else
-      Rails.logger.warn("Unhandled Plaid webhook type: #{webhook_type}:#{webhook_code}")
     end
   rescue => e
     # To always ensure we return a 200 to Plaid (to keep endpoint healthy), silently capture and report all errors
@@ -38,7 +40,9 @@ class PlaidItem::WebhookProcessor
     attr_reader :webhook_type, :webhook_code, :item_id, :error
 
     def plaid_item
-      @plaid_item ||= PlaidItem.find_by(plaid_id: item_id)
+      @plaid_item ||= RlsContext.with_auth_bypass(reason: "plaid_webhook_lookup") do
+        PlaidItem.find_by(plaid_id: item_id)
+      end
     end
 
     def handle_missing_item

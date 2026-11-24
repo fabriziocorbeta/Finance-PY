@@ -14,12 +14,15 @@ class OidcAccountsController < ApplicationController
     @email = @pending_auth["email"]
     @user_exists = RlsContext.with_auth_bypass { User.exists?(email: @email) } if @email.present?
 
-    # Check for a pending invitation for this email
-    @pending_invitation = Invitation.pending.find_by(email: @email) if @email.present?
+    # Check for a pending invitation for this email (invitations is FORCE RLS'd)
+    @pending_invitation = if @email.present?
+      RlsContext.with_auth_bypass(reason: "oidc_link_invitation_lookup") do
+        Invitation.pending.find_by(email: @email)
+      end
+    end
 
-    # Determine whether we should offer JIT account creation for this
-    # pending auth, based on JIT mode and allowed domains.
-    @allow_account_creation = @pending_invitation.present? || (!AuthConfig.jit_link_only? && AuthConfig.allowed_oidc_domain?(@email))
+    signup_open = !self_hosted? || Setting.onboarding_state != "closed"
+    @allow_account_creation = @pending_invitation.present? || (signup_open && !AuthConfig.jit_link_only? && AuthConfig.allowed_oidc_domain?(@email))
   end
 
   def create_link
@@ -33,12 +36,17 @@ class OidcAccountsController < ApplicationController
     # Verify user's password to confirm identity
     user = User.auth_authenticate_by(email: params[:email], password: params[:password])
 
-    if user
-      # Create the OIDC identity link. This action is skip_authentication
-      # (linking happens before a session exists), so app.current_family_id
-      # is never set here -- same bootstrap gap the 2026-09-29 P0 was about,
-      # now for oidc_identities. create_user below already gets this right
-      # via jit_signup; create_link didn't.
+    if user&.active?
+      if user.otp_required?
+        # Do NOT create OidcIdentity before MFA verification — an attacker who only
+        # knows the password must not be able to bind an OIDC identity to an MFA account.
+        @email = params[:email]
+        @user_exists = true
+        flash.now[:alert] = "Accounts with two-factor authentication must sign in directly before linking SSO."
+        render :link, status: :unauthorized
+        return
+      end
+
       oidc_identity = RlsContext.with_auth_bypass(reason: "oidc_account_link") do
         OidcIdentity.create_from_omniauth(
           build_auth_hash(@pending_auth),
@@ -56,18 +64,13 @@ class OidcAccountsController < ApplicationController
       # Clear pending auth from session
       session.delete(:pending_oidc_auth)
 
-      if user.otp_required?
-        session[:mfa_user_id] = user.id
-        redirect_to verify_mfa_path
+      @session = create_session_for(user)
+      notice = if accept_pending_invitation_for(user)
+        t("invitations.accept_choice.joined_household")
       else
-        @session = create_session_for(user)
-        notice = if accept_pending_invitation_for(user)
-          t("invitations.accept_choice.joined_household")
-        else
-          t("sessions.openid_connect.account_linked", provider: @pending_auth["provider"])
-        end
-        redirect_to root_path, notice: notice
+        t("sessions.openid_connect.account_linked", provider: @pending_auth["provider"])
       end
+      redirect_to root_path, notice: notice
     else
       @email = params[:email]
       @user_exists = RlsContext.with_auth_bypass { User.exists?(email: @email) } if @email.present?
@@ -103,13 +106,14 @@ class OidcAccountsController < ApplicationController
 
     email = @pending_auth["email"]
 
-    # Check for a pending invitation for this email
-    invitation = Invitation.pending.find_by(email: email)
+    # Check for a pending invitation for this email (invitations is FORCE RLS'd)
+    invitation = RlsContext.with_auth_bypass(reason: "oidc_create_user_invitation_lookup") do
+      Invitation.pending.find_by(email: email)
+    end
+    signup_open = !self_hosted? || Setting.onboarding_state != "closed"
 
-    # Respect global JIT configuration: in link_only mode or when the email
-    # domain is not allowed, block JIT account creation—unless there's a
-    # pending invitation for this user.
-    unless invitation.present? || (!AuthConfig.jit_link_only? && AuthConfig.allowed_oidc_domain?(email))
+    # Respect global onboarding_state + JIT configuration unless invited.
+    unless invitation.present? || (signup_open && !AuthConfig.jit_link_only? && AuthConfig.allowed_oidc_domain?(email))
       redirect_to new_session_path, alert: "SSO account creation is disabled. Please contact an administrator."
       return
     end

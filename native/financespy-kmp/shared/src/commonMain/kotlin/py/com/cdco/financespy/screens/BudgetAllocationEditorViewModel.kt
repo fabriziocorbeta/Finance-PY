@@ -114,13 +114,14 @@ class BudgetAllocationEditorViewModel(
         val parentCategories = currentState.categories.filter { !it.isSubcategory }
         val subcategories = currentState.categories.filter { it.isSubcategory }
 
+        val budgetCurrency = currentState.currency.ifBlank { "PYG" }
         var total = 0.0
         parentCategories.forEach { parent ->
-            val parentInput = currentState.inputs[parent.id]?.toDoubleOrNull()
+            val parentInput = currentState.inputs[parent.id]?.let { py.com.cdco.financespy.utils.AmountParser.parse(it, budgetCurrency) }
             val childInputs = subcategories.filter { it.parentId == parent.categoryId }
             var subtotal = 0.0
             childInputs.forEach { child ->
-                val childVal = currentState.inputs[child.id]?.toDoubleOrNull()
+                val childVal = currentState.inputs[child.id]?.let { py.com.cdco.financespy.utils.AmountParser.parse(it, budgetCurrency) }
                 if (childVal != null) {
                     subtotal += childVal
                 }
@@ -148,9 +149,10 @@ class BudgetAllocationEditorViewModel(
                 val currentState = _uiState.value
                 val categories = currentState.categories
 
+                val budgetCurrency = currentState.currency.ifBlank { "PYG" }
                 for (item in categories) {
                     val inputStr = currentState.inputs[item.id]
-                    val newDouble = inputStr?.toDoubleOrNull()
+                    val newDouble = inputStr?.let { py.com.cdco.financespy.utils.AmountParser.parse(it, budgetCurrency) }
                     // Send update if changed or entered value
                     if (inputStr != item.inputValue) {
                         api.updateBudgetCategory(

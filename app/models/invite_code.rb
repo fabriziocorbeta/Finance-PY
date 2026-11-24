@@ -10,10 +10,10 @@ class InviteCode < ApplicationRecord
 
   class << self
     def claim!(token)
-      if invite_code = find_by(token: token&.downcase)
-        invite_code.destroy!
-        true
-      end
+      return false if token.blank?
+
+      # Atomic single-use claim: only one concurrent signup can delete the row.
+      where(token: token.downcase).delete_all == 1
     end
 
     def generate!
@@ -25,7 +25,7 @@ class InviteCode < ApplicationRecord
 
     def generate_token
       loop do
-        self.token = SecureRandom.hex(4)
+        self.token = SecureRandom.hex(16)
         break token unless self.class.exists?(token: token)
       end
     end

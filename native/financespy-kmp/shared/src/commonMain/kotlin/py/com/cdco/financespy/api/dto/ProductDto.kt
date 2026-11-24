@@ -21,7 +21,8 @@ data class ProductDto(
 
 @Serializable
 data class ProductsResponseDto(
-    val data: List<ProductDto> = emptyList()
+    val data: List<ProductDto> = emptyList(),
+    val meta: RulesMetaDto? = null
 )
 
 @Serializable

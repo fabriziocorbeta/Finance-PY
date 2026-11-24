@@ -55,9 +55,12 @@ class Sale < ApplicationRecord
 
       locked_products = lock_products_for(sale_items)
 
-      sale_items.each do |item|
-        product = locked_products.fetch(item.product_id)
-        if product.stock < item.quantity
+      # Aggregate required quantities per product_id in case the same product
+      # appears in multiple line items of the same sale.
+      sale_items.group_by(&:product_id).each do |product_id, items|
+        product = locked_products.fetch(product_id)
+        required_qty = items.sum(&:quantity)
+        if product.stock < required_qty
           errors.add(:base, "Insufficient stock for #{product.name}")
           raise ActiveRecord::RecordInvalid.new(self)
         end
@@ -151,11 +154,13 @@ class Sale < ApplicationRecord
     # wrong currency. Mirrors the Money#exchange_to + rescue fallback pattern
     # used for cross-currency amounts elsewhere (e.g. ReportsController).
     def total_in_account_currency
-      return total if currency.to_s.casecmp?(account.currency.to_s)
+      precision = Money::Currency.new(account.currency).default_precision
+      return total.round(precision) if currency.to_s.casecmp?(account.currency.to_s)
 
-      Money.new(total, currency).exchange_to(account.currency).amount
-    rescue Money::ConversionError
-      total
+      Money.new(total, currency.to_s.upcase).exchange_to(account.currency.to_s.upcase).amount.round(precision)
+    rescue Money::ConversionError => e
+      errors.add(:base, "No se pudo convertir #{currency.to_s.upcase} a #{account.currency.to_s.upcase}: falta tipo de cambio (#{e.message})")
+      raise ActiveRecord::RecordInvalid.new(self)
     end
 
     def destroy_associated_entry
@@ -174,6 +179,9 @@ class Sale < ApplicationRecord
 
     def assign_sale_number
       if sale_number.blank? && family.present?
+        ActiveRecord::Base.connection.execute(
+          ActiveRecord::Base.sanitize_sql([ "SELECT pg_advisory_xact_lock(hashtext(?))", "sale_number:#{family_id}" ])
+        )
         self.sale_number = family.sales.maximum(:sale_number).to_i + 1
       end
     end

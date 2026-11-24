@@ -54,12 +54,16 @@ class Budget < ApplicationRecord
           budget_end = start_date.end_of_month
         end
 
-        budget = Budget.find_or_create_by!(
-          family: family,
-          start_date: budget_start,
-          end_date: budget_end
-        ) do |b|
-          b.currency = family.currency
+        budget = begin
+          Budget.find_or_create_by!(
+            family: family,
+            start_date: budget_start,
+            end_date: budget_end
+          ) do |b|
+            b.currency = family.currency
+          end
+        rescue ActiveRecord::RecordNotUnique
+          Budget.find_by!(family: family, start_date: budget_start, end_date: budget_end)
         end
 
         budget.family = family
@@ -72,7 +76,7 @@ class Budget < ApplicationRecord
 
     private
       def oldest_valid_budget_date(family)
-        two_years_ago = 2.years.ago.beginning_of_month
+        two_years_ago = 2.years.ago.beginning_of_month.to_date
         oldest_entry_date = family.oldest_entry_date.beginning_of_month
         [ two_years_ago, oldest_entry_date ].min
       end
@@ -107,13 +111,15 @@ class Budget < ApplicationRecord
     categories_to_add = current_category_ids - existing_budget_category_ids
     categories_to_remove = existing_budget_category_ids - current_category_ids
 
-    # Create missing categories
+    # Create missing categories (idempotent under concurrent requests)
     categories_to_add.each do |category_id|
       budget_categories.create!(
         category_id: category_id,
         budgeted_spending: 0,
         currency: family.currency
       )
+    rescue ActiveRecord::RecordNotUnique
+      # Already created by a concurrent request
     end
 
     # Remove old categories

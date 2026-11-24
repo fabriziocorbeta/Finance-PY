@@ -10,6 +10,7 @@ class Balance::Materializer
 
   def materialize_balances
     Balance.transaction do
+      account.lock!
       materialize_holdings
       calculate_balances
 
@@ -58,7 +59,7 @@ class Balance::Materializer
     end
 
     def persist_balances
-      current_time = Time.now
+      current_time = Time.current
       account.balances.upsert_all(
         @balances.map { |b| b.attributes
                .slice("date", "balance", "cash_balance", "currency",

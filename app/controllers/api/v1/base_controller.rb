@@ -19,6 +19,9 @@ class Api::V1::BaseController < ApplicationController
   before_action :force_json_format
   # Use our custom authentication that supports both OAuth and API keys
   before_action :authenticate_request!
+  # Apply family timezone & locale AFTER authenticate_request! so Current.family
+  # is already resolved (ApplicationController's Localize runs before API auth).
+  around_action :switch_api_timezone_and_locale
   before_action :check_api_key_rate_limit
   before_action :log_api_access
 
@@ -294,7 +297,14 @@ class Api::V1::BaseController < ApplicationController
         "Unknown"
       end
 
-      Rails.logger.info "API Request: #{request.method} #{request.path} - User: #{current_resource_owner.id} (Family: #{current_resource_owner.family_id}) - Auth: #{auth_info}"
+      client_info = [
+        request.headers["X-Platform"].presence,
+        request.headers["X-App-Version"].presence,
+        request.headers["X-App-Build"].presence
+      ].compact.join("/")
+      client_suffix = client_info.present? ? " - Client: #{client_info}" : ""
+
+      Rails.logger.info "API Request: #{request.method} #{request.path} - User: #{current_resource_owner.id} (Family: #{current_resource_owner.family_id}) - Auth: #{auth_info}#{client_suffix}"
     end
 
     # Family-based access control helper (to be used by subcontrollers)
@@ -315,35 +325,28 @@ class Api::V1::BaseController < ApplicationController
       @_doorkeeper_token
     end
 
+    def switch_api_timezone_and_locale(&block)
+      family = current_family
+      tz = family&.timezone.presence || Time.zone
+      locale = family&.locale.presence
+      locale = I18n.default_locale unless locale && I18n.available_locales.map(&:to_s).include?(locale.to_s)
+
+      Time.use_zone(tz) do
+        I18n.with_locale(locale, &block)
+      end
+    end
+
     # Set up Current context for API requests since we don't use session-based auth
     def setup_current_context_for_api
-      # For API requests, we need to create a minimal session-like object
-      # or find/create an actual session for this user to make Current.user work
       if @current_user
-        # Try to find an existing session for this user, or create a temporary one
-        session = @current_user.sessions.first
-        if session
-          Current.session = session
-        else
-          # Create a temporary session for this API request
-          # This won't be persisted but will allow Current.user to work
-          session = @current_user.sessions.build(
-            user_agent: request.user_agent,
-            ip_address: request.ip
-          )
-          Current.session = session
-        end
+        # Always build a fresh ephemeral session (never query persisted sessions
+        # before RLS is set, and never inherit web impersonation state).
+        Current.session = @current_user.sessions.build(
+          user_agent: request.user_agent,
+          ip_address: request.ip
+        )
 
-        # Current.session= alone doesn't touch Postgres -- the session-based auth
-        # path (Authentication#authenticate_user!) sets the RLS session variable
-        # explicitly, and this API path bypasses that entirely (skip_authentication).
-        # Without this, every family-scoped query below silently returns zero rows.
-        #
-        # Use the raw family_id column, not Current.family (delegates to the
-        # user.family AR association): with families under FORCE ROW LEVEL
-        # SECURITY, that association query runs before app.current_family_id
-        # is set and returns zero rows, leaving the RLS context unset for the
-        # whole request. See Authentication#authenticate_user! for the same fix.
+        # Set RLS context using the raw family_id column on the loaded user.
         RlsContext.set_family(@current_user.family_id)
       end
     end

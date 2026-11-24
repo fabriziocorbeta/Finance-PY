@@ -6,6 +6,7 @@ class Api::V1::ReceivablesController < Api::V1::BaseController
   before_action :ensure_read_scope, only: %i[index show]
   before_action :ensure_write_scope, only: %i[create update destroy]
   before_action :set_receivable, only: %i[show update destroy]
+  before_action :ensure_writable_receivable_account!, only: %i[update destroy]
 
   def index
     @per_page = safe_per_page_param
@@ -117,7 +118,7 @@ class Api::V1::ReceivablesController < Api::V1::BaseController
           render json: {
             error: "validation_failed",
             message: "Receivable could not be updated",
-            errors: [ result.error_message ]
+            errors: [ result.error ]
           }, status: :unprocessable_entity
           raise ActiveRecord::Rollback
         end
@@ -193,6 +194,13 @@ class Api::V1::ReceivablesController < Api::V1::BaseController
 
     def ensure_write_scope
       authorize_scope!(:write)
+    end
+
+    def ensure_writable_receivable_account!
+      account_id = @receivable.account&.id
+      return if account_id && current_family.accounts.writable_by(current_resource_owner).exists?(id: account_id)
+
+      render json: { error: "forbidden", message: "You do not have write access to this account" }, status: :forbidden
     end
 
     def set_receivable

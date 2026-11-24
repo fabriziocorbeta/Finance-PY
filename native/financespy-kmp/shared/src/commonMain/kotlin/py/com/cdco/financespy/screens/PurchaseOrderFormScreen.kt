@@ -345,7 +345,7 @@ fun PurchaseOrderFormScreen(
                                 OutlinedTextField(
                                     value = if (itemState.unitCost == 0.0) "" else itemState.unitCost.toString(),
                                     onValueChange = { cStr ->
-                                        val c = cStr.toDoubleOrNull() ?: 0.0
+                                        val c = py.com.cdco.financespy.utils.AmountParser.parse(cStr, currency) ?: 0.0
                                         items[index] = itemState.copy(unitCost = c)
                                     },
                                     label = { Text("Costo Unitario") },

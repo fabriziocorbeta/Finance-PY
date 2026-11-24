@@ -78,14 +78,15 @@ class ReceivableFormViewModel(
             return
         }
 
-        val parsedTotalAmount = current.totalAmount.toDoubleOrNull()
+        val targetCurrency = current.currency.ifBlank { "PYG" }
+        val parsedTotalAmount = py.com.cdco.financespy.utils.AmountParser.parse(current.totalAmount, targetCurrency)
         if (parsedTotalAmount == null || parsedTotalAmount <= 0) {
             _state.update { it.copy(error = "El monto total debe ser un número mayor a 0") }
             return
         }
 
         val parsedBalance = if (current.balance.isNotBlank()) {
-            current.balance.toDoubleOrNull() ?: run {
+            py.com.cdco.financespy.utils.AmountParser.parse(current.balance, targetCurrency) ?: run {
                 _state.update { it.copy(error = "El saldo debe ser un número válido") }
                 return
             }

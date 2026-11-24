@@ -1,5 +1,7 @@
 package py.com.cdco.financespy.utils
 
+import kotlin.math.roundToLong
+
 fun formatMoney(amountCents: Long, currency: String?): String {
     val symbol = when (currency?.uppercase()) {
         "PYG", "GUARANI", "GUARANIES" -> "₲"
@@ -32,9 +34,9 @@ fun formatMoney(amountCents: Long, currency: String?): String {
 fun formatMoney(amount: Double, currency: String?): String {
     val isZeroMinorUnit = currency?.uppercase() in listOf("PYG", "GUARANI", "GUARANIES")
     val cents = if (isZeroMinorUnit) {
-        amount.toLong()
+        amount.roundToLong()
     } else {
-        (amount * 100.0).toLong()
+        (amount * 100.0).roundToLong()
     }
     return formatMoney(cents, currency)
 }

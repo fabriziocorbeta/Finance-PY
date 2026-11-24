@@ -135,9 +135,14 @@ class ReportsController < ApplicationController
 
     def preferences_params
       prefs = params.require(:preferences)
+      allowed_sections = %w[net_worth trends_insights cashflow_projections investment_performance investment_flows transactions_breakdown]
       {}.tap do |permitted|
-        permitted["reports_collapsed_sections"] = prefs[:reports_collapsed_sections].to_unsafe_h if prefs[:reports_collapsed_sections]
-        permitted["reports_section_order"] = prefs[:reports_section_order] if prefs[:reports_section_order]
+        if prefs[:reports_collapsed_sections].is_a?(ActionController::Parameters)
+          permitted["reports_collapsed_sections"] = prefs[:reports_collapsed_sections].permit(*allowed_sections).to_h
+        end
+        if prefs[:reports_section_order].is_a?(Array)
+          permitted["reports_section_order"] = prefs[:reports_section_order].map(&:to_s).select { |k| allowed_sections.include?(k) }
+        end
       end
     end
 
@@ -1056,11 +1061,17 @@ class ReportsController < ApplicationController
 
       # Set up the current user and session context
       @current_user = @api_key.user
-      @api_key.update_last_used!
+      unless @current_user&.active?
+        render plain: "Account has been deactivated", status: :unauthorized
+        return false
+      end
 
       # Set up Current context for API requests (similar to Api::V1::BaseController)
       # Return false if setup fails to halt the filter chain
       return false unless setup_current_context_for_api_key
+
+      # Must run AFTER RlsContext.set_family because `api_keys` is under FORCE RLS.
+      @api_key.update_last_used!
 
       true
     end
@@ -1071,24 +1082,12 @@ class ReportsController < ApplicationController
         return false
       end
 
-      # Find or create a session for this API request
-      # We need to find or create a persisted session so that Current.user delegation works properly
-      #
-      # sessions is under FORCE ROW LEVEL SECURITY, scoped by the owning
-      # user's family -- current_family_id is NULL here (this is the
-      # bootstrap step itself, same chicken-and-egg as
-      # Authentication#authenticate_user!), so first_or_create! needs the
-      # bypass same as that path. set_family below then establishes the
-      # real, persistent context for the rest of this request (the actual
-      # CSV export queries), not just this one lookup.
-      session = RlsContext.with_auth_bypass(reason: "reports_export_api_key") do
-        @current_user.sessions.first_or_create!(
-          user_agent: request.user_agent,
-          ip_address: request.ip
-        )
-      end
-
-      Current.session = session
+      # Build a fresh ephemeral session (never reuse persisted sessions to avoid
+      # inheriting impersonation state) and set RLS context explicitly.
+      Current.session = @current_user.sessions.build(
+        user_agent: request.user_agent,
+        ip_address: request.ip
+      )
       RlsContext.set_family(@current_user.family_id)
 
       # Verify the delegation chain works

@@ -89,8 +89,21 @@ class Transaction < ApplicationRecord
   end
 
   validate :exchange_rate_must_be_valid
+  validate :associations_must_belong_to_family
 
   private
+
+    def associations_must_belong_to_family
+      return if family_id.blank?
+
+      if category_id.present? && category && category.family_id != family_id
+        errors.add(:category, "must belong to the same family")
+      end
+
+      if merchant_id.present? && merchant && merchant.family_id != family_id
+        errors.add(:merchant, "must belong to the same family")
+      end
+    end
 
     def exchange_rate_must_be_valid
       if extra&.dig("exchange_rate_invalid")

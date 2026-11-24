@@ -230,4 +230,20 @@ class MoneyTest < ActiveSupport::TestCase
     usd_money = Money.new(BigDecimal("150.123456789"), :usd)
     assert_equal "150.12", usd_money.as_json["amount"]
   end
+
+  test "raises CurrencyMismatchError when combining or ordering different currencies" do
+    pyg = Money.new(1000, :pyg)
+    usd = Money.new(10, :usd)
+
+    assert_raises(Money::CurrencyMismatchError) { pyg + usd }
+    assert_raises(Money::CurrencyMismatchError) { pyg - usd }
+    assert_raises(Money::CurrencyMismatchError) { pyg / usd }
+    assert_raises(Money::CurrencyMismatchError) { pyg > usd }
+    assert_raises(Money::CurrencyMismatchError) { pyg < usd }
+    assert_not_equal pyg, usd
+  end
+
+  test "formats PYG using Paraguayan dot thousands delimiter" do
+    assert_equal "₲1.500.000", Money.new(1_500_000, :pyg).format(locale: :en)
+  end
 end

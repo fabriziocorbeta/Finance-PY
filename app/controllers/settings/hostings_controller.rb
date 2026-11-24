@@ -12,8 +12,9 @@ class Settings::HostingsController < ApplicationController
 
   guard_feature unless: -> { self_hosted? }
 
-  before_action :ensure_admin, only: [ :update, :clear_cache, :disconnect_external_assistant ]
-  before_action :ensure_super_admin_for_onboarding, only: :update
+  # Global Setting mutations and global price/FX cache wipes affect ALL tenants
+  # on a multi-family instance, so they must require super_admin (not family admin).
+  before_action :ensure_super_admin, only: [ :update, :clear_cache, :disconnect_external_assistant ]
 
   def show
     @breadcrumbs = [
@@ -182,6 +183,7 @@ class Settings::HostingsController < ApplicationController
     end
 
     if hosting_params.key?(:external_assistant_url)
+      validate_safe_external_url!(hosting_params[:external_assistant_url], "External assistant URL")
       Setting.external_assistant_url = hosting_params[:external_assistant_url]
     end
 
@@ -234,14 +236,33 @@ class Settings::HostingsController < ApplicationController
       Current.family.update!(assistant_type: assistant_type) if Family::ASSISTANT_TYPES.include?(assistant_type)
     end
 
-    def ensure_admin
-      redirect_to settings_hosting_path, alert: t(".not_authorized") unless Current.user.admin?
+    def ensure_super_admin
+      redirect_to settings_hosting_path, alert: t(".not_authorized") unless Current.user.super_admin?
     end
 
-    def ensure_super_admin_for_onboarding
-      onboarding_params = %i[onboarding_state invite_only_default_family_id]
-      return unless onboarding_params.any? { |p| hosting_params.key?(p) }
-      redirect_to settings_hosting_path, alert: t(".not_authorized") unless Current.user.super_admin?
+    def validate_safe_external_url!(raw_url, field_label)
+      return if raw_url.blank?
+
+      uri = URI.parse(raw_url.to_s.strip)
+      unless uri.is_a?(URI::HTTPS) || (Rails.env.development? && uri.is_a?(URI::HTTP))
+        raise Setting::ValidationError, "#{field_label} must use HTTPS"
+      end
+
+      host = uri.host.to_s.downcase
+      if host.blank? || host == "localhost" || host.end_with?(".local", ".internal")
+        raise Setting::ValidationError, "#{field_label} host is not allowed"
+      end
+
+      begin
+        ip = IPAddr.new(host)
+        if ip.loopback? || ip.private? || ip.link_local?
+          raise Setting::ValidationError, "#{field_label} cannot target private or loopback addresses"
+        end
+      rescue IPAddr::InvalidAddressError
+        # Hostname (not raw IP literal) — allowed after domain checks above.
+      end
+    rescue URI::InvalidURIError
+      raise Setting::ValidationError, "#{field_label} is not a valid URL"
     end
 
     def sync_auto_sync_scheduler!

@@ -43,3 +43,9 @@
 # Ignore Docker-related files
 /.dockerignore
 /Dockerfile*
+
+# Ignore mobile native apps, docs, and patch files (reduces build context by GBs)
+/native/
+/mobile/
+/docs/
+/*.patch

@@ -51,7 +51,7 @@ class BudgetCategory < ApplicationRecord
   end
 
   def actual_spending
-    return precomputed_actual_spending if precomputed_actual_spending.present?
+    return precomputed_actual_spending if use_precomputed? && precomputed_actual_spending.present?
     @actual_spending ||= live_actual_spending
   end
 
@@ -108,9 +108,18 @@ class BudgetCategory < ApplicationRecord
   end
 
   def available_to_spend
-    return precomputed_available_to_spend if precomputed_available_to_spend.present?
+    return precomputed_available_to_spend if use_precomputed? && precomputed_available_to_spend.present?
     return @available_to_spend if defined?(@available_to_spend)
     @available_to_spend = live_available_to_spend
+  end
+
+  def use_precomputed?
+    user = budget&.current_user
+    return true if user.nil?
+
+    # Precomputed columns aggregate across all visible family accounts; only safe
+    # when the requesting user has access to all of them (no private accounts hidden).
+    user.finance_accounts.count == budget.family.accounts.visible.count
   end
 
   def live_available_to_spend

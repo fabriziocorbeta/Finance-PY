@@ -50,7 +50,7 @@ class Family::DataExporter
       return value if value.blank?
 
       string_value = value.to_s
-      string_value.match?(/\A[=+\-@]/) ? "'#{string_value}" : string_value
+      string_value.match?(/\A[\t\r\n ]*[=+\-@\t\r]/) ? "'#{string_value}" : string_value
     end
 
     def generate_accounts_csv
@@ -144,8 +144,8 @@ class Family::DataExporter
             rule.resource_type,
             rule.active,
             rule.effective_date&.iso8601,
-            serialize_conditions_for_csv(rule.conditions),
-            serialize_actions_for_csv(rule.actions)
+            csv_safe(serialize_conditions_for_csv(rule.conditions)),
+            csv_safe(serialize_actions_for_csv(rule.actions))
           ]
         end
       end

@@ -161,13 +161,22 @@ class Goal < ApplicationRecord
       0
     else
       account_ids = linked_accounts.map(&:id)
-      net = Entry
+      sums_by_currency = Entry
         .joins("INNER JOIN transactions ON transactions.id = entries.entryable_id AND entries.entryable_type = 'Transaction'")
         .where(account_id: account_ids, date: 90.days.ago.to_date..Date.current)
         .where(excluded: false)
         .merge(Transaction.excluding_pending)
+        .group(:currency)
         .sum(:amount)
-      (-net.to_d / 3).round(2)
+
+      target_currency = currency.to_s.upcase
+      rates = ExchangeRate.rates_for(sums_by_currency.keys.map { |c| c.to_s.upcase }, to: target_currency)
+      net = sums_by_currency.sum(BigDecimal("0")) do |curr, amount|
+        code = curr.to_s.upcase
+        rate = code == target_currency ? BigDecimal("1") : BigDecimal((rates[code] || 1).to_s)
+        BigDecimal(amount.to_s) * rate
+      end
+      (-net / 3).round(2)
     end
   end
 

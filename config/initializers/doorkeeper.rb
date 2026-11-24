@@ -364,8 +364,13 @@ Doorkeeper.configure do
   # You can use this option in order to forbid URI's with 'javascript' scheme
   # for example.
   #
-  # Block javascript URIs but allow custom schemes
-  forbid_redirect_uri { |uri| uri.scheme.to_s.downcase == "javascript" }
+  # Allow only HTTPS, the mobile custom scheme (`financespy://`), or localhost in dev/test.
+  forbid_redirect_uri do |uri|
+    scheme = uri.scheme.to_s.downcase
+    allowed_scheme = scheme == "https" || scheme == "financespy" ||
+      (!Rails.env.production? && scheme == "http" && %w[localhost 127.0.0.1].include?(uri.host))
+    !allowed_scheme
+  end
 
   # Allows to set blank redirect URIs for Applications in case Doorkeeper configured
   # to use URI-less OAuth grant flows like Client Credentials or Resource Owner
@@ -436,7 +441,9 @@ Doorkeeper.configure do
   #   https://datatracker.ietf.org/doc/html/rfc6819#section-4.4.2
   #   https://datatracker.ietf.org/doc/html/rfc6819#section-4.4.3
   #
-  # grant_flows %w[authorization_code client_credentials]
+  # Restrict OAuth grant flows to Authorization Code (with PKCE/refresh tokens);
+  # disallow implicit, resource owner password, and client_credentials grants.
+  grant_flows %w[authorization_code]
 
   # Allows to customize OAuth grant flows that +each+ application support.
   # You can configure a custom block (or use a class respond to `#call`) that must

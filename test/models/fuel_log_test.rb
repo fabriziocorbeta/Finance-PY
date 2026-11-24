@@ -81,4 +81,25 @@ class FuelLogTest < ActiveSupport::TestCase
     @fuel_log.save!
     assert_equal "Combustible", @fuel_log.entry.transaction.category.name
   end
+
+  test "reconciles with an existing google_play entry instead of creating a duplicate" do
+    wallet_entry = @account.entries.create!(
+      entryable: Transaction.new(extra: { "source" => "google_play" }),
+      name: "COMBU BAR COMPANY S.R.L. - Amex Gold ••2269",
+      date: Date.today,
+      amount: 350000,
+      currency: @account.currency,
+      source: "google_play",
+      external_id: "wallet-test-123"
+    )
+
+    assert_no_difference "Entry.count" do
+      @fuel_log.save!
+    end
+
+    assert_equal wallet_entry.id, @fuel_log.entry_id
+    wallet_entry.reload
+    assert_equal "Combustible - XYZ-123", wallet_entry.name
+    assert_equal "Combustible", wallet_entry.transaction.category.name
+  end
 end

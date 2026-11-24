@@ -31,8 +31,9 @@ class Admin::FamiliesController < Admin::BaseController
     csv = CSV.generate do |rows|
       rows << [ "Family", "Created at", "Subscription status", "Members", "Transactions", "Chats" ]
       families.each do |family|
+        safe_name = family.name.to_s.match?(/\A[\t\r\n ]*[=+\-@\t\r]/) ? "'#{family.name}" : family.name
         rows << [
-          family.name,
+          safe_name,
           family.created_at.iso8601,
           family.subscription&.status || "none",
           member_count_by_family[family.id] || 0,

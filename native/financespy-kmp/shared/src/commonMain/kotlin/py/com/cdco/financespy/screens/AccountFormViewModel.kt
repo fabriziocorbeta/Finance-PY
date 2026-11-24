@@ -76,7 +76,8 @@ class AccountFormViewModel(
             _state.value = s.copy(error = "Ingresá un nombre para la cuenta")
             return
         }
-        val balanceValue = s.balance.toDoubleOrNull()
+        val targetCurrency = s.currency.uppercase().ifBlank { "PYG" }
+        val balanceValue = py.com.cdco.financespy.utils.AmountParser.parse(s.balance, targetCurrency)
         if (balanceValue == null) {
             _state.value = s.copy(error = "Ingresá un saldo inicial válido")
             return
@@ -87,8 +88,8 @@ class AccountFormViewModel(
             try {
                 val attrs = when (s.accountableType) {
                     AccountableTypeOption.CREDIT_CARD -> CreateAccountAccountableAttributes(
-                        available_credit = s.availableCredit.toDoubleOrNull(),
-                        apr = s.apr.toDoubleOrNull()
+                        available_credit = py.com.cdco.financespy.utils.AmountParser.parse(s.availableCredit, targetCurrency),
+                        apr = py.com.cdco.financespy.utils.AmountParser.parse(s.apr, "USD")
                     )
                     AccountableTypeOption.VEHICLE -> CreateAccountAccountableAttributes(
                         make = s.vehicleMake.ifBlank { null },
@@ -96,7 +97,7 @@ class AccountFormViewModel(
                         year = s.vehicleYear.toIntOrNull()
                     )
                     AccountableTypeOption.LOAN -> CreateAccountAccountableAttributes(
-                        interest_rate = s.interestRate.toDoubleOrNull(),
+                        interest_rate = py.com.cdco.financespy.utils.AmountParser.parse(s.interestRate, "USD"),
                         term_months = s.termMonths.toIntOrNull()
                     )
                     AccountableTypeOption.INVESTMENT -> CreateAccountAccountableAttributes(

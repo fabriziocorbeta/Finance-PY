@@ -68,7 +68,7 @@ module Reports
         when :ytd
           Date.current.beginning_of_year.to_date
         when :last_6_months
-          6.months.ago.beginning_of_month.to_date
+          5.months.ago.beginning_of_month.to_date
         when :custom
           1.month.ago.to_date
         else
@@ -223,6 +223,7 @@ module Reports
           .where(accounts: { family_id: family.id, status: [ "draft", "active" ] })
           .where(entries: { entryable_type: "Transaction", excluded: false, date: period.date_range })
           .where.not(kind: Transaction::BUDGET_EXCLUDED_KINDS)
+          .excluding_pending
           .includes(entry: :account, category: :parent)
 
         transactions = apply_user_finance_accounts_filter(transactions)
@@ -267,7 +268,7 @@ module Reports
         process_entry = ->(category, entry, is_trade) do
           type = entry.amount > 0 ? "expense" : "income"
           begin
-            converted_amount = Money.new(entry.amount.abs, entry.currency).exchange_to(family_currency).amount.to_f
+            converted_amount = Money.new(entry.amount.abs, entry.currency).exchange_to(family_currency, date: entry.date).amount.to_f
           rescue Money::ConversionError
             converted_amount = entry.amount.abs.to_f
           end

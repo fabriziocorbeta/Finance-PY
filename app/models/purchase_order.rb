@@ -147,11 +147,13 @@ class PurchaseOrder < ApplicationRecord
     # rescue fallback pattern used for cross-currency amounts elsewhere
     # (e.g. ReportsController).
     def total_in_account_currency
-      return total if currency.to_s.casecmp?(account.currency.to_s)
+      precision = Money::Currency.new(account.currency).default_precision
+      return total.round(precision) if currency.to_s.casecmp?(account.currency.to_s)
 
-      Money.new(total, currency).exchange_to(account.currency).amount
-    rescue Money::ConversionError
-      total
+      Money.new(total, currency.to_s.upcase).exchange_to(account.currency.to_s.upcase).amount.round(precision)
+    rescue Money::ConversionError => e
+      errors.add(:base, "No se pudo convertir #{currency.to_s.upcase} a #{account.currency.to_s.upcase}: falta tipo de cambio (#{e.message})")
+      raise ActiveRecord::RecordInvalid.new(self)
     end
 
     def destroy_associated_entry
@@ -170,6 +172,9 @@ class PurchaseOrder < ApplicationRecord
 
     def assign_order_number
       if order_number.blank? && family.present?
+        ActiveRecord::Base.connection.execute(
+          ActiveRecord::Base.sanitize_sql([ "SELECT pg_advisory_xact_lock(hashtext(?))", "order_number:#{family_id}" ])
+        )
         self.order_number = family.purchase_orders.maximum(:order_number).to_i + 1
       end
     end

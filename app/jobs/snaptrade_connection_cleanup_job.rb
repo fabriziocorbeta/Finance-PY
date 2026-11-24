@@ -14,7 +14,9 @@ class SnaptradeConnectionCleanupJob < ApplicationJob
       "for former account #{account_id}"
     )
 
-    snaptrade_item = SnaptradeItem.find_by(id: snaptrade_item_id)
+    snaptrade_item = RlsContext.with_auth_bypass(reason: "snaptrade_cleanup_lookup") do
+      SnaptradeItem.find_by(id: snaptrade_item_id)
+    end
     unless snaptrade_item
       Rails.logger.info(
         "SnaptradeConnectionCleanupJob - SnaptradeItem #{snaptrade_item_id} not found, " \
@@ -23,38 +25,40 @@ class SnaptradeConnectionCleanupJob < ApplicationJob
       return
     end
 
-    # Check if other accounts still use this authorization
-    if snaptrade_item.snaptrade_accounts.where(snaptrade_authorization_id: authorization_id).exists?
+    RlsContext.with_family(snaptrade_item.family_id) do
+      # Check if other accounts still use this authorization
+      if snaptrade_item.snaptrade_accounts.where(snaptrade_authorization_id: authorization_id).exists?
+        Rails.logger.info(
+          "SnaptradeConnectionCleanupJob - Skipping deletion, other accounts share " \
+          "authorization #{authorization_id}"
+        )
+        return
+      end
+
+      provider = snaptrade_item.snaptrade_provider
+      credentials = snaptrade_item.snaptrade_credentials
+
+      unless provider && credentials
+        Rails.logger.warn(
+          "SnaptradeConnectionCleanupJob - No provider/credentials for item #{snaptrade_item_id}"
+        )
+        return
+      end
+
       Rails.logger.info(
-        "SnaptradeConnectionCleanupJob - Skipping deletion, other accounts share " \
-        "authorization #{authorization_id}"
+        "SnaptradeConnectionCleanupJob - Deleting SnapTrade connection #{authorization_id}"
       )
-      return
-    end
 
-    provider = snaptrade_item.snaptrade_provider
-    credentials = snaptrade_item.snaptrade_credentials
-
-    unless provider && credentials
-      Rails.logger.warn(
-        "SnaptradeConnectionCleanupJob - No provider/credentials for item #{snaptrade_item_id}"
+      provider.delete_connection(
+        user_id: credentials[:user_id],
+        user_secret: credentials[:user_secret],
+        authorization_id: authorization_id
       )
-      return
+
+      Rails.logger.info(
+        "SnaptradeConnectionCleanupJob - Successfully deleted connection #{authorization_id}"
+      )
     end
-
-    Rails.logger.info(
-      "SnaptradeConnectionCleanupJob - Deleting SnapTrade connection #{authorization_id}"
-    )
-
-    provider.delete_connection(
-      user_id: credentials[:user_id],
-      user_secret: credentials[:user_secret],
-      authorization_id: authorization_id
-    )
-
-    Rails.logger.info(
-      "SnaptradeConnectionCleanupJob - Successfully deleted connection #{authorization_id}"
-    )
   rescue Provider::Snaptrade::ApiError => e
     # Connection may already be gone or credentials invalid - log but don't retry
     Rails.logger.warn(

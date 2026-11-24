@@ -127,7 +127,8 @@ class GoalDetailViewModel(
 
     fun createPledge(onDone: () -> Unit = {}) {
         val accountId = _state.value.pledgeAccountId
-        val amountDouble = _state.value.pledgeAmount.toDoubleOrNull()
+        val goalCurrency = _state.value.goal?.currency ?: "PYG"
+        val amountDouble = py.com.cdco.financespy.utils.AmountParser.parse(_state.value.pledgeAmount, goalCurrency)
         if (accountId == null) {
             _state.value = _state.value.copy(pledgeError = "Seleccioná una cuenta")
             return

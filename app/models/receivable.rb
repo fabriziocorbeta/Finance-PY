@@ -19,7 +19,8 @@ class Receivable < ApplicationRecord
     start_date = account.start_date || account.created_at.to_date
 
     total = total_amount
-    base_amount = (total / installment_count).round(2)
+    precision = Money::Currency.new(account.currency).default_precision
+    base_amount = (total / installment_count).round(precision)
     remainder = total - (base_amount * installment_count)
 
     # Convención de signos del proyecto: amount positivo = egreso, amount

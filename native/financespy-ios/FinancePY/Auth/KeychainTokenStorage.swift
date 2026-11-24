@@ -5,6 +5,7 @@ final class KeychainTokenStorage {
     static let shared = KeychainTokenStorage()
     private let service = "py.com.cdco.financespy.ios"
     private static let migrationKey = "py.com.cdco.financespy.ios.keychain_migrated_v2"
+    private static let freshInstallMarkerKey = "py.com.cdco.financespy.ios.has_launched_v1"
 
     private enum Keys {
         static let accessToken = "access_token"
@@ -12,7 +13,20 @@ final class KeychainTokenStorage {
     }
 
     private init() {
+        clearStaleKeychainOnFreshInstallIfNeeded()
         migrateIfNeeded()
+    }
+
+    /// iOS Keychain items persist across app uninstall/reinstall while UserDefaults resets.
+    /// Wipe orphaned tokens on a fresh install unless this device already ran the v2 migration.
+    private func clearStaleKeychainOnFreshInstallIfNeeded() {
+        let defaults = UserDefaults.standard
+        if !defaults.bool(forKey: Self.freshInstallMarkerKey) {
+            if !defaults.bool(forKey: Self.migrationKey) {
+                clear()
+            }
+            defaults.set(true, forKey: Self.freshInstallMarkerKey)
+        }
     }
 
     func save(accessToken: String, refreshToken: String) {

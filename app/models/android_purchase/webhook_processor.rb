@@ -8,7 +8,7 @@ class AndroidPurchase::WebhookProcessor
   # PETROPAR added 2026-10-18 after a real capture ("PETROPAR CONMEBOL",
   # Gs. 72.000) came through uncategorized -- it is the state fuel company,
   # so it is at least as common here as the private brands already listed.
-  FUEL_MERCHANT_KEYWORDS = %w[PETROBRAS COPETROL PUMA ENERGY BARCOS PETROPAR].freeze
+  FUEL_MERCHANT_KEYWORDS = %w[PETROBRAS COPETROL PUMA ENERGY BARCOS PETROPAR COMBU].freeze
 
   def initialize(params, family: nil, user: nil)
     @account_id = params[:account_id].to_s
@@ -38,41 +38,34 @@ class AndroidPurchase::WebhookProcessor
       raise Error, "Unknown account_id: #{@account_id}"
     end
 
-    # Content-level deduplication: Android notification reposts (e.g. grouped
-    # SMS threads in Samsung/Google Messages or delayed PendingCaptureStore
-    # flushes) can re-send an already-recorded purchase with a fresh client
-    # capture timestamp, producing a different `external_id` hash. If an entry
-    # from google_play already exists on the same account with the same date,
-    # amount, and description, treat it as idempotent (:duplicate).
-    if duplicate_entry_exists?(account)
-      return :duplicate
+    entry = nil
+    outcome = ActiveRecord::Base.transaction do
+      account.lock!
+
+      # Content-level deduplication serialized under account row lock (prevents TOCTOU races).
+      next :duplicate if duplicate_entry_exists?(account)
+
+      entry = Entry.new(
+        account: account,
+        date: parsed_date,
+        name: description,
+        amount: final_amount,
+        currency: account.currency,
+        source: "google_play",
+        external_id: external_id,
+        entryable: Transaction.new(
+          category: fuel_category_for(account.family),
+          extra: { "raw_text" => @raw_text, "source" => "google_play", "item" => @item }.merge(location_extra)
+        )
+      )
+
+      entry.save!
+      :created
     end
 
-    # Built from Entry's side (not Transaction.new(entry: Entry.new(...)))
-    # so that Entry -- the record whose uniqueness validation matters for
-    # idempotency -- is the object we call save! on directly. Building the
-    # other way round relies on the has_one :entry association's autosave
-    # to persist the nested Entry; Rails silently swallows a has_one
-    # autosave validation failure unless the association explicitly sets
-    # autosave: true (which Entryable's `has_one :entry` does not), so a
-    # duplicate POST would silently return success with no error and no
-    # second row -- confirmed live against a real account before settling
-    # on this direction.
-    entry = Entry.new(
-      account: account,
-      date: parsed_date,
-      name: description,
-      amount: final_amount,
-      currency: account.currency,
-      source: "google_play",
-      external_id: external_id,
-      entryable: Transaction.new(
-        category: fuel_category_for(account.family),
-        extra: { "raw_text" => @raw_text, "source" => "google_play", "item" => @item }.merge(location_extra)
-      )
-    )
+    return :duplicate if outcome == :duplicate
 
-    entry.save!
+    entry.sync_account_later
     apply_family_rules(account.family)
     :created
   rescue ActiveRecord::RecordInvalid
@@ -99,12 +92,21 @@ class AndroidPurchase::WebhookProcessor
       # production (two "SUPERSEIS" entries, same account/amount/name,
       # inserted 1 second apart, dated 2026-11-04 and 2026-11-05).
       def duplicate_entry_exists?(account)
-        account.entries.exists?(
-          source: "google_play",
-          date: (parsed_date - 1.day)..(parsed_date + 1.day),
-          amount: final_amount,
-          name: description
-        )
+        date_window = (parsed_date - 1.day)..(parsed_date + 1.day)
+        base_scope = account.entries.where(date: date_window, amount: final_amount)
+
+        return true if base_scope.exists?(source: "google_play", name: description)
+
+        if @item.present?
+          renamed_match = base_scope
+            .where(source: "google_play", entryable_type: "Transaction")
+            .joins("INNER JOIN transactions ON transactions.id = entries.entryable_id")
+            .where("transactions.extra->>'item' = ?", @item)
+            .exists?
+          return true if renamed_match
+        end
+
+        fuel_merchant? && base_scope.joins(:fuel_log).exists?
       end
 
       # A restricted family member's writable_by scope is empty of any account

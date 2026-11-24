@@ -1,0 +1,49 @@
+<% content_for :page_title, t(".title") %>
+
+<% content_for :page_actions do %>
+  <div class="flex items-center gap-2">
+    <%= button_to sync_investments_path(ticker: @selected_ticker, mic: @selected_mic, range: @range),
+                  method: :post,
+                  class: "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-primary border border-secondary bg-container hover:bg-surface-hover transition-colors cursor-pointer" do %>
+      <%= icon("refresh-cw", size: "sm") %>
+      <span class="hidden sm:inline"><%= t(".refresh_prices") %></span>
+    <% end %>
+
+    <%= link_to new_account_path(step: "method_select", classification: "asset"),
+                data: { turbo_frame: :modal },
+                class: "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-inverse bg-inverse hover:bg-inverse-hover transition-colors" do %>
+      <%= icon("plus", size: "sm", color: "current") %>
+      <span class="hidden sm:inline"><%= t(".new_account") %></span>
+    <% end %>
+  </div>
+<% end %>
+
+<div class="w-full space-y-6 pb-8">
+  <%# 1. Market Indices Strip (Yahoo / Google Finance style) %>
+  <%= render "investments/indices_bar",
+             index_quotes: @index_quotes,
+             selected_ticker: @selected_ticker,
+             range: @range %>
+
+  <%# 2. Interactive Quote & Chart Panel %>
+  <%= turbo_frame_tag "market_quote_detail" do %>
+    <%= render "investments/quote_detail",
+               quote: @featured_quote,
+               range: @range,
+               selected_ticker: @selected_ticker,
+               selected_mic: @selected_mic %>
+  <% end %>
+
+  <%# 3. Portfolio Holdings (ETFs & Stocks across Investment accounts) %>
+  <%= render "investments/portfolio_section",
+             investment_statement: @investment_statement,
+             holdings: @holdings,
+             holding_quotes: @holding_quotes,
+             portfolio_day_change: @portfolio_day_change,
+             range: @range %>
+
+  <%# 4. Watchlist (ETFs, Stocks & Indices) %>
+  <%= render "investments/watchlist_section",
+             watchlist_quotes: @watchlist_quotes,
+             range: @range %>
+</div>

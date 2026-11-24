@@ -60,9 +60,12 @@ final class OfflineCache {
     private var cacheDirectory: URL {
         let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? fileManager.temporaryDirectory
-        let dir = appSupport.appendingPathComponent("FinancePYOfflineCache", isDirectory: true)
+        var dir = appSupport.appendingPathComponent("FinancePYOfflineCache", isDirectory: true)
         if !fileManager.fileExists(atPath: dir.path) {
             try? fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try? dir.setResourceValues(values)
         }
         return dir
     }
@@ -103,9 +106,12 @@ final class OfflineBlobStore {
     private var blobsDirectory: URL {
         let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? fileManager.temporaryDirectory
-        let dir = appSupport.appendingPathComponent("FinancePYOfflineBlobs", isDirectory: true)
+        var dir = appSupport.appendingPathComponent("FinancePYOfflineBlobs", isDirectory: true)
         if !fileManager.fileExists(atPath: dir.path) {
             try? fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try? dir.setResourceValues(values)
         }
         return dir
     }

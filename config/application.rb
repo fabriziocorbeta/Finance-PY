@@ -37,6 +37,10 @@ module Sure
     # Use SQL format for schema dumps to capture custom PostgreSQL DDL (RLS policies, functions, etc.)
     config.active_record.schema_format = :sql
 
+    # Never enqueue background jobs before the enclosing DB transaction commits
+    # (prevents workers deserializing uncommitted Sync/Entry records and discarding them).
+    config.active_job.enqueue_after_transaction_commit = :always
+
     # Enable ActiveRecord async query executor with global thread pool concurrency
     config.active_record.async_query_executor = :global_thread_pool
     config.active_record.global_executor_concurrency = 4

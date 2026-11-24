@@ -50,7 +50,8 @@ data class SaleDto(
 
 @Serializable
 data class SalesResponseDto(
-    val data: List<SaleDto> = emptyList()
+    val data: List<SaleDto> = emptyList(),
+    val meta: RulesMetaDto? = null
 )
 
 @Serializable

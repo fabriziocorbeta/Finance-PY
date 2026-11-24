@@ -191,7 +191,7 @@ fun App(
     }
 
     FinancePyTheme(uiVariant = activeUiVariant) {
-        if (isLoggedIn != null) {
+        if (isLoggedIn != null && py.com.cdco.financespy.network.isDebugBuild) {
             LaunchedEffect(Unit) {
                 println("ColdStartProfile: FIRST FRAME RENDERED at ${System.currentTimeMillis()} ms")
             }

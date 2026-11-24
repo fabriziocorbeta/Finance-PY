@@ -31,7 +31,9 @@ class ApplicationController < ActionController::Base
       token = session[:pending_invitation_token]
       return false if token.blank?
 
-      invitation = Invitation.pending.find_by(token: token.to_s)
+      invitation = RlsContext.with_auth_bypass(reason: "accept_pending_invitation") do
+        Invitation.pending.find_by(token: token.to_s)
+      end
       return false unless invitation
       return false unless invitation.accept_for(user)
 
@@ -43,7 +45,9 @@ class ApplicationController < ActionController::Base
       token = params[:invitation].to_s.presence
       return if token.blank?
 
-      invitation = Invitation.pending.find_by(token: token)
+      invitation = RlsContext.with_auth_bypass(reason: "store_pending_invitation") do
+        Invitation.pending.find_by(token: token)
+      end
       session[:pending_invitation_token] = token if invitation
     end
 

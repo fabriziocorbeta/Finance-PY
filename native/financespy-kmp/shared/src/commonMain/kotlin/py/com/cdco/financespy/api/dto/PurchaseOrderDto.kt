@@ -37,7 +37,8 @@ data class PurchaseOrderDto(
 
 @Serializable
 data class PurchaseOrdersResponseDto(
-    val data: List<PurchaseOrderDto> = emptyList()
+    val data: List<PurchaseOrderDto> = emptyList(),
+    val meta: RulesMetaDto? = null
 )
 
 @Serializable

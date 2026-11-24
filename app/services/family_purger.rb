@@ -1,12 +1,15 @@
 # frozen_string_literal: true
 
 class FamilyPurger
-  def self.purge!(family)
-    new(family).purge!
+  class ActiveSubscriptionError < StandardError; end
+
+  def self.purge!(family, allow_active_subscription: true)
+    new(family, allow_active_subscription: allow_active_subscription).purge!
   end
 
-  def initialize(family)
+  def initialize(family, allow_active_subscription: true)
     @family = family
+    @allow_active_subscription = allow_active_subscription
   end
 
   def purge!
@@ -16,6 +19,10 @@ class FamilyPurger
     conn = ActiveRecord::Base.connection
 
     RlsContext.with_family(family_id) do
+      if !@allow_active_subscription && @family.reload.subscription&.active?
+        raise ActiveSubscriptionError, "Refusing to purge family #{family_id} with an active subscription"
+      end
+
       ActiveRecord::Base.transaction do
         # 1. Purge ActiveStorage blobs for this family
         if defined?(Import)

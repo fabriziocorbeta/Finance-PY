@@ -177,6 +177,9 @@ class Setting < RailsSettings::Base
     alias_method :raw_openai_model=, :openai_model=
 
     def onboarding_state
+      env_state = ENV["ONBOARDING_STATE"].to_s.presence
+      return env_state if env_state && ONBOARDING_STATES.include?(env_state)
+
       value = raw_onboarding_state
       return "invite_only" if value.blank? && require_invite_for_signup
 

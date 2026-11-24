@@ -10,7 +10,8 @@ module Dashboard
     end
 
     def previous_sales
-      prev_period = (@period.begin - 1.month)..(@period.end - 1.month)
+      prev_month = @period.begin - 1.month
+      prev_period = prev_month.beginning_of_month..prev_month.end_of_month
       @previous_sales ||= family.sales.completed.includes(:sale_items).where(created_at: prev_period).to_a
     end
 
@@ -29,7 +30,8 @@ module Dashboard
     def average_ticket_money
       return zero_money if sales_count.zero?
 
-      Money.new((total_sales_money.amount / sales_count).round(2), family_currency)
+      precision = Money::Currency.new(family_currency).default_precision
+      Money.new((total_sales_money.amount / sales_count).round(precision), family_currency)
     end
 
     def growth_percentage

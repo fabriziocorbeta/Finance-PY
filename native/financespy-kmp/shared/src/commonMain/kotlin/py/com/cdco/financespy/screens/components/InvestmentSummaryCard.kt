@@ -227,7 +227,7 @@ private fun HoldingRow(
                 color = FinancePyColors.textPrimary()
             )
             Text(
-                text = holding.name,
+                text = holding.name ?: holding.ticker,
                 style = MaterialTheme.typography.labelSmall,
                 color = FinancePyColors.textSecondary()
             )
@@ -241,7 +241,7 @@ private fun HoldingRow(
         )
 
         Text(
-            text = formatMoney(holding.value, currency),
+            text = formatMoney(holding.value, holding.currency ?: currency),
             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
             color = FinancePyColors.textPrimary(),
             modifier = Modifier.weight(1.5f)

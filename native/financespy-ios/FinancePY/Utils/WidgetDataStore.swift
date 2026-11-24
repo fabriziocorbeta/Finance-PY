@@ -52,10 +52,17 @@ final class WidgetDataStore {
         #endif
     }
 
-    static func computeLiquidAvailableCents(from accounts: [AccountDto]) -> Int64 {
+    static func computeLiquidAvailableCents(from accounts: [AccountDto], targetCurrency: String? = nil) -> Int64 {
         let liquidTypes: Set<String> = ["depository", "cash", "checking", "savings"]
+        let resolvedCurrency = targetCurrency?.uppercased()
+            ?? accounts.first(where: { $0.classification.lowercased() == "asset" })?.currency.uppercased()
         return accounts
             .filter { $0.classification.lowercased() == "asset" }
+            .filter { account in
+                // Never sum raw minor units across different currencies (e.g. PYG + USD).
+                guard let resolvedCurrency else { return true }
+                return account.currency.uppercased() == resolvedCurrency
+            }
             .filter { account in
                 liquidTypes.contains(account.accountType.lowercased())
                     || (account.subtype.map { liquidTypes.contains($0.lowercased()) } ?? false)

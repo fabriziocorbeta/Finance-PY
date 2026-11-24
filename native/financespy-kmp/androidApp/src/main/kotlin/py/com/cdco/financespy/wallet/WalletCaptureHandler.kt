@@ -13,6 +13,7 @@ import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import py.com.cdco.financespy.auth.AndroidTokenStorage
 import java.time.Instant
@@ -100,7 +101,7 @@ object WalletCaptureHandler {
         // Step 3: Post each capture and remove from PendingCaptureStore only on Success.
         enriched.forEach { capture ->
             if (capture.accountId == null) {
-                Log.w(TAG, "Unrecognized card '${capture.item}' (${capture.merchant}, ${capture.amount}); kept in queue")
+                Log.w(TAG, "Unrecognized card for capture id=${capture.id}; kept in queue")
                 onResult?.invoke("unrecognized_card", capture.item)
                 return@forEach
             }
@@ -109,11 +110,11 @@ object WalletCaptureHandler {
                 is WebhookResult.Success -> {
                     store.remove(capture.id)
                     val status = if (result.duplicate) "duplicate" else "created"
-                    Log.i(TAG, "Capture $status for '${capture.item}' (${capture.merchant}, ${capture.amount})")
+                    Log.i(TAG, "Capture $status id=${capture.id}")
                     onResult?.invoke(status, capture.item)
                 }
                 is WebhookResult.Failure -> {
-                    Log.w(TAG, "Capture kept in queue for '${capture.item}' (${capture.merchant}): ${result.error}")
+                    Log.w(TAG, "Capture id=${capture.id} kept in queue (unauthorized=${result.unauthorized})")
                     onResult?.invoke(if (result.error == "token_missing") "token_missing" else "queued", result.error)
                 }
             }
@@ -143,7 +144,7 @@ object WalletCaptureHandler {
                     val resolved = capture.accountId
                         ?: AccountMapping.accountIdFor(context, capture.item)
                         ?: run {
-                            Log.w(TAG, "Retry skipped (unrecognized card '${capture.item}'): ${capture.merchant}")
+                            Log.w(TAG, "Retry skipped (unrecognized card) for capture id=${capture.id}")
                             return@forEach
                         }
 
@@ -151,10 +152,10 @@ object WalletCaptureHandler {
                         is WebhookResult.Success -> {
                             store.remove(capture.id)
                             applied++
-                            Log.i(TAG, "Retry succeeded (${if (result.duplicate) "duplicate" else "created"}): ${capture.merchant}")
+                            Log.i(TAG, "Retry succeeded (${if (result.duplicate) "duplicate" else "created"}) id=${capture.id}")
                         }
                         is WebhookResult.Failure -> {
-                            Log.w(TAG, "Retry failed for ${capture.merchant}: ${result.error}")
+                            Log.w(TAG, "Retry failed for capture id=${capture.id} (unauthorized=${result.unauthorized})")
                             // se queda en la cola, se reintenta en la próxima llamada
                         }
                     }
@@ -195,21 +196,31 @@ object WalletCaptureHandler {
             Log.i(TAG, "Detected concurrently refreshed access token; retrying webhook")
             latestStored
         } else {
-            refreshAndSaveToken(tokenStorage) ?: return firstAttempt
+            refreshAndSaveToken(tokenStorage, failedAccessToken = token) ?: return firstAttempt
         }
 
         return WebhookClient(retryToken).post(capture, rawText = rawText)
     }
 
-    private fun refreshAndSaveToken(tokenStorage: AndroidTokenStorage): String? {
-        val refreshToken = runBlocking { tokenStorage.refreshToken() } ?: return null
-        val refreshed = WebhookClient.refreshAccessToken(refreshToken) ?: run {
-            Log.w(TAG, "OAuth token refresh failed")
-            return null
+    private fun refreshAndSaveToken(tokenStorage: AndroidTokenStorage, failedAccessToken: String? = null): String? {
+        return runBlocking {
+            py.com.cdco.financespy.auth.TokenRefreshLock.mutex.withLock {
+                // Re-check inside shared mutex: ApiClient may have already rotated tokens.
+                val currentAccess = tokenStorage.accessToken()
+                if (!currentAccess.isNullOrBlank() && failedAccessToken != null && currentAccess != failedAccessToken) {
+                    return@withLock currentAccess
+                }
+
+                val refreshToken = tokenStorage.refreshToken() ?: return@withLock null
+                val refreshed = WebhookClient.refreshAccessToken(refreshToken) ?: run {
+                    Log.w(TAG, "OAuth token refresh failed")
+                    return@withLock null
+                }
+                tokenStorage.save(refreshed.first, refreshed.second)
+                Log.i(TAG, "OAuth access token refreshed successfully for webhook")
+                refreshed.first
+            }
         }
-        runBlocking { tokenStorage.save(refreshed.first, refreshed.second) }
-        Log.i(TAG, "OAuth access token refreshed successfully for webhook")
-        return refreshed.first
     }
 
     // Best-effort device location for the current capture -- never blocks or

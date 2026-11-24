@@ -137,7 +137,7 @@ class MarketDataImporter
 
     # Since we're querying market data from a US-based API, end date should always be today (EST)
     def end_date
-      Date.current.in_time_zone("America/New_York").to_date
+      Time.current.in_time_zone("America/New_York").to_date
     end
 
     def set_mode!(mode)

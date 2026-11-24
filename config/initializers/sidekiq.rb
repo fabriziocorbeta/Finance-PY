@@ -2,11 +2,14 @@ require "sidekiq/web"
 
 if Rails.env.production?
   Sidekiq::Web.use(Rack::Auth::Basic) do |username, password|
-    configured_username = ::Digest::SHA256.hexdigest(ENV.fetch("SIDEKIQ_WEB_USERNAME") { SecureRandom.hex(16) })
-    configured_password = ::Digest::SHA256.hexdigest(ENV.fetch("SIDEKIQ_WEB_PASSWORD") { SecureRandom.hex(16) })
+    # Use `.presence` instead of `ENV.fetch` default block: Docker Compose passes
+    # `${SIDEKIQ_WEB_USERNAME:-}` as an empty string `""`, which `ENV.fetch` treats
+    # as present and would otherwise accept empty credentials (`Basic Og==`).
+    configured_username = ::Digest::SHA256.hexdigest(ENV["SIDEKIQ_WEB_USERNAME"].presence || SecureRandom.hex(16))
+    configured_password = ::Digest::SHA256.hexdigest(ENV["SIDEKIQ_WEB_PASSWORD"].presence || SecureRandom.hex(16))
 
-    ActiveSupport::SecurityUtils.secure_compare(::Digest::SHA256.hexdigest(username), configured_username) &
-      ActiveSupport::SecurityUtils.secure_compare(::Digest::SHA256.hexdigest(password), configured_password)
+    ActiveSupport::SecurityUtils.secure_compare(::Digest::SHA256.hexdigest(username.to_s), configured_username) &
+      ActiveSupport::SecurityUtils.secure_compare(::Digest::SHA256.hexdigest(password.to_s), configured_password)
   end
 end
 

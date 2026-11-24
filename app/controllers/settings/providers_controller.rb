@@ -1,7 +1,8 @@
 class Settings::ProvidersController < ApplicationController
   layout "settings"
 
-  before_action :ensure_admin, only: [ :show, :update ]
+  before_action :ensure_admin, only: [ :show ]
+  before_action :ensure_super_admin, only: [ :update ]
 
   def show
     @breadcrumbs = [
@@ -94,6 +95,10 @@ class Settings::ProvidersController < ApplicationController
 
     def ensure_admin
       redirect_to settings_providers_path, alert: "Not authorized" unless Current.user.admin?
+    end
+
+    def ensure_super_admin
+      redirect_to settings_providers_path, alert: "Not authorized" unless Current.user.super_admin?
     end
 
     # Reload provider configurations after settings update

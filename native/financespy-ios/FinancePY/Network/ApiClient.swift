@@ -158,9 +158,15 @@ final class ApiClient {
         } catch NetworkError.unauthorized {
             do {
                 try await AuthRepository.shared.refreshAccessToken()
-            } catch {
+            } catch AuthError.tokenExchangeFailed(let status, _) where status == 400 || status == 401 {
                 tokenStorage.clear()
                 throw NetworkError.unauthorized
+            } catch AuthError.missingRefreshToken {
+                tokenStorage.clear()
+                throw NetworkError.unauthorized
+            } catch {
+                // Transient network/5xx error during refresh: keep Keychain tokens intact.
+                throw error
             }
             return try await performRequest(method: method, path: path, queryItems: queryItems, body: body)
         }
@@ -186,6 +192,7 @@ final class ApiClient {
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = method
         urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        applyClientVersionHeaders(&urlRequest)
 
         if let token = tokenStorage.accessToken(), !token.isEmpty {
             urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -263,9 +270,15 @@ final class ApiClient {
         } catch NetworkError.unauthorized {
             do {
                 try await AuthRepository.shared.refreshAccessToken()
-            } catch {
+            } catch AuthError.tokenExchangeFailed(let status, _) where status == 400 || status == 401 {
                 tokenStorage.clear()
                 throw NetworkError.unauthorized
+            } catch AuthError.missingRefreshToken {
+                tokenStorage.clear()
+                throw NetworkError.unauthorized
+            } catch {
+                // Transient network/5xx error during refresh: keep Keychain tokens intact.
+                throw error
             }
             return try await performUploadMultipart(
                 path: path,
@@ -295,6 +308,7 @@ final class ApiClient {
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
         urlRequest.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        applyClientVersionHeaders(&urlRequest)
 
         if let token = tokenStorage.accessToken(), !token.isEmpty {
             urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -345,9 +359,15 @@ final class ApiClient {
         } catch NetworkError.unauthorized {
             do {
                 try await AuthRepository.shared.refreshAccessToken()
-            } catch {
+            } catch AuthError.tokenExchangeFailed(let status, _) where status == 400 || status == 401 {
                 tokenStorage.clear()
                 throw NetworkError.unauthorized
+            } catch AuthError.missingRefreshToken {
+                tokenStorage.clear()
+                throw NetworkError.unauthorized
+            } catch {
+                // Transient network/5xx error during refresh: keep Keychain tokens intact.
+                throw error
             }
             return try await performDownloadData(path: path)
         }
@@ -361,8 +381,12 @@ final class ApiClient {
 
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "GET"
+        applyClientVersionHeaders(&urlRequest)
 
-        if let token = tokenStorage.accessToken(), !token.isEmpty {
+        // Never leak Bearer tokens to third-party hosts or cleartext HTTP URLs.
+        let allowedHost = URL(string: baseUrl)?.host
+        if url.scheme == "https", url.host == allowedHost,
+           let token = tokenStorage.accessToken(), !token.isEmpty {
             urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
@@ -382,6 +406,15 @@ final class ApiClient {
         }
 
         return data
+    }
+
+    private func applyClientVersionHeaders(_ request: inout URLRequest) {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        request.setValue("ios", forHTTPHeaderField: "X-Platform")
+        request.setValue(version, forHTTPHeaderField: "X-App-Version")
+        request.setValue(build, forHTTPHeaderField: "X-App-Build")
+        request.setValue("FinancePY-iOS/\(version) (\(build))", forHTTPHeaderField: "User-Agent")
     }
 }
 

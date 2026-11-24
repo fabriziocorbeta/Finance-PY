@@ -30,6 +30,20 @@
 # request/job to run inside one wrapping transaction just to use SET LOCAL
 # would be far more invasive than this pool hook, so we keep SET (session
 # scope) and make the pool boundary the hard guarantee instead.
+# Boot-time guard: session-scoped `SET app.current_family_id` is incompatible
+# with PgBouncer / Supabase Transaction Pooler (port 6543), where statements
+# can hop across backend sessions and leak/drop tenant RLS context.
+if Rails.env.production? && ENV["DATABASE_URL"].present?
+  begin
+    db_uri = URI.parse(ENV["DATABASE_URL"])
+    if db_uri.host&.include?("pooler.supabase.com") && db_uri.port == 6543
+      raise "Unsafe DATABASE_URL: Supabase Transaction Pooler (port 6543) is incompatible with session-scoped PostgreSQL RLS. Use Session Pooler (port 5432)."
+    end
+  rescue URI::InvalidURIError
+    # Handled by ActiveRecord connection setup.
+  end
+end
+
 Rails.application.config.to_prepare do
   adapter_class = ActiveRecord::ConnectionAdapters::AbstractAdapter
 
@@ -54,9 +68,11 @@ Rails.application.config.to_prepare do
     begin
       leaked_family = select_value("SELECT current_setting('app.current_family_id', true)")
       leaked_auth = select_value("SELECT current_setting('app.rls_auth_bypass', true)")
-      if leaked_family.present? || leaked_auth.present?
+      leaked_system = select_value("SELECT current_setting('app.rls_system_access', true)")
+      if leaked_family.present? || leaked_auth.present? || leaked_system.present?
         Rails.logger.error(
-          "[RlsContext] connection checked out of the pool with a leaked app.current_family_id=#{leaked_family.inspect} or app.rls_auth_bypass=#{leaked_auth.inspect}; " \
+          "[RlsContext] connection checked out of the pool with leaked GUCs " \
+          "(family=#{leaked_family.inspect}, auth_bypass=#{leaked_auth.inspect}, system_access=#{leaked_system.inspect}); " \
           "forcing reset. This indicates the :checkin safety net missed a path -- investigate."
         )
         RlsContext.reset(self)

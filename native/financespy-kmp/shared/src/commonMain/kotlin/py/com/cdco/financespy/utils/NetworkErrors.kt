@@ -24,6 +24,8 @@ fun Throwable.describeForUser(): String {
         status == 401 -> "Tu sesión expiró o no es válida. Cerrá sesión y volvé a entrar."
         status == 403 -> "No tenés permiso para esto."
         status == 404 -> "No se encontró lo pedido en el servidor."
+        status == 409 -> "Conflicto con el estado actual del registro. Actualizá e intentá de nuevo."
+        status == 422 -> "Revisá los datos ingresados: el servidor rechazó la validación."
         status == 429 -> "Demasiados intentos seguidos. Esperá un momento y reintentá."
         status in setOf(502, 503, 504) ->
             "No se pudo llegar al servidor ($status). Suele durar unos segundos: reintentá."

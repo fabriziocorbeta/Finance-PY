@@ -1,0 +1,194 @@
+<%# locals: (investment_statement:, holdings:, holding_quotes:, portfolio_day_change:, range:) %>
+
+<section class="bg-container rounded-xl shadow-border-xs p-4 lg:p-6 space-y-5">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <div>
+      <h2 class="text-lg font-medium text-primary"><%= t("investments.portfolio.title") %></h2>
+      <p class="text-xs text-secondary"><%= t("investments.portfolio.subtitle") %></p>
+    </div>
+  </div>
+
+  <% if investment_statement.investment_accounts.any? %>
+    <%# Portfolio KPI Cards %>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="bg-container-inset rounded-lg p-4">
+        <div class="flex items-center gap-2 text-secondary text-xs mb-1">
+          <%= icon("briefcase", size: "xs") %>
+          <span><%= t("investments.portfolio.total_value") %></span>
+        </div>
+        <p class="text-xl font-semibold text-primary privacy-sensitive tabular-nums">
+          <%= format_money(investment_statement.portfolio_value_money) %>
+        </p>
+      </div>
+
+      <div class="bg-container-inset rounded-lg p-4">
+        <div class="flex items-center gap-2 text-secondary text-xs mb-1">
+          <%= icon("trending-up", size: "xs") %>
+          <span><%= t("investments.portfolio.total_return") %></span>
+        </div>
+        <% trend = investment_statement.unrealized_gains_trend %>
+        <% if trend %>
+          <p class="text-xl font-semibold privacy-sensitive tabular-nums" style="color: <%= trend.color %>">
+            <%= format_money(Money.new(trend.value, Current.family.currency)) %>
+            <span class="text-sm font-medium">(<%= trend.percent_formatted %>)</span>
+          </p>
+        <% else %>
+          <p class="text-xl font-semibold text-secondary">—</p>
+        <% end %>
+      </div>
+
+      <div class="bg-container-inset rounded-lg p-4">
+        <div class="flex items-center gap-2 text-secondary text-xs mb-1">
+          <%= icon("activity", size: "xs") %>
+          <span><%= t("investments.portfolio.day_change") %></span>
+        </div>
+        <% day_amt = portfolio_day_change[:amount] %>
+        <% day_pct = portfolio_day_change[:percent] %>
+        <% day_cls = day_amt.amount >= 0 ? "text-green-600" : "text-red-600" %>
+        <p class="text-xl font-semibold privacy-sensitive tabular-nums <%= day_cls %>">
+          <%= day_amt.amount >= 0 ? "+" : "" %><%= format_money(day_amt) %>
+          <% if day_pct %>
+            <span class="text-sm font-medium">(<%= day_pct >= 0 ? "+" : "" %><%= number_with_precision(day_pct, precision: 2) %>%)</span>
+          <% end %>
+        </p>
+      </div>
+
+      <div class="bg-container-inset rounded-lg p-4">
+        <div class="flex items-center gap-2 text-secondary text-xs mb-1">
+          <%= icon("wallet", size: "xs") %>
+          <span><%= t("investments.portfolio.cash_balance") %></span>
+        </div>
+        <p class="text-xl font-semibold text-primary privacy-sensitive tabular-nums">
+          <%= format_money(investment_statement.cash_balance_money) %>
+        </p>
+      </div>
+    </div>
+
+    <% if holdings.any? %>
+      <div class="bg-container-inset rounded-xl p-1 overflow-x-auto">
+        <div class="rounded-lg shadow-border-xs bg-container overflow-hidden min-w-[760px]">
+          <table class="w-full">
+            <thead class="bg-container-inset">
+              <tr class="uppercase text-xs font-medium text-secondary">
+                <th class="px-4 py-2.5 text-left font-medium"><%= t("investments.portfolio.columns.asset") %></th>
+                <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.portfolio.columns.price") %></th>
+                <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.portfolio.columns.day_change") %></th>
+                <th class="px-4 py-2.5 text-center font-medium"><%= t("investments.portfolio.columns.trend_1m") %></th>
+                <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.portfolio.columns.shares") %></th>
+                <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.portfolio.columns.value") %></th>
+                <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.portfolio.columns.return") %></th>
+                <th class="px-4 py-2.5 text-right font-medium"></th>
+              </tr>
+            </thead>
+            <tbody class="text-sm">
+              <% holdings.each_with_index do |holding, idx| %>
+                <% quote = holding_quotes[holding.security_id] %>
+                <tr class="<%= idx < holdings.size - 1 ? 'table-divider' : '' %> hover:bg-surface-hover transition-colors">
+                  <td class="px-4 py-3">
+                    <%= link_to quote_investments_path(ticker: holding.ticker, mic: holding.security.exchange_operating_mic, range: range),
+                                data: { turbo_frame: "market_quote_detail" },
+                                class: "flex items-center gap-3 group" do %>
+                      <% if (logo = holding.security.display_logo_url).present? %>
+                        <img src="<%= Setting.transform_brand_fetch_url(logo) %>" alt="<%= holding.ticker %>" class="w-8 h-8 rounded-full shrink-0">
+                      <% else %>
+                        <div class="w-8 h-8 rounded-full bg-container-inset flex items-center justify-center text-xs font-medium text-secondary shrink-0">
+                          <%= holding.ticker.to_s.first(2) %>
+                        </div>
+                      <% end %>
+                      <div class="min-w-0">
+                        <div class="flex items-center gap-1.5">
+                          <span class="font-medium text-primary group-hover:underline"><%= holding.ticker %></span>
+                          <% if quote&.category %>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-container-inset text-secondary uppercase">
+                              <%= t("investments.categories.#{quote.category}", default: quote.category) %>
+                            </span>
+                          <% end %>
+                        </div>
+                        <p class="text-xs text-secondary truncate max-w-48"><%= holding.name %> · <%= holding.account.name %></p>
+                      </div>
+                    <% end %>
+                  </td>
+
+                  <td class="px-4 py-3 text-right tabular-nums font-medium text-primary">
+                    <% if quote&.current_price %>
+                      <%= number_with_delimiter(number_with_precision(quote.current_price, precision: 2)) %>
+                      <span class="text-xs text-secondary"><%= quote.currency %></span>
+                    <% else %>
+                      <%= format_money(Money.new(holding.price, holding.currency)) %>
+                    <% end %>
+                  </td>
+
+                  <td class="px-4 py-3 text-right tabular-nums">
+                    <% if quote&.change_percent %>
+                      <% c_cls = quote.positive? ? "text-green-600" : "text-red-600" %>
+                      <span class="font-medium <%= c_cls %>">
+                        <%= quote.change_percent >= 0 ? "+" : "" %><%= number_with_precision(quote.change_percent, precision: 2) %>%
+                      </span>
+                    <% else %>
+                      <span class="text-secondary">—</span>
+                    <% end %>
+                  </td>
+
+                  <td class="px-4 py-3">
+                    <% if quote&.series %>
+                      <div class="w-20 h-7 mx-auto">
+                        <%= render "shared/sparkline",
+                                   id: "holding-sparkline-#{holding.id}",
+                                   series: quote.series,
+                                   stroke_width: 1.5 %>
+                      </div>
+                    <% else %>
+                      <p class="text-center text-xs text-secondary">—</p>
+                    <% end %>
+                  </td>
+
+                  <td class="px-4 py-3 text-right tabular-nums text-secondary privacy-sensitive">
+                    <%= format_quantity(holding.qty) %>
+                  </td>
+
+                  <td class="px-4 py-3 text-right tabular-nums font-medium text-primary privacy-sensitive">
+                    <%= format_money(holding.amount_money) %>
+                  </td>
+
+                  <td class="px-4 py-3 text-right tabular-nums privacy-sensitive">
+                    <% if holding.trend %>
+                      <span class="font-medium" style="color: <%= holding.trend.color %>">
+                        <%= holding.trend.percent_formatted %>
+                      </span>
+                    <% else %>
+                      <span class="text-secondary">—</span>
+                    <% end %>
+                  </td>
+
+                  <td class="px-4 py-3 text-right">
+                    <%= link_to holding_path(holding),
+                                data: { turbo_frame: :drawer },
+                                class: "text-xs font-medium text-secondary hover:text-primary" do %>
+                      <%= icon("chevron-right", size: "sm") %>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% else %>
+      <div class="rounded-lg bg-container-inset p-6 text-center space-y-2">
+        <p class="text-sm text-primary font-medium"><%= t("investments.portfolio.no_holdings_title") %></p>
+        <p class="text-xs text-secondary"><%= t("investments.portfolio.no_holdings_description") %></p>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="rounded-lg bg-container-inset p-8 text-center space-y-3">
+      <p class="text-sm font-medium text-primary"><%= t("investments.portfolio.no_accounts_title") %></p>
+      <p class="text-xs text-secondary"><%= t("investments.portfolio.no_accounts_description") %></p>
+      <%= link_to new_account_path(step: "method_select", classification: "asset"),
+                  data: { turbo_frame: :modal },
+                  class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-inverse bg-inverse hover:bg-inverse-hover" do %>
+        <%= icon("plus", size: "sm", color: "current") %>
+        <span><%= t("investments.index.new_account") %></span>
+      <% end %>
+    </div>
+  <% end %>
+</section>

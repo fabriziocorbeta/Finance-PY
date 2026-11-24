@@ -1,0 +1,138 @@
+<%# locals: (quote:, range:, selected_ticker:, selected_mic: nil) %>
+
+<section class="bg-container rounded-xl shadow-border-xs p-4 lg:p-6 space-y-5">
+  <% if quote %>
+    <% positive = quote.positive? %>
+    <% day_color = positive ? "text-green-600" : "text-red-600" %>
+    <% period_positive = quote.period_positive? %>
+    <% period_color = period_positive ? "text-green-600" : "text-red-600" %>
+
+    <%# Header: Ticker, Name, Category Badge, Price, Change, Watchlist Action %>
+    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+      <div class="space-y-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="text-xl lg:text-2xl font-semibold text-primary"><%= quote.name %></h2>
+          <span class="px-2 py-0.5 text-xs font-mono font-medium rounded-md bg-container-inset text-secondary">
+            <%= quote.ticker %>
+          </span>
+          <span class="px-2 py-0.5 text-xs font-medium rounded-md bg-container-inset text-secondary">
+            <%= t("investments.categories.#{quote.category}", default: quote.category.humanize) %>
+          </span>
+          <% if quote.exchange_name.present? %>
+            <span class="text-xs text-subdued"><%= quote.exchange_name %></span>
+          <% end %>
+        </div>
+
+        <div class="flex flex-wrap items-baseline gap-3">
+          <span class="text-3xl font-semibold text-primary tabular-nums">
+            <% if quote.current_price %>
+              <%= number_with_delimiter(number_with_precision(quote.current_price, precision: 2)) %>
+              <span class="text-sm font-normal text-secondary"><%= quote.currency %></span>
+            <% else %>
+              —
+            <% end %>
+          </span>
+
+          <% if quote.change.present? && quote.change_percent.present? %>
+            <span class="text-sm font-medium tabular-nums <%= day_color %>">
+              <%= quote.change >= 0 ? "+" : "" %><%= number_with_precision(quote.change, precision: 2) %>
+              (<%= quote.change_percent >= 0 ? "+" : "" %><%= number_with_precision(quote.change_percent, precision: 2) %>%)
+              <span class="text-xs text-secondary font-normal"><%= t("investments.quote_detail.today") %></span>
+            </span>
+          <% end %>
+
+          <% if quote.period_change.present? && quote.period_change_percent.present? %>
+            <span class="text-sm font-medium tabular-nums <%= period_color %>">
+              <%= quote.period_change >= 0 ? "+" : "" %><%= number_with_precision(quote.period_change, precision: 2) %>
+              (<%= quote.period_change_percent >= 0 ? "+" : "" %><%= number_with_precision(quote.period_change_percent, precision: 2) %>%)
+              <span class="text-xs text-secondary font-normal"><%= range.upcase %></span>
+            </span>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <%# Timeframe Selector %>
+        <div class="inline-flex items-center gap-1 bg-container-inset p-1 rounded-lg">
+          <% Investments::MarketTrackerService::RANGE_CONFIG.each_key do |r_key| %>
+            <% is_active = (range == r_key) %>
+            <%= link_to t("investments.ranges.#{r_key}", default: r_key.upcase),
+                        quote_investments_path(ticker: selected_ticker, mic: selected_mic, range: r_key),
+                        data: { turbo_frame: "market_quote_detail" },
+                        class: class_names(
+                          "px-2.5 py-1 text-xs font-medium rounded-md transition-colors",
+                          is_active ? "bg-container text-primary shadow-xs" : "text-secondary hover:text-primary"
+                        ) %>
+          <% end %>
+        </div>
+
+        <% unless quote.watchlist_item.present? %>
+          <%= button_to watchlist_items_path(ticker: quote.ticker, exchange_operating_mic: selected_mic),
+                        method: :post,
+                        data: { turbo_frame: "_top" },
+                        class: "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-primary border border-secondary bg-container hover:bg-surface-hover cursor-pointer" do %>
+            <%= icon("star", size: "xs") %>
+            <span><%= t("investments.quote_detail.add_to_watchlist") %></span>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Interactive D3 Time Series Chart %>
+    <% if quote.series %>
+      <div class="h-64 w-full">
+        <div id="market-quote-chart-<%= quote.ticker.parameterize %>-<%= range %>"
+             class="h-full w-full"
+             data-controller="time-series-chart"
+             data-time-series-chart-data-value="<%= quote.series.to_json %>"></div>
+      </div>
+    <% else %>
+      <div class="h-48 w-full flex items-center justify-center rounded-lg bg-container-inset text-sm text-secondary">
+        <%= t("investments.quote_detail.no_chart_data") %>
+      </div>
+    <% end %>
+
+    <%# Key Market Stats %>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-tertiary">
+      <div class="bg-container-inset rounded-lg p-3">
+        <p class="text-xs text-secondary"><%= t("investments.quote_detail.previous_close") %></p>
+        <p class="text-sm font-medium text-primary tabular-nums mt-0.5">
+          <%= quote.previous_close ? number_with_delimiter(number_with_precision(quote.previous_close, precision: 2)) : "—" %>
+        </p>
+      </div>
+
+      <div class="bg-container-inset rounded-lg p-3">
+        <p class="text-xs text-secondary"><%= t("investments.quote_detail.day_range") %></p>
+        <p class="text-sm font-medium text-primary tabular-nums mt-0.5">
+          <% if quote.day_low && quote.day_high %>
+            <%= number_with_precision(quote.day_low, precision: 2) %> – <%= number_with_precision(quote.day_high, precision: 2) %>
+          <% else %>
+            —
+          <% end %>
+        </p>
+      </div>
+
+      <div class="bg-container-inset rounded-lg p-3">
+        <p class="text-xs text-secondary"><%= t("investments.quote_detail.week52_range") %></p>
+        <p class="text-sm font-medium text-primary tabular-nums mt-0.5">
+          <% if quote.fifty_two_week_low && quote.fifty_two_week_high %>
+            <%= number_with_precision(quote.fifty_two_week_low, precision: 2) %> – <%= number_with_precision(quote.fifty_two_week_high, precision: 2) %>
+          <% else %>
+            —
+          <% end %>
+        </p>
+      </div>
+
+      <div class="bg-container-inset rounded-lg p-3">
+        <p class="text-xs text-secondary"><%= t("investments.quote_detail.volume") %></p>
+        <p class="text-sm font-medium text-primary tabular-nums mt-0.5">
+          <%= quote.volume&.positive? ? number_with_delimiter(quote.volume) : "—" %>
+        </p>
+      </div>
+    </div>
+  <% else %>
+    <div class="py-12 text-center text-sm text-secondary">
+      <%= t("investments.quote_detail.unavailable") %>
+    </div>
+  <% end %>
+</section>

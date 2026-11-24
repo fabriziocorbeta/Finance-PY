@@ -9,9 +9,11 @@ module Dashboard
     def expenses
       @expenses ||= Entry.visible
                          .excluding_split_parents
-                         .where(account_id: @accounts.visible.select(:id), entryable_type: "Transaction", excluded: false)
+                         .joins("INNER JOIN transactions ON transactions.id = entries.entryable_id AND entries.entryable_type = 'Transaction'")
+                         .where(account_id: @accounts.visible.select(:id), excluded: false)
+                         .where.not(transactions: { kind: Transaction::BUDGET_EXCLUDED_KINDS })
                          .where("entries.amount > 0")
-                         .includes(:account, entryable: :category)
+                         .includes(:account)
                          .reverse_chronological
                          .limit(@limit)
                          .to_a

@@ -4,6 +4,39 @@ import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 
+internal data class NotificationMessagePart(val text: String, val timeMillis: Long)
+
+// Pure core of notification part extraction so it can be unit-tested without
+// Android's Bundle/NotificationListenerService. When MessagingStyle provides
+// individual messages with timestamps (`android.messages`), messages older
+// than `maxAgeMillis` are dropped so an un-dismissed SMS from days ago is
+// never re-extracted when a new SMS arrives in the same thread (after
+// SeenNotificationPartsStore's 6h TTL has expired).
+internal fun extractNotificationParts(
+    bigText: String?,
+    text: String?,
+    textLines: List<String>,
+    messages: List<NotificationMessagePart>,
+    nowMillis: Long,
+    maxAgeMillis: Long = SeenNotificationPartsStore.DEFAULT_TTL_MILLIS
+): List<String> {
+    if (messages.isNotEmpty()) {
+        return messages
+            .asSequence()
+            .filter { it.timeMillis <= 0L || nowMillis - it.timeMillis <= maxAgeMillis }
+            .map { it.text }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .toList()
+    }
+
+    val parts = LinkedHashSet<String>()
+    bigText?.let { parts.add(it) }
+    text?.let { parts.add(it) }
+    textLines.forEach { parts.add(it) }
+    return parts.toList()
+}
+
 class WalletNotificationListenerService : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName !in BankNotificationExtractors.watchedPackages) return
@@ -31,33 +64,29 @@ class WalletNotificationListenerService : NotificationListenerService() {
         WalletCaptureHandler.handle(applicationContext, sbn.packageName, title, text)
     }
 
-    // A notification's full content isn't always in a single field. Grouped
-    // SMS conversations (MessagingStyle/InboxStyle, used by the default
-    // Messages app) carry individual messages in "android.messages" or
-    // "android.textLines" instead of -- or in addition to -- a single
-    // "android.bigText"/"android.text". Collecting every source into
-    // individual parts (deduped) and running extractors with findAll over
-    // all of them is what makes bundled multi-transaction notifications (see
-    // ContinentalSmsExtractor) actually find every transaction instead of
-    // only whichever field happened to be checked first. Kept as separate
-    // parts (rather than pre-joined) so SeenNotificationPartsStore can filter
-    // out individually already-seen lines from a repost that also carries
-    // genuinely new ones.
     private fun collectNotificationParts(extras: Bundle): List<String> {
-        val parts = LinkedHashSet<String>()
-
-        extras.getCharSequence("android.bigText")?.toString()?.let { parts.add(it) }
-        extras.getCharSequence("android.text")?.toString()?.let { parts.add(it) }
-
-        extras.getCharSequenceArray("android.textLines")?.forEach { line ->
-            line?.toString()?.let { parts.add(it) }
-        }
+        val bigText = extras.getCharSequence("android.bigText")?.toString()
+        val text = extras.getCharSequence("android.text")?.toString()
+        val textLines = extras.getCharSequenceArray("android.textLines")
+            ?.mapNotNull { it?.toString() }
+            ?: emptyList()
 
         @Suppress("DEPRECATION")
-        extras.getParcelableArray("android.messages")?.forEach { parcelable ->
-            (parcelable as? Bundle)?.getCharSequence("text")?.toString()?.let { parts.add(it) }
-        }
+        val messages = extras.getParcelableArray("android.messages")
+            ?.mapNotNull { parcelable ->
+                val bundle = parcelable as? Bundle ?: return@mapNotNull null
+                val msgText = bundle.getCharSequence("text")?.toString() ?: return@mapNotNull null
+                val msgTime = bundle.getLong("time", 0L)
+                NotificationMessagePart(msgText, msgTime)
+            }
+            ?: emptyList()
 
-        return parts.toList()
+        return extractNotificationParts(
+            bigText = bigText,
+            text = text,
+            textLines = textLines,
+            messages = messages,
+            nowMillis = System.currentTimeMillis()
+        )
     }
 }

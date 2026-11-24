@@ -8,7 +8,7 @@ class Api::V1::SalesController < Api::V1::BaseController
   before_action :ensure_write_scope, only: %i[create update destroy complete cancel upload_invoice_photo delete_invoice_photo]
   before_action :require_business_mode!
   before_action :set_sale, only: %i[show update destroy complete cancel invoice_photo upload_invoice_photo delete_invoice_photo]
-  before_action :ensure_writable_sale_account!, only: %i[upload_invoice_photo delete_invoice_photo]
+  before_action :ensure_writable_sale_account!, only: %i[update destroy complete cancel upload_invoice_photo delete_invoice_photo]
 
   def index
     @per_page = safe_per_page_param
@@ -63,14 +63,26 @@ class Api::V1::SalesController < Api::V1::BaseController
   end
 
   def update
-    unless @sale.draft?
-      return render_validation_error([ "Only draft sales can be updated" ])
+    updated = false
+    validation_errors = nil
+
+    @sale.with_lock do
+      unless @sale.draft?
+        validation_errors = [ "Only draft sales can be updated" ]
+        next
+      end
+
+      if @sale.update(sale_params)
+        updated = true
+      else
+        validation_errors = @sale.errors.full_messages
+      end
     end
 
-    if @sale.update(sale_params)
+    if updated
       render :show, status: :ok
     else
-      render_validation_error(@sale.errors.full_messages)
+      render_validation_error(validation_errors || @sale.errors.full_messages)
     end
   rescue ActiveRecord::RecordInvalid => e
     render_validation_error(e.record.errors.full_messages)
@@ -85,14 +97,26 @@ class Api::V1::SalesController < Api::V1::BaseController
   end
 
   def destroy
-    unless @sale.draft?
-      return render_validation_error([ "Cannot delete a sale that is not in draft status. Cancel it first." ])
+    destroyed = false
+    validation_errors = nil
+
+    @sale.with_lock do
+      unless @sale.draft?
+        validation_errors = [ "Cannot delete a sale that is not in draft status. Cancel it first." ]
+        next
+      end
+
+      if @sale.destroy
+        destroyed = true
+      else
+        validation_errors = @sale.errors.full_messages
+      end
     end
 
-    if @sale.destroy
+    if destroyed
       head :no_content
     else
-      render_validation_error(@sale.errors.full_messages)
+      render_validation_error(validation_errors || @sale.errors.full_messages)
     end
   rescue => e
     Rails.logger.error "SalesController#destroy error: #{e.message}"
@@ -213,7 +237,8 @@ class Api::V1::SalesController < Api::V1::BaseController
     end
 
     def sales_scope
-      current_family.sales
+      accessible_ids = current_family.accounts.accessible_by(current_resource_owner).select(:id)
+      current_family.sales.where(account_id: accessible_ids)
     end
 
     def sale_params

@@ -3,16 +3,9 @@ Rails.application.config.to_prepare do
   module ActiveStorageAttachmentAuthorization
     extend ActiveSupport::Concern
 
-    # ArchivedExport owns the one attachment that legitimately has no family to
-    # compare against: it is the export of an already-purged family, keyed by
-    # email and family name rather than a family record. ArchivedExportsController
-    # authorizes those downloads on its own with a single-use token digest plus an
-    # expiry (ArchivedExport.find_by_download_token!), so a family check here would
-    # only break a flow that is already authorized by other means.
-    UNSCOPED_RECORD_TYPES = %w[ArchivedExport].freeze
-
     included do
       include Authentication
+      include RowLevelSecurity
       before_action :authorize_attachment_access
     end
 
@@ -20,19 +13,48 @@ Rails.application.config.to_prepare do
 
       def authorize_attachment_access
         blob = authorized_blob
-        return if blob.nil?
+        raise ActiveRecord::RecordNotFound if blob.nil?
 
+        # Fail closed on orphan blobs (e.g. direct upload in flight or deleted record)
         attachment = ActiveStorage::Attachment.find_by(blob: blob)
-        return if attachment.nil?
-        return if UNSCOPED_RECORD_TYPES.include?(attachment.record_type)
+        raise ActiveRecord::RecordNotFound if attachment.nil?
 
-        # Fail closed: every attachment whose owning family cannot be established
-        # is refused, so a model that gains an attachment later is protected by
-        # default instead of silently becoming world-readable to any signed-in user.
-        owning_family = attachment.record.try(:family)
+        # ArchivedExport blobs are served ONLY through ArchivedExportsController#show
+        # via send_blob_stream after single-use token verification, never via
+        # generic ActiveStorage blob controllers.
+        raise ActiveRecord::RecordNotFound if attachment.record_type == "ArchivedExport"
 
+        record = attachment.record
+        raise ActiveRecord::RecordNotFound if record.nil?
+
+        owning_family = resolve_owning_family(record)
         if owning_family.nil? || Current.family != owning_family
           raise ActiveRecord::RecordNotFound
+        end
+
+        enforce_intra_family_authorization!(record)
+      end
+
+      def resolve_owning_family(record)
+        return record.family if record.respond_to?(:family)
+        return record.chat&.user&.family if record.respond_to?(:chat)
+
+        nil
+      end
+
+      def enforce_intra_family_authorization!(record)
+        case record
+        when FamilyExport
+          raise ActiveRecord::RecordNotFound unless Current.user&.admin?
+        when UserMessage
+          raise ActiveRecord::RecordNotFound unless record.chat&.user_id == Current.user&.id
+        when Transaction
+          account_id = record.entry&.account_id
+          raise ActiveRecord::RecordNotFound unless account_id && Account.accessible_by(Current.user).exists?(id: account_id)
+        when Sale, PurchaseOrder
+          raise ActiveRecord::RecordNotFound unless record.account_id && Account.accessible_by(Current.user).exists?(id: record.account_id)
+        when Account
+          raise ActiveRecord::RecordNotFound unless Account.accessible_by(Current.user).exists?(id: record.id)
         end
       end
 

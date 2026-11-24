@@ -2,6 +2,8 @@ package py.com.cdco.financespy.auth
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.auth.authProvider
+import io.ktor.client.plugins.auth.providers.BearerAuthProvider
 import io.ktor.client.request.forms.submitForm
 import io.ktor.http.Parameters
 import kotlinx.serialization.Serializable
@@ -75,6 +77,7 @@ class AuthRepository(
             }
         ).body()
         tokens.save(response.access_token, response.refresh_token)
+        runCatching { http.authProvider<BearerAuthProvider>()?.clearToken() }
     }
 
     suspend fun isLoggedIn(): Boolean = tokens.accessToken() != null
@@ -94,6 +97,7 @@ class AuthRepository(
         revokeToken(access, "access_token")
         revokeToken(refresh, "refresh_token")
         tokens.clear()
+        runCatching { http.authProvider<BearerAuthProvider>()?.clearToken() }
         runCatching { wipeLocalData() }
     }
 

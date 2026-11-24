@@ -154,6 +154,15 @@ Rails.application.routes.draw do
   get "feedback", to: "pages#feedback"
   patch "dashboard/preferences", to: "pages#update_preferences"
 
+  namespace :dashboard do
+    resource :widgets, only: [] do
+      get :available_to_spend
+      get :recent_expenses
+      get :budget_status
+      get :sales_summary
+    end
+  end
+
   resource :current_session, only: %i[update]
 
   post "csp_reports", to: "csp_reports#create"
@@ -436,7 +445,14 @@ Rails.application.routes.draw do
   end
 
   resources :depositories, only: %i[new create edit update]
-  resources :investments, only: %i[new create edit update]
+  resources :investments, only: %i[index new create edit update] do
+    collection do
+      get :quote
+      post :sync
+    end
+  end
+
+  resources :watchlist_items, only: %i[create destroy]
   resources :properties, only: %i[new create edit update] do
     member do
       get :balances
@@ -467,6 +483,7 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       # Authentication endpoints
+      get "app_config", to: "app_config#show"
       post "auth/signup", to: "auth#signup"
       post "auth/login", to: "auth#login"
       post "auth/refresh", to: "auth#refresh"

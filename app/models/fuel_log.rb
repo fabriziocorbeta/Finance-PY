@@ -33,8 +33,8 @@ class FuelLog < ApplicationRecord
       active_lines = fuel_log_lines.reject(&:marked_for_destruction?)
       return if active_lines.empty?
 
-      self.liters = active_lines.sum { |line| line.liters.to_f }
-      self.cost = active_lines.sum { |line| line.cost.to_f }
+      self.liters = active_lines.sum(BigDecimal("0")) { |line| BigDecimal(line.liters.to_s) }
+      self.cost = active_lines.sum(BigDecimal("0")) { |line| BigDecimal(line.cost.to_s) }
     end
 
     def must_have_at_least_one_fuel_log_line
@@ -53,17 +53,44 @@ class FuelLog < ApplicationRecord
     def create_associated_entry
       return if entry_id.present?
 
-      transaction = Transaction.new(category: fuel_category)
-      entry = account.entries.create!(
-        entryable: transaction,
-        name: "Combustible - #{fleet_vehicle.plate}",
-        date: logged_at,
-        amount: cost,
-        currency: account.currency
-      )
+      entry = find_matching_wallet_entry
+      if entry
+        entry.update!(
+          name: "Combustible - #{fleet_vehicle.plate}",
+          date: logged_at
+        )
+        if entry.entryable.is_a?(Transaction) && entry.entryable.category_id != fuel_category.id
+          entry.entryable.update!(category: fuel_category)
+        end
+      else
+        transaction = Transaction.new(category: fuel_category)
+        entry = account.entries.create!(
+          entryable: transaction,
+          name: "Combustible - #{fleet_vehicle.plate}",
+          date: logged_at,
+          amount: cost,
+          currency: account.currency
+        )
+      end
       update_column(:entry_id, entry.id)
 
       entry.sync_account_later
+    end
+
+    # Reconcile with an automatic Google Wallet / bank notification capture
+    # that already recorded this same fuel purchase (+/-1 day, same account
+    # and cost) so logging it in Flota does not create a duplicate entry.
+    def find_matching_wallet_entry
+      account.entries
+        .left_outer_joins(:fuel_log)
+        .where(
+          source: "google_play",
+          date: (logged_at - 1.day)..(logged_at + 1.day),
+          amount: cost,
+          fuel_logs: { id: nil }
+        )
+        .order(created_at: :desc)
+        .first
     end
 
     # Cargas de combustible de Flota siempre van a esta categoría fija: no tiene
@@ -80,6 +107,9 @@ class FuelLog < ApplicationRecord
       return unless entry
 
       if saved_change_to_cost? || saved_change_to_logged_at? || saved_change_to_account_id?
+        previous_account_id = saved_change_to_account_id&.first
+        previous_date = entry.date
+
         entry.update!(
           account: account,
           amount: cost,
@@ -87,6 +117,11 @@ class FuelLog < ApplicationRecord
           currency: account.currency
         )
         entry.sync_account_later
+
+        if previous_account_id.present? && previous_account_id != account_id
+          previous_account = Account.find_by(id: previous_account_id)
+          previous_account&.sync_later(window_start_date: previous_date, window_end_date: Date.current)
+        end
       end
     end
 

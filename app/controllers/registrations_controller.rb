@@ -42,7 +42,11 @@ class RegistrationsController < ApplicationController
     def set_invitation
       token = params[:invitation]
       token ||= params[:user][:invitation] if params[:user].present?
-      @invitation = Invitation.pending.find_by(token: token)
+      return if token.blank?
+
+      @invitation = RlsContext.with_auth_bypass(reason: "registration_invitation_lookup") do
+        Invitation.pending.includes(:family).find_by(token: token)
+      end
     end
 
     def set_user

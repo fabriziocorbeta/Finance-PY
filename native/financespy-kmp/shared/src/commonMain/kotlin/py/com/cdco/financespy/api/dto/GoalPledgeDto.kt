@@ -13,7 +13,7 @@ data class GoalPledgeDto(
     val status: String,
     val expires_at: String,
     val days_left: Int,
-    val account_name: String
+    val account_name: String? = null
 )
 
 @Serializable

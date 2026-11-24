@@ -30,7 +30,7 @@ module Api
         end
 
         # Validate password
-        password_errors = validate_password(params[:user][:password])
+        password_errors = validate_password(params.dig(:user, :password))
         if password_errors.any?
           render json: { errors: password_errors }, status: :unprocessable_entity
           return
@@ -62,7 +62,12 @@ module Api
                 render json: { errors: user.errors.full_messages }, status: :unprocessable_entity
                 raise ActiveRecord::Rollback
               end
-              InviteCode.claim!(params[:invite_code]) if params[:invite_code].present?
+              if params[:invite_code].present?
+                unless InviteCode.claim!(params[:invite_code])
+                  render json: { error: "Invalid invite code" }, status: :forbidden
+                  raise ActiveRecord::Rollback
+                end
+              end
               device = MobileDevice.upsert_device!(user, device_params)
               token_response = device.issue_token!
             end
@@ -84,7 +89,7 @@ module Api
         # which emails exist.
         user = User.auth_authenticate_by(email: params[:email], password: params[:password])
 
-        if user
+        if user&.active?
           # Check MFA if enabled
           if user.otp_required?
             if user.otp_locked?
@@ -170,7 +175,7 @@ module Api
 
         user = User.auth_authenticate_by(email: params[:email], password: params[:password])
 
-        unless user
+        unless user&.active?
           render json: { error: "Invalid email or password" }, status: :unauthorized
           return
         end
@@ -203,8 +208,10 @@ module Api
 
         email = cached[:email]
 
-        # Check for a pending invitation for this email
-        invitation = Invitation.pending.find_by(email: email)
+        # Check for a pending invitation for this email (invitations is FORCE RLS'd)
+        invitation = RlsContext.with_auth_bypass(reason: "mobile_sso_invitation_lookup") do
+          Invitation.pending.find_by(email: email)
+        end
         signup_open = !self_hosted? || Setting.onboarding_state != "closed"
 
         unless invitation.present? || (signup_open && cached[:allow_account_creation])
@@ -290,40 +297,60 @@ module Api
         # any family context exists (a refresh token proves the caller's
         # identity, but there's no session yet to have set it from).
         new_token = RlsContext.with_auth_bypass(reason: "refresh_token") do
-          # Find the access token associated with this refresh token
-          access_token = Doorkeeper::AccessToken.by_refresh_token(refresh_token)
+          ActiveRecord::Base.transaction do
+            # Find and lock the access token row to prevent concurrent refresh replay races
+            access_token = Doorkeeper::AccessToken.by_refresh_token(refresh_token)
 
-          if access_token.nil? || access_token.revoked?
-            render json: { error: "Invalid refresh token" }, status: :unauthorized
-            next
-          end
+            if access_token.nil?
+              render json: { error: "Invalid refresh token" }, status: :unauthorized
+              next
+            end
 
-          user = User.auth_find_by_id(access_token.resource_owner_id)
-          if user.nil? || !user.active?
+            access_token.lock!
+
+            if access_token.revoked?
+              # Refresh token reuse detected — revoke all tokens for this mobile device
+              if access_token.mobile_device_id.present?
+                MobileDevice.find_by(id: access_token.mobile_device_id)&.revoke_all_tokens!
+              end
+              render json: { error: "Invalid refresh token" }, status: :unauthorized
+              next
+            end
+
+            # Enforce absolute max lifetime (90 days) on refresh tokens
+            if access_token.created_at < 90.days.ago
+              access_token.revoke
+              render json: { error: "Refresh token expired" }, status: :unauthorized
+              next
+            end
+
+            user = User.auth_find_by_id(access_token.resource_owner_id)
+            if user.nil? || !user.active?
+              access_token.revoke
+              render json: { error: "invalid_grant" }, status: :unauthorized
+              next
+            end
+
+            # Create new access token
+            created = Doorkeeper::AccessToken.create!(
+              application: access_token.application,
+              resource_owner_id: access_token.resource_owner_id,
+              mobile_device_id: access_token.mobile_device_id,
+              expires_in: 30.days.to_i,
+              scopes: access_token.scopes,
+              use_refresh_token: true
+            )
+
+            # Revoke old access token atomically inside the lock
             access_token.revoke
-            render json: { error: "invalid_grant" }, status: :unauthorized
-            next
+
+            # Update device last seen
+            device_id = params.dig(:device, :device_id)
+            device = user.mobile_devices.find_by(device_id: device_id) if device_id.present?
+            device&.update_last_seen!
+
+            created
           end
-
-          # Create new access token
-          created = Doorkeeper::AccessToken.create!(
-            application: access_token.application,
-            resource_owner_id: access_token.resource_owner_id,
-            mobile_device_id: access_token.mobile_device_id,
-            expires_in: 30.days.to_i,
-            scopes: access_token.scopes,
-            use_refresh_token: true
-          )
-
-          # Revoke old access token
-          access_token.revoke
-
-          # Update device last seen
-          device_id = params.dig(:device, :device_id)
-          device = user.mobile_devices.find_by(device_id: device_id) if device_id.present?
-          device&.update_last_seen!
-
-          created
         end
         return if performed?
 

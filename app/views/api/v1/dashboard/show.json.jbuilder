@@ -105,6 +105,7 @@ json.investment_summary do
       json.weight (holding.weight || 0).to_f
       json.value holding.amount_money.amount.to_f
       json.value_cents money_cents.call(holding.amount_money)
+      json.currency holding.currency
       if holding.trend
         json.return_percent_formatted holding.trend.percent_formatted
         json.return_color holding.trend.color

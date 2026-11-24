@@ -453,7 +453,7 @@ fun SaleFormScreen(
                                 OutlinedTextField(
                                     value = if (itemState.unitPrice == 0.0) "" else itemState.unitPrice.toString(),
                                     onValueChange = { pStr ->
-                                        val p = pStr.toDoubleOrNull() ?: 0.0
+                                        val p = py.com.cdco.financespy.utils.AmountParser.parse(pStr, currency) ?: 0.0
                                         items[index] = itemState.copy(unitPrice = p)
                                     },
                                     label = { Text("Precio Unitario") },

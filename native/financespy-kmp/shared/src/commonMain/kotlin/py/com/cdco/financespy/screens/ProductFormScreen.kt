@@ -199,8 +199,8 @@ fun ProductFormScreen(
 
                 Button(
                     onClick = {
-                        val bp = buyPriceText.toDoubleOrNull() ?: 0.0
-                        val sp = sellPriceText.toDoubleOrNull() ?: 0.0
+                        val bp = py.com.cdco.financespy.utils.AmountParser.parse(buyPriceText, currency) ?: 0.0
+                        val sp = py.com.cdco.financespy.utils.AmountParser.parse(sellPriceText, currency) ?: 0.0
                         val ms = minStockText.toIntOrNull() ?: 0
                         val isStock = initialStockText.toIntOrNull() ?: 0
                         viewModel.saveProduct(

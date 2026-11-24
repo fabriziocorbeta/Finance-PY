@@ -111,7 +111,10 @@ class GoalFormViewModel(
             _state.value = s.copy(error = "El nombre no puede estar vacío")
             return
         }
-        if (s.targetAmount.isBlank() || s.targetAmount.toDoubleOrNull() == null || s.targetAmount.toDouble() <= 0) {
+        val targetCurrency = s.currency.ifBlank { "PYG" }
+        val canonicalTarget = py.com.cdco.financespy.utils.AmountParser.toCanonicalDecimalString(s.targetAmount, targetCurrency)
+        val parsedTarget = canonicalTarget?.toDoubleOrNull()
+        if (canonicalTarget == null || parsedTarget == null || parsedTarget <= 0) {
             _state.value = s.copy(error = "Ingresá un monto objetivo válido mayor a cero")
             return
         }
@@ -133,7 +136,7 @@ class GoalFormViewModel(
             val result = if (goalId != null) {
                 val body = UpdateGoalBody(
                     name = s.name,
-                    target_amount = s.targetAmount,
+                    target_amount = canonicalTarget,
                     currency = s.currency.ifBlank { null },
                     target_date = s.targetDate.ifBlank { null },
                     color = s.color.ifBlank { null },
@@ -152,7 +155,7 @@ class GoalFormViewModel(
             } else {
                 val body = CreateGoalBody(
                     name = s.name,
-                    target_amount = s.targetAmount,
+                    target_amount = canonicalTarget,
                     currency = s.currency.ifBlank { null },
                     target_date = s.targetDate.ifBlank { null },
                     color = s.color.ifBlank { null },

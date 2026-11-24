@@ -185,7 +185,7 @@ final class AuthRepository: ObservableObject {
         ]
 
         let bodyString = bodyParams
-            .map { "\($0.key)=\($0.value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? $0.value)" }
+            .map { "\($0.key)=\($0.value.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? $0.value)" }
             .joined(separator: "&")
 
         request.httpBody = bodyString.data(using: .utf8)
@@ -247,7 +247,11 @@ final class AuthRepository: ObservableObject {
             }
 
             guard (200...299).contains(httpResponse.statusCode) else {
-                self.tokenStorage.clear()
+                // Only wipe Keychain on permanent 400/401 invalid_grant; transient 502/503/504
+                // must never log the user out.
+                if httpResponse.statusCode == 400 || httpResponse.statusCode == 401 {
+                    self.tokenStorage.clear()
+                }
                 let errorBody = String(data: data, encoding: .utf8)
                 throw AuthError.tokenExchangeFailed(httpResponse.statusCode, errorBody)
             }

@@ -100,8 +100,8 @@ class McpController < ApplicationController
 
       { content: [ { type: "text", text: result.to_json } ] }
     rescue => e
-      Rails.logger.error "MCP tools/call error: #{e.message}"
-      { content: [ { type: "text", text: { error: e.message }.to_json } ], isError: true }
+      Rails.logger.error "MCP tools/call error: #{e.class}: #{e.message}"
+      { content: [ { type: "text", text: { error: "Tool execution failed" }.to_json } ], isError: true }
     end
 
     def authenticate_mcp_token!
@@ -120,7 +120,6 @@ class McpController < ApplicationController
 
         @mcp_api_key = key_record
         @mcp_user = key_record.user
-        key_record.update_last_used!
       else
         expected = ENV["MCP_API_TOKEN"]
 
@@ -129,7 +128,10 @@ class McpController < ApplicationController
           return
         end
 
-        unless ActiveSupport::SecurityUtils.secure_compare(bearer_token, expected)
+        unless ActiveSupport::SecurityUtils.secure_compare(
+          Digest::SHA256.hexdigest(bearer_token),
+          Digest::SHA256.hexdigest(expected)
+        )
           render json: { error: "unauthorized" }, status: :unauthorized
           return
         end
@@ -137,13 +139,15 @@ class McpController < ApplicationController
         email = ENV["MCP_USER_EMAIL"]
         @mcp_user = User.auth_find_by_email(email) if email.present?
 
-        unless @mcp_user
+        unless @mcp_user&.active?
           render json: { error: "MCP user not configured" }, status: :service_unavailable
           return
         end
       end
 
       RlsContext.set_family(@mcp_user.family_id)
+      # Must run AFTER RlsContext.set_family because `api_keys` is under FORCE RLS.
+      @mcp_api_key&.update_last_used!
 
       # Build a fresh session to avoid inheriting impersonation state from
       # existing sessions

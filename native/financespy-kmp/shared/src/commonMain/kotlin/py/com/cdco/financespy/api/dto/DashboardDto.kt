@@ -144,11 +144,12 @@ data class UnrealizedGainsDto(
 @Serializable
 data class HoldingDto(
     val ticker: String,
-    val name: String,
+    val name: String? = null,
     val logo_url: String? = null,
     val weight: Double = 0.0,
     val value: Double = 0.0,
     val value_cents: Long? = null,
+    val currency: String? = null,
     val return_percent_formatted: String? = null,
     val return_color: String? = null
 )

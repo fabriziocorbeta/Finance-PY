@@ -72,9 +72,29 @@ class Rack::Attack
     request.ip if request.post? && request.path.in?(%w[/registration /api/v1/auth/signup])
   end
 
-  # Token refresh and SSO linking are unauthenticated entry points.
+  # Token refresh and SSO endpoints are unauthenticated entry points.
   throttle("api_auth/ip", limit: 30, period: 1.minute) do |request|
-    request.ip if request.post? && request.path.in?(%w[/api/v1/auth/refresh /api/v1/auth/sso_link])
+    if request.post? && request.path.in?(%w[/api/v1/auth/refresh /api/v1/auth/sso_link /api/v1/auth/sso_exchange /api/v1/auth/sso_create_account])
+      request.ip
+    end
+  end
+
+  # Public app version/config endpoint (unauthenticated)
+  throttle("app_config/ip", limit: 60, period: 1.minute) do |request|
+    request.ip if request.get? && request.path == "/api/v1/app_config"
+  end
+
+  # Archived export token downloads & invitation acceptances (brute-force protection)
+  throttle("archived_exports/ip", limit: 20, period: 1.minute) do |request|
+    request.ip if request.path.start_with?("/exports/archive/")
+  end
+
+  throttle("invitations/ip", limit: 20, period: 1.minute) do |request|
+    request.ip if request.path.start_with?("/invitations/")
+  end
+
+  throttle("impersonation_sessions/ip", limit: 10, period: 1.minute) do |request|
+    request.ip if request.path.start_with?("/impersonation_sessions")
   end
 
   # Throttle admin endpoints to prevent brute-force attacks
@@ -98,12 +118,24 @@ class Rack::Attack
   # neither is present (logged-out requests, which authenticate_user! rejects
   # anyway, but the throttle must still return *some* key or Rack::Attack skips it).
   def self.actor_key(request)
-    session_cookie = request.cookies["session_token"]
-    return "actor_session:#{Digest::SHA256.hexdigest(session_cookie)}" if session_cookie.present?
+    # API and MCP endpoints authenticate via Bearer token or X-Api-Key, NEVER
+    # session cookies. Reading cookies["session_token"] first would let an API
+    # caller send a random cookie per request to bypass all cost throttles.
+    api_or_mcp = request.path.start_with?("/api/") || request.path == "/mcp"
+
+    unless api_or_mcp
+      session_cookie = request.cookies["session_token"]
+      return "actor_session:#{Digest::SHA256.hexdigest(session_cookie)}" if session_cookie.present?
+    end
 
     auth_header = request.get_header("HTTP_AUTHORIZATION")
     if auth_header&.start_with?("Bearer ")
       return "actor_token:#{Digest::SHA256.hexdigest(auth_header.delete_prefix("Bearer ").strip)}"
+    end
+
+    api_key_header = request.get_header("HTTP_X_API_KEY")
+    if api_key_header.present?
+      return "actor_apikey:#{Digest::SHA256.hexdigest(api_key_header.strip)}"
     end
 
     "actor_ip:#{request.ip}"
@@ -167,16 +199,17 @@ class Rack::Attack
   # Determine limits based on self-hosted mode
   self_hosted = Rails.application.config.app_mode.self_hosted?
 
-  # Throttle API requests per access token
+  # Throttle API requests per access token or API key
   throttle("api/requests", limit: self_hosted ? 10_000 : 300, period: 1.hour) do |request|
     if request.path.start_with?("/api/")
-      # Extract access token from Authorization header
       auth_header = request.get_header("HTTP_AUTHORIZATION")
+      api_key_header = request.get_header("HTTP_X_API_KEY")
       if auth_header&.start_with?("Bearer ")
         token = auth_header.split(" ").last
         "api_token:#{Digest::SHA256.hexdigest(token)}"
+      elsif api_key_header.present?
+        "api_key:#{Digest::SHA256.hexdigest(api_key_header.strip)}"
       else
-        # Fall back to IP-based limiting for unauthenticated requests
         "api_ip:#{request.ip}"
       end
     end

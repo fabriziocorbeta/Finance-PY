@@ -50,7 +50,7 @@ class ImpersonationSessionsController < ApplicationController
     def require_recent_credentials!
       user = Current.true_user
       verified = user.authenticate(params[:password].to_s).present?
-      verified &&= user.verify_otp?(params[:otp_code].to_s) if user.otp_required?
+      verified &&= user.verify_otp_with_lockout?(params[:otp_code].to_s) if user.otp_required?
       redirect_to root_path, alert: "Re-authentication failed: password#{user.otp_required? ? " or MFA code" : ""} is incorrect." unless verified
     end
 

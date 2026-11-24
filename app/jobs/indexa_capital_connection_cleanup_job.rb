@@ -9,21 +9,25 @@ class IndexaCapitalConnectionCleanupJob < ApplicationJob
       "for former account #{account_id}"
     )
 
-    indexa_capital_item = IndexaCapitalItem.find_by(id: indexa_capital_item_id)
+    indexa_capital_item = RlsContext.with_auth_bypass(reason: "indexa_cleanup_lookup") do
+      IndexaCapitalItem.find_by(id: indexa_capital_item_id)
+    end
     return unless indexa_capital_item
 
-    # Check if other accounts still use this connection
-    if indexa_capital_item.indexa_capital_accounts
-         .where(indexa_capital_authorization_id: authorization_id)
-         .exists?
-      Rails.logger.info("IndexaCapitalConnectionCleanupJob - Connection still in use, skipping")
-      return
+    RlsContext.with_family(indexa_capital_item.family_id) do
+      # Check if other accounts still use this connection
+      if indexa_capital_item.indexa_capital_accounts
+           .where(indexa_capital_authorization_id: authorization_id)
+           .exists?
+        Rails.logger.info("IndexaCapitalConnectionCleanupJob - Connection still in use, skipping")
+        return
+      end
+
+      # Delete from provider API
+      delete_connection(indexa_capital_item, authorization_id)
+
+      Rails.logger.info("IndexaCapitalConnectionCleanupJob - Connection #{authorization_id} deleted")
     end
-
-    # Delete from provider API
-    delete_connection(indexa_capital_item, authorization_id)
-
-    Rails.logger.info("IndexaCapitalConnectionCleanupJob - Connection #{authorization_id} deleted")
   rescue => e
     Rails.logger.warn(
       "IndexaCapitalConnectionCleanupJob - Failed: #{e.class} - #{e.message}"

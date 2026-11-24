@@ -58,69 +58,22 @@ if rails_env == "development"
 end
 
 if rails_env == "production"
-  # ActionView compiles each template into a Ruby method the first time it's
-  # rendered in a process, not at boot (eager_load only eager-loads classes,
-  # not views). On this deploy that means whoever makes the first real
-  # request to a given page after a restart pays that one-time compile cost
-  # on top of the page's normal query time — measured at +15s for the
-  # dashboard (24.7s cold vs 9.0s warm, identical 40 queries either way).
-  # Hitting the hot pages here, once, right after Puma starts accepting
-  # connections, pays that cost during deploy instead of on a real visitor.
-  #
-  # Runs as a real loopback HTTP request (not an in-process Rack dispatch)
-  # because Rails.application is still mid-boot during earlier hooks like
-  # config.after_initialize — dispatching into it from inside its own boot
-  # sequence 404s (routes aren't finalized yet). By `on_booted`, the server
-  # is genuinely listening, so a normal request behaves exactly like a real
-  # visitor's.
+  # Warm up the HTTP stack and public login template on boot without ever
+  # impersonating a real customer's Session (multi-tenant privacy & audit safety).
   on_booted do
     Thread.new do
-      begin
+      Rails.application.executor.wrap do
         require "net/http"
 
-        session_record = Session.order(created_at: :desc).first
-        unless session_record
-          Rails.logger.info "[warmup] skipped: no session in DB to render as"
-          next
-        end
-
-        env = Rails.application.env_config.merge(
-          Rack::MockRequest.env_for("https://finance.cd-co.com.py/")
-        )
-        setup_request = ActionDispatch::Request.new(env)
-        jar = ActionDispatch::Cookies::CookieJar.build(setup_request, {})
-        jar.signed[:session_token] = session_record.id
-        cookie_header = jar.to_header
-
         port = ENV.fetch("PORT") { 3000 }
-        # Every item in the main sidebar nav (layouts/application.html.erb's
-        # desktop_nav_items), so the FIRST real visitor to click any tab
-        # after a deploy never pays the one-time ActionView compile cost --
-        # /reports alone was measured at 33s+ in production for exactly this
-        # reason (compile cost stacked with several tabs' worth of Safari
-        # link-prefetch requests all queuing behind Puma's small thread pool
-        # right after a restart, before anything but the 4 originally-listed
-        # paths here had ever been rendered).
-        paths = [
-          "/",
-          "/transactions",
-          "/reports",
-          "/budgets/#{Budget.date_to_param(Date.current)}",
-          "/goals",
-          "/receivables",
-          "/accounts",
-          "/sales",
-          "/purchase_orders",
-          "/products",
-          "/fleet_vehicles"
-        ]
+        app_host = ENV.fetch("APP_DOMAIN", "finance.cd-co.com.py")
+        paths = [ "/up", "/sessions/new" ]
 
         total_t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         paths.each do |path|
           uri = URI("http://127.0.0.1:#{port}#{path}")
           request = Net::HTTP::Get.new(uri)
-          request["Cookie"] = cookie_header
-          request["Host"] = "finance.cd-co.com.py"
+          request["Host"] = app_host
 
           page_t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           response = Net::HTTP.start(uri.host, uri.port) { |http| http.request(request) }
@@ -129,9 +82,9 @@ if rails_env == "production"
         end
         total_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - total_t0) * 1000).round
         Rails.logger.info "[warmup] done in #{total_ms}ms"
-      rescue => e
-        Rails.logger.error "[warmup] failed: #{e.class}: #{e.message}"
       end
+    rescue => e
+      Rails.logger.error "[warmup] failed: #{e.class}: #{e.message}"
     end
   end
 end

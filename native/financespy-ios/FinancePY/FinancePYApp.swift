@@ -250,9 +250,11 @@ struct FinancePYApp: App {
     @StateObject private var appLockManager = AppLockManager()
     @StateObject private var overlayWindowManager = SecurityOverlayWindowManager()
     @AppStorage("appLockEnabled") private var appLockEnabled = false
+    @AppStorage("dismissedUpdateBuild") private var dismissedUpdateBuild = 0
     @Environment(\.scenePhase) private var scenePhase
     @State private var isLoggedIn = false
     @State private var isCheckingAuth = true
+    @State private var appUpdateState: AppUpdateState = .upToDate
 
     let container: ModelContainer
 
@@ -263,17 +265,40 @@ struct FinancePYApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if isCheckingAuth {
+                if case let .forceUpdate(minVersion, latestVersion, releaseNotes, updateUrl) = appUpdateState {
+                    ForceUpdateView(
+                        minVersion: minVersion,
+                        latestVersion: latestVersion,
+                        releaseNotes: releaseNotes,
+                        updateUrl: updateUrl
+                    )
+                } else if isCheckingAuth {
                     ProgressView("Cargando...")
-                } else if isLoggedIn {
-                    MainTabView(isLoggedIn: $isLoggedIn, container: container)
                 } else {
-                    LoginView(isLoggedIn: $isLoggedIn)
+                    VStack(spacing: 0) {
+                        if case let .softUpdate(latestVersion, latestBuild, releaseNotes, updateUrl) = appUpdateState,
+                           dismissedUpdateBuild != latestBuild {
+                            SoftUpdateBannerView(
+                                latestVersion: latestVersion,
+                                releaseNotes: releaseNotes,
+                                updateUrl: updateUrl,
+                                onDismiss: { dismissedUpdateBuild = latestBuild }
+                            )
+                        }
+                        if isLoggedIn {
+                            MainTabView(isLoggedIn: $isLoggedIn, container: container)
+                        } else {
+                            LoginView(isLoggedIn: $isLoggedIn)
+                        }
+                    }
                 }
             }
             .task {
                 // As the unit-test host, a logged-in simulator would otherwise sync against production.
                 guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
+                Task {
+                    await checkAppVersion()
+                }
                 let loggedIn = await authRepository.isLoggedIn()
                 if loggedIn && appLockEnabled {
                     appLockManager.lock()
@@ -346,6 +371,27 @@ struct FinancePYApp: App {
         )
     }
 
+    private func checkAppVersion() async {
+        let info = Bundle.main.infoDictionary
+        let currentVersion = (info?["CFBundleShortVersionString"] as? String) ?? "1.0"
+        let currentBuild = Int((info?["CFBundleVersion"] as? String) ?? "1") ?? 1
+        do {
+            let config = try await FinancePyApi.shared.fetchAppConfig(
+                currentBuild: currentBuild,
+                currentVersion: currentVersion
+            )
+            await MainActor.run {
+                self.appUpdateState = AppUpdateEvaluator.evaluate(
+                    config: config,
+                    currentVersion: currentVersion,
+                    currentBuild: currentBuild
+                )
+            }
+        } catch {
+            // Fail-open when offline or if the endpoint is unreachable.
+        }
+    }
+
     private func performLogoutFromLockScreen() {
         Task {
             await authRepository.logout()
@@ -354,6 +400,96 @@ struct FinancePYApp: App {
             isLoggedIn = false
             syncSecurityOverlay()
         }
+    }
+}
+
+private struct ForceUpdateView: View {
+    let minVersion: String
+    let latestVersion: String
+    let releaseNotes: String?
+    let updateUrl: URL?
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Image(systemName: "arrow.down.app.fill")
+                .font(.system(size: 56))
+                .foregroundColor(.accentColor)
+            Text("Actualización requerida")
+                .font(.title2.bold())
+                .multilineTextAlignment(.center)
+            Text("Tu versión actual de FinancePY ya no es compatible (mínimo requerido: v\(minVersion)). Actualizá a v\(latestVersion) para continuar.")
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+            if let notes = releaseNotes, !notes.isEmpty {
+                Text(notes)
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+            if let url = updateUrl {
+                Button {
+                    openURL(url)
+                } label: {
+                    Text("Actualizar ahora")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                }
+                .buttonStyle(.borderedProminent)
+                .padding(.horizontal, 32)
+            }
+            Spacer()
+        }
+        .padding()
+        .interactiveDismissDisabled(true)
+    }
+}
+
+private struct SoftUpdateBannerView: View {
+    let latestVersion: String
+    let releaseNotes: String?
+    let updateUrl: URL?
+    let onDismiss: () -> Void
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "sparkles")
+                .foregroundColor(.accentColor)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Nueva versión v\(latestVersion) disponible")
+                    .font(.subheadline.weight(.semibold))
+                if let notes = releaseNotes, !notes.isEmpty {
+                    Text(notes)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+            }
+            Spacer()
+            if let url = updateUrl {
+                Button("Actualizar") {
+                    openURL(url)
+                }
+                .font(.caption.weight(.semibold))
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .accessibilityLabel("Descartar aviso de actualización")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color(.secondarySystemBackground))
     }
 }
 

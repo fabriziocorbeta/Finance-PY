@@ -583,11 +583,11 @@ CREATE TABLE public.credit_cards (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    available_credit numeric(10,2),
-    minimum_payment numeric(10,2),
+    available_credit numeric(19,4),
+    minimum_payment numeric(19,4),
     apr numeric(10,2),
     expiration_date date,
-    annual_fee numeric(10,2),
+    annual_fee numeric(19,4),
     locked_attributes jsonb DEFAULT '{}'::jsonb,
     subtype character varying,
     family_id uuid
@@ -4084,6 +4084,13 @@ CREATE UNIQUE INDEX index_budgets_on_family_id_and_start_date_and_end_date ON pu
 --
 
 CREATE INDEX index_categories_on_family_id ON public.categories USING btree (family_id);
+
+
+--
+-- Name: index_categories_on_family_id_and_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_categories_on_family_id_and_name ON public.categories USING btree (family_id, name);
 
 
 --
@@ -7889,11 +7896,15 @@ ALTER TABLE public.rejected_transfers ENABLE ROW LEVEL SECURITY;
 -- Name: rejected_transfers rejected_transfers_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY rejected_transfers_family_isolation_policy ON public.rejected_transfers USING (((public.current_family_id() IN ( SELECT transactions.family_id
+CREATE POLICY rejected_transfers_family_isolation_policy ON public.rejected_transfers USING ((((EXISTS ( SELECT 1
    FROM public.transactions
-  WHERE (transactions.id = ANY (ARRAY[rejected_transfers.inflow_transaction_id, rejected_transfers.outflow_transaction_id])))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((public.current_family_id() IN ( SELECT transactions.family_id
+  WHERE ((transactions.id = rejected_transfers.inflow_transaction_id) AND (transactions.family_id = public.current_family_id())))) AND (EXISTS ( SELECT 1
    FROM public.transactions
-  WHERE (transactions.id = ANY (ARRAY[rejected_transfers.inflow_transaction_id, rejected_transfers.outflow_transaction_id])))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
+  WHERE ((transactions.id = rejected_transfers.outflow_transaction_id) AND (transactions.family_id = public.current_family_id()))))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK ((((EXISTS ( SELECT 1
+   FROM public.transactions
+  WHERE ((transactions.id = rejected_transfers.inflow_transaction_id) AND (transactions.family_id = public.current_family_id())))) AND (EXISTS ( SELECT 1
+   FROM public.transactions
+  WHERE ((transactions.id = rejected_transfers.outflow_transaction_id) AND (transactions.family_id = public.current_family_id()))))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8225,11 +8236,15 @@ ALTER TABLE public.transfers ENABLE ROW LEVEL SECURITY;
 -- Name: transfers transfers_family_isolation_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY transfers_family_isolation_policy ON public.transfers USING (((public.current_family_id() IN ( SELECT transactions.family_id
+CREATE POLICY transfers_family_isolation_policy ON public.transfers USING ((((EXISTS ( SELECT 1
    FROM public.transactions
-  WHERE (transactions.id = ANY (ARRAY[transfers.inflow_transaction_id, transfers.outflow_transaction_id])))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK (((public.current_family_id() IN ( SELECT transactions.family_id
+  WHERE ((transactions.id = transfers.inflow_transaction_id) AND (transactions.family_id = public.current_family_id())))) AND (EXISTS ( SELECT 1
    FROM public.transactions
-  WHERE (transactions.id = ANY (ARRAY[transfers.inflow_transaction_id, transfers.outflow_transaction_id])))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
+  WHERE ((transactions.id = transfers.outflow_transaction_id) AND (transactions.family_id = public.current_family_id()))))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text))) WITH CHECK ((((EXISTS ( SELECT 1
+   FROM public.transactions
+  WHERE ((transactions.id = transfers.inflow_transaction_id) AND (transactions.family_id = public.current_family_id())))) AND (EXISTS ( SELECT 1
+   FROM public.transactions
+  WHERE ((transactions.id = transfers.outflow_transaction_id) AND (transactions.family_id = public.current_family_id()))))) OR (current_setting('app.rls_auth_bypass'::text, true) = 'true'::text)));
 
 
 --
@@ -8306,6 +8321,9 @@ CREATE POLICY webauthn_credentials_family_isolation_policy ON public.webauthn_cr
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261123120200'),
+('20261123120100'),
+('20261123120000'),
 ('20261019000000'),
 ('20261017000000'),
 ('20261016000000'),

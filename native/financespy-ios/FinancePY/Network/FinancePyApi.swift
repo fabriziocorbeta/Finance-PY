@@ -193,4 +193,134 @@ final class FinancePyApi {
 
         return allTransactions
     }
+
+    /// Public, fail-open version check endpoint (Phase 5). Runs with a short
+    /// 3-second timeout and no Authorization header so logged-out clients or
+    /// clients with stale tokens still receive update prompts.
+    func fetchAppConfig(currentBuild: Int, currentVersion: String) async throws -> AppConfigDto {
+        guard var components = URLComponents(string: "\(ApiClient.shared.baseUrl)/api/v1/app_config") else {
+            throw NetworkError.invalidUrl
+        }
+        components.queryItems = [
+            URLQueryItem(name: "platform", value: "ios"),
+            URLQueryItem(name: "build", value: String(currentBuild)),
+            URLQueryItem(name: "version", value: currentVersion)
+        ]
+        guard let url = components.url else {
+            throw NetworkError.invalidUrl
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 3.0
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("ios", forHTTPHeaderField: "X-Platform")
+        request.setValue(currentVersion, forHTTPHeaderField: "X-App-Version")
+        request.setValue(String(currentBuild), forHTTPHeaderField: "X-App-Build")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return try decoder.decode(AppConfigDto.self, from: data)
+    }
+}
+
+// MARK: - App Version Check (Phase 5)
+
+struct AppConfigBuildDto: Codable {
+    let android: Int?
+    let ios: Int?
+}
+
+struct AppConfigDto: Codable {
+    let minSupportedVersion: String
+    let latestVersion: String
+    let minBuild: AppConfigBuildDto?
+    let latestBuild: AppConfigBuildDto?
+    let androidStoreUrl: String?
+    let iosStoreUrl: String?
+    let directApkUrl: String?
+    let forceUpdate: Bool
+    let releaseNotes: String?
+    let checkedAt: String?
+}
+
+enum AppUpdateState: Equatable {
+    case upToDate
+    case softUpdate(latestVersion: String, latestBuild: Int, releaseNotes: String?, updateUrl: URL?)
+    case forceUpdate(minVersion: String, latestVersion: String, releaseNotes: String?, updateUrl: URL?)
+}
+
+enum AppUpdateEvaluator {
+    static func evaluate(
+        config: AppConfigDto,
+        currentVersion: String,
+        currentBuild: Int
+    ) -> AppUpdateState {
+        let minBuild = config.minBuild?.ios
+        let latestBuild = config.latestBuild?.ios
+        let safeUrl = validatedHttpsUrl(config.iosStoreUrl)
+
+        let belowMinBuild = minBuild != nil && currentBuild < minBuild!
+        let belowMinSemver = compareSemVer(currentVersion, config.minSupportedVersion) < 0
+
+        if config.forceUpdate || belowMinBuild || belowMinSemver {
+            return .forceUpdate(
+                minVersion: config.minSupportedVersion,
+                latestVersion: config.latestVersion,
+                releaseNotes: config.releaseNotes,
+                updateUrl: safeUrl
+            )
+        }
+
+        let belowLatestBuild = latestBuild != nil && currentBuild < latestBuild!
+        let belowLatestSemver = latestBuild == nil && compareSemVer(currentVersion, config.latestVersion) < 0
+
+        if belowLatestBuild || belowLatestSemver {
+            return .softUpdate(
+                latestVersion: config.latestVersion,
+                latestBuild: latestBuild ?? currentBuild,
+                releaseNotes: config.releaseNotes,
+                updateUrl: safeUrl
+            )
+        }
+
+        return .upToDate
+    }
+
+    static func validatedHttpsUrl(_ raw: String?) -> URL? {
+        guard let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines),
+              trimmed.lowercased().hasPrefix("https://"),
+              let url = URL(string: trimmed),
+              url.scheme?.lowercased() == "https",
+              url.host != nil else {
+            return nil
+        }
+        return url
+    }
+
+    static func compareSemVer(_ lhs: String, _ rhs: String) -> Int {
+        let a = parseSemVer(lhs)
+        let b = parseSemVer(rhs)
+        for i in 0..<3 {
+            if a[i] != b[i] {
+                return a[i] < b[i] ? -1 : 1
+            }
+        }
+        return 0
+    }
+
+    private static func parseSemVer(_ version: String) -> [Int] {
+        let cleaned = version
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(separator: "-").first.map(String.init) ?? version
+        let parts = cleaned.split(separator: ".").map { Int($0) ?? 0 }
+        return [
+            parts.indices.contains(0) ? parts[0] : 0,
+            parts.indices.contains(1) ? parts[1] : 0,
+            parts.indices.contains(2) ? parts[2] : 0
+        ]
+    }
 }

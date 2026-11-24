@@ -26,10 +26,10 @@ Rails.application.configure do
   # Enable serving of images, stylesheets, and JavaScripts from an asset server.
   # config.asset_host = "http://assets.example.com"
 
-  # Guarantee gzip compression at the app layer regardless of what (if anything) sits in
-  # front of Puma at the infra level — cheap CPU cost, meaningfully smaller first-paint
-  # payload for HTML/CSS/JS/JSON responses.
-  config.middleware.use Rack::Deflater
+  # Avoid double-compressing when a reverse proxy (Caddy) already encodes zstd/gzip.
+  unless ActiveModel::Type::Boolean.new.cast(ENV.fetch("REVERSE_PROXY_HANDLES_COMPRESSION", "false"))
+    config.middleware.use Rack::Deflater
+  end
 
   # Specifies the header that your server uses for sending files.
   # config.action_dispatch.x_sendfile_header = "X-Sendfile" # for Apache
@@ -80,8 +80,11 @@ Rails.application.configure do
   # want to log everything, set the level to "debug".
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
 
-  if ENV["REDIS_URL"].present?
-    config.cache_store = :redis_cache_store, { url: ENV["REDIS_URL"] }
+  # Separate Redis instance for cache/Rack::Attack (allkeys-lru) from Sidekiq (noeviction)
+  # when REDIS_CACHE_URL is provided; fall back to REDIS_URL for single-Redis setups.
+  cache_redis_url = ENV["REDIS_CACHE_URL"].presence || ENV["REDIS_URL"].presence
+  if cache_redis_url
+    config.cache_store = :redis_cache_store, { url: cache_redis_url }
   end
 
   config.action_mailer.perform_caching = false
@@ -114,8 +117,8 @@ Rails.application.configure do
 
   # Enable DNS rebinding protection and other `Host` header attacks.
   config.hosts = [
-    "finance.cd-co.com.py"
-  ]
+    ENV.fetch("APP_DOMAIN", "finance.cd-co.com.py")
+  ].compact_blank.uniq
   # Skip DNS rebinding protection for the default health check endpoint.
   config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 

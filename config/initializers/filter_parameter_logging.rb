@@ -6,7 +6,8 @@
 Rails.application.config.filter_parameters += [
   :passw, :email, :secret, :token, :_key, :crypt, :salt, :certificate, :otp, :ssn, :openai_access_token,
   :client_id, :consumer_key, :snaptrade_user_id, :snaptrade_user_secret,
-  :amount, :name, :notes, :description, :balance, :client_name, :address, :phone, :ruc, :merchant
+  :amount, :name, :notes, :description, :balance, :client_name, :address, :phone, :ruc, :merchant,
+  :raw_text, :latitude, :longitude, :linking_code, :invite_code
 ]
 
 # HTTP HEADERS. `filter_parameters` above only covers request *params*; it does
@@ -35,6 +36,7 @@ if defined?(Logtail::Integrations::Rack::HTTPEvents)
     :cookie,
     :set_cookie,
     :x_api_key,
+    :x_internal_token,
     :x_csrf_token
   ]
 end

@@ -44,7 +44,7 @@ class Api::V1::BudgetsController < Api::V1::BaseController
     @budget = family.budgets.new(budget_params)
     @budget.currency ||= family.currency
     if @budget.start_date.present? && @budget.end_date.blank?
-      @budget.end_date = @budget.start_date.end_of_month
+      @budget.end_date = family.uses_custom_month_start? ? family.custom_month_end_for(@budget.start_date) : @budget.start_date.end_of_month
     end
 
     if @budget.save
@@ -115,12 +115,30 @@ class Api::V1::BudgetsController < Api::V1::BaseController
   private
 
     def set_budget
-      @budget = current_family.budgets.find(params[:id])
+      id_param = params[:id].to_s
+      @budget = if valid_uuid?(id_param)
+        current_family.budgets.find(id_param)
+      else
+        target_date = parse_budget_date_param(id_param)
+        raise ActiveRecord::RecordNotFound unless target_date
+
+        current_family.budgets.find_by!("start_date <= ? AND end_date >= ?", target_date, target_date)
+      end
     rescue ActiveRecord::RecordNotFound
       render json: {
         error: "not_found",
         message: "Budget not found"
       }, status: :not_found
+    end
+
+    def parse_budget_date_param(raw)
+      if raw.match?(/\A\d{4}-\d{2}\z/)
+        Date.strptime("#{raw}-01", "%Y-%m-%d")
+      else
+        Budget.param_to_date(raw)
+      end
+    rescue ArgumentError, Date::Error
+      nil
     end
 
     def ensure_read_scope

@@ -68,7 +68,11 @@ class MobileDevice < ApplicationRecord
   # never a family-wide read.
   def revoke_all_tokens!
     RlsContext.with_auth_bypass(reason: "mobile_device_revoke_tokens") do
-      active_tokens.update_all(revoked_at: Time.current)
+      # Revoke ALL unrevoked tokens (including expired access tokens whose
+      # refresh_token would otherwise remain usable at /api/v1/auth/refresh).
+      Doorkeeper::AccessToken
+        .where(mobile_device_id: id, resource_owner_id: user_id, revoked_at: nil)
+        .update_all(revoked_at: Time.current)
     end
   end
 

@@ -138,17 +138,28 @@ class SyncEngine(
     private suspend fun syncSupplementaryCaches() = coroutineScope {
         if (offlineStore == null) return@coroutineScope
         val currentBudgetParam = currentDateProvider().take(7)
-        listOf(
-            async { runCatching { cache.putList(OfflineCacheKeys.PRODUCTS_LIST, ProductDto.serializer(), api.fetchAllProducts()) } },
-            async { runCatching { cache.putList(OfflineCacheKeys.SALES_LIST, SaleDto.serializer(), api.fetchAllSales()) } },
-            async { runCatching { cache.putList(OfflineCacheKeys.PURCHASE_ORDERS_LIST, PurchaseOrderDto.serializer(), api.fetchAllPurchaseOrders()) } },
+
+        // Fetch family settings first so we only hit ERP/business endpoints when
+        // business_mode_enabled is active (avoids 403 noise on personal accounts).
+        val familySettings = runCatching {
+            api.fetchFamilySettings().also {
+                cache.put(OfflineCacheKeys.FAMILY_SETTINGS, FamilySettingsDto.serializer(), it)
+            }
+        }.getOrNull() ?: cache.get(OfflineCacheKeys.FAMILY_SETTINGS, FamilySettingsDto.serializer())
+
+        val tasks = mutableListOf(
             async { runCatching { cache.putList(OfflineCacheKeys.FLEET_VEHICLES_LIST, FleetVehicleDto.serializer(), api.fetchFleetVehicles()) } },
             async { runCatching { cache.putList(OfflineCacheKeys.CHATS_LIST, ChatDto.serializer(), api.fetchChats(page = 1).chats) } },
             async { runCatching { cache.putList(OfflineCacheKeys.HOLDINGS_LIST, PortfolioHoldingDto.serializer(), api.fetchAllHoldings()) } },
             async { runCatching { cache.put(OfflineCacheKeys.DASHBOARD_DTO, DashboardDto.serializer(), api.fetchDashboard()) } },
-            async { runCatching { cache.put(OfflineCacheKeys.FAMILY_SETTINGS, FamilySettingsDto.serializer(), api.fetchFamilySettings()) } },
             async { runCatching { cache.put(OfflineCacheKeys.budget(currentBudgetParam), BudgetDto.serializer(), api.fetchBudget(currentBudgetParam)) } }
-        ).forEach { it.await() }
+        )
+        if (familySettings?.business_mode_enabled == true) {
+            tasks += async { runCatching { cache.putList(OfflineCacheKeys.PRODUCTS_LIST, ProductDto.serializer(), api.fetchAllProducts()) } }
+            tasks += async { runCatching { cache.putList(OfflineCacheKeys.SALES_LIST, SaleDto.serializer(), api.fetchAllSales()) } }
+            tasks += async { runCatching { cache.putList(OfflineCacheKeys.PURCHASE_ORDERS_LIST, PurchaseOrderDto.serializer(), api.fetchAllPurchaseOrders()) } }
+        }
+        tasks.forEach { it.await() }
     }
 }
 

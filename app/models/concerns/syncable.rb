@@ -30,10 +30,13 @@ module Syncable
     remove_instance_variable(:@syncing) if instance_variable_defined?(:@syncing)
     Sync.transaction do
       with_lock do
-        sync = self.syncs.visible.first
+        # Only coalesce into a `pending` sync: if a sync is already `syncing`,
+        # it may have already read stale entries, so enqueue a fresh `pending`
+        # sync to guarantee new transactions are never dropped.
+        sync = self.syncs.visible.where(status: "pending").first
 
         if sync
-          Rails.logger.info("There is an existing recent sync, expanding window if needed (#{sync.id})")
+          Rails.logger.info("There is an existing pending sync, expanding window if needed (#{sync.id})")
           sync.expand_window_if_needed(window_start_date, window_end_date)
 
           # Update parent relationship if one is provided and sync doesn't already have a parent

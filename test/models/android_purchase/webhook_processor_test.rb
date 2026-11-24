@@ -609,4 +609,78 @@ class AndroidPurchase::WebhookProcessorTest < ActiveSupport::TestCase
     assert_not entry.transaction.extra.key?("longitude")
     assert_equal "SM-S928B", entry.transaction.extra["device"]
   end
+
+  test "is idempotent even if the original entry was renamed before the repost arrives" do
+    first_params = {
+      account_id: @account.id,
+      amount: 116000,
+      merchant: "LA VIENESA S.A.",
+      item: "Amex Gold ••2269",
+      timestamp: "2026-11-04T21:00:00-03:00",
+      raw_text: "Gs. 116.000 con Amex Gold ••2269"
+    }
+
+    assert_equal :created, AndroidPurchase::WebhookProcessor.new(first_params, family: @family).process
+    entry = @account.entries.order(created_at: :desc).first
+    entry.update!(name: "Cena en La Vienesa")
+
+    repost_params = first_params.merge(timestamp: "2026-11-05T08:00:00-03:00", raw_text: "")
+    assert_no_difference -> { Entry.count } do
+      assert_equal :duplicate, AndroidPurchase::WebhookProcessor.new(repost_params, family: @family).process
+    end
+  end
+
+  test "treats a wallet capture as duplicate when a matching FuelLog entry already exists" do
+    vehicle = FleetVehicle.create!(
+      family: @family,
+      plate: "BOD 760",
+      brand: "Toyota",
+      model: "Hilux"
+    )
+    fuel_log = FuelLog.new(
+      fleet_vehicle: vehicle,
+      account: @account,
+      logged_at: Date.new(2026, 11, 5)
+    )
+    fuel_log.fuel_log_lines.build(fuel_type: "nafta", liters: 20, cost: 150000)
+    fuel_log.save!
+
+    wallet_params = {
+      account_id: @account.id,
+      amount: 150000,
+      merchant: "COMBU BAR COMPANY S.R.L.",
+      item: "Amex Gold ••2269",
+      timestamp: "2026-11-05T14:30:00-03:00",
+      raw_text: "PYG150,000 con Amex Gold ••2269"
+    }
+
+    assert_no_difference -> { Entry.count } do
+      assert_equal :duplicate, AndroidPurchase::WebhookProcessor.new(wallet_params, family: @family).process
+    end
+  end
+
+  test "auto-categorizes COMBU BAR purchases as Combustible for fleet families" do
+    FleetVehicle.create!(
+      family: @family,
+      plate: "BOD 760",
+      brand: "Toyota",
+      model: "Hilux"
+    )
+
+    result = AndroidPurchase::WebhookProcessor.new(
+      {
+        account_id: @account.id,
+        amount: 150000,
+        merchant: "COMBU BAR COMPANY S.R.L.",
+        item: "Amex Gold ••2269",
+        timestamp: "2026-11-05T14:30:00-03:00",
+        raw_text: "PYG150,000 con Amex Gold ••2269"
+      },
+      family: @family
+    ).process
+
+    assert_equal :created, result
+    entry = @account.entries.order(created_at: :desc).first
+    assert_equal "Combustible", entry.transaction.category&.name
+  end
 end

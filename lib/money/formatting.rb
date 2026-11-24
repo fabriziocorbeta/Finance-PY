@@ -6,8 +6,8 @@ module Money::Formatting
   EUROPEAN_SYMBOL_AFTER = %i[de es it tr ca ro].freeze
   # Scandinavian/Eastern European: space as thousands delimiter, comma as decimal separator, symbol after number
   SPACE_DELIMITER_SYMBOL_AFTER = %i[pl nb].freeze
-  # European style: dot as thousands delimiter, comma as decimal separator, symbol before number
-  EUROPEAN_SYMBOL_BEFORE = %i[nl pt-BR].freeze
+  # European/Paraguayan style: dot as thousands delimiter, comma as decimal separator, symbol before number
+  EUROPEAN_SYMBOL_BEFORE = %i[nl pt-BR es-PY].freeze
 
   def format(options = {})
     locale = options[:locale] || I18n.locale

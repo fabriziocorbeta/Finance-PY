@@ -8,6 +8,7 @@ class Api::V1::TransactionsController < Api::V1::BaseController
   before_action :ensure_read_scope, only: [ :index, :show, :invoice_photo ]
   before_action :ensure_write_scope, only: [ :create, :update, :destroy, :upload_invoice_photo, :delete_invoice_photo ]
   before_action :set_transaction, only: [ :show, :update, :destroy, :invoice_photo, :upload_invoice_photo, :delete_invoice_photo ]
+  before_action :ensure_writable_transaction_account!, only: [ :update, :destroy ]
 
   def index
     family = current_family
@@ -85,8 +86,8 @@ class Api::V1::TransactionsController < Api::V1::BaseController
       return
     end
 
-    account = family.accounts.writable_by(current_resource_owner).find(transaction_params[:account_id])
-    @entry = account.entries.new(entry_params_for_create)
+    @account = family.accounts.writable_by(current_resource_owner).find(transaction_params[:account_id])
+    @entry = @account.entries.new(entry_params_for_create(@account))
 
     if @entry.save
       apply_location_to_transaction!(@entry.transaction)
@@ -426,19 +427,40 @@ class Api::V1::TransactionsController < Api::V1::BaseController
       entry.reload
     end
 
-    def entry_params_for_create
+    def ensure_writable_transaction_account!
+      return if current_family.accounts.writable_by(current_resource_owner).exists?(id: @entry.account_id)
+
+      render json: {
+        error: "forbidden",
+        message: "You do not have write access to this account"
+      }, status: :forbidden
+    end
+
+    def entry_params_for_create(account = @account)
+      scoped_category_id = if transaction_params[:category_id].present?
+        current_family.categories.find_by(id: transaction_params[:category_id])&.id
+      end
+      scoped_merchant_id = if transaction_params[:merchant_id].present?
+        current_family.merchants.find_by(id: transaction_params[:merchant_id])&.id
+      end
+      scoped_tag_ids = if transaction_params[:tag_ids].present?
+        current_family.tags.where(id: transaction_params[:tag_ids]).pluck(:id)
+      else
+        []
+      end
+
       entry_params = {
         name: transaction_params[:name] || transaction_params[:description],
         date: transaction_params[:date],
         amount: calculate_signed_amount,
-        currency: transaction_params[:currency] || current_family.currency,
+        currency: transaction_params[:currency].presence || account&.currency || current_family.currency,
         notes: transaction_params[:notes],
         entryable_type: "Transaction",
         entryable_attributes: {
-          category_id: transaction_params[:category_id],
-          merchant_id: transaction_params[:merchant_id],
+          category_id: scoped_category_id,
+          merchant_id: scoped_merchant_id,
           exchange_rate: transaction_params[:exchange_rate],
-          tag_ids: transaction_params[:tag_ids] || []
+          tag_ids: scoped_tag_ids
         }
       }
 
@@ -446,26 +468,42 @@ class Api::V1::TransactionsController < Api::V1::BaseController
     end
 
     def entry_params_for_update
+      raw_tx = params[:transaction] || ActionController::Parameters.new
+      entryable_attrs = { id: @entry.entryable_id }
+
+      if raw_tx.key?(:category_id)
+        entryable_attrs[:category_id] = transaction_params[:category_id].present? ?
+          current_family.categories.find_by(id: transaction_params[:category_id])&.id : nil
+      end
+
+      if raw_tx.key?(:merchant_id)
+        entryable_attrs[:merchant_id] = transaction_params[:merchant_id].present? ?
+          current_family.merchants.find_by(id: transaction_params[:merchant_id])&.id : nil
+      end
+
+      if transaction_params[:exchange_rate].present?
+        entryable_attrs[:exchange_rate] = transaction_params[:exchange_rate]
+      end
+
       entry_params = {
         name: transaction_params[:name] || transaction_params[:description],
         date: transaction_params[:date],
+        currency: transaction_params[:currency].presence,
         notes: transaction_params[:notes],
-        entryable_attributes: {
-          id: @entry.entryable_id,
-          category_id: transaction_params[:category_id],
-          merchant_id: transaction_params[:merchant_id],
-          exchange_rate: transaction_params[:exchange_rate]
-          # Note: tag_ids handled separately in update action to distinguish
-          # "not provided" from "explicitly set to empty"
-        }.compact_blank
-      }
+        entryable_attributes: entryable_attrs
+      }.compact
+
+      if transaction_params[:account_id].present? && transaction_params[:account_id] != @entry.account_id
+        writable_account = current_family.accounts.writable_by(current_resource_owner).find_by(id: transaction_params[:account_id])
+        entry_params[:account_id] = writable_account.id if writable_account
+      end
 
       # Only update amount if provided
       if transaction_params[:amount].present?
         entry_params[:amount] = calculate_signed_amount
       end
 
-      entry_params.compact
+      entry_params
     end
 
     # Check if tag_ids was explicitly provided in the request.
@@ -481,7 +519,7 @@ class Api::V1::TransactionsController < Api::V1::BaseController
     end
 
     def calculate_signed_amount
-      amount = transaction_params[:amount].to_f
+      amount = BigDecimal(transaction_params[:amount].to_s)
       nature = transaction_params[:nature]
 
       case nature&.downcase
@@ -492,6 +530,8 @@ class Api::V1::TransactionsController < Api::V1::BaseController
       else
         amount       # Use as provided
       end
+    rescue ArgumentError
+      BigDecimal(0)
     end
 
     def safe_page_param

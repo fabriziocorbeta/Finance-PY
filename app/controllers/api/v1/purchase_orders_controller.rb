@@ -8,7 +8,7 @@ class Api::V1::PurchaseOrdersController < Api::V1::BaseController
   before_action :ensure_write_scope, only: %i[create update destroy receive cancel upload_invoice_photo delete_invoice_photo]
   before_action :require_business_mode!
   before_action :set_purchase_order, only: %i[show update destroy receive cancel invoice_photo upload_invoice_photo delete_invoice_photo]
-  before_action :ensure_writable_purchase_order_account!, only: %i[upload_invoice_photo delete_invoice_photo]
+  before_action :ensure_writable_purchase_order_account!, only: %i[update destroy receive cancel upload_invoice_photo delete_invoice_photo]
 
   def index
     @per_page = safe_per_page_param
@@ -63,14 +63,26 @@ class Api::V1::PurchaseOrdersController < Api::V1::BaseController
   end
 
   def update
-    unless @purchase_order.draft?
-      return render_validation_error([ "Only draft purchase orders can be updated" ])
+    updated = false
+    validation_errors = nil
+
+    @purchase_order.with_lock do
+      unless @purchase_order.draft?
+        validation_errors = [ "Only draft purchase orders can be updated" ]
+        next
+      end
+
+      if @purchase_order.update(purchase_order_params)
+        updated = true
+      else
+        validation_errors = @purchase_order.errors.full_messages
+      end
     end
 
-    if @purchase_order.update(purchase_order_params)
+    if updated
       render :show, status: :ok
     else
-      render_validation_error(@purchase_order.errors.full_messages)
+      render_validation_error(validation_errors || @purchase_order.errors.full_messages)
     end
   rescue ActiveRecord::RecordInvalid => e
     render_validation_error(e.record.errors.full_messages)
@@ -85,14 +97,26 @@ class Api::V1::PurchaseOrdersController < Api::V1::BaseController
   end
 
   def destroy
-    unless @purchase_order.draft?
-      return render_validation_error([ "Cannot delete a purchase order that is not in draft status. Cancel it first." ])
+    destroyed = false
+    validation_errors = nil
+
+    @purchase_order.with_lock do
+      unless @purchase_order.draft?
+        validation_errors = [ "Cannot delete a purchase order that is not in draft status. Cancel it first." ]
+        next
+      end
+
+      if @purchase_order.destroy
+        destroyed = true
+      else
+        validation_errors = @purchase_order.errors.full_messages
+      end
     end
 
-    if @purchase_order.destroy
+    if destroyed
       head :no_content
     else
-      render_validation_error(@purchase_order.errors.full_messages)
+      render_validation_error(validation_errors || @purchase_order.errors.full_messages)
     end
   rescue => e
     Rails.logger.error "PurchaseOrdersController#destroy error: #{e.message}"
@@ -213,7 +237,8 @@ class Api::V1::PurchaseOrdersController < Api::V1::BaseController
     end
 
     def purchase_orders_scope
-      current_family.purchase_orders
+      accessible_ids = current_family.accounts.accessible_by(current_resource_owner).select(:id)
+      current_family.purchase_orders.where(account_id: accessible_ids)
     end
 
     def purchase_order_params

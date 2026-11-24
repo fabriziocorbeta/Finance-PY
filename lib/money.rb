@@ -2,6 +2,12 @@ class Money
   include Comparable, Arithmetic, Formatting
   include ActiveModel::Validations
 
+  class CurrencyMismatchError < StandardError
+    def initialize(left_currency, right_currency)
+      super("Cannot combine or compare Money in different currencies: #{left_currency} vs #{right_currency}")
+    end
+  end
+
   class ConversionError < StandardError
     attr_reader :from_currency, :to_currency, :date
 
@@ -72,19 +78,25 @@ class Money
     { amount: amount.round(currency.default_precision), currency: currency.iso_code, formatted: format }.as_json
   end
 
+  def ==(other)
+    raise TypeError, "Money can only be compared with other Money objects except for 0" unless other.is_a?(Money) || other.eql?(0)
+
+    if other.is_a?(Numeric)
+      amount == other
+    else
+      currency == other.currency && amount == other.amount
+    end
+  end
+
   def <=>(other)
     raise TypeError, "Money can only be compared with other Money objects except for 0" unless other.is_a?(Money) || other.eql?(0)
 
     if other.is_a?(Numeric)
       amount <=> other
     else
-      amount_comparison = amount <=> other.amount
+      raise CurrencyMismatchError.new(currency.iso_code, other.currency.iso_code) if currency != other.currency
 
-      if amount_comparison == 0
-        currency <=> other.currency
-      else
-        amount_comparison
-      end
+      amount <=> other.amount
     end
   end
 

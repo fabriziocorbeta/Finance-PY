@@ -1,6 +1,78 @@
 ---
 en:
+  watchlist_items:
+    create:
+      success: "%{ticker} added to your watchlist"
+      not_found: "Could not find the selected security"
+    destroy:
+      success: "%{ticker} removed from your watchlist"
   investments:
+    index:
+      title: Investments & Markets
+      refresh_prices: Refresh prices
+      new_account: New investment account
+      market_indices: Market Indices
+      synced: Market prices refreshed
+    categories:
+      index: Index
+      etf: ETF
+      equity: Stock
+      crypto: Crypto
+      fund: Fund
+    ranges:
+      5d: 5D
+      1mo: 1M
+      3mo: 3M
+      6mo: 6M
+      ytd: YTD
+      1y: 1Y
+      5y: 5Y
+    quote_detail:
+      today: Today
+      add_to_watchlist: Watch
+      no_chart_data: No historical chart data available for this range
+      previous_close: Previous close
+      day_range: Day range
+      week52_range: 52-week range
+      volume: Volume
+      unavailable: Market data is currently unavailable
+    portfolio:
+      title: My Investments (ETFs & Stocks)
+      subtitle: Consolidated holdings across all your investment accounts
+      total_value: Portfolio value
+      total_return: Total return
+      day_change: Day change
+      cash_balance: Cash available
+      no_holdings_title: No holdings yet
+      no_holdings_description: Add buy trades in your investment accounts to track them here.
+      no_accounts_title: Create your first investment account
+      no_accounts_description: Track your ETFs, stocks, and funds with live market prices.
+      columns:
+        asset: Asset
+        price: Price
+        day_change: 1D Change
+        trend_1m: 1M Trend
+        shares: Shares
+        value: Value
+        return: Return
+    watchlist:
+      title: Watchlist
+      subtitle: Track ETFs, stocks, and market indices just like Yahoo Finance or Google Finance
+      search_placeholder: Search ETF, stock, or index...
+      add_button: Add
+      ticker_placeholder: "Ticker (e.g. VOO, ^GSPC)"
+      add_ticker_button: Watch ticker
+      quick_add: "Quick add:"
+      remove: Remove
+      remove_confirm: "Remove %{ticker} from your watchlist?"
+      empty_title: Your watchlist is empty
+      empty_description: Search or enter a ticker (e.g. SPY, QQQ, VOO, AAPL, ^GSPC) to track it.
+      columns:
+        symbol: Symbol
+        price: Price
+        day_change: 1D Change
+        month_change: 1M Change
+        trend_1m: 1M Trend
     edit:
       edit: Edit %{account}
     form:

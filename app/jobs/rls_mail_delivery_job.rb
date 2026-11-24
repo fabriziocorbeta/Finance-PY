@@ -15,6 +15,8 @@
 # The import itself had already succeeded -- only the notification failed, and
 # then retried and failed again on a loop.
 class RlsMailDeliveryJob < ActionMailer::MailDeliveryJob
+  include ActiveJobRowLevelSecurity
+
   private
 
     def deserialize_arguments_if_needed

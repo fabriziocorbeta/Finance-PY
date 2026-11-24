@@ -4,15 +4,17 @@ class Provider::Stripe::SubscriptionEventProcessor < Provider::Stripe::EventProc
   def process
     raise Error, "Family not found for Stripe customer ID: #{subscription.customer}" unless family
 
-    family.subscription.update(
-      stripe_id: subscription.id,
-      status: subscription.status,
-      interval: subscription_details.plan.interval,
-      amount: subscription_details.plan.amount / 100.0, # Stripe returns cents, we report dollars
-      currency: subscription_details.plan.currency.upcase,
-      current_period_ends_at: Time.at(subscription_details.current_period_end),
-      cancel_at_period_end: subscription.cancel_at_period_end
-    )
+    RlsContext.with_family(family) do
+      family.subscription.update!(
+        stripe_id: subscription.id,
+        status: subscription.status,
+        interval: subscription_details.plan.interval,
+        amount: BigDecimal(subscription_details.plan.amount.to_s) / 100, # Stripe returns cents, we report dollars
+        currency: subscription_details.plan.currency.upcase,
+        current_period_ends_at: Time.at(subscription_details.current_period_end),
+        cancel_at_period_end: subscription.cancel_at_period_end
+      )
+    end
   end
 
   private

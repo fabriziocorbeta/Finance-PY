@@ -43,6 +43,19 @@ x-rails-env: &rails_env
   EXCHANGE_RATE_PROVIDER: ${EXCHANGE_RATE_PROVIDER:-yahoo_finance}
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://finance.cd-co.com.py}
   CSP_REPORT_ONLY: ${CSP_REPORT_ONLY:-false}
+  SIDEKIQ_WEB_USERNAME: ${SIDEKIQ_WEB_USERNAME:-}
+  SIDEKIQ_WEB_PASSWORD: ${SIDEKIQ_WEB_PASSWORD:-}
+  MOBILE_MIN_SUPPORTED_VERSION: ${MOBILE_MIN_SUPPORTED_VERSION:-0.2.0}
+  MOBILE_MIN_ANDROID_VERSION_CODE: ${MOBILE_MIN_ANDROID_VERSION_CODE:-5}
+  MOBILE_MIN_IOS_BUILD: ${MOBILE_MIN_IOS_BUILD:-1}
+  MOBILE_LATEST_VERSION: ${MOBILE_LATEST_VERSION:-0.2.0}
+  MOBILE_LATEST_ANDROID_VERSION_CODE: ${MOBILE_LATEST_ANDROID_VERSION_CODE:-5}
+  MOBILE_LATEST_IOS_BUILD: ${MOBILE_LATEST_IOS_BUILD:-1}
+  MOBILE_FORCE_UPDATE: ${MOBILE_FORCE_UPDATE:-false}
+  MOBILE_ANDROID_STORE_URL: ${MOBILE_ANDROID_STORE_URL:-https://play.google.com/store/apps/details?id=py.com.cdco.financespy}
+  MOBILE_IOS_STORE_URL: ${MOBILE_IOS_STORE_URL:-https://apps.apple.com/app/financespy}
+  MOBILE_DIRECT_APK_URL: ${MOBILE_DIRECT_APK_URL:-https://finance.cd-co.com.py/downloads/financepy-latest.apk}
+  MOBILE_RELEASE_NOTES: ${MOBILE_RELEASE_NOTES:-}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   OPENAI_ACCESS_TOKEN: ${OPENAI_ACCESS_TOKEN:-}
   OPENAI_URI_BASE: ${OPENAI_URI_BASE:-}
@@ -170,7 +183,7 @@ services:
     # que llevan payloads de negocio. --appendonly yes: antes solo tenía
     # snapshotting RDB implícito de la imagen; AOF evita perder jobs en cola
     # y cache reciente ante un `docker restart`/crash entre snapshots.
-    command: redis-server --maxmemory 200mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD requerido en .env.local (ver docs/ops/deploy-runbook.md)} --appendonly yes
+    command: redis-server --maxmemory 200mb --maxmemory-policy noeviction --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD requerido en .env.local (ver docs/ops/deploy-runbook.md)} --appendonly yes
     volumes:
       - redis-data:/data
     healthcheck:

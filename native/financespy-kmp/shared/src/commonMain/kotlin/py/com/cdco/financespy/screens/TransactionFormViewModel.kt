@@ -307,7 +307,10 @@ class TransactionFormViewModel(
             _state.value = s.copy(error = "El nombre no puede estar vacío")
             return
         }
-        if (s.amountText.isBlank() || s.amountText.toDoubleOrNull() == null || s.amountText.toDouble() <= 0) {
+        val selectedCurrency = s.accounts.firstOrNull { it.id == s.accountId }?.currency
+        val canonicalAmount = py.com.cdco.financespy.utils.AmountParser.toCanonicalDecimalString(s.amountText, selectedCurrency)
+        val parsedAmount = canonicalAmount?.toDoubleOrNull()
+        if (canonicalAmount == null || parsedAmount == null || parsedAmount <= 0.0) {
             _state.value = s.copy(error = "Ingresá un importe válido mayor a cero")
             return
         }
@@ -320,8 +323,8 @@ class TransactionFormViewModel(
 
             val fuelLogPayload = if (s.isFuelLogEnabled && !s.fuelLogVehicleId.isNullOrBlank()) {
                 val lines = s.fuelLogLines.mapNotNull { line ->
-                    val liters = line.litersText.toDoubleOrNull()
-                    val cost = line.costText.toDoubleOrNull()
+                    val liters = py.com.cdco.financespy.utils.AmountParser.parseToDouble(line.litersText, "USD")
+                    val cost = py.com.cdco.financespy.utils.AmountParser.parseToDouble(line.costText, selectedCurrency)
                     if (liters == null && cost == null) null
                     else TransactionFuelLogLineRequestDto(
                         id = line.id,
@@ -334,7 +337,7 @@ class TransactionFormViewModel(
                 if (lines.isNotEmpty()) {
                     TransactionFuelLogRequestDto(
                         fleet_vehicle_id = s.fuelLogVehicleId,
-                        odometer = s.fuelLogOdometer.toDoubleOrNull(),
+                        odometer = py.com.cdco.financespy.utils.AmountParser.parseToDouble(s.fuelLogOdometer, "PYG"),
                         notes = s.fuelLogNotes.ifBlank { null },
                         fuel_log_lines_attributes = lines
                     )
@@ -345,7 +348,7 @@ class TransactionFormViewModel(
                 val body = UpdateTransactionBody(
                     account_id = s.accountId,
                     date = s.date,
-                    amount = s.amountText,
+                    amount = canonicalAmount,
                     nature = s.nature,
                     name = s.name,
                     notes = if (partialEdit) null else s.notes.ifBlank { null },
@@ -362,7 +365,7 @@ class TransactionFormViewModel(
                 val body = CreateTransactionBody(
                     account_id = s.accountId,
                     date = s.date,
-                    amount = s.amountText,
+                    amount = canonicalAmount,
                     nature = s.nature,
                     name = s.name,
                     notes = s.notes.ifBlank { null },

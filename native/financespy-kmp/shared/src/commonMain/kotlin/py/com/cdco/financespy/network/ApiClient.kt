@@ -8,15 +8,18 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.request.header
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import py.com.cdco.financespy.api.dto.AppVersionInfo
 import py.com.cdco.financespy.auth.TokenStorage
 
 object ApiClient {
     const val BASE_URL = "https://finance.cd-co.com.py"
 
-    fun create(tokenStorage: TokenStorage): HttpClient = createPlatformClient(tokenStorage) {
+    fun create(tokenStorage: TokenStorage, appVersion: AppVersionInfo? = null): HttpClient = createPlatformClient(tokenStorage) {
         // A 4xx/5xx must fail the call. Without this, a JSON error body (401, 429...) was decoded
         // into a DTO made only of defaults and shown as real, empty data ("no accounts").
         expectSuccess = true
@@ -32,6 +35,12 @@ object ApiClient {
         }
         defaultRequest {
             url(BASE_URL)
+            if (appVersion != null) {
+                header("X-Platform", appVersion.platform)
+                header("X-App-Version", appVersion.versionName)
+                header("X-App-Build", appVersion.versionCode.toString())
+                header(HttpHeaders.UserAgent, "FinancePY-${appVersion.platform}/${appVersion.versionName} (${appVersion.versionCode})")
+            }
         }
     }
 }

@@ -12,7 +12,7 @@ description: >-
 Las herramientas locales viven en `/Volumes/Hitachi 1/01 - Proyectos /tools/`:
 
 ```bash
-export JAVA_HOME="/Volumes/Hitachi 1/01 - Proyectos /tools/jdk/jdk-17.0.21+9/Contents/Home"
+export JAVA_HOME=$(ls -d "/Volumes/Hitachi 1/01 - Proyectos /tools/jdk"/*/Contents/Home | head -n 1)
 export ANDROID_HOME="/Volumes/Hitachi 1/01 - Proyectos /tools/android-sdk"
 export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
 

@@ -131,6 +131,145 @@ components:
           nullable: true
           description: Validation error messages (alternative to details used by trades,
             valuations, etc.)
+    Goal:
+      type: object
+      required:
+      - id
+      - name
+      - target_amount
+      - currency
+      - state
+      - progress_basis
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        target_amount:
+          type: string
+        currency:
+          type: string
+        target_date:
+          type: string
+          format: date
+          nullable: true
+        color:
+          type: string
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        state:
+          type: string
+          enum:
+          - active
+          - paused
+          - completed
+          - archived
+        progress_basis:
+          type: string
+          enum:
+          - balance
+          - contributions
+    GoalResponse:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          "$ref": "#/components/schemas/Goal"
+    GoalCollection:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Goal"
+        meta:
+          type: object
+          required:
+          - current_page
+          - total_pages
+          - total_count
+          - per_page
+          properties:
+            current_page:
+              type: integer
+            next_page:
+              type: integer
+              nullable: true
+            prev_page:
+              type: integer
+              nullable: true
+            total_pages:
+              type: integer
+            total_count:
+              type: integer
+            per_page:
+              type: integer
+    Receivable:
+      type: object
+      required:
+      - id
+      - total_amount
+      properties:
+        id:
+          type: string
+          format: uuid
+        total_amount:
+          type: string
+        installment_count:
+          type: integer
+          nullable: true
+        due_day:
+          type: integer
+          nullable: true
+    ReceivableResponse:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          "$ref": "#/components/schemas/Receivable"
+    ReceivableCollection:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Receivable"
+        meta:
+          type: object
+          required:
+          - current_page
+          - total_pages
+          - total_count
+          - per_page
+          properties:
+            current_page:
+              type: integer
+            next_page:
+              type: integer
+              nullable: true
+            prev_page:
+              type: integer
+              nullable: true
+            total_pages:
+              type: integer
+            total_count:
+              type: integer
+            per_page:
+              type: integer
     ErrorResponseWithImportId:
       type: object
       required:
@@ -401,6 +540,29 @@ components:
             "$ref": "#/components/schemas/AccountDetail"
         pagination:
           "$ref": "#/components/schemas/Pagination"
+    User:
+      type: object
+      required:
+      - id
+      - email
+      - role
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        first_name:
+          type: string
+          nullable: true
+        last_name:
+          type: string
+          nullable: true
+        display_name:
+          type: string
+          nullable: true
+        role:
+          type: string
     FamilySettings:
       type: object
       required:
@@ -415,6 +577,7 @@ components:
       - enabled_currencies
       - created_at
       - updated_at
+      - users
       properties:
         id:
           type: string
@@ -460,6 +623,12 @@ components:
         updated_at:
           type: string
           format: date-time
+        current_user:
+          "$ref": "#/components/schemas/User"
+        users:
+          type: array
+          items:
+            "$ref": "#/components/schemas/User"
     Category:
       type: object
       required:
@@ -635,7 +804,7 @@ components:
       - data
       properties:
         data:
-          $ref: '#/components/schemas/Budget'
+          "$ref": "#/components/schemas/Budget"
     BudgetCollection:
       type: object
       required:
@@ -645,7 +814,7 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/Budget'
+            "$ref": "#/components/schemas/Budget"
         meta:
           type: object
           required:
@@ -782,148 +951,6 @@ components:
           type: array
           items:
             "$ref": "#/components/schemas/Rule"
-        meta:
-          type: object
-          required:
-          - current_page
-          - total_pages
-          - total_count
-          - per_page
-          properties:
-            current_page:
-              type: integer
-            next_page:
-              type: integer
-              nullable: true
-            prev_page:
-              type: integer
-              nullable: true
-            total_pages:
-              type: integer
-            total_count:
-              type: integer
-            per_page:
-              type: integer
-    Goal:
-      type: object
-      required:
-      - id
-      - name
-      - target_amount
-      - currency
-      - state
-      - progress_basis
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        target_amount:
-          type: string
-        currency:
-          type: string
-        target_date:
-          type: string
-          format: date
-          nullable: true
-        color:
-          type: string
-          nullable: true
-        icon:
-          type: string
-          nullable: true
-        notes:
-          type: string
-          nullable: true
-        state:
-          type: string
-          enum:
-          - active
-          - paused
-          - completed
-          - archived
-        progress_basis:
-          type: string
-          enum:
-          - balance
-          - contributions
-    GoalResponse:
-      type: object
-      required:
-      - data
-      properties:
-        data:
-          "$ref": "#/components/schemas/Goal"
-    GoalCollection:
-      type: object
-      required:
-      - data
-      - meta
-      properties:
-        data:
-          type: array
-          items:
-            "$ref": "#/components/schemas/Goal"
-        meta:
-          type: object
-          required:
-          - current_page
-          - total_pages
-          - total_count
-          - per_page
-          properties:
-            current_page:
-              type: integer
-            next_page:
-              type: integer
-              nullable: true
-            prev_page:
-              type: integer
-              nullable: true
-            total_pages:
-              type: integer
-            total_count:
-              type: integer
-            per_page:
-              type: integer
-    Receivable:
-      type: object
-      required:
-      - id
-      - total_amount
-      properties:
-        id:
-          type: string
-          format: uuid
-        total_amount:
-          type: string
-        installment_count:
-          type: integer
-          nullable: true
-        due_day:
-          type: integer
-          nullable: true
-        first_due_date:
-          type: string
-          nullable: true
-    ReceivableResponse:
-      type: object
-      required:
-      - data
-      properties:
-        data:
-          "$ref": "#/components/schemas/Receivable"
-    ReceivableCollection:
-      type: object
-      required:
-      - data
-      - meta
-      properties:
-        data:
-          type: array
-          items:
-            "$ref": "#/components/schemas/Receivable"
         meta:
           type: object
           required:
@@ -1792,14 +1819,8 @@ components:
         price:
           type: string
           description: Formatted price per share
-        price_cents:
-          type: integer
-          description: Price per share in minor currency units
         amount:
           type: string
-        amount_cents:
-          type: integer
-          description: Amount in minor currency units
         currency:
           type: string
         cost_basis_source:
@@ -1825,10 +1846,6 @@ components:
         avg_cost:
           type: string
           nullable: true
-        avg_cost_cents:
-          type: integer
-          nullable: true
-          description: Average cost per share in minor currency units
         created_at:
           type: string
           format: date-time
@@ -2410,193 +2427,6 @@ components:
             per_page:
               type: integer
 paths:
-  "/api/v1/budgets":
-    get:
-      summary: List budgets
-      tags:
-      - Budgets
-      security:
-      - apiKeyAuth: []
-      produces:
-      - application/json
-      parameters:
-      - name: page
-        in: query
-        type: integer
-        required: false
-        description: 'Page number (default: 1)'
-      - name: per_page
-        in: query
-        type: integer
-        required: false
-        description: 'Items per page (default: 25, max: 100)'
-      responses:
-        '200':
-          description: budgets listed
-          schema:
-            $ref: '#/components/schemas/BudgetCollection'
-        '401':
-          description: unauthorized
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: forbidden - requires read scope
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    post:
-      summary: Create a budget
-      tags:
-      - Budgets
-      security:
-      - apiKeyAuth: []
-      consumes:
-      - application/json
-      produces:
-      - application/json
-      parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            budget:
-              type: object
-              properties:
-                start_date:
-                  type: string
-                  format: date
-                end_date:
-                  type: string
-                  format: date
-                  nullable: true
-                currency:
-                  type: string
-                  nullable: true
-                budgeted_spending:
-                  type: number
-                  nullable: true
-                expected_income:
-                  type: number
-                  nullable: true
-              required:
-              - start_date
-          required:
-          - budget
-      responses:
-        '201':
-          description: budget created
-          schema:
-            $ref: '#/components/schemas/BudgetResponse'
-        '401':
-          description: unauthorized
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: forbidden - requires write scope
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-        '422':
-          description: validation error - duplicate dates
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-  "/api/v1/budgets/{id}":
-    parameters:
-    - name: id
-      in: path
-      type: string
-      required: true
-      description: Budget ID
-    get:
-      summary: Retrieve a budget
-      tags:
-      - Budgets
-      security:
-      - apiKeyAuth: []
-      produces:
-      - application/json
-      responses:
-        '200':
-          description: budget retrieved
-          schema:
-            $ref: '#/components/schemas/BudgetResponse'
-        '401':
-          description: unauthorized
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: forbidden - requires read scope
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: budget not found
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    patch:
-      summary: Update a budget
-      tags:
-      - Budgets
-      security:
-      - apiKeyAuth: []
-      consumes:
-      - application/json
-      produces:
-      - application/json
-      parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          type: object
-          properties:
-            budget:
-              type: object
-              properties:
-                budgeted_spending:
-                  type: number
-                  nullable: true
-                expected_income:
-                  type: number
-                  nullable: true
-                currency:
-                  type: string
-                  nullable: true
-      responses:
-        '200':
-          description: budget updated
-          schema:
-            $ref: '#/components/schemas/BudgetResponse'
-        '401':
-          description: unauthorized
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: forbidden - requires write scope
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: budget not found
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-        '422':
-          description: validation error
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    delete:
-      summary: Delete a budget
-      tags:
-      - Budgets
-      security:
-      - apiKeyAuth: []
-      responses:
-        '204':
-          description: budget deleted
-        '401':
-          description: unauthorized
-        '403':
-          description: forbidden - requires write scope
-        '404':
-          description: budget not found
   "/api/v1/accounts":
     get:
       summary: List accounts
@@ -2677,6 +2507,155 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+  "/api/v1/android_purchases":
+    post:
+      summary: Create an Android purchase
+      tags:
+      - Android Purchases
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: purchase created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+                  duplicate:
+                    type: boolean
+        '422':
+          description: unprocessable entity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                account_id:
+                  type: string
+                  format: uuid
+                amount:
+                  type: string
+                  description: Amount (can be formatted with grouping separators)
+                merchant:
+                  type: string
+                item:
+                  type: string
+                timestamp:
+                  type: string
+                  format: date-time
+                raw_text:
+                  type: string
+                  nullable: true
+                nature:
+                  type: string
+                  enum:
+                  - income
+                  - expense
+                  nullable: true
+                  description: Defaults to expense if omitted
+              required:
+              - amount
+              - merchant
+  "/api/v1/app_config":
+    get:
+      summary: Retrieve mobile app version and update policy
+      description: Public, cacheable endpoint returning minimum supported and latest
+        mobile versions, store URLs, direct APK URL, and force-update flag.
+      tags:
+      - App Config
+      parameters:
+      - name: X-Platform
+        in: header
+        required: false
+        description: Client platform (android or ios)
+        schema:
+          type: string
+      - name: X-App-Version
+        in: header
+        required: false
+        description: Client semantic version (e.g. 0.2.0)
+        schema:
+          type: string
+      - name: X-App-Build
+        in: header
+        required: false
+        description: Client integer build number (versionCode / CFBundleVersion)
+        schema:
+          type: string
+      responses:
+        '200':
+          description: app config retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  min_supported_version:
+                    type: string
+                  latest_version:
+                    type: string
+                  min_build:
+                    type: object
+                    properties:
+                      android:
+                        type: integer
+                      ios:
+                        type: integer
+                    required:
+                    - android
+                    - ios
+                  latest_build:
+                    type: object
+                    properties:
+                      android:
+                        type: integer
+                      ios:
+                        type: integer
+                    required:
+                    - android
+                    - ios
+                  android_store_url:
+                    type: string
+                    nullable: true
+                  ios_store_url:
+                    type: string
+                    nullable: true
+                  direct_apk_url:
+                    type: string
+                    nullable: true
+                  force_update:
+                    type: boolean
+                  release_notes:
+                    type: string
+                    nullable: true
+                  checked_at:
+                    type: string
+                    format: date-time
+                required:
+                - min_supported_version
+                - latest_version
+                - min_build
+                - latest_build
+                - force_update
+                - checked_at
   "/api/v1/auth/signup":
     post:
       summary: Sign up a new user
@@ -3239,6 +3218,218 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+  "/api/v1/budgets":
+    get:
+      summary: List budgets
+      tags:
+      - Budgets
+      security:
+      - apiKeyAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        description: 'Page number (default: 1)'
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        description: 'Items per page (default: 25, max: 100)'
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: budgets listed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/BudgetCollection"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires read scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    post:
+      summary: Create a budget
+      tags:
+      - Budgets
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '201':
+          description: budget created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/BudgetResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: validation error - duplicate dates
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                budget:
+                  type: object
+                  properties:
+                    start_date:
+                      type: string
+                      format: date
+                    end_date:
+                      type: string
+                      format: date
+                      nullable: true
+                    currency:
+                      type: string
+                      nullable: true
+                    budgeted_spending:
+                      type: number
+                      nullable: true
+                    expected_income:
+                      type: number
+                      nullable: true
+                  required:
+                  - start_date
+              required:
+              - budget
+        required: true
+  "/api/v1/budgets/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Budget ID
+      schema:
+        type: string
+    get:
+      summary: Retrieve a budget
+      tags:
+      - Budgets
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: budget retrieved
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/BudgetResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires read scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: budget not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    patch:
+      summary: Update a budget
+      tags:
+      - Budgets
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: budget updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/BudgetResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: budget not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: validation error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                budget:
+                  type: object
+                  properties:
+                    budgeted_spending:
+                      type: number
+                      nullable: true
+                    expected_income:
+                      type: number
+                      nullable: true
+                    currency:
+                      type: string
+                      nullable: true
+        required: true
+    delete:
+      summary: Delete a budget
+      tags:
+      - Budgets
+      security:
+      - apiKeyAuth: []
+      responses:
+        '204':
+          description: budget deleted
+        '401':
+          description: unauthorized
+        '403':
+          description: forbidden - requires write scope
+        '404':
+          description: budget not found
   "/api/v1/categories":
     get:
       summary: List categories
@@ -3518,6 +3709,191 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+  "/api/v1/family_exports":
+    get:
+      summary: Lists family exports
+      tags:
+      - Family Exports
+      security:
+      - apiKeyAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        description: 'Page number (default: 1)'
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        description: 'Items per page (default: 25, max: 100)'
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: family exports listed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/FamilyExportCollection"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    post:
+      summary: Queues a family export
+      tags:
+      - Family Exports
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '202':
+          description: family export queued
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/FamilyExportResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: invalid params
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              description: Family export creation does not accept request parameters.
+  "/api/v1/family_exports/{id}":
+    parameters:
+    - name: id
+      in: path
+      format: uuid
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Shows a family export
+      tags:
+      - Family Exports
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: family export shown
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/FamilyExportResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/api/v1/family_exports/{id}/download":
+    parameters:
+    - name: id
+      in: path
+      format: uuid
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Downloads a completed family export
+      tags:
+      - Family Exports
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: family export downloaded
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '409':
+          description: export not ready
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/api/v1/family_settings":
+    get:
+      summary: Retrieve family settings
+      description: Retrieve a read-only snapshot of non-secret family configuration.
+      tags:
+      - Family Settings
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: family settings retrieved
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/FamilySettings"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: insufficient scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
   "/api/v1/goals":
     get:
       summary: List goals
@@ -3566,7 +3942,7 @@ paths:
       parameters: []
       responses:
         '201':
-          description: goal created with account_ids
+          description: goal created with goal_accounts_attributes
           content:
             application/json:
               schema:
@@ -3805,213 +4181,12 @@ paths:
           description: goal deleted
         '401':
           description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
         '403':
           description: forbidden - requires write scope
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
         '404':
           description: goal not found
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
         '422':
           description: validation error - goal must be archived before deletion
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-  "/api/v1/family_exports":
-    get:
-      summary: Lists family exports
-      tags:
-      - Family Exports
-      security:
-      - apiKeyAuth: []
-      parameters:
-      - name: page
-        in: query
-        required: false
-        description: 'Page number (default: 1)'
-        schema:
-          type: integer
-      - name: per_page
-        in: query
-        required: false
-        description: 'Items per page (default: 25, max: 100)'
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: family exports listed
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/FamilyExportCollection"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-    post:
-      summary: Queues a family export
-      tags:
-      - Family Exports
-      security:
-      - apiKeyAuth: []
-      parameters: []
-      responses:
-        '202':
-          description: family export queued
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/FamilyExportResponse"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '422':
-          description: invalid params
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              description: Family export creation does not accept request parameters.
-  "/api/v1/family_exports/{id}":
-    parameters:
-    - name: id
-      in: path
-      format: uuid
-      required: true
-      schema:
-        type: string
-    get:
-      summary: Shows a family export
-      tags:
-      - Family Exports
-      security:
-      - apiKeyAuth: []
-      responses:
-        '200':
-          description: family export shown
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/FamilyExportResponse"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '404':
-          description: not found
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-  "/api/v1/family_exports/{id}/download":
-    parameters:
-    - name: id
-      in: path
-      format: uuid
-      required: true
-      schema:
-        type: string
-    get:
-      summary: Downloads a completed family export
-      tags:
-      - Family Exports
-      security:
-      - apiKeyAuth: []
-      responses:
-        '200':
-          description: family export downloaded
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '404':
-          description: not found
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '409':
-          description: export not ready
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-  "/api/v1/family_settings":
-    get:
-      summary: Retrieve family settings
-      description: Retrieve a read-only snapshot of non-secret family configuration.
-      tags:
-      - Family Settings
-      security:
-      - apiKeyAuth: []
-      responses:
-        '200':
-          description: family settings retrieved
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/FamilySettings"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: insufficient scope
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
   "/api/v1/holdings":
     get:
       summary: List holdings
@@ -4554,6 +4729,513 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
+  "/api/v1/purchase_orders":
+    get:
+      summary: List purchase orders
+      tags:
+      - Purchase Orders
+      security:
+      - apiKeyAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        description: 'Page number (default: 1)'
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        description: 'Items per page (default: 25, max: 100)'
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: purchase orders listed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PurchaseOrderCollection"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires read scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    post:
+      summary: Create a purchase order
+      tags:
+      - Purchase Orders
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '201':
+          description: purchase order created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PurchaseOrderResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: unprocessable entity
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                purchase_order:
+                  type: object
+                  properties:
+                    supplier_name:
+                      type: string
+                    currency:
+                      type: string
+                      enum:
+                      - pyg
+                      - usd
+                    account_id:
+                      type: string
+                      format: uuid
+                    expected_date:
+                      type: string
+                      format: date
+                      nullable: true
+                    notes:
+                      type: string
+                      nullable: true
+                    purchase_order_items_attributes:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          product_id:
+                            type: string
+                            format: uuid
+                          quantity:
+                            type: integer
+                          unit_cost:
+                            type: number
+        required: true
+  "/api/v1/purchase_orders/{id}":
+    parameters:
+    - name: id
+      in: path
+      type: string
+      required: true
+      description: Purchase Order ID
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Retrieve a purchase order
+      tags:
+      - Purchase Orders
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: purchase order retrieved
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PurchaseOrderResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: purchase order not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/api/v1/purchase_orders/{id}/invoice_photo":
+    parameters:
+    - name: id
+      in: path
+      type: string
+      required: true
+      description: Purchase Order ID
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Download or view purchase order invoice photo
+      tags:
+      - Purchase Orders
+      security:
+      - apiKeyAuth: []
+      parameters:
+      - name: disposition
+        in: query
+        required: false
+        description: Content-Disposition mode (inline or attachment)
+        schema:
+          type: string
+      responses:
+        '200':
+          description: invoice photo streamed
+        '401':
+          description: unauthorized
+          content:
+            image/jpeg:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+            image/png:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+            application/pdf:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: invoice photo or purchase order not found
+          content:
+            image/jpeg:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+            image/png:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+            application/pdf:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    post:
+      summary: Upload or replace purchase order invoice photo
+      tags:
+      - Purchase Orders
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: invoice photo uploaded
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PurchaseOrderResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: invalid or missing file
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: file
+        required: true
+        description: Invoice photo file (JPEG, PNG, GIF, WebP or PDF up to 10MB)
+    delete:
+      summary: Delete purchase order invoice photo
+      tags:
+      - Purchase Orders
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: invoice photo deleted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PurchaseOrderResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: purchase order not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/api/v1/receivables":
+    get:
+      summary: List receivables
+      tags:
+      - Receivables
+      security:
+      - apiKeyAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        description: 'Page number (default: 1)'
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        description: 'Items per page (default: 25, max: 100)'
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: receivables listed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ReceivableCollection"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires read scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    post:
+      summary: Create a receivable
+      tags:
+      - Receivables
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '201':
+          description: receivable created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ReceivableResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: unprocessable entity
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Account name for receivable
+                total_amount:
+                  type: number
+                  description: Total receivable amount
+                balance:
+                  type: number
+                  description: Initial account balance
+                installment_count:
+                  type: integer
+                  description: Number of installments
+                due_day:
+                  type: integer
+                  description: Day of month payment is due (1-31)
+                first_due_date:
+                  type: string
+                  description: First payment due date (YYYY-MM-DD)
+                currency:
+                  type: string
+                  description: Currency code
+                notes:
+                  type: string
+                  description: Notes
+        required: true
+  "/api/v1/receivables/{id}":
+    parameters:
+    - name: id
+      in: path
+      type: string
+      required: true
+      description: Receivable ID
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Retrieve a receivable
+      tags:
+      - Receivables
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: receivable retrieved
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ReceivableResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires read scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: receivable not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    patch:
+      summary: Update a receivable
+      tags:
+      - Receivables
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: receivable updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ReceivableResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: receivable not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: unprocessable entity
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                total_amount:
+                  type: number
+                balance:
+                  type: number
+                installment_count:
+                  type: integer
+                due_day:
+                  type: integer
+                first_due_date:
+                  type: string
+                  nullable: true
+                currency:
+                  type: string
+                notes:
+                  type: string
+        required: true
+    delete:
+      summary: Delete a receivable
+      tags:
+      - Receivables
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: receivable deleted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/DeleteResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: receivable not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
   "/api/v1/recurring_transactions":
     get:
       summary: List recurring transactions
@@ -4714,241 +5396,6 @@ paths:
               required:
               - recurring_transaction
         required: true
-  "/api/v1/receivables":
-    get:
-      summary: List receivables
-      tags:
-      - Receivables
-      security:
-      - apiKeyAuth: []
-      parameters:
-      - name: page
-        in: query
-        required: false
-        description: 'Page number (default: 1)'
-        schema:
-          type: integer
-      - name: per_page
-        in: query
-        required: false
-        description: 'Items per page (default: 25, max: 100)'
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: receivables listed
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ReceivableCollection"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden - requires read scope
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-    post:
-      summary: Create a receivable
-      tags:
-      - Receivables
-      security:
-      - apiKeyAuth: []
-      parameters: []
-      responses:
-        '201':
-          description: receivable created
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ReceivableResponse"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden - requires write scope
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '422':
-          description: unprocessable entity
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  description: Account name for receivable
-                total_amount:
-                  type: number
-                  description: Total receivable amount
-                balance:
-                  type: number
-                  description: Initial account balance
-                installment_count:
-                  type: integer
-                  description: Number of installments
-                due_day:
-                  type: integer
-                  description: Day of month payment is due (1-31)
-                first_due_date:
-                  type: string
-                  description: First payment due date (YYYY-MM-DD)
-                currency:
-                  type: string
-                  description: Currency code
-                notes:
-                  type: string
-                  description: Notes
-        required: true
-  "/api/v1/receivables/{id}":
-    parameters:
-    - name: id
-      in: path
-      required: true
-      description: Receivable ID
-      schema:
-        type: string
-        format: uuid
-    get:
-      summary: Retrieve a receivable
-      tags:
-      - Receivables
-      security:
-      - apiKeyAuth: []
-      responses:
-        '200':
-          description: receivable retrieved
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ReceivableResponse"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden - requires read scope
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '404':
-          description: receivable not found
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-    patch:
-      summary: Update a receivable
-      tags:
-      - Receivables
-      security:
-      - apiKeyAuth: []
-      parameters: []
-      responses:
-        '200':
-          description: receivable updated
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ReceivableResponse"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden - requires write scope
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '404':
-          description: receivable not found
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '422':
-          description: unprocessable entity
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                total_amount:
-                  type: number
-                balance:
-                  type: number
-                installment_count:
-                  type: integer
-                due_day:
-                  type: integer
-                first_due_date:
-                  type: string
-                  nullable: true
-                currency:
-                  type: string
-                notes:
-                  type: string
-        required: true
-    delete:
-      summary: Delete a receivable
-      tags:
-      - Receivables
-      security:
-      - apiKeyAuth: []
-      responses:
-        '200':
-          description: receivable deleted
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/DeleteResponse"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden - requires write scope
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '404':
-          description: receivable not found
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
   "/api/v1/recurring_transactions/{id}":
     parameters:
     - name: id
@@ -5294,6 +5741,292 @@ paths:
                 "$ref": "#/components/schemas/ErrorResponse"
         '404':
           description: rule not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/api/v1/sales":
+    get:
+      summary: List sales
+      tags:
+      - Sales
+      security:
+      - apiKeyAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        description: 'Page number (default: 1)'
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        description: 'Items per page (default: 25, max: 100)'
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: sales listed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SaleCollection"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires read scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    post:
+      summary: Create a sale
+      tags:
+      - Sales
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '201':
+          description: sale created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SaleResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: unprocessable entity
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sale:
+                  type: object
+                  properties:
+                    client_name:
+                      type: string
+                    currency:
+                      type: string
+                      enum:
+                      - pyg
+                      - usd
+                    account_id:
+                      type: string
+                      format: uuid
+                    payment_method:
+                      type: string
+                      nullable: true
+                    invoice_number:
+                      type: string
+                      nullable: true
+                    condition:
+                      type: string
+                      nullable: true
+                    notes:
+                      type: string
+                      nullable: true
+                    delivery_address:
+                      type: string
+                      nullable: true
+                    delivery_date:
+                      type: string
+                      format: date
+                      nullable: true
+                    carrier:
+                      type: string
+                      nullable: true
+                    sale_items_attributes:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          product_id:
+                            type: string
+                            format: uuid
+                          quantity:
+                            type: integer
+                          unit_price:
+                            type: number
+        required: true
+  "/api/v1/sales/{id}":
+    parameters:
+    - name: id
+      in: path
+      type: string
+      required: true
+      description: Sale ID
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Retrieve a sale
+      tags:
+      - Sales
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: sale retrieved
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SaleResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: sale not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+  "/api/v1/sales/{id}/invoice_photo":
+    parameters:
+    - name: id
+      in: path
+      type: string
+      required: true
+      description: Sale ID
+      schema:
+        type: string
+        format: uuid
+    get:
+      summary: Download or view sale invoice photo
+      tags:
+      - Sales
+      security:
+      - apiKeyAuth: []
+      parameters:
+      - name: disposition
+        in: query
+        required: false
+        description: Content-Disposition mode (inline or attachment)
+        schema:
+          type: string
+      responses:
+        '200':
+          description: invoice photo streamed
+        '401':
+          description: unauthorized
+          content:
+            image/jpeg:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+            image/png:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+            application/pdf:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: invoice photo or sale not found
+          content:
+            image/jpeg:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+            image/png:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+            application/pdf:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+    post:
+      summary: Upload or replace sale invoice photo
+      tags:
+      - Sales
+      security:
+      - apiKeyAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: invoice photo uploaded
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SaleResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: invalid or missing file
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: file
+        required: true
+        description: Invoice photo file (JPEG, PNG, GIF, WebP or PDF up to 10MB)
+    delete:
+      summary: Delete sale invoice photo
+      tags:
+      - Sales
+      security:
+      - apiKeyAuth: []
+      responses:
+        '200':
+          description: invoice photo deleted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SaleResponse"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '403':
+          description: forbidden - requires write scope
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '404':
+          description: sale not found
           content:
             application/json:
               schema:
@@ -6233,6 +6966,7 @@ paths:
     parameters:
     - name: id
       in: path
+      type: string
       required: true
       description: Transaction ID
       schema:
@@ -6257,12 +6991,30 @@ paths:
         '401':
           description: unauthorized
           content:
+            image/jpeg:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+            image/png:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+            application/pdf:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
         '404':
           description: invoice photo or transaction not found
           content:
+            image/jpeg:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+            image/png:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+            application/pdf:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
             application/json:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
@@ -6302,15 +7054,9 @@ paths:
         content:
           multipart/form-data:
             schema:
-              type: object
-              properties:
-                invoice_photo:
-                  type: string
-                  format: binary
-                  description: Invoice photo file (JPEG, PNG, GIF, WebP or PDF up to 10MB)
-              required:
-              - invoice_photo
+              type: file
         required: true
+        description: Invoice photo file (JPEG, PNG, GIF, WebP or PDF up to 10MB)
     delete:
       summary: Delete transaction invoice photo
       tags:
@@ -6353,6 +7099,7 @@ paths:
         only; reset status is family-scoped, not job-scoped. Requires admin role.
       security:
       - apiKeyAuth: []
+      parameters: []
       responses:
         '200':
           description: account reset initiated
@@ -6380,7 +7127,6 @@ paths:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
       requestBody:
-        required: true
         content:
           application/json:
             schema:
@@ -6391,6 +7137,7 @@ paths:
                   description: Current account password for step-up verification
               required:
               - current_password
+        required: true
   "/api/v1/users/reset/status":
     get:
       summary: Retrieve reset status
@@ -6430,6 +7177,7 @@ paths:
         data. This action cannot be undone.
       security:
       - apiKeyAuth: []
+      parameters: []
       responses:
         '200':
           description: account deleted
@@ -6452,7 +7200,6 @@ paths:
               schema:
                 "$ref": "#/components/schemas/ErrorResponse"
       requestBody:
-        required: true
         content:
           application/json:
             schema:
@@ -6463,6 +7210,7 @@ paths:
                   description: Current account password for step-up verification
               required:
               - current_password
+        required: true
   "/api/v1/valuations":
     get:
       summary: List valuations
@@ -6670,532 +7418,3 @@ paths:
                       type: string
                       description: Additional notes
         required: true
-  "/api/v1/sales":
-    get:
-      summary: List sales
-      tags:
-      - Sales
-      security:
-      - apiKeyAuth: []
-      parameters:
-      - name: page
-        in: query
-        required: false
-        description: 'Page number (default: 1)'
-        schema:
-          type: integer
-      - name: per_page
-        in: query
-        required: false
-        description: 'Items per page (default: 25, max: 100)'
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: sales listed
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/SaleCollection"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden - requires read scope
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-    post:
-      summary: Create a sale
-      tags:
-      - Sales
-      security:
-      - apiKeyAuth: []
-      parameters: []
-      responses:
-        '201':
-          description: sale created
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/SaleResponse"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden - requires write scope
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '422':
-          description: unprocessable entity
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                sale:
-                  type: object
-                  properties:
-                    client_name:
-                      type: string
-                    currency:
-                      type: string
-                      enum:
-                      - pyg
-                      - usd
-                    account_id:
-                      type: string
-                      format: uuid
-                    payment_method:
-                      type: string
-                      nullable: true
-                    invoice_number:
-                      type: string
-                      nullable: true
-                    condition:
-                      type: string
-                      nullable: true
-                    notes:
-                      type: string
-                      nullable: true
-                    delivery_address:
-                      type: string
-                      nullable: true
-                    delivery_date:
-                      type: string
-                      format: date
-                      nullable: true
-                    carrier:
-                      type: string
-                      nullable: true
-                    sale_items_attributes:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          product_id:
-                            type: string
-                            format: uuid
-                          quantity:
-                            type: integer
-                          unit_price:
-                            type: number
-        required: true
-  "/api/v1/sales/{id}":
-    parameters:
-    - name: id
-      in: path
-      required: true
-      description: Sale ID
-      schema:
-        type: string
-        format: uuid
-    get:
-      summary: Retrieve a sale
-      tags:
-      - Sales
-      security:
-      - apiKeyAuth: []
-      responses:
-        '200':
-          description: sale retrieved
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/SaleResponse"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '404':
-          description: sale not found
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-  "/api/v1/sales/{id}/invoice_photo":
-    parameters:
-    - name: id
-      in: path
-      required: true
-      description: Sale ID
-      schema:
-        type: string
-        format: uuid
-    get:
-      summary: Download or view sale invoice photo
-      tags:
-      - Sales
-      security:
-      - apiKeyAuth: []
-      parameters:
-      - name: disposition
-        in: query
-        required: false
-        description: Content-Disposition mode (inline or attachment)
-        schema:
-          type: string
-      responses:
-        '200':
-          description: invoice photo streamed
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '404':
-          description: invoice photo or sale not found
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-    post:
-      summary: Upload or replace sale invoice photo
-      tags:
-      - Sales
-      security:
-      - apiKeyAuth: []
-      parameters: []
-      responses:
-        '200':
-          description: invoice photo uploaded
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/SaleResponse"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden - requires write scope
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '422':
-          description: invalid or missing file
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                invoice_photo:
-                  type: string
-                  format: binary
-                  description: Invoice photo file (JPEG, PNG, GIF, WebP or PDF up to 10MB)
-              required:
-              - invoice_photo
-        required: true
-    delete:
-      summary: Delete sale invoice photo
-      tags:
-      - Sales
-      security:
-      - apiKeyAuth: []
-      responses:
-        '200':
-          description: invoice photo deleted
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/SaleResponse"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden - requires write scope
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '404':
-          description: sale not found
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-  "/api/v1/purchase_orders":
-    get:
-      summary: List purchase orders
-      tags:
-      - Purchase Orders
-      security:
-      - apiKeyAuth: []
-      parameters:
-      - name: page
-        in: query
-        required: false
-        description: 'Page number (default: 1)'
-        schema:
-          type: integer
-      - name: per_page
-        in: query
-        required: false
-        description: 'Items per page (default: 25, max: 100)'
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: purchase orders listed
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/PurchaseOrderCollection"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden - requires read scope
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-    post:
-      summary: Create a purchase order
-      tags:
-      - Purchase Orders
-      security:
-      - apiKeyAuth: []
-      parameters: []
-      responses:
-        '201':
-          description: purchase order created
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/PurchaseOrderResponse"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden - requires write scope
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '422':
-          description: unprocessable entity
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                purchase_order:
-                  type: object
-                  properties:
-                    supplier_name:
-                      type: string
-                    currency:
-                      type: string
-                      enum:
-                      - pyg
-                      - usd
-                    account_id:
-                      type: string
-                      format: uuid
-                    expected_date:
-                      type: string
-                      format: date
-                      nullable: true
-                    notes:
-                      type: string
-                      nullable: true
-                    purchase_order_items_attributes:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          product_id:
-                            type: string
-                            format: uuid
-                          quantity:
-                            type: integer
-                          unit_cost:
-                            type: number
-        required: true
-  "/api/v1/purchase_orders/{id}":
-    parameters:
-    - name: id
-      in: path
-      required: true
-      description: Purchase Order ID
-      schema:
-        type: string
-        format: uuid
-    get:
-      summary: Retrieve a purchase order
-      tags:
-      - Purchase Orders
-      security:
-      - apiKeyAuth: []
-      responses:
-        '200':
-          description: purchase order retrieved
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/PurchaseOrderResponse"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '404':
-          description: purchase order not found
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-  "/api/v1/purchase_orders/{id}/invoice_photo":
-    parameters:
-    - name: id
-      in: path
-      required: true
-      description: Purchase Order ID
-      schema:
-        type: string
-        format: uuid
-    get:
-      summary: Download or view purchase order invoice photo
-      tags:
-      - Purchase Orders
-      security:
-      - apiKeyAuth: []
-      parameters:
-      - name: disposition
-        in: query
-        required: false
-        description: Content-Disposition mode (inline or attachment)
-        schema:
-          type: string
-      responses:
-        '200':
-          description: invoice photo streamed
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '404':
-          description: invoice photo or purchase order not found
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-    post:
-      summary: Upload or replace purchase order invoice photo
-      tags:
-      - Purchase Orders
-      security:
-      - apiKeyAuth: []
-      parameters: []
-      responses:
-        '200':
-          description: invoice photo uploaded
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/PurchaseOrderResponse"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden - requires write scope
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '422':
-          description: invalid or missing file
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                invoice_photo:
-                  type: string
-                  format: binary
-                  description: Invoice photo file (JPEG, PNG, GIF, WebP or PDF up to 10MB)
-              required:
-              - invoice_photo
-        required: true
-    delete:
-      summary: Delete purchase order invoice photo
-      tags:
-      - Purchase Orders
-      security:
-      - apiKeyAuth: []
-      responses:
-        '200':
-          description: invoice photo deleted
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/PurchaseOrderResponse"
-        '401':
-          description: unauthorized
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '403':
-          description: forbidden - requires write scope
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"
-        '404':
-          description: purchase order not found
-          content:
-            application/json:
-              schema:
-                "$ref": "#/components/schemas/ErrorResponse"

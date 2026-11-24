@@ -12,6 +12,8 @@ module ExchangeRate::Provided
     NEAREST_RATE_LOOKBACK_DAYS = 5
 
     def find_or_fetch_rate(from:, to:, date: Date.current, cache: true)
+      return ExchangeRate.new(from_currency: from, to_currency: to, date: date, rate: BigDecimal(1)) if from.to_s.casecmp?(to.to_s)
+
       rate = find_by(from_currency: from, to_currency: to, date: date)
       return rate if rate.present?
 
@@ -26,31 +28,35 @@ module ExchangeRate::Provided
                   .first
       return nearest if nearest.present?
 
-      return nil unless provider.present? # No provider configured (some self-hosted apps)
-
-      response = provider.fetch_exchange_rate(from: from, to: to, date: date)
-
-      return nil unless response.success? # Provider error
-
-      rate = response.data
-      begin
-        ExchangeRate.find_or_create_by!(
-          from_currency: rate.from,
-          to_currency: rate.to,
-          date: rate.date
-        ) do |exchange_rate|
-          exchange_rate.rate = rate.rate
-        end if cache
-      rescue ActiveRecord::RecordNotUnique
-        # Race condition: another process inserted between our SELECT and INSERT
-        # Retry by finding the existing record
-        ExchangeRate.find_by!(
-          from_currency: rate.from,
-          to_currency: rate.to,
-          date: rate.date
-        ) if cache
+      if provider.present?
+        response = provider.fetch_exchange_rate(from: from, to: to, date: date)
+        if response.success?
+          rate = response.data
+          begin
+            ExchangeRate.find_or_create_by!(
+              from_currency: rate.from,
+              to_currency: rate.to,
+              date: rate.date
+            ) do |exchange_rate|
+              exchange_rate.rate = rate.rate
+            end if cache
+          rescue ActiveRecord::RecordNotUnique
+            ExchangeRate.find_by!(
+              from_currency: rate.from,
+              to_currency: rate.to,
+              date: rate.date
+            ) if cache
+          end
+          return rate
+        end
       end
-      rate
+
+      # Last-resort historical fallback: better to use the latest known DB rate
+      # than silently falling back 1:1 (which corrupts PYG/USD by ~7500x).
+      where(from_currency: from, to_currency: to)
+        .where("date <= ?", date)
+        .order(date: :desc)
+        .first
     end
 
     # Batch-fetches exchange rates for multiple source currencies.

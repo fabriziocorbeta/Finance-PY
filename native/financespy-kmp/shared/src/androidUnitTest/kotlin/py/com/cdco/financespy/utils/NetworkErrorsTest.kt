@@ -39,4 +39,14 @@ class NetworkErrorsTest {
         val dns = RuntimeException("wrapped", UnknownHostException()).describeForUser()
         assertTrue(dns.contains("No se encontró el servidor"), dns)
     }
+
+    @Test
+    fun validationAndConflictErrorsAreExplainedWithoutLeakingRawJson() {
+        val unprocessable = RuntimeException("Client request(POST https://finance.cd-co.com.py/api/v1/sales) invalid: 422 Unprocessable Entity. Text: \"{\\\"errors\\\":[\\\"bad\\\"]}\"").describeForUser()
+        assertTrue(unprocessable.contains("rechazó la validación"), unprocessable)
+        assertTrue(!unprocessable.contains("https://"), unprocessable)
+
+        val conflict = RuntimeException("Client request(PATCH https://finance.cd-co.com.py/api/v1/sales/1) invalid: 409 Conflict.").describeForUser()
+        assertTrue(conflict.contains("Conflicto"), conflict)
+    }
 }

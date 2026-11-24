@@ -252,7 +252,17 @@ class MainActivity : FragmentActivity() {
     private val dashboardCache by lazy { AndroidDashboardCache(applicationContext) }
     private val offlineStore by lazy { py.com.cdco.financespy.cache.AndroidOfflineStore(applicationContext) }
     private val pendingCaptureStore by lazy { py.com.cdco.financespy.wallet.PendingCaptureStore(applicationContext) }
-    private val httpClient by lazy { ApiClient.create(tokenStorage) }
+    private val appVersionInfo by lazy {
+        py.com.cdco.financespy.api.dto.AppVersionInfo(
+            versionName = BuildConfig.VERSION_NAME,
+            versionCode = BuildConfig.VERSION_CODE,
+            platform = "android"
+        )
+    }
+    private val updateRequirement = mutableStateOf<py.com.cdco.financespy.api.dto.UpdateRequirement>(
+        py.com.cdco.financespy.api.dto.UpdateRequirement.UpToDate
+    )
+    private val httpClient by lazy { ApiClient.create(tokenStorage, appVersionInfo) }
     private val authRepository by lazy {
         AuthRepository(
             httpClient,
@@ -286,7 +296,9 @@ class MainActivity : FragmentActivity() {
             }
         )
     }
-    private val isDemoMode by lazy { intent.getBooleanExtra("demo_mode", false) }
+    // Strictly restricted to debug builds: MainActivity is exported="true", so an
+    // unguarded Intent extra would let any app disable FLAG_SECURE and bypass login.
+    private val isDemoMode by lazy { BuildConfig.DEBUG && intent.getBooleanExtra("demo_mode", false) }
     private val api: FinancePyApi by lazy {
         if (isDemoMode) py.com.cdco.financespy.api.DemoFinancePyApi() else FinancePyApi(httpClient)
     }
@@ -513,13 +525,41 @@ class MainActivity : FragmentActivity() {
             }
         }
 
+        lifecycleScope.launch(Dispatchers.IO) {
+            if (isDemoMode) return@launch
+            // Non-blocking, fail-open mobile version check (never locks offline users out).
+            runCatching {
+                val config = withTimeoutOrNull(3_000L) { api.fetchAppConfig() } ?: return@runCatching
+                val prefs = getSharedPreferences("financespy_update_prefs", MODE_PRIVATE)
+                val dismissedBuild = if (prefs.contains("dismissed_build")) prefs.getInt("dismissed_build", -1) else null
+                val evaluated = py.com.cdco.financespy.api.dto.AppUpdateEvaluator.evaluate(
+                    current = appVersionInfo,
+                    config = config,
+                    dismissedBuild = dismissedBuild
+                )
+                withContext(Dispatchers.Main) {
+                    updateRequirement.value = evaluated
+                }
+            }
+        }
+
         handleOAuthRedirect(intent)
 
         val tSetContent = System.currentTimeMillis()
         Log.d("ColdStartProfile", "[Optimized] Calling setContent at +${tSetContent - onCreateStartTime} ms from onCreate")
 
         setContent {
-            if (isLoggedIn.value == true && (biometricLockEnabled.value || inactivityLocked.value) && !isBiometricAuthenticated.value) {
+            val activeUpdate = updateRequirement.value
+            if (activeUpdate is py.com.cdco.financespy.api.dto.UpdateRequirement.ForceUpdate) {
+                py.com.cdco.financespy.components.ForceUpdateScreen(
+                    requirement = activeUpdate,
+                    onUpdateClick = { url ->
+                        if (url.startsWith("https://", ignoreCase = true)) {
+                            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                        }
+                    }
+                )
+            } else if (isLoggedIn.value == true && (biometricLockEnabled.value || inactivityLocked.value) && !isBiometricAuthenticated.value) {
                 if (biometricUnavailable.value) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -542,7 +582,26 @@ class MainActivity : FragmentActivity() {
                     }
                 }
             } else {
-                App(
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (activeUpdate is py.com.cdco.financespy.api.dto.UpdateRequirement.SoftUpdate) {
+                        py.com.cdco.financespy.components.SoftUpdateBanner(
+                            requirement = activeUpdate,
+                            onUpdateClick = { url ->
+                                if (url.startsWith("https://", ignoreCase = true)) {
+                                    runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                                }
+                            },
+                            onDismiss = {
+                                getSharedPreferences("financespy_update_prefs", MODE_PRIVATE)
+                                    .edit()
+                                    .putInt("dismissed_build", activeUpdate.latestBuild)
+                                    .apply()
+                                updateRequirement.value = py.com.cdco.financespy.api.dto.UpdateRequirement.UpToDate
+                            }
+                        )
+                    }
+                    Box(modifier = Modifier.weight(1f)) {
+                        App(
                 isLoggedIn = isLoggedIn.value,
                 api = api,
                 navPreferences = navPreferences,
@@ -668,11 +727,11 @@ class MainActivity : FragmentActivity() {
                     walletLocationCaptureEnabled.value = enabled
                     if (enabled) {
                         val hasFine = ContextCompat.checkSelfPermission(
-                            this,
+                            this@MainActivity,
                             Manifest.permission.ACCESS_FINE_LOCATION
                         ) == PackageManager.PERMISSION_GRANTED
                         val hasCoarse = ContextCompat.checkSelfPermission(
-                            this,
+                            this@MainActivity,
                             Manifest.permission.ACCESS_COARSE_LOCATION
                         ) == PackageManager.PERMISSION_GRANTED
                         if (!hasFine && !hasCoarse) {
@@ -724,6 +783,8 @@ class MainActivity : FragmentActivity() {
                 onPickUpayCsv = { onPicked -> pickUpayCsv(onPicked) },
                 outbox = outbox
                 )
+                    }
+                }
             }
         }
     }
@@ -752,7 +813,14 @@ class MainActivity : FragmentActivity() {
             return
         }
 
-        val allowedAuthenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        // AndroidX BiometricPrompt forbids combining CryptoObject with DEVICE_CREDENTIAL
+        // on API < 30 (Android 8/9/10) and throws IllegalArgumentException.
+        val supportsDeviceCredentialWithCrypto = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+        val allowedAuthenticators = if (supportsDeviceCredentialWithCrypto) {
+            BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        } else {
+            BiometricManager.Authenticators.BIOMETRIC_STRONG
+        }
         val canAuthenticate = BiometricManager.from(this).canAuthenticate(allowedAuthenticators)
 
         if (canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS) {
@@ -811,11 +879,14 @@ class MainActivity : FragmentActivity() {
                 }
             })
 
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+        val promptInfoBuilder = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Autenticación Requerida")
-            .setSubtitle("Desbloquee para acceder a FinanceSpy")
+            .setSubtitle("Desbloquee para acceder a FinancePY")
             .setAllowedAuthenticators(allowedAuthenticators)
-            .build()
+        if (!supportsDeviceCredentialWithCrypto) {
+            promptInfoBuilder.setNegativeButtonText("Cancelar")
+        }
+        val promptInfo = promptInfoBuilder.build()
 
         if (cryptoObject != null) {
             biometricPrompt.authenticate(promptInfo, cryptoObject)
@@ -855,7 +926,7 @@ class MainActivity : FragmentActivity() {
 
             val promptInfo = BiometricPrompt.PromptInfo.Builder()
                 .setTitle("Autenticación Requerida")
-                .setSubtitle("Desbloquee para acceder a FinanceSpy")
+                .setSubtitle("Desbloquee para acceder a FinancePY")
                 .setAllowedAuthenticators(allowedAuthenticators)
                 .build()
 
@@ -937,19 +1008,52 @@ class MainActivity : FragmentActivity() {
                 }
             })
 
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+        val supportsDeviceCredentialWithCrypto = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+        val armAuthenticators = if (supportsDeviceCredentialWithCrypto) {
+            BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        } else {
+            BiometricManager.Authenticators.BIOMETRIC_STRONG
+        }
+        val promptInfoBuilder = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Proteger FinancePY")
             .setSubtitle("Confirme su identidad para activar el bloqueo biométrico")
-            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
-            .build()
+            .setAllowedAuthenticators(armAuthenticators)
+        if (!supportsDeviceCredentialWithCrypto) {
+            promptInfoBuilder.setNegativeButtonText("Cancelar")
+        }
+        val promptInfo = promptInfoBuilder.build()
 
         prompt.authenticate(promptInfo, BiometricPrompt.CryptoObject(cipher))
     }
 
     private fun disarmBiometricRefreshTokenLock() {
-        securityPreferences.setBiometricLockEnabled(false)
-        biometricLockEnabled.value = false
-        BiometricRefreshTokenGuard.clear(applicationContext)
+        val allowedAuthenticators = BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        val canAuthenticate = BiometricManager.from(this).canAuthenticate(allowedAuthenticators)
+        if (canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS) {
+            securityPreferences.setBiometricLockEnabled(false)
+            biometricLockEnabled.value = false
+            BiometricRefreshTokenGuard.clear(applicationContext)
+            return
+        }
+
+        val executor = ContextCompat.getMainExecutor(this)
+        val prompt = BiometricPrompt(this, executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    super.onAuthenticationSucceeded(result)
+                    securityPreferences.setBiometricLockEnabled(false)
+                    biometricLockEnabled.value = false
+                    BiometricRefreshTokenGuard.clear(applicationContext)
+                }
+            })
+
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Desactivar bloqueo biométrico")
+            .setSubtitle("Confirme su identidad para desactivar la protección")
+            .setAllowedAuthenticators(allowedAuthenticators)
+            .build()
+
+        prompt.authenticate(promptInfo)
     }
 
     /** Recovery path for a Keystore key that can no longer be used (biometric
@@ -984,7 +1088,14 @@ class MainActivity : FragmentActivity() {
     private fun shareFile(bytes: ByteArray, filename: String, mimeType: String) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val file = java.io.File(cacheDir, filename)
+                val exportsDir = java.io.File(cacheDir, "exports").apply { mkdirs() }
+                // Clean up stale exported files (> 1 hour old) so financial reports do not linger on disk.
+                val cutoff = System.currentTimeMillis() - 60 * 60 * 1000L
+                exportsDir.listFiles()?.forEach { existing ->
+                    if (existing.lastModified() < cutoff) existing.delete()
+                }
+                val safeName = filename.substringAfterLast('/').substringAfterLast('\\').ifBlank { "export.bin" }
+                val file = java.io.File(exportsDir, safeName)
                 file.writeBytes(bytes)
                 val uri = androidx.core.content.FileProvider.getUriForFile(
                     this@MainActivity,

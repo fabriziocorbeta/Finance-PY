@@ -324,7 +324,7 @@ private fun PledgeRow(
                 color = FinancePyColors.textPrimary()
             )
             Text(
-                text = pledge.account_name,
+                text = pledge.account_name ?: "Sin cuenta",
                 style = MaterialTheme.typography.bodySmall,
                 color = FinancePyColors.textSecondary()
             )

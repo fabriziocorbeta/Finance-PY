@@ -9,6 +9,7 @@ class Api::V1::ValuationsController < Api::V1::BaseController
   before_action :ensure_read_scope, only: [ :index, :show ]
   before_action :ensure_write_scope, only: [ :create, :update ]
   before_action :set_valuation, only: [ :show, :update ]
+  before_action :ensure_writable_valuation_account!, only: [ :update ]
 
   def index
     family = current_family
@@ -247,6 +248,12 @@ class Api::V1::ValuationsController < Api::V1::BaseController
 
     def ensure_write_scope
       authorize_scope!(:write)
+    end
+
+    def ensure_writable_valuation_account!
+      return if current_family.accounts.writable_by(current_resource_owner).exists?(id: @entry.account_id)
+
+      render json: { error: "forbidden", message: "You do not have write access to this account" }, status: :forbidden
     end
 
     def apply_filters(query)

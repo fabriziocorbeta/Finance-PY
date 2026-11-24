@@ -36,11 +36,11 @@ module RlsContext
     # callback in config/initializers/rls_connection_safety.rb for why we
     # avoid pool.remove/throw_away! here).
     def reset(connection = ActiveRecord::Base.connection)
-      connection.execute("RESET app.current_family_id; RESET app.rls_auth_bypass;")
+      connection.execute("RESET app.current_family_id; RESET app.rls_auth_bypass; RESET app.rls_system_access;")
       true
     rescue => e
       Rails.logger.error(
-        "[RlsContext] RESET app.current_family_id / app.rls_auth_bypass failed (#{e.class}: #{e.message}); " \
+        "[RlsContext] RESET app.current_family_id / app.rls_auth_bypass / app.rls_system_access failed (#{e.class}: #{e.message}); " \
         "reconnecting to purge session state instead of returning a possibly-poisoned connection to the pool"
       )
       begin
@@ -54,11 +54,27 @@ module RlsContext
       false
     end
 
+    # Reentrant: nested `with_family` blocks (e.g. ApplyAllRulesJob invoking
+    # RuleJob.perform_now) restore the enclosing family_id instead of clearing
+    # the RLS context for the rest of the outer block.
     def with_family(family_or_id)
+      previous_family_id = current_family_id
       set_family(family_or_id)
       yield
     ensure
-      reset
+      if previous_family_id.present?
+        set_family(previous_family_id)
+      else
+        reset
+      end
+    end
+
+    def current_family_id
+      ActiveRecord::Base.connection.select_value(
+        "SELECT current_setting('app.current_family_id', true)"
+      ).presence
+    rescue
+      nil
     end
 
     # Narrow escape hatch for the "casos especiales" in
