@@ -542,7 +542,11 @@ Rails.application.routes.draw do
       end
       resources :transfers, only: [ :create ]
       resources :trades, only: [ :index, :show, :create, :update, :destroy ]
-      resources :holdings, only: [ :index, :show ]
+resources :holdings, only: [ :index, :show ]
+resource :market_tracker, only: [ :show ], controller: :market_tracker do
+  get :quote
+end
+resources :watchlist_items, only: [ :create, :destroy ]
       resources :valuations, only: [ :index, :create, :update, :show ]
       resources :recurring_transactions, only: [ :index, :show, :create, :update, :destroy ]
       resources :family_exports, only: [ :index, :show, :create ] do
