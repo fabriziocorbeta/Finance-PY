@@ -89,6 +89,8 @@ class Category < ApplicationRecord
   UNCATEGORIZED_NAME_KEY = "models.category.uncategorized"
   OTHER_INVESTMENTS_NAME_KEY = "models.category.other_investments"
   INVESTMENT_CONTRIBUTIONS_NAME_KEY = "models.category.investment_contributions"
+  INVESTMENT_WITHDRAWALS_NAME_KEY = "models.category.investment_withdrawals"
+  LOAN_PAYMENTS_NAME_KEY = "models.category.default_loan_payments"
 
   class Group
     attr_reader :category, :subcategories
@@ -171,9 +173,7 @@ class Category < ApplicationRecord
     # Returns all possible uncategorized names across all supported locales
     # Used to detect uncategorized filter regardless of URL parameter language
     def all_uncategorized_names
-      I18n.available_locales.map do |locale|
-        I18n.t(UNCATEGORIZED_NAME_KEY, locale: locale)
-      end.uniq
+      all_localized_names_for(UNCATEGORIZED_NAME_KEY)
     end
 
     # Helper to get the localized name for other investments
@@ -189,12 +189,34 @@ class Category < ApplicationRecord
     # Returns all possible investment contributions names across all supported locales
     # Used to detect investment contributions category regardless of locale
     def all_investment_contributions_names
-      I18n.available_locales.map do |locale|
-        I18n.t(INVESTMENT_CONTRIBUTIONS_NAME_KEY, locale: locale)
-      end.uniq
+      all_localized_names_for(INVESTMENT_CONTRIBUTIONS_NAME_KEY)
+    end
+
+    # Helper to get the localized name for investment withdrawals
+    def investment_withdrawals_name
+      I18n.t(INVESTMENT_WITHDRAWALS_NAME_KEY)
+    end
+
+    # Returns all possible investment withdrawals names across all supported locales
+    def all_investment_withdrawals_names
+      all_localized_names_for(INVESTMENT_WITHDRAWALS_NAME_KEY)
+    end
+
+    # Helper to get the localized name for loan payments
+    def loan_payments_name
+      I18n.t(LOAN_PAYMENTS_NAME_KEY)
+    end
+
+    # Returns all possible loan payments names across all supported locales
+    def all_loan_payments_names
+      all_localized_names_for(LOAN_PAYMENTS_NAME_KEY)
     end
 
     private
+      def all_localized_names_for(key)
+        I18n.available_locales.map { |locale| I18n.t(key, locale: locale) }.uniq
+      end
+
       def default_categories
         [
           [ I18n.t("models.category.default_income"), "#22c55e", "circle-dollar-sign" ],
@@ -218,7 +240,8 @@ class Category < ApplicationRecord
           [ I18n.t("models.category.default_services"), "#7c3aed", "briefcase" ],
           [ I18n.t("models.category.default_fees"), "#6b7280", "receipt" ],
           [ I18n.t("models.category.default_savings_and_investments"), "#059669", "piggy-bank" ],
-          [ investment_contributions_name, "#0d9488", "trending-up" ]
+          [ investment_contributions_name, "#0d9488", "trending-up" ],
+          [ investment_withdrawals_name, "#f59e0b", "trending-down" ]
         ]
       end
   end

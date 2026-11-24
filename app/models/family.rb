@@ -192,42 +192,34 @@ class Family < ApplicationRecord
   # This is used for auto-categorizing transfers to investment accounts.
   # Always uses the family's locale to ensure consistent category naming across all users.
   def investment_contributions_category
-    # Find ALL legacy categories (created under old request-locale behavior)
-    legacy = categories.where(name: Category.all_investment_contributions_names).order(:created_at).to_a
+    find_or_create_system_category(
+      all_names: Category.all_investment_contributions_names,
+      target_name_proc: -> { Category.investment_contributions_name },
+      color: "#0d9488",
+      lucide_icon: "trending-up"
+    )
+  end
 
-    if legacy.any?
-      keeper = legacy.first
-      duplicates = legacy[1..]
+  # Returns the Investment Withdrawals category for this family, creating it if it doesn't exist.
+  # Used for auto-categorizing withdrawals from investment accounts.
+  def investment_withdrawals_category
+    find_or_create_system_category(
+      all_names: Category.all_investment_withdrawals_names,
+      target_name_proc: -> { Category.investment_withdrawals_name },
+      color: "#f59e0b",
+      lucide_icon: "trending-down"
+    )
+  end
 
-      # Reassign transactions and subcategories from duplicates to keeper
-      if duplicates.any?
-        duplicate_ids = duplicates.map(&:id)
-        categories.where(parent_id: duplicate_ids).update_all(parent_id: keeper.id)
-        Transaction.where(category_id: duplicate_ids).update_all(category_id: keeper.id)
-        BudgetCategory.where(category_id: duplicate_ids).update_all(category_id: keeper.id)
-        categories.where(id: duplicate_ids).delete_all
-      end
-
-      # Rename keeper to family's locale name if needed
-      I18n.with_locale(locale) do
-        correct_name = Category.investment_contributions_name
-        keeper.update!(name: correct_name) unless keeper.name == correct_name
-      end
-      return keeper
-    end
-
-    # Create new category using family's locale
-    I18n.with_locale(locale) do
-      categories.find_or_create_by!(name: Category.investment_contributions_name) do |cat|
-        cat.color = "#0d9488"
-        cat.lucide_icon = "trending-up"
-      end
-    end
-  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
-    # Handle race condition: another process created the category
-    I18n.with_locale(locale) do
-      categories.find_by!(name: Category.investment_contributions_name)
-    end
+  # Returns the Loan Payments category for this family, creating it if it doesn't exist.
+  # Used for auto-categorizing payments to loan accounts.
+  def loan_payments_category
+    find_or_create_system_category(
+      all_names: Category.all_loan_payments_names,
+      target_name_proc: -> { Category.loan_payments_name },
+      color: "#e11d48",
+      lucide_icon: "credit-card"
+    )
   end
 
   # Returns account IDs for tax-advantaged accounts (401k, IRA, HSA, etc.)
@@ -478,5 +470,39 @@ class Family < ApplicationRecord
       Money::Currency.new(value).iso_code
     rescue Money::Currency::UnknownCurrencyError, ArgumentError
       nil
+    end
+
+    def find_or_create_system_category(all_names:, target_name_proc:, color:, lucide_icon:)
+      legacy = categories.where(name: all_names).order(:created_at).to_a
+
+      if legacy.any?
+        keeper = legacy.first
+        duplicates = legacy[1..]
+
+        if duplicates.any?
+          duplicate_ids = duplicates.map(&:id)
+          categories.where(parent_id: duplicate_ids).update_all(parent_id: keeper.id)
+          Transaction.where(category_id: duplicate_ids).update_all(category_id: keeper.id)
+          BudgetCategory.where(category_id: duplicate_ids).update_all(category_id: keeper.id)
+          categories.where(id: duplicate_ids).delete_all
+        end
+
+        I18n.with_locale(locale) do
+          correct_name = target_name_proc.call
+          keeper.update!(name: correct_name) unless keeper.name == correct_name
+        end
+        return keeper
+      end
+
+      I18n.with_locale(locale) do
+        categories.find_or_create_by!(name: target_name_proc.call) do |cat|
+          cat.color = color
+          cat.lucide_icon = lucide_icon
+        end
+      end
+    rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
+      I18n.with_locale(locale) do
+        categories.find_by!(name: target_name_proc.call)
+      end
     end
 end

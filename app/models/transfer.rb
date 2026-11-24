@@ -35,6 +35,26 @@ class Transfer < ApplicationRecord
         "funds_movement"
       end
     end
+
+    # Returns the default system category for an outflow transfer transaction
+    # based on its kind and source/destination account types.
+    def auto_category_for(kind:, source_account:, destination_account:)
+      family = source_account.family
+
+      case kind
+      when "loan_payment"
+        family.loan_payments_category
+      when "investment_contribution"
+        dest_is_investment = destination_account.investment? || destination_account.crypto?
+        src_is_investment = source_account.investment? || source_account.crypto?
+
+        if dest_is_investment && !src_is_investment
+          family.investment_contributions_category
+        elsif src_is_investment && !dest_is_investment
+          family.investment_withdrawals_category
+        end
+      end
+    end
   end
 
   def reject!

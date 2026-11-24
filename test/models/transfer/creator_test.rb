@@ -142,7 +142,7 @@ class Transfer::CreatorTest < ActiveSupport::TestCase
     outflow = transfer.outflow_transaction
     assert_equal "investment_contribution", outflow.kind
     assert_equal "Withdrawal", outflow.investment_activity_label
-    assert_nil outflow.category, "Should NOT auto-assign the Investment Contributions category to a withdrawal"
+    assert_equal @family.investment_withdrawals_category, outflow.category, "Should auto-assign Investment Withdrawals category to a withdrawal"
     assert_equal "Transfer to #{@source_account.name}", outflow.entry.name
 
     # Verify inflow transaction (always funds_movement)
@@ -171,6 +171,7 @@ class Transfer::CreatorTest < ActiveSupport::TestCase
     # Verify outflow transaction is marked as loan payment
     outflow = transfer.outflow_transaction
     assert_equal "loan_payment", outflow.kind
+    assert_equal @family.loan_payments_category, outflow.category, "Should auto-assign Loan Payments category to a loan payment"
     assert_equal "Payment to #{loan_account.name}", outflow.entry.name
 
     # Verify inflow transaction
