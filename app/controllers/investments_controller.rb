@@ -3,9 +3,9 @@ class InvestmentsController < ApplicationController
 
   permitted_accountable_attributes :id, :subtype
 
-  skip_before_action :set_account, only: %i[index quote sync new_trade create_trade]
-  skip_before_action :set_manageable_account, only: %i[index quote sync new_trade create_trade]
-  skip_before_action :set_link_options, only: %i[index quote sync new_trade create_trade]
+  skip_before_action :set_account, only: %i[index quote quote_lookup sync new_trade create_trade]
+  skip_before_action :set_manageable_account, only: %i[index quote quote_lookup sync new_trade create_trade]
+  skip_before_action :set_link_options, only: %i[index quote quote_lookup sync new_trade create_trade]
 
   def index
     @range = Investments::MarketTrackerService.valid_range(params[:range])
@@ -64,6 +64,29 @@ class InvestmentsController < ApplicationController
       selected_ticker: @selected_ticker,
       selected_mic: @selected_mic
     }
+  end
+
+  def quote_lookup
+    ticker = params[:ticker].to_s.strip.upcase
+    if ticker.blank?
+      render json: { found: false }
+      return
+    end
+
+    card = Investments::MarketTrackerService.new.quote_for(ticker: ticker, range: "1mo")
+    if card&.current_price
+      render json: {
+        found: true,
+        ticker: card.ticker,
+        name: card.name,
+        currency: card.currency,
+        exchange_name: card.exchange_name,
+        current_price: card.current_price,
+        change_percent: card.change_percent
+      }
+    else
+      render json: { found: false, ticker: ticker }
+    end
   end
 
   def sync
