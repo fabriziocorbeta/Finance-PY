@@ -359,82 +359,82 @@ class Provider::YahooFinance < Provider
       cache_key = "quote_series_#{normalized_sym}_#{range}_#{interval}"
 
       if !clear_cache && (cached = get_cached_result(cache_key))
-        return cached
+        cached
+      else
+        data = fetch_chart_with_fallback(normalized_sym, {
+          "range" => range,
+          "interval" => interval,
+          "includePrePost" => false
+        })
+
+        if (err = data.dig("chart", "error"))
+          raise Error, err["description"] || err["code"] || "Chart error for #{normalized_sym}"
+        end
+
+        chart_data = data.dig("chart", "result", 0)
+        raise Error, "No chart data found for #{normalized_sym}" unless chart_data
+
+        meta = chart_data["meta"] || {}
+        timestamps = chart_data["timestamp"] || []
+        quotes = chart_data.dig("indicators", "quote", 0) || {}
+        closes = quotes["close"] || []
+
+        meta_exchange = meta["exchangeName"] || ""
+        raw_currency = meta["currency"] || default_currency_for_exchange(meta_exchange) || "USD"
+
+        daily_points = {}
+        timestamps.each_with_index do |ts, idx|
+          close_val = closes[idx]
+          next if close_val.nil? || close_val.to_f <= 0
+
+          date = Time.at(ts).utc.to_date
+          norm_curr, norm_price = normalize_currency_and_price(raw_currency, close_val.to_f)
+          raw_currency = norm_curr
+          daily_points[date] = norm_price.round(4)
+        end
+
+        points = daily_points.sort_by { |d, _| d }.map { |d, p| { date: d, price: p } }
+
+        raw_regular = meta["regularMarketPrice"]&.to_f
+        norm_curr, regular_price = raw_regular ? normalize_currency_and_price(raw_currency, raw_regular) : [ raw_currency, points.last&.dig(:price) ]
+        raw_prev = (meta["previousClose"] || meta["chartPreviousClose"])&.to_f
+        _, prev_close = raw_prev ? normalize_currency_and_price(raw_currency, raw_prev) : [ norm_curr, nil ]
+
+        # Fallback to second-to-last close when Yahoo omits previousClose on multi-day ranges
+        if prev_close.nil? && points.size >= 2
+          prev_close = points[-2][:price]
+        end
+
+        change = (regular_price && prev_close) ? (regular_price - prev_close).round(4) : nil
+        change_pct = (change && prev_close&.nonzero?) ? ((change / prev_close) * 100).round(2) : nil
+
+        _, day_high = meta["regularMarketDayHigh"] ? normalize_currency_and_price(raw_currency, meta["regularMarketDayHigh"].to_f) : [ norm_curr, nil ]
+        _, day_low = meta["regularMarketDayLow"] ? normalize_currency_and_price(raw_currency, meta["regularMarketDayLow"].to_f) : [ norm_curr, nil ]
+        _, week52_high = meta["fiftyTwoWeekHigh"] ? normalize_currency_and_price(raw_currency, meta["fiftyTwoWeekHigh"].to_f) : [ norm_curr, nil ]
+        _, week52_low = meta["fiftyTwoWeekLow"] ? normalize_currency_and_price(raw_currency, meta["fiftyTwoWeekLow"].to_f) : [ norm_curr, nil ]
+
+        quote_series = QuoteSeries.new(
+          symbol: normalized_sym,
+          name: meta["longName"] || meta["shortName"] || normalized_sym,
+          short_name: meta["shortName"] || meta["longName"] || normalized_sym,
+          currency: norm_curr,
+          exchange_name: meta["fullExchangeName"] || meta["exchangeName"],
+          instrument_type: meta["instrumentType"],
+          current_price: regular_price&.round(4),
+          previous_close: prev_close&.round(4),
+          change: change,
+          change_percent: change_pct,
+          day_high: day_high&.round(4),
+          day_low: day_low&.round(4),
+          fifty_two_week_high: week52_high&.round(4),
+          fifty_two_week_low: week52_low&.round(4),
+          volume: meta["regularMarketVolume"]&.to_i,
+          prices: points
+        )
+
+        cache_result(cache_key, quote_series)
+        quote_series
       end
-
-      data = fetch_chart_with_fallback(normalized_sym, {
-        "range" => range,
-        "interval" => interval,
-        "includePrePost" => false
-      })
-
-      if (err = data.dig("chart", "error"))
-        raise Error, err["description"] || err["code"] || "Chart error for #{normalized_sym}"
-      end
-
-      chart_data = data.dig("chart", "result", 0)
-      raise Error, "No chart data found for #{normalized_sym}" unless chart_data
-
-      meta = chart_data["meta"] || {}
-      timestamps = chart_data["timestamp"] || []
-      quotes = chart_data.dig("indicators", "quote", 0) || {}
-      closes = quotes["close"] || []
-
-      meta_exchange = meta["exchangeName"] || ""
-      raw_currency = meta["currency"] || default_currency_for_exchange(meta_exchange) || "USD"
-
-      daily_points = {}
-      timestamps.each_with_index do |ts, idx|
-        close_val = closes[idx]
-        next if close_val.nil? || close_val.to_f <= 0
-
-        date = Time.at(ts).utc.to_date
-        norm_curr, norm_price = normalize_currency_and_price(raw_currency, close_val.to_f)
-        raw_currency = norm_curr
-        daily_points[date] = norm_price.round(4)
-      end
-
-      points = daily_points.sort_by { |d, _| d }.map { |d, p| { date: d, price: p } }
-
-      raw_regular = meta["regularMarketPrice"]&.to_f
-      norm_curr, regular_price = raw_regular ? normalize_currency_and_price(raw_currency, raw_regular) : [ raw_currency, points.last&.dig(:price) ]
-      raw_prev = (meta["previousClose"] || meta["chartPreviousClose"])&.to_f
-      _, prev_close = raw_prev ? normalize_currency_and_price(raw_currency, raw_prev) : [ norm_curr, nil ]
-
-      # Fallback to second-to-last close when Yahoo omits previousClose on multi-day ranges
-      if prev_close.nil? && points.size >= 2
-        prev_close = points[-2][:price]
-      end
-
-      change = (regular_price && prev_close) ? (regular_price - prev_close).round(4) : nil
-      change_pct = (change && prev_close&.nonzero?) ? ((change / prev_close) * 100).round(2) : nil
-
-      _, day_high = meta["regularMarketDayHigh"] ? normalize_currency_and_price(raw_currency, meta["regularMarketDayHigh"].to_f) : [ norm_curr, nil ]
-      _, day_low = meta["regularMarketDayLow"] ? normalize_currency_and_price(raw_currency, meta["regularMarketDayLow"].to_f) : [ norm_curr, nil ]
-      _, week52_high = meta["fiftyTwoWeekHigh"] ? normalize_currency_and_price(raw_currency, meta["fiftyTwoWeekHigh"].to_f) : [ norm_curr, nil ]
-      _, week52_low = meta["fiftyTwoWeekLow"] ? normalize_currency_and_price(raw_currency, meta["fiftyTwoWeekLow"].to_f) : [ norm_curr, nil ]
-
-      quote_series = QuoteSeries.new(
-        symbol: normalized_sym,
-        name: meta["longName"] || meta["shortName"] || normalized_sym,
-        short_name: meta["shortName"] || meta["longName"] || normalized_sym,
-        currency: norm_curr,
-        exchange_name: meta["fullExchangeName"] || meta["exchangeName"],
-        instrument_type: meta["instrumentType"],
-        current_price: regular_price&.round(4),
-        previous_close: prev_close&.round(4),
-        change: change,
-        change_percent: change_pct,
-        day_high: day_high&.round(4),
-        day_low: day_low&.round(4),
-        fifty_two_week_high: week52_high&.round(4),
-        fifty_two_week_low: week52_low&.round(4),
-        volume: meta["regularMarketVolume"]&.to_i,
-        prices: points
-      )
-
-      cache_result(cache_key, quote_series)
-      quote_series
     rescue JSON::ParserError => e
       raise Error, "Invalid response format: #{e.message}"
     end
