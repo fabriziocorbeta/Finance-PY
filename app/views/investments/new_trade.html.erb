@@ -1,0 +1,89 @@
+<%= render DS::Dialog.new(frame: :modal) do |dialog| %>
+  <% dialog.with_header(title: t("investments.new_trade.title")) %>
+
+  <% dialog.with_body do %>
+    <% if @investment_accounts.empty? %>
+      <div class="p-4 space-y-3 text-center">
+        <p class="text-sm text-secondary"><%= t("investments.new_trade.no_account") %></p>
+        <%= link_to new_account_path(step: "method_select", classification: "asset"),
+                    data: { turbo_frame: :modal },
+                    class: "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-inverse bg-inverse hover:bg-inverse-hover" do %>
+          <%= icon("plus", size: "sm", color: "current") %>
+          <span><%= t("investments.index.new_account") %></span>
+        <% end %>
+      </div>
+    <% else %>
+      <%= form_with url: create_trade_investments_path, method: :post, class: "space-y-4" do |f| %>
+        <% if @model&.errors&.any? %>
+          <%= render "shared/form_errors", model: @model %>
+        <% end %>
+
+        <div>
+          <label class="block text-xs font-medium text-secondary mb-1"><%= t("investments.new_trade.account") %></label>
+          <%= select_tag :account_id,
+                         options_from_collection_for_select(@investment_accounts, :id, :name, @selected_account&.id),
+                         required: true,
+                         class: "w-full px-3 py-2 rounded-lg text-sm border border-primary bg-container-inset text-primary" %>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-secondary mb-1"><%= t("investments.new_trade.type") %></label>
+            <%= select_tag :type,
+                           options_for_select([[t("investments.new_trade.buy"), "buy"], [t("investments.new_trade.sell"), "sell"]], @trade_type),
+                           class: "w-full px-3 py-2 rounded-lg text-sm border border-primary bg-container-inset text-primary" %>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-secondary mb-1"><%= t("investments.new_trade.date") %></label>
+            <%= date_field_tag :date, Date.current, required: true,
+                               class: "w-full px-3 py-2 rounded-lg text-sm border border-primary bg-container-inset text-primary" %>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-secondary mb-1"><%= t("investments.new_trade.ticker") %></label>
+          <%= text_field_tag :ticker, @ticker,
+                             placeholder: "VOO, QQQ, SPY, AAPL",
+                             required: true,
+                             class: "w-full px-3 py-2 rounded-lg text-sm border border-primary bg-container-inset text-primary uppercase" %>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-secondary mb-1"><%= t("investments.new_trade.qty") %></label>
+            <%= number_field_tag :qty, nil,
+                                 placeholder: "0.0085",
+                                 step: "any",
+                                 min: "0.00000001",
+                                 required: true,
+                                 class: "w-full px-3 py-2 rounded-lg text-sm border border-primary bg-container-inset text-primary" %>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-secondary mb-1"><%= t("investments.new_trade.price") %></label>
+            <%= number_field_tag :price, @price,
+                                 placeholder: "540.00",
+                                 step: "any",
+                                 min: "0",
+                                 required: true,
+                                 class: "w-full px-3 py-2 rounded-lg text-sm border border-primary bg-container-inset text-primary" %>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-secondary mb-1"><%= t("investments.new_trade.fee") %></label>
+          <%= number_field_tag :fee, 0,
+                               step: "any",
+                               min: "0",
+                               class: "w-full px-3 py-2 rounded-lg text-sm border border-primary bg-container-inset text-primary" %>
+        </div>
+
+        <div class="pt-2">
+          <%= f.submit t("investments.new_trade.submit"),
+                       class: "w-full py-2.5 rounded-lg text-sm font-medium text-inverse bg-inverse hover:bg-inverse-hover cursor-pointer" %>
+        </div>
+      <% end %>
+    <% end %>
+  <% end %>
+<% end %>

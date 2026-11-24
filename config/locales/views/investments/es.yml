@@ -36,9 +36,25 @@ es:
       week52_range: Rango 52 semanas
       volume: Volumen
       unavailable: No se pudieron obtener datos de mercado en este momento
+    new_trade:
+      title: Registrar compra / posición
+      account: Cuenta de inversión
+      type: Operación
+      buy: Compra
+      sell: Venta
+      date: Fecha
+      ticker: Ticker (ETF o acción)
+      qty: Acciones / Fracciones
+      price: Precio por acción
+      fee: Comisión (opcional)
+      submit: Guardar posición
+      success: Posición registrada correctamente
+      no_account: Necesitas crear una cuenta de inversión antes de registrar una posición.
     portfolio:
       title: Mis Inversiones (ETFs y Acciones)
       subtitle: Posiciones consolidadas de todas tus cuentas de inversión
+      add_holding: Agregar posición
+      add_more: Comprar / Vender más
       total_value: Valor del portafolio
       total_return: Retorno total
       day_change: Cambio del día
@@ -49,12 +65,14 @@ es:
       no_accounts_description: Registra tus ETFs, acciones o fondos para seguir su rendimiento en tiempo real.
       columns:
         asset: Activo
-        price: Precio
+        price: Precio Mkt
+        avg_cost: Costo Prom.
+        total_cost: Costo Total
         day_change: Cambio 1D
         trend_1m: Tendencia 1M
         shares: Acciones
-        value: Valor
-        return: Retorno
+        value: Valor Mkt
+        return: Ganancia Total
     watchlist:
       title: Lista de Seguimiento
       subtitle: Sigue ETFs, acciones e índices como en Yahoo Finance o Google Finance
@@ -63,6 +81,7 @@ es:
       ticker_placeholder: "Ticker (ej. VOO, ^GSPC)"
       add_ticker_button: Seguir ticker
       quick_add: "Sugeridos:"
+      buy_position: Posición
       remove: Eliminar
       remove_confirm: "¿Eliminar %{ticker} de tu lista de seguimiento?"
       empty_title: Tu lista de seguimiento está vacía

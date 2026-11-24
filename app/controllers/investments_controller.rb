@@ -3,9 +3,9 @@ class InvestmentsController < ApplicationController
 
   permitted_accountable_attributes :id, :subtype
 
-  skip_before_action :set_account, only: %i[index quote sync]
-  skip_before_action :set_manageable_account, only: %i[index quote sync]
-  skip_before_action :set_link_options, only: %i[index quote sync]
+  skip_before_action :set_account, only: %i[index quote sync new_trade create_trade]
+  skip_before_action :set_manageable_account, only: %i[index quote sync new_trade create_trade]
+  skip_before_action :set_link_options, only: %i[index quote sync new_trade create_trade]
 
   def index
     @range = Investments::MarketTrackerService.valid_range(params[:range])
@@ -73,6 +73,54 @@ class InvestmentsController < ApplicationController
       range: Investments::MarketTrackerService.valid_range(params[:range]),
       refresh: "1"
     ), notice: t("investments.index.synced")
+  end
+
+  def new_trade
+    @investment_accounts = accessible_accounts.visible.where(accountable_type: "Investment").alphabetically
+    @selected_account = @investment_accounts.find_by(id: params[:account_id]) || @investment_accounts.first
+    @ticker = params[:ticker].to_s.strip.upcase.presence
+    @price = params[:price].presence
+    @trade_type = %w[buy sell].include?(params[:type]) ? params[:type] : "buy"
+  end
+
+  def create_trade
+    @investment_accounts = accessible_accounts.visible.where(accountable_type: "Investment").alphabetically
+    account = @investment_accounts.find(params[:account_id])
+    return unless require_account_permission!(account)
+
+    raw_ticker = params[:ticker].to_s.strip.upcase
+    resolved_ticker = raw_ticker.include?("|") ? raw_ticker : "#{raw_ticker}||yahoo_finance"
+
+    @model = Trade::CreateForm.new(
+      account: account,
+      type: %w[buy sell].include?(params[:type]) ? params[:type] : "buy",
+      ticker: resolved_ticker,
+      qty: params[:qty],
+      price: params[:price],
+      fee: params[:fee].presence || 0,
+      date: params[:date].presence || Date.current,
+      currency: account.currency
+    ).create
+
+    if @model.persisted?
+      if @model.is_a?(Entry)
+        @model.lock_saved_attributes!
+        @model.mark_user_modified!
+        if @model.trade&.security_id
+          strategy = account.linked? ? :reverse : :forward
+          Balance::Materializer.new(account, strategy: strategy, security_ids: [ @model.trade.security_id ]).materialize_balances
+        end
+      end
+
+      redirect_to investments_path(ticker: @model.try(:trade)&.security&.ticker || raw_ticker),
+                  notice: t("investments.new_trade.success")
+    else
+      @selected_account = account
+      @ticker = raw_ticker
+      @price = params[:price]
+      @trade_type = params[:type] || "buy"
+      render :new_trade, status: :unprocessable_entity
+    end
   end
 
   private

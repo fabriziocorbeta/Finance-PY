@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import py.com.cdco.financespy.api.FinancePyApi
 import py.com.cdco.financespy.api.dto.AccountDto
+import py.com.cdco.financespy.api.dto.CreateTradeBody
+import py.com.cdco.financespy.api.dto.CreateTradeRequest
 import py.com.cdco.financespy.api.dto.DashboardDto
 import py.com.cdco.financespy.api.dto.MarketQuoteDto
 import py.com.cdco.financespy.api.dto.PortfolioHoldingDto
@@ -21,6 +23,8 @@ data class AggregatedHolding(
     val ticker: String,
     val name: String,
     val currency: String,
+    val qty: Double,
+    val avgCostCents: Long?,
     val amountCents: Long,
     val accountsCount: Int
 )
@@ -81,11 +85,24 @@ class InvestmentsListViewModel(
         val bySecurity = currentHoldings
             .groupBy { it.security.id }
             .map { (securityId, snapshots) ->
+                val totalQty = snapshots.sumOf { it.qty.toDoubleOrNull() ?: 0.0 }
+                val avgCostWeighted = snapshots.mapNotNull { snap ->
+                    val q = snap.qty.toDoubleOrNull() ?: 0.0
+                    val ac = snap.avg_cost_cents
+                    if (ac != null && q > 0.0) ac * q else null
+                }
+                val avgCostCents = if (avgCostWeighted.isNotEmpty() && totalQty > 0.0) {
+                    (avgCostWeighted.sum() / totalQty).toLong()
+                } else {
+                    snapshots.firstOrNull()?.avg_cost_cents
+                }
                 AggregatedHolding(
                     securityId = securityId,
                     ticker = snapshots.first().security.ticker,
                     name = snapshots.first().security.name ?: snapshots.first().security.ticker,
                     currency = snapshots.first().currency,
+                    qty = totalQty,
+                    avgCostCents = avgCostCents,
                     amountCents = snapshots.sumOf { it.amount_cents ?: 0L },
                     accountsCount = snapshots.map { it.account.id }.distinct().size
                 )
@@ -192,6 +209,46 @@ class InvestmentsListViewModel(
                     it.copy(
                         isMutatingWatchlist = false,
                         marketError = e.message ?: "No se pudo eliminar de seguimiento"
+                    )
+                }
+            }
+        }
+    }
+
+    fun recordTrade(
+        accountId: String,
+        type: String,
+        ticker: String,
+        qty: String,
+        price: String,
+        date: String
+    ) {
+        val cleanTicker = ticker.trim().uppercase()
+        if (cleanTicker.isEmpty() || qty.isBlank() || price.isBlank()) return
+
+        viewModelScope.launch {
+            _state.update { it.copy(isMutatingWatchlist = true, marketError = null) }
+            try {
+                val resolvedTicker = if (cleanTicker.contains("|")) cleanTicker else "$cleanTicker||yahoo_finance"
+                api.createTrade(
+                    CreateTradeRequest(
+                        trade = CreateTradeBody(
+                            account_id = accountId,
+                            type = type,
+                            ticker = resolvedTicker,
+                            qty = qty.trim(),
+                            price = price.trim(),
+                            date = date.trim()
+                        )
+                    )
+                )
+                _state.update { it.copy(isMutatingWatchlist = false, selectedTicker = cleanTicker) }
+                refresh(forceMarketRefresh = false)
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isMutatingWatchlist = false,
+                        marketError = e.message ?: "No se pudo registrar la posición"
                     )
                 }
             }

@@ -145,15 +145,25 @@
                 </td>
 
                 <td class="px-4 py-3 text-right">
-                  <% if q.watchlist_item %>
-                    <%= button_to watchlist_item_path(q.watchlist_item),
-                                  method: :delete,
-                                  form: { data: { turbo_confirm: t("investments.watchlist.remove_confirm", ticker: q.ticker) } },
-                                  class: "inline-flex items-center justify-center p-1.5 rounded-lg text-secondary hover:text-red-600 hover:bg-surface-hover cursor-pointer",
-                                  title: t("investments.watchlist.remove") do %>
-                      <%= icon("trash-2", size: "xs") %>
+                  <div class="inline-flex items-center gap-1.5">
+                    <% unless q.category == "index" %>
+                      <%= link_to new_trade_investments_path(ticker: q.ticker, price: q.current_price),
+                                  data: { turbo_frame: :modal },
+                                  class: "inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-primary border border-secondary bg-container hover:bg-surface-hover" do %>
+                        <%= icon("plus", size: "xs") %>
+                        <span><%= t("investments.watchlist.buy_position") %></span>
+                      <% end %>
                     <% end %>
-                  <% end %>
+                    <% if q.watchlist_item %>
+                      <%= button_to watchlist_item_path(q.watchlist_item),
+                                    method: :delete,
+                                    form: { data: { turbo_confirm: t("investments.watchlist.remove_confirm", ticker: q.ticker) } },
+                                    class: "inline-flex items-center justify-center p-1.5 rounded-lg text-secondary hover:text-red-600 hover:bg-surface-hover cursor-pointer",
+                                    title: t("investments.watchlist.remove") do %>
+                        <%= icon("trash-2", size: "xs") %>
+                      <% end %>
+                    <% end %>
+                  </div>
                 </td>
               </tr>
             <% end %>

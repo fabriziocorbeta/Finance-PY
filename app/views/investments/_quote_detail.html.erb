@@ -66,6 +66,15 @@
           <% end %>
         </div>
 
+        <% unless quote.category == "index" %>
+          <%= link_to new_trade_investments_path(ticker: quote.ticker, price: quote.current_price),
+                      data: { turbo_frame: :modal },
+                      class: "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-inverse bg-inverse hover:bg-inverse-hover" do %>
+            <%= icon("plus", size: "xs", color: "current") %>
+            <span><%= t("investments.portfolio.add_holding") %></span>
+          <% end %>
+        <% end %>
+
         <% unless quote.watchlist_item.present? %>
           <%= button_to watchlist_items_path(ticker: quote.ticker, exchange_operating_mic: selected_mic),
                         method: :post,
