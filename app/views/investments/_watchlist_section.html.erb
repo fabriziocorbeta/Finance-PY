@@ -1,0 +1,170 @@
+<%# locals: (watchlist_quotes:, range:) %>
+
+<section class="bg-container rounded-xl shadow-border-xs p-4 lg:p-6 space-y-5">
+  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+    <div>
+      <h2 class="text-lg font-medium text-primary"><%= t("investments.watchlist.title") %></h2>
+      <p class="text-xs text-secondary"><%= t("investments.watchlist.subtitle") %></p>
+    </div>
+
+    <%# Add to Watchlist Form %>
+    <div class="flex flex-wrap items-center gap-2">
+      <% if Security.providers.any? %>
+        <%= form_with url: watchlist_items_path, method: :post, class: "flex items-center gap-2" do |f| %>
+          <div class="w-64 form-field combobox">
+            <%= f.combobox :security_id,
+                           securities_path(country_code: Current.family.country),
+                           placeholder: t("investments.watchlist.search_placeholder"),
+                           required: true %>
+          </div>
+          <%= f.submit t("investments.watchlist.add_button"),
+                       class: "px-3 py-2 rounded-lg text-sm font-medium text-inverse bg-inverse hover:bg-inverse-hover cursor-pointer" %>
+        <% end %>
+      <% end %>
+
+      <%= form_with url: watchlist_items_path, method: :post, class: "flex items-center gap-2" do |f| %>
+        <%= f.text_field :ticker,
+                         placeholder: t("investments.watchlist.ticker_placeholder"),
+                         required: true,
+                         class: "w-40 px-3 py-2 rounded-lg text-sm border border-primary bg-container-inset text-primary uppercase" %>
+        <%= f.submit t("investments.watchlist.add_ticker_button"),
+                     class: "px-3 py-2 rounded-lg text-sm font-medium text-primary border border-secondary bg-container hover:bg-surface-hover cursor-pointer" %>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Quick-add popular ETFs & Stocks %>
+  <% existing_tickers = watchlist_quotes.map { |q| q.ticker.upcase } %>
+  <% quick_picks = [
+    { ticker: "SPY", label: "SPY (S&P 500 ETF)" },
+    { ticker: "QQQ", label: "QQQ (Nasdaq 100 ETF)" },
+    { ticker: "VOO", label: "VOO (Vanguard S&P 500)" },
+    { ticker: "VT", label: "VT (Total World ETF)" },
+    { ticker: "GLD", label: "GLD (Gold ETF)" },
+    { ticker: "AAPL", label: "AAPL" },
+    { ticker: "MSFT", label: "MSFT" },
+    { ticker: "NVDA", label: "NVDA" }
+  ].reject { |p| existing_tickers.include?(p[:ticker]) } %>
+
+  <% if quick_picks.any? %>
+    <div class="flex flex-wrap items-center gap-1.5">
+      <span class="text-xs text-secondary mr-1"><%= t("investments.watchlist.quick_add") %></span>
+      <% quick_picks.each do |pick| %>
+        <%= button_to watchlist_items_path(ticker: pick[:ticker]),
+                      method: :post,
+                      class: "px-2.5 py-1 rounded-full text-xs font-medium bg-container-inset text-secondary hover:text-primary hover:bg-surface-hover transition-colors cursor-pointer" do %>
+          + <%= pick[:label] %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if watchlist_quotes.any? %>
+    <div class="bg-container-inset rounded-xl p-1 overflow-x-auto">
+      <div class="rounded-lg shadow-border-xs bg-container overflow-hidden min-w-[680px]">
+        <table class="w-full">
+          <thead class="bg-container-inset">
+            <tr class="uppercase text-xs font-medium text-secondary">
+              <th class="px-4 py-2.5 text-left font-medium"><%= t("investments.watchlist.columns.symbol") %></th>
+              <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.watchlist.columns.price") %></th>
+              <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.watchlist.columns.day_change") %></th>
+              <th class="px-4 py-2.5 text-right font-medium"><%= t("investments.watchlist.columns.month_change") %></th>
+              <th class="px-4 py-2.5 text-center font-medium"><%= t("investments.watchlist.columns.trend_1m") %></th>
+              <th class="px-4 py-2.5 text-right font-medium"></th>
+            </tr>
+          </thead>
+          <tbody class="text-sm">
+            <% watchlist_quotes.each_with_index do |q, idx| %>
+              <tr id="<%= dom_id(q.watchlist_item) if q.watchlist_item %>"
+                  class="<%= idx < watchlist_quotes.size - 1 ? 'table-divider' : '' %> hover:bg-surface-hover transition-colors">
+                <td class="px-4 py-3">
+                  <%= link_to quote_investments_path(ticker: q.ticker, mic: q.security&.exchange_operating_mic, range: range),
+                              data: { turbo_frame: "market_quote_detail" },
+                              class: "flex items-center gap-3 group" do %>
+                    <% if (logo = q.security&.display_logo_url).present? %>
+                      <img src="<%= Setting.transform_brand_fetch_url(logo) %>" alt="<%= q.ticker %>" class="w-8 h-8 rounded-full shrink-0">
+                    <% else %>
+                      <div class="w-8 h-8 rounded-full bg-container-inset flex items-center justify-center text-xs font-medium text-secondary shrink-0">
+                        <%= q.ticker.to_s.first(2) %>
+                      </div>
+                    <% end %>
+                    <div class="min-w-0">
+                      <div class="flex items-center gap-1.5">
+                        <span class="font-medium text-primary group-hover:underline"><%= q.ticker %></span>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-container-inset text-secondary uppercase">
+                          <%= t("investments.categories.#{q.category}", default: q.category) %>
+                        </span>
+                      </div>
+                      <p class="text-xs text-secondary truncate max-w-56"><%= q.name %></p>
+                    </div>
+                  <% end %>
+                </td>
+
+                <td class="px-4 py-3 text-right tabular-nums font-medium text-primary">
+                  <% if q.current_price %>
+                    <%= number_with_delimiter(number_with_precision(q.current_price, precision: 2)) %>
+                    <span class="text-xs text-secondary"><%= q.currency %></span>
+                  <% else %>
+                    —
+                  <% end %>
+                </td>
+
+                <td class="px-4 py-3 text-right tabular-nums">
+                  <% if q.change_percent %>
+                    <% c_cls = q.positive? ? "text-green-600" : "text-red-600" %>
+                    <span class="font-medium <%= c_cls %>">
+                      <%= q.change_percent >= 0 ? "+" : "" %><%= number_with_precision(q.change_percent, precision: 2) %>%
+                    </span>
+                  <% else %>
+                    <span class="text-secondary">—</span>
+                  <% end %>
+                </td>
+
+                <td class="px-4 py-3 text-right tabular-nums">
+                  <% if q.period_change_percent %>
+                    <% p_cls = q.period_positive? ? "text-green-600" : "text-red-600" %>
+                    <span class="font-medium <%= p_cls %>">
+                      <%= q.period_change_percent >= 0 ? "+" : "" %><%= number_with_precision(q.period_change_percent, precision: 2) %>%
+                    </span>
+                  <% else %>
+                    <span class="text-secondary">—</span>
+                  <% end %>
+                </td>
+
+                <td class="px-4 py-3">
+                  <% if q.series %>
+                    <div class="w-20 h-7 mx-auto">
+                      <%= render "shared/sparkline",
+                                 id: "watchlist-sparkline-#{q.ticker.parameterize}",
+                                 series: q.series,
+                                 stroke_width: 1.5 %>
+                    </div>
+                  <% else %>
+                    <p class="text-center text-xs text-secondary">—</p>
+                  <% end %>
+                </td>
+
+                <td class="px-4 py-3 text-right">
+                  <% if q.watchlist_item %>
+                    <%= button_to watchlist_item_path(q.watchlist_item),
+                                  method: :delete,
+                                  form: { data: { turbo_confirm: t("investments.watchlist.remove_confirm", ticker: q.ticker) } },
+                                  class: "inline-flex items-center justify-center p-1.5 rounded-lg text-secondary hover:text-red-600 hover:bg-surface-hover cursor-pointer",
+                                  title: t("investments.watchlist.remove") do %>
+                      <%= icon("trash-2", size: "xs") %>
+                    <% end %>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% else %>
+    <div class="rounded-lg bg-container-inset p-6 text-center space-y-1">
+      <p class="text-sm font-medium text-primary"><%= t("investments.watchlist.empty_title") %></p>
+      <p class="text-xs text-secondary"><%= t("investments.watchlist.empty_description") %></p>
+    </div>
+  <% end %>
+</section>
