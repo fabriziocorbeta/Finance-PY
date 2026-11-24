@@ -25,7 +25,10 @@ class InvestmentsController < ApplicationController
     @holding_quotes = tracker.holding_quotes(@holdings, force_refresh: force_refresh)
 
     selected_security, selected_watchlist = resolve_selected_context(@selected_ticker, @selected_mic)
-    @featured_quote = tracker.quote_for(
+    @featured_quote = if @range == "1mo" && !force_refresh
+      find_preloaded_quote(@selected_ticker, @selected_mic)
+    end
+    @featured_quote ||= tracker.quote_for(
       ticker: @selected_ticker,
       exchange_operating_mic: @selected_mic,
       range: @range,
@@ -73,6 +76,13 @@ class InvestmentsController < ApplicationController
   end
 
   private
+    def find_preloaded_quote(ticker, mic)
+      all_cards = @index_quotes + @watchlist_quotes + @holding_quotes.values
+      all_cards.find do |card|
+        card.ticker.casecmp?(ticker) && (mic.blank? || card.security&.exchange_operating_mic.to_s.casecmp?(mic))
+      end
+    end
+
     def resolve_selected_context(ticker, mic)
       watchlist_item = @watchlist_items.find do |item|
         item.ticker.casecmp?(ticker) && (mic.blank? || item.exchange_operating_mic.to_s.casecmp?(mic))
