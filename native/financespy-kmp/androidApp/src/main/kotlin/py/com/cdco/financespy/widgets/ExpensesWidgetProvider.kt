@@ -86,7 +86,12 @@ class ExpensesWidgetProvider : AppWidgetProvider() {
             rowIds.drop(1).forEach { views.setViewVisibility(it, View.GONE) }
         }
 
-        val launchIntent = Intent(context, MainActivity::class.java)
+        val launchIntent = Intent(
+            Intent.ACTION_VIEW,
+            android.net.Uri.parse("financespy://widgets/recent_expenses"),
+            context,
+            MainActivity::class.java
+        )
         val pendingIntent = PendingIntent.getActivity(
             context,
             widgetId + 10_000,

@@ -7,29 +7,30 @@
       <p class="text-xs text-secondary"><%= t("investments.watchlist.subtitle") %></p>
     </div>
 
-    <%# Add to Watchlist Form %>
-    <div class="flex flex-wrap items-center gap-2">
-      <% if Security.providers.any? %>
-        <%= form_with url: watchlist_items_path, method: :post, class: "flex items-center gap-2" do |f| %>
-          <div class="w-64 form-field combobox">
-            <%= f.combobox :security_id,
-                           securities_path(country_code: Current.family.country),
+    <%# Unified Yahoo / Google Finance Live Search & Add to Watchlist Form %>
+    <div class="relative w-full lg:w-96"
+         data-controller="watchlist-search"
+         data-watchlist-search-url-value="<%= quote_lookup_investments_path %>">
+      <%= form_with url: watchlist_items_path, method: :post, class: "flex items-center gap-2", data: { watchlist_search_target: "form" } do |f| %>
+        <%= f.hidden_field :exchange_operating_mic, data: { watchlist_search_target: "mic" } %>
+        <div class="relative flex-1">
+          <%= f.text_field :ticker,
                            placeholder: t("investments.watchlist.search_placeholder"),
-                           required: true %>
-          </div>
-          <%= f.submit t("investments.watchlist.add_button"),
-                       class: "px-3 py-2 rounded-lg text-sm font-medium text-inverse bg-inverse hover:bg-inverse-hover cursor-pointer" %>
-        <% end %>
+                           required: true,
+                           autocomplete: "off",
+                           data: {
+                             watchlist_search_target: "input",
+                             action: "input->watchlist-search#onInput focus->watchlist-search#onInput"
+                           },
+                           class: "w-full px-3 py-2 rounded-lg text-sm border border-primary bg-container-inset text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary" %>
+        </div>
+        <%= f.submit t("investments.watchlist.add_button"),
+                     class: "px-4 py-2 rounded-lg text-sm font-medium text-inverse bg-inverse hover:bg-inverse-hover cursor-pointer shrink-0" %>
       <% end %>
 
-      <%= form_with url: watchlist_items_path, method: :post, class: "flex items-center gap-2" do |f| %>
-        <%= f.text_field :ticker,
-                         placeholder: t("investments.watchlist.ticker_placeholder"),
-                         required: true,
-                         class: "w-40 px-3 py-2 rounded-lg text-sm border border-primary bg-container-inset text-primary uppercase" %>
-        <%= f.submit t("investments.watchlist.add_ticker_button"),
-                     class: "px-3 py-2 rounded-lg text-sm font-medium text-primary border border-secondary bg-container hover:bg-surface-hover cursor-pointer" %>
-      <% end %>
+      <div data-watchlist-search-target="results"
+           class="hidden absolute left-0 right-0 mt-1.5 z-30 rounded-xl bg-container shadow-border-xs border border-secondary divide-y divide-tertiary overflow-hidden">
+      </div>
     </div>
   </div>
 

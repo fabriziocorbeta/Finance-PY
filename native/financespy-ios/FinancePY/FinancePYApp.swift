@@ -253,6 +253,7 @@ struct FinancePYApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var isLoggedIn = false
     @State private var isCheckingAuth = true
+    @State private var pendingWidgetTab: String? = nil
 
     let container: ModelContainer
 
@@ -266,7 +267,7 @@ struct FinancePYApp: App {
                 if isCheckingAuth {
                     ProgressView("Cargando...")
                 } else if isLoggedIn {
-                    MainTabView(isLoggedIn: $isLoggedIn, container: container)
+                    MainTabView(isLoggedIn: $isLoggedIn, container: container, pendingWidgetTab: $pendingWidgetTab)
                 } else {
                     LoginView(isLoggedIn: $isLoggedIn)
                 }
@@ -319,6 +320,22 @@ struct FinancePYApp: App {
                 syncSecurityOverlay()
             }
             .onOpenURL { url in
+                if url.scheme == "financespy", url.host == "widgets" {
+                    let target = url.pathComponents.dropFirst().first?.lowercased() ?? "dashboard"
+                    switch target {
+                    case "available", "dashboard":
+                        pendingWidgetTab = "dashboard"
+                    case "recent_expenses", "expenses", "transactions":
+                        pendingWidgetTab = "transactions"
+                    case "budgets", "budget":
+                        pendingWidgetTab = "budgets"
+                    case "sales":
+                        pendingWidgetTab = "sales"
+                    default:
+                        pendingWidgetTab = "dashboard"
+                    }
+                    return
+                }
                 Task {
                     do {
                         try await authRepository.handleCallbackUrl(url)
@@ -360,19 +377,22 @@ struct FinancePYApp: App {
 struct MainTabView: View {
     @Binding var isLoggedIn: Bool
     let container: ModelContainer
+    @Binding var pendingWidgetTab: String?
 
     @StateObject private var syncEngine: SyncEngine
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @Query private var accounts: [AccountEntity]
     @State private var isCheckingAccounts = true
     @State private var shouldShowOnboarding = false
+    @State private var selectedTab: String = "dashboard"
 
     @State private var navItemOrder: [String] = ["dashboard", "transactions", "reports", "budgets", "goals", "receivables", "chat"]
     @State private var businessModeEnabled = false
 
-    init(isLoggedIn: Binding<Bool>, container: ModelContainer) {
+    init(isLoggedIn: Binding<Bool>, container: ModelContainer, pendingWidgetTab: Binding<String?> = .constant(nil)) {
         self._isLoggedIn = isLoggedIn
         self.container = container
+        self._pendingWidgetTab = pendingWidgetTab
         self._syncEngine = StateObject(wrappedValue: SyncEngine(modelContext: container.mainContext))
     }
 
@@ -414,13 +434,14 @@ struct MainTabView: View {
         // and automatically puts the rest in a "More" tab, but we'll manage it explicitly to match the requirement.
         let mainTabIds = Array(navItemOrder.prefix(4)) // Reserve 1 for More/Settings
 
-        return TabView {
+        return TabView(selection: $selectedTab) {
             ForEach(mainTabIds, id: \.self) { id in
                 if let item = pool.first(where: { $0.id == id }) {
                     viewForId(id)
                         .tabItem {
                             Label(item.label, systemImage: item.icon)
                         }
+                        .tag(id)
                 }
             }
 
@@ -454,6 +475,18 @@ struct MainTabView: View {
             }
             .tabItem {
                 Label("Más", systemImage: "ellipsis")
+            }
+            .tag("more")
+        }
+        .onChange(of: pendingWidgetTab) { _, newTarget in
+            guard let target = newTarget else { return }
+            selectedTab = mainTabIds.contains(target) ? target : "more"
+            pendingWidgetTab = nil
+        }
+        .onAppear {
+            if let target = pendingWidgetTab {
+                selectedTab = mainTabIds.contains(target) ? target : "more"
+                pendingWidgetTab = nil
             }
         }
     }

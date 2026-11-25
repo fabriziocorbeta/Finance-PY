@@ -178,7 +178,9 @@ fun App(
     onTakeInvoicePhoto: ((onPicked: (ByteArray, String, String) -> Unit) -> Unit)? = null,
     onRequestCurrentLocation: ((onLocation: (Double, Double) -> Unit) -> Unit)? = null,
     chatsListViewModelFactory: () -> ChatsListViewModel = { TODO() },
-    chatViewModelFactory: (String?) -> ChatViewModel = { _ -> TODO() }
+    chatViewModelFactory: (String?) -> ChatViewModel = { _ -> TODO() },
+    deepLinkRoute: String? = null,
+    onDeepLinkConsumed: (() -> Unit)? = null
 ) {
     var localUiVariant by remember(uiVariantPreferences) {
         mutableStateOf(uiVariantPreferences?.getUiVariant() ?: uiVariant)
@@ -203,6 +205,18 @@ fun App(
                 val navController = rememberNavController()
                 val backStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = backStackEntry?.destination?.route
+
+                LaunchedEffect(deepLinkRoute) {
+                    val targetRoute = deepLinkRoute ?: return@LaunchedEffect
+                    if (targetRoute != currentRoute) {
+                        navController.navigate(targetRoute) {
+                            popUpTo(Routes.DASHBOARD) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                    onDeepLinkConsumed?.invoke()
+                }
 
                 val settingsVm = remember { settingsViewModelFactory() }
                 val settingsState by settingsVm.uiState.collectAsState()

@@ -4,13 +4,18 @@ module Security::Provided
   SecurityInfoMissingError = Class.new(StandardError)
 
   class_methods do
-    # Returns all enabled and configured securities providers
+    # Returns all enabled and configured securities providers, always including
+    # YahooFinance as a zero-config fallback so ticker/name search works out of the box.
     def providers
-      Setting.enabled_securities_providers.filter_map do |name|
+      configured = Setting.enabled_securities_providers.filter_map do |name|
         Provider::Registry.for_concept(:securities).get_provider(name.to_sym)
       rescue Provider::Registry::Error
         nil
       end
+      if configured.none? { |p| p.is_a?(Provider::YahooFinance) }
+        configured << Provider::YahooFinance.new
+      end
+      configured
     end
 
     # Backward compat: first enabled provider

@@ -514,6 +514,7 @@ class MainActivity : FragmentActivity() {
         }
 
         handleOAuthRedirect(intent)
+        handleWidgetDeepLink(intent)
 
         val tSetContent = System.currentTimeMillis()
         Log.d("ColdStartProfile", "[Optimized] Calling setContent at +${tSetContent - onCreateStartTime} ms from onCreate")
@@ -722,7 +723,9 @@ class MainActivity : FragmentActivity() {
                     shareFile(bytes, filename, mimeType)
                 },
                 onPickUpayCsv = { onPicked -> pickUpayCsv(onPicked) },
-                outbox = outbox
+                outbox = outbox,
+                deepLinkRoute = pendingDeepLinkRoute.value,
+                onDeepLinkConsumed = { pendingDeepLinkRoute.value = null }
                 )
             }
         }
@@ -1226,10 +1229,27 @@ class MainActivity : FragmentActivity() {
         super.onDestroy()
     }
 
+    private val pendingDeepLinkRoute = mutableStateOf<String?>(null)
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         handleOAuthRedirect(intent)
+        handleWidgetDeepLink(intent)
+    }
+
+    private fun handleWidgetDeepLink(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (uri.scheme != "financespy" || uri.host != "widgets") return
+        val target = uri.pathSegments.firstOrNull()?.lowercase() ?: return
+        pendingDeepLinkRoute.value = when (target) {
+            "available", "dashboard" -> py.com.cdco.financespy.navigation.Routes.DASHBOARD
+            "budgets", "budget" -> py.com.cdco.financespy.navigation.Routes.BUDGETS
+            "recent_expenses", "expenses", "transactions" -> py.com.cdco.financespy.navigation.Routes.TRANSACTIONS
+            "sales" -> py.com.cdco.financespy.navigation.Routes.SALES
+            "investments", "market", "portfolio" -> py.com.cdco.financespy.navigation.Routes.INVESTMENTS
+            else -> null
+        }
     }
 
     private fun handleOAuthRedirect(intent: Intent) {

@@ -247,6 +247,8 @@ module Investments
           category
         end
 
+        resolved_fundamentals = enrich_fundamentals_from_points(fundamentals, points)
+
         QuoteCard.new(
           ticker: data.symbol,
           name: data.short_name.presence || data.name.presence || fallback_name,
@@ -267,10 +269,70 @@ module Investments
           series: series,
           security: security,
           watchlist_item: watchlist_item,
-          fundamentals: fundamentals,
+          fundamentals: resolved_fundamentals,
           news: news,
           ohlc_points: points
         )
+      end
+
+      def enrich_fundamentals_from_points(fundamentals, points)
+        latest_open = points.reverse_each.find { |pt| pt[:open].present? }&.dig(:open) || points.last&.dig(:price)
+        vols = points.filter_map { |pt| pt[:volume].to_i if pt[:volume].to_i.positive? }
+        computed_avg_vol = vols.any? ? (vols.sum.to_f / vols.size).round : nil
+
+        if fundamentals
+          Provider::YahooFinance::QuoteFundamentals.new(
+            market_cap: fundamentals.market_cap,
+            pe_ratio: fundamentals.pe_ratio,
+            forward_pe: fundamentals.forward_pe,
+            eps: fundamentals.eps,
+            dividend_yield: fundamentals.dividend_yield,
+            beta: fundamentals.beta,
+            avg_volume: fundamentals.avg_volume || computed_avg_vol,
+            open_price: fundamentals.open_price || latest_open,
+            bid: fundamentals.bid,
+            ask: fundamentals.ask,
+            target_mean_price: fundamentals.target_mean_price,
+            recommendation_key: fundamentals.recommendation_key,
+            sector: fundamentals.sector,
+            industry: fundamentals.industry,
+            website: fundamentals.website,
+            description: fundamentals.description,
+            earnings_date: fundamentals.earnings_date,
+            ex_dividend_date: fundamentals.ex_dividend_date,
+            market_state: fundamentals.market_state,
+            pre_market_price: fundamentals.pre_market_price,
+            pre_market_change_percent: fundamentals.pre_market_change_percent,
+            post_market_price: fundamentals.post_market_price,
+            post_market_change_percent: fundamentals.post_market_change_percent
+          )
+        elsif latest_open || computed_avg_vol
+          Provider::YahooFinance::QuoteFundamentals.new(
+            market_cap: nil,
+            pe_ratio: nil,
+            forward_pe: nil,
+            eps: nil,
+            dividend_yield: nil,
+            beta: nil,
+            avg_volume: computed_avg_vol,
+            open_price: latest_open,
+            bid: nil,
+            ask: nil,
+            target_mean_price: nil,
+            recommendation_key: nil,
+            sector: nil,
+            industry: nil,
+            website: nil,
+            description: nil,
+            earnings_date: nil,
+            ex_dividend_date: nil,
+            market_state: nil,
+            pre_market_price: nil,
+            pre_market_change_percent: nil,
+            post_market_price: nil,
+            post_market_change_percent: nil
+          )
+        end
       end
 
       def fallback_card(target)

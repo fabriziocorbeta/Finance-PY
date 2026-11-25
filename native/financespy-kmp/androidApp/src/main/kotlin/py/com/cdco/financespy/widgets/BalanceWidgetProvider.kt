@@ -91,7 +91,12 @@ class BalanceWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_balance_subtitle, "Abre FinancePY para sincronizar")
         }
 
-        val launchIntent = Intent(context, MainActivity::class.java)
+        val launchIntent = Intent(
+            Intent.ACTION_VIEW,
+            android.net.Uri.parse("financespy://widgets/available"),
+            context,
+            MainActivity::class.java
+        )
         val pendingIntent = PendingIntent.getActivity(
             context,
             widgetId,
