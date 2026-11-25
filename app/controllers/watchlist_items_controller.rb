@@ -42,21 +42,33 @@ class WatchlistItemsController < ApplicationController
 
   private
     def resolve_or_create_security
-      if params[:security_id].present?
-        parsed = Security.parse_combobox_id(params[:security_id])
+      raw_input = params[:security_id].presence || params[:ticker].presence || params[:q].presence
+      return nil if raw_input.blank?
+
+      if raw_input.include?("|")
+        parsed = Security.parse_combobox_id(raw_input)
         return nil if parsed[:ticker].blank?
 
         security = Security.find_or_initialize_by(
-          ticker: parsed[:ticker],
+          ticker: parsed[:ticker].upcase,
           exchange_operating_mic: parsed[:exchange_operating_mic]
         )
         security.price_provider = parsed[:price_provider].presence || "yahoo_finance"
         security.offline = false
         security.save!
         security
-      elsif params[:ticker].present?
-        ticker = params[:ticker].strip.upcase
+      else
+        query = raw_input.strip
+        ticker = query.upcase
         mic = params[:exchange_operating_mic].presence
+
+        if query.include?(" ") || query.length > 6
+          search_resp = Provider::YahooFinance.new.search_securities(query)
+          if search_resp.success? && (first_match = search_resp.data&.first)
+            ticker = first_match.symbol.upcase
+            mic ||= first_match.exchange_operating_mic
+          end
+        end
 
         security = Security.find_or_initialize_by(ticker: ticker, exchange_operating_mic: mic)
         security.price_provider ||= "yahoo_finance"

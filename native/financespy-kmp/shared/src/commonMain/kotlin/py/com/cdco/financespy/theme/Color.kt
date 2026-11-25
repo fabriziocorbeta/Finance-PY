@@ -17,7 +17,20 @@ object FinancePyColors {
     val Gray800 = Color(0xFF242424)
     val Gray900 = Color(0xFF171717)
     val White = Color(0xFFFFFFFF)
-    val Black = Color(0xFF0B0B0B)
+    val Black = Color(0xFF0E1116)
+
+    // Matte Dark Mode Fintech Tokens
+    val ObsidianBg = Color(0xFF0E1116)
+    val CardSurfaceDark = Color(0xFF181D26)
+    val ElevatedSurfaceDark = Color(0xFF1F2633)
+    val BorderSubtleDark = Color(0xFF262E3D)
+    val EmeraldPrimary = Color(0xFF10B981)
+    val AmberWarning = Color(0xFFF59E0B)
+    val CoralDanger = Color(0xFFEF4444)
+    val SkySales = Color(0xFF38BDF8)
+    val TextPrimaryDark = Color(0xFFF9FAFB)
+    val TextSecondaryDark = Color(0xFF9CA3AF)
+    val TextMutedDark = Color(0xFF6B7280)
 
     // Apple HIG system palette (iOS variant)
     val IosSystemGroupedBgLight = Color(0xFFF2F2F7)
@@ -46,68 +59,68 @@ object FinancePyColors {
     // Semantic tokens resolved by active UiVariant
     @Composable
     fun surface(): Color = when (LocalUiVariant.current) {
-        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) Black else Gray50
-        UiVariant.IOS -> if (isSystemInDarkTheme()) IosSystemGroupedBgDark else IosSystemGroupedBgLight
+        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) ObsidianBg else Gray50
+        UiVariant.IOS -> if (isSystemInDarkTheme()) ObsidianBg else IosSystemGroupedBgLight
     }
 
     @Composable
     fun container(): Color = when (LocalUiVariant.current) {
-        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) Gray900 else White
-        UiVariant.IOS -> if (isSystemInDarkTheme()) IosSecondaryGroupedBgDark else IosSecondaryGroupedBgLight
+        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) CardSurfaceDark else White
+        UiVariant.IOS -> if (isSystemInDarkTheme()) CardSurfaceDark else IosSecondaryGroupedBgLight
     }
 
     @Composable
     fun containerHover(): Color = when (LocalUiVariant.current) {
-        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) Gray800 else Gray50
-        UiVariant.IOS -> if (isSystemInDarkTheme()) IosTertiaryGroupedBgDark else IosTertiaryGroupedBgLight
+        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) ElevatedSurfaceDark else Gray50
+        UiVariant.IOS -> if (isSystemInDarkTheme()) ElevatedSurfaceDark else IosTertiaryGroupedBgLight
     }
 
     @Composable
     fun textPrimary(): Color = when (LocalUiVariant.current) {
-        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) White else Gray900
-        UiVariant.IOS -> if (isSystemInDarkTheme()) White else Color(0xFF000000)
+        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) TextPrimaryDark else Gray900
+        UiVariant.IOS -> if (isSystemInDarkTheme()) TextPrimaryDark else Color(0xFF000000)
     }
 
     @Composable
     fun textSecondary(): Color = when (LocalUiVariant.current) {
-        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) Gray300 else Gray500
-        UiVariant.IOS -> if (isSystemInDarkTheme()) IosSecondaryLabelDark else IosSecondaryLabelLight
+        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) TextSecondaryDark else Gray500
+        UiVariant.IOS -> if (isSystemInDarkTheme()) TextSecondaryDark else IosSecondaryLabelLight
     }
 
     @Composable
     fun textSubdued(): Color = when (LocalUiVariant.current) {
-        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) Gray500 else Gray400
-        UiVariant.IOS -> if (isSystemInDarkTheme()) IosTertiaryLabelDark else IosTertiaryLabelLight
+        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) TextMutedDark else Gray400
+        UiVariant.IOS -> if (isSystemInDarkTheme()) TextMutedDark else IosTertiaryLabelLight
     }
 
     @Composable
     fun borderPrimary(): Color = when (LocalUiVariant.current) {
-        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) White.copy(alpha = 0.20f) else Black.copy(alpha = 0.15f)
-        UiVariant.IOS -> if (isSystemInDarkTheme()) Color(0xFF545458).copy(alpha = 0.65f) else Color(0xFF3C3C43).copy(alpha = 0.29f)
+        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) BorderSubtleDark else Black.copy(alpha = 0.15f)
+        UiVariant.IOS -> if (isSystemInDarkTheme()) BorderSubtleDark else Color(0xFF3C3C43).copy(alpha = 0.29f)
     }
 
     @Composable
     fun borderSecondary(): Color = when (LocalUiVariant.current) {
-        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) White.copy(alpha = 0.15f) else Black.copy(alpha = 0.10f)
-        UiVariant.IOS -> if (isSystemInDarkTheme()) IosSeparatorDark else IosSeparatorLight
+        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) BorderSubtleDark else Black.copy(alpha = 0.10f)
+        UiVariant.IOS -> if (isSystemInDarkTheme()) BorderSubtleDark else IosSeparatorLight
     }
 
     @Composable
     fun success(): Color = when (LocalUiVariant.current) {
-        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) Color(0xFF12B76A) else Color(0xFF10A861)
-        UiVariant.IOS -> if (isSystemInDarkTheme()) IosGreenDark else IosGreenLight
+        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) EmeraldPrimary else Color(0xFF10A861)
+        UiVariant.IOS -> if (isSystemInDarkTheme()) EmeraldPrimary else IosGreenLight
     }
 
     @Composable
     fun warning(): Color = when (LocalUiVariant.current) {
-        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) Color(0xFFFDB022) else Color(0xFFDC6803)
-        UiVariant.IOS -> if (isSystemInDarkTheme()) IosOrangeDark else IosOrangeLight
+        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) AmberWarning else Color(0xFFDC6803)
+        UiVariant.IOS -> if (isSystemInDarkTheme()) AmberWarning else IosOrangeLight
     }
 
     @Composable
     fun destructive(): Color = when (LocalUiVariant.current) {
-        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) Color(0xFFED4E4E) else Color(0xFFEC2222)
-        UiVariant.IOS -> if (isSystemInDarkTheme()) IosRedDark else IosRedLight
+        UiVariant.MATERIAL3 -> if (isSystemInDarkTheme()) CoralDanger else Color(0xFFEC2222)
+        UiVariant.IOS -> if (isSystemInDarkTheme()) CoralDanger else IosRedLight
     }
 
     @Composable

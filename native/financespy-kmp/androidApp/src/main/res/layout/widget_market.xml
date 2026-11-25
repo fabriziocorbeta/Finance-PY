@@ -19,18 +19,19 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:ellipsize="end"
+            android:letterSpacing="0.06"
             android:maxLines="1"
-            android:text="Mercados"
-            android:textColor="#111827"
-            android:textSize="12sp"
+            android:text="MERCADOS"
+            android:textColor="#9CA3AF"
+            android:textSize="10sp"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Y!"
-            android:textColor="#6D28D9"
-            android:textSize="12sp"
+            android:text="LIVE"
+            android:textColor="#10B981"
+            android:textSize="10sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -40,7 +41,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         android:text="Abre Inversiones para sincronizar"
-        android:textColor="#6B7280"
+        android:textColor="#9CA3AF"
         android:textSize="11sp"
         android:visibility="gone" />
 
@@ -61,7 +62,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="^GSPC"
-            android:textColor="#111827"
+            android:textColor="#F9FAFB"
             android:textSize="12sp"
             android:textStyle="bold" />
 
@@ -70,8 +71,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="6dp"
+            android:fontFeatureSettings="tnum"
             android:text="—"
-            android:textColor="#374151"
+            android:textColor="#F9FAFB"
             android:textSize="11sp"
             android:textStyle="bold" />
 
@@ -80,6 +82,7 @@
             android:layout_width="54dp"
             android:layout_height="wrap_content"
             android:background="@drawable/widget_pill_green"
+            android:fontFeatureSettings="tnum"
             android:gravity="center"
             android:paddingHorizontal="5dp"
             android:paddingVertical="2dp"
@@ -106,7 +109,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="^IXIC"
-            android:textColor="#111827"
+            android:textColor="#F9FAFB"
             android:textSize="12sp"
             android:textStyle="bold" />
 
@@ -115,8 +118,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="6dp"
+            android:fontFeatureSettings="tnum"
             android:text="—"
-            android:textColor="#374151"
+            android:textColor="#F9FAFB"
             android:textSize="11sp"
             android:textStyle="bold" />
 
@@ -125,6 +129,7 @@
             android:layout_width="54dp"
             android:layout_height="wrap_content"
             android:background="@drawable/widget_pill_green"
+            android:fontFeatureSettings="tnum"
             android:gravity="center"
             android:paddingHorizontal="5dp"
             android:paddingVertical="2dp"
@@ -151,7 +156,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="^DJI"
-            android:textColor="#111827"
+            android:textColor="#F9FAFB"
             android:textSize="12sp"
             android:textStyle="bold" />
 
@@ -160,8 +165,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="6dp"
+            android:fontFeatureSettings="tnum"
             android:text="—"
-            android:textColor="#374151"
+            android:textColor="#F9FAFB"
             android:textSize="11sp"
             android:textStyle="bold" />
 
@@ -170,6 +176,7 @@
             android:layout_width="54dp"
             android:layout_height="wrap_content"
             android:background="@drawable/widget_pill_green"
+            android:fontFeatureSettings="tnum"
             android:gravity="center"
             android:paddingHorizontal="5dp"
             android:paddingVertical="2dp"

@@ -28,21 +28,21 @@ val FinancePyTypography: Typography
         val fontFamily = GeistFontFamily
         val defaultTypography = Typography()
         return Typography(
-            displayLarge = defaultTypography.displayLarge.copy(fontFamily = fontFamily),
-            displayMedium = defaultTypography.displayMedium.copy(fontFamily = fontFamily),
-            displaySmall = defaultTypography.displaySmall.copy(fontFamily = fontFamily),
-            headlineLarge = defaultTypography.headlineLarge.copy(fontFamily = fontFamily),
-            headlineMedium = defaultTypography.headlineMedium.copy(fontFamily = fontFamily),
-            headlineSmall = defaultTypography.headlineSmall.copy(fontFamily = fontFamily),
-            titleLarge = defaultTypography.titleLarge.copy(fontFamily = fontFamily),
-            titleMedium = defaultTypography.titleMedium.copy(fontFamily = fontFamily),
-            titleSmall = defaultTypography.titleSmall.copy(fontFamily = fontFamily),
-            bodyLarge = defaultTypography.bodyLarge.copy(fontFamily = fontFamily),
-            bodyMedium = defaultTypography.bodyMedium.copy(fontFamily = fontFamily),
-            bodySmall = defaultTypography.bodySmall.copy(fontFamily = fontFamily),
-            labelLarge = defaultTypography.labelLarge.copy(fontFamily = fontFamily),
-            labelMedium = defaultTypography.labelMedium.copy(fontFamily = fontFamily),
-            labelSmall = defaultTypography.labelSmall.copy(fontFamily = fontFamily)
+            displayLarge = defaultTypography.displayLarge.copy(fontFamily = fontFamily, fontFeatureSettings = "tnum"),
+            displayMedium = defaultTypography.displayMedium.copy(fontFamily = fontFamily, fontFeatureSettings = "tnum"),
+            displaySmall = defaultTypography.displaySmall.copy(fontFamily = fontFamily, fontFeatureSettings = "tnum"),
+            headlineLarge = defaultTypography.headlineLarge.copy(fontFamily = fontFamily, fontFeatureSettings = "tnum"),
+            headlineMedium = defaultTypography.headlineMedium.copy(fontFamily = fontFamily, fontFeatureSettings = "tnum"),
+            headlineSmall = defaultTypography.headlineSmall.copy(fontFamily = fontFamily, fontFeatureSettings = "tnum"),
+            titleLarge = defaultTypography.titleLarge.copy(fontFamily = fontFamily, fontFeatureSettings = "tnum"),
+            titleMedium = defaultTypography.titleMedium.copy(fontFamily = fontFamily, fontFeatureSettings = "tnum"),
+            titleSmall = defaultTypography.titleSmall.copy(fontFamily = fontFamily, fontFeatureSettings = "tnum"),
+            bodyLarge = defaultTypography.bodyLarge.copy(fontFamily = fontFamily, fontFeatureSettings = "tnum"),
+            bodyMedium = defaultTypography.bodyMedium.copy(fontFamily = fontFamily, fontFeatureSettings = "tnum"),
+            bodySmall = defaultTypography.bodySmall.copy(fontFamily = fontFamily, fontFeatureSettings = "tnum"),
+            labelLarge = defaultTypography.labelLarge.copy(fontFamily = fontFamily, fontFeatureSettings = "tnum"),
+            labelMedium = defaultTypography.labelMedium.copy(fontFamily = fontFamily, fontFeatureSettings = "tnum"),
+            labelSmall = defaultTypography.labelSmall.copy(fontFamily = fontFamily, fontFeatureSettings = "tnum")
         )
     }
 

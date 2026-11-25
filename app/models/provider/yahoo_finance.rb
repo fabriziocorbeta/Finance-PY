@@ -205,33 +205,41 @@ class Provider::YahooFinance < Provider
 
   def search_securities(symbol, country_code: nil, exchange_operating_mic: nil)
     with_provider_response do
-      cache_key = "search_#{symbol}_#{country_code}_#{exchange_operating_mic}"
+      clean_symbol = symbol.to_s.strip.upcase
+      cache_key = "search_#{clean_symbol}_#{country_code}_#{exchange_operating_mic}"
       if cached_result = get_cached_result(cache_key)
         cached_result
       else
-        check_rate_limit!
-        throttle_request
-        response = client.get("#{base_url}/v1/finance/search") do |req|
-          req.params["q"] = symbol.strip.upcase
-          req.params["quotesCount"] = 25
-        end
-
-        data = JSON.parse(response.body)
-        quotes = data.dig("quotes") || []
+        quotes = fetch_search_quotes_with_fallback(clean_symbol)
 
         securities = quotes.filter_map do |quote|
+          next if quote["symbol"].blank?
+
           Security.new(
             symbol: quote["symbol"],
             name: quote["longname"] || quote["shortname"] || quote["symbol"],
-            logo_url: nil, # Yahoo search doesn't provide logos
+            logo_url: nil,
             exchange_operating_mic: map_exchange_mic(quote["exchange"]),
             country_code: map_country_code(quote["exchDisp"])
           )
         end
 
+        if securities.empty? && clean_symbol.present?
+          chart = fetch_chart_with_fallback(clean_symbol, { "range" => "5d", "interval" => "1d" }) rescue nil
+          if (meta = chart&.dig("chart", "result", 0, "meta"))
+            securities << Security.new(
+              symbol: meta["symbol"] || clean_symbol,
+              name: meta["longName"] || meta["shortName"] || clean_symbol,
+              logo_url: nil,
+              exchange_operating_mic: map_exchange_mic(meta["exchangeName"]),
+              country_code: map_country_code(meta["fullExchangeName"] || meta["exchangeName"])
+            )
+          end
+        end
+
         securities = deduplicate_dual_listings(securities) unless exchange_operating_mic.present?
 
-        cache_result(cache_key, securities)
+        cache_result(cache_key, securities) if securities.any?
         securities
       end
     rescue JSON::ParserError => e
@@ -576,16 +584,26 @@ class Provider::YahooFinance < Provider
       if !clear_cache && (cached = get_cached_result(cache_key))
         cached
       else
-        check_rate_limit!
-        throttle_request
-        response = client.get("#{base_url}/v1/finance/search") do |req|
-          req.params["q"] = clean_query
-          req.params["quotesCount"] = 0
-          req.params["newsCount"] = count
+        news_raw = []
+        [ "https://query2.finance.yahoo.com", base_url ].uniq.each do |host|
+          throttle_request
+          response = client.get("#{host}/v1/finance/search") do |req|
+            req.params["q"] = clean_query
+            req.params["quotesCount"] = 0
+            req.params["newsCount"] = count
+          end
+          next unless response.status == 200
+
+          parsed = JSON.parse(response.body)
+          if (arr = parsed["news"]).is_a?(Array) && arr.any?
+            news_raw = arr
+            break
+          end
+        rescue Faraday::Error, JSON::ParserError
+          next
         end
 
-        data = JSON.parse(response.body)
-        items = (data["news"] || []).filter_map do |item|
+        items = news_raw.filter_map do |item|
           next if item["title"].blank? || item["link"].blank?
 
           ts = item["providerPublishTime"]
@@ -597,7 +615,7 @@ class Provider::YahooFinance < Provider
           )
         end
 
-        cache_result(cache_key, items)
+        cache_result(cache_key, items) if items.any?
         items
       end
     rescue JSON::ParserError => e
@@ -606,6 +624,25 @@ class Provider::YahooFinance < Provider
   end
 
   private
+
+    def fetch_search_quotes_with_fallback(query)
+      [ "https://query2.finance.yahoo.com", base_url ].uniq.each do |host|
+        throttle_request
+        response = client.get("#{host}/v1/finance/search") do |req|
+          req.params["q"] = query
+          req.params["quotesCount"] = 25
+          req.params["newsCount"] = 0
+        end
+        next unless response.status == 200
+
+        data = JSON.parse(response.body)
+        quotes = data["quotes"]
+        return quotes if quotes.is_a?(Array) && quotes.any?
+      rescue Faraday::Error, JSON::ParserError
+        next
+      end
+      []
+    end
 
     def yahoo_raw(field)
       return nil if field.nil?

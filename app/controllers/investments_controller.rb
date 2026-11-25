@@ -64,13 +64,44 @@ class InvestmentsController < ApplicationController
   end
 
   def quote_lookup
-    ticker = params[:ticker].to_s.strip.upcase
-    if ticker.blank?
-      render json: { found: false }
+    query = params[:ticker].to_s.strip
+    if query.blank?
+      render json: { found: false, results: [] }
       return
     end
 
-    card = Investments::MarketTrackerService.new.quote_for(ticker: ticker, range: "1mo")
+    yf = Provider::YahooFinance.new
+    search_resp = yf.search_securities(query)
+    matches = search_resp.success? ? (search_resp.data || []).first(6) : []
+
+    primary_symbol = matches.first&.symbol || query.upcase
+    card = Investments::MarketTrackerService.new.quote_for(ticker: primary_symbol, range: "1mo", include_details: false)
+
+    results = matches.map do |sec|
+      is_primary = sec.symbol.casecmp?(card&.ticker.to_s)
+      {
+        ticker: sec.symbol,
+        name: sec.name,
+        exchange_operating_mic: sec.exchange_operating_mic,
+        country_code: sec.country_code,
+        current_price: is_primary ? card&.current_price : nil,
+        currency: is_primary ? card&.currency : nil,
+        change_percent: is_primary ? card&.change_percent : nil
+      }
+    end
+
+    if results.empty? && card&.current_price
+      results << {
+        ticker: card.ticker,
+        name: card.name,
+        exchange_operating_mic: nil,
+        country_code: nil,
+        current_price: card.current_price,
+        currency: card.currency,
+        change_percent: card.change_percent
+      }
+    end
+
     if card&.current_price
       render json: {
         found: true,
@@ -79,10 +110,11 @@ class InvestmentsController < ApplicationController
         currency: card.currency,
         exchange_name: card.exchange_name,
         current_price: card.current_price,
-        change_percent: card.change_percent
+        change_percent: card.change_percent,
+        results: results
       }
     else
-      render json: { found: false, ticker: ticker }
+      render json: { found: results.any?, ticker: primary_symbol, results: results }
     end
   end
 

@@ -151,7 +151,12 @@ class MarketWidgetProvider : AppWidgetProvider() {
             }
         }
 
-        val launchIntent = Intent(context, MainActivity::class.java)
+        val launchIntent = Intent(
+            Intent.ACTION_VIEW,
+            android.net.Uri.parse("financespy://widgets/investments"),
+            context,
+            MainActivity::class.java
+        )
         val pendingIntent = PendingIntent.getActivity(
             context,
             widgetId + 20_000,

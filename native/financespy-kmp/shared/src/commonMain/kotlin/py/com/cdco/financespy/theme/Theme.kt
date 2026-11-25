@@ -35,12 +35,12 @@ data class FinancePyMetrics(
 )
 
 val Material3Metrics = FinancePyMetrics(
-    cardCornerRadius = 12.dp,
-    buttonCornerRadius = 8.dp,
-    textFieldCornerRadius = 6.dp,
-    searchFieldCornerRadius = 8.dp,
-    cardElevation = 8.dp,
-    cardBorderWidth = 1.5.dp,
+    cardCornerRadius = 20.dp,
+    buttonCornerRadius = 14.dp,
+    textFieldCornerRadius = 12.dp,
+    searchFieldCornerRadius = 14.dp,
+    cardElevation = 0.dp,
+    cardBorderWidth = 1.dp,
     cardPadding = 16.dp,
     screenHorizontalPadding = 16.dp,
     sectionSpacing = 16.dp,
@@ -87,14 +87,14 @@ fun FinancePyTheme(
     val colorScheme = when (uiVariant) {
         UiVariant.MATERIAL3 -> if (isDark) {
             darkColorScheme(
-                surface = FinancePyColors.Black,
-                background = FinancePyColors.Black,
-                onSurface = FinancePyColors.White,
-                onBackground = FinancePyColors.White,
-                onSurfaceVariant = FinancePyColors.Gray300,
-                outline = FinancePyColors.Gray500,
-                primary = FinancePyColors.White,
-                onPrimary = FinancePyColors.Gray900
+                surface = FinancePyColors.CardSurfaceDark,
+                background = FinancePyColors.ObsidianBg,
+                onSurface = FinancePyColors.TextPrimaryDark,
+                onBackground = FinancePyColors.TextPrimaryDark,
+                onSurfaceVariant = FinancePyColors.TextSecondaryDark,
+                outline = FinancePyColors.BorderSubtleDark,
+                primary = FinancePyColors.EmeraldPrimary,
+                onPrimary = FinancePyColors.ObsidianBg
             )
         } else {
             lightColorScheme(

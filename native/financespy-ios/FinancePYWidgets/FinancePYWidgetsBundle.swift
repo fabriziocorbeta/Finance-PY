@@ -1,6 +1,20 @@
 import SwiftUI
 import WidgetKit
 
+// MARK: - Finance-PY Matte Dark Mode Fintech Palette
+
+private enum WidgetTheme {
+    static let obsidianBg = Color(red: 14 / 255, green: 17 / 255, blue: 22 / 255)      // #0E1116
+    static let cardSurface = Color(red: 24 / 255, green: 29 / 255, blue: 38 / 255)     // #181D26
+    static let elevatedSurface = Color(red: 31 / 255, green: 38 / 255, blue: 51 / 255) // #1F2633
+    static let borderSubtle = Color(red: 38 / 255, green: 46 / 255, blue: 61 / 255)    // #262E3D
+    static let emeraldPrimary = Color(red: 16 / 255, green: 185 / 255, blue: 129 / 255)// #10B981
+    static let coralDanger = Color(red: 239 / 255, green: 68 / 255, blue: 68 / 255)    // #EF4444
+    static let amberWarning = Color(red: 245 / 255, green: 158 / 255, blue: 11 / 255)  // #F59E0B
+    static let textPrimary = Color(red: 249 / 255, green: 250 / 255, blue: 251 / 255)  // #F9FAFB
+    static let textMuted = Color(red: 156 / 255, green: 163 / 255, blue: 175 / 255)    // #9CA3AF
+}
+
 // MARK: - Shared Timeline Entry
 
 struct FinanceWidgetEntry: TimelineEntry {
@@ -37,83 +51,94 @@ private func formatWidgetAmount(_ cents: Int64, currency: String) -> String {
     return upper == "PYG" ? "Gs. \(formatted)" : "\(upper) \(formatted)"
 }
 
-// MARK: - Balance Widget (Líquido disponible)
+// MARK: - Balance Widget (Disponible / Líquido)
 
 struct BalanceWidgetView: View {
     let entry: FinanceWidgetEntry
     @Environment(\.widgetFamily) private var family
 
-    private let greenColor = Color(red: 22/255, green: 163/255, blue: 74/255)
-    private let redColor = Color(red: 225/255, green: 29/255, blue: 72/255)
-
     var body: some View {
-        if let snapshot = entry.snapshot {
-            let total = max(Double(abs(snapshot.assetsCents) + abs(snapshot.liabilitiesCents)), 1.0)
-            let liquidRatio = min(max(Double(max(snapshot.liquidAvailableCents, 0)) / total, 0.0), 1.0)
+        Group {
+            if let snapshot = entry.snapshot {
+                let total = max(Double(abs(snapshot.assetsCents) + abs(snapshot.liabilitiesCents)), 1.0)
+                let liquidRatio = min(max(Double(max(snapshot.liquidAvailableCents, 0)) / total, 0.0), 1.0)
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Líquido disponible")
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Image(systemName: "banknote")
-                        .font(.caption)
-                        .foregroundColor(greenColor)
-                }
-
-                Text(formatWidgetAmount(snapshot.liquidAvailableCents, currency: snapshot.currency))
-                    .font(family == .systemSmall ? .headline.weight(.bold) : .title2.weight(.bold))
-                    .minimumScaleFactor(0.7)
-                    .lineLimit(1)
-
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.gray.opacity(0.18))
-                        Capsule()
-                            .fill(greenColor)
-                            .frame(width: geo.size.width * liquidRatio)
-                    }
-                }
-                .frame(height: 6)
-
-                if family != .systemSmall {
+                VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Activos")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                            Text(formatWidgetAmount(snapshot.assetsCents, currency: snapshot.currency))
-                                .font(.caption.weight(.semibold))
-                                .foregroundColor(greenColor)
-                                .lineLimit(1)
-                        }
+                        Text("DISPONIBLE")
+                            .font(.system(size: 10, weight: .semibold))
+                            .tracking(0.8)
+                            .foregroundColor(WidgetTheme.textMuted)
                         Spacer()
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("Pasivos")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                            Text(formatWidgetAmount(snapshot.liabilitiesCents, currency: snapshot.currency))
-                                .font(.caption.weight(.semibold))
-                                .foregroundColor(redColor)
-                                .lineLimit(1)
+                        Image(systemName: "arrow.up.right.circle.fill")
+                            .font(.system(size: 13))
+                            .foregroundColor(WidgetTheme.emeraldPrimary)
+                    }
+
+                    Text(formatWidgetAmount(snapshot.liquidAvailableCents, currency: snapshot.currency))
+                        .font(.system(size: family == .systemSmall ? 20 : 24, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundColor(WidgetTheme.textPrimary)
+                        .minimumScaleFactor(0.72)
+                        .lineLimit(1)
+
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(WidgetTheme.elevatedSurface)
+                            Capsule()
+                                .fill(WidgetTheme.emeraldPrimary)
+                                .frame(width: geo.size.width * liquidRatio)
                         }
                     }
+                    .frame(height: 6)
+
+                    if family != .systemSmall {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Activos")
+                                    .font(.caption2)
+                                    .foregroundColor(WidgetTheme.textMuted)
+                                Text(formatWidgetAmount(snapshot.assetsCents, currency: snapshot.currency))
+                                    .font(.caption.weight(.semibold))
+                                    .monospacedDigit()
+                                    .foregroundColor(WidgetTheme.emeraldPrimary)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("Pasivos")
+                                    .font(.caption2)
+                                    .foregroundColor(WidgetTheme.textMuted)
+                                Text(formatWidgetAmount(snapshot.liabilitiesCents, currency: snapshot.currency))
+                                    .font(.caption.weight(.semibold))
+                                    .monospacedDigit()
+                                    .foregroundColor(WidgetTheme.coralDanger)
+                                    .lineLimit(1)
+                            }
+                        }
+                    } else {
+                        Text("\(Int(liquidRatio * 100))% liquidez s/ balance")
+                            .font(.system(size: 10, weight: .medium))
+                            .monospacedDigit()
+                            .foregroundColor(WidgetTheme.textMuted)
+                    }
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("DISPONIBLE")
+                        .font(.system(size: 10, weight: .semibold))
+                        .tracking(0.8)
+                        .foregroundColor(WidgetTheme.textMuted)
+                    Text("Abrí FinancePY para sincronizar")
+                        .font(.caption)
+                        .foregroundColor(WidgetTheme.textMuted)
                 }
             }
-            .padding()
-            .containerBackground(.background, for: .widget)
-        } else {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Líquido disponible")
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(.secondary)
-                Text("Abrí FinancePY para sincronizar")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .padding()
-            .containerBackground(.background, for: .widget)
+        }
+        .padding(14)
+        .widgetURL(URL(string: "financespy://widgets/available"))
+        .containerBackground(for: .widget) {
+            WidgetTheme.obsidianBg
         }
     }
 }
@@ -131,67 +156,111 @@ struct BalanceWidget: Widget {
     }
 }
 
-// MARK: - Expenses Widget (Gastos recientes)
+// MARK: - Expenses Widget (Gastos del ciclo y últimos movimientos)
 
 struct ExpensesWidgetView: View {
     let entry: FinanceWidgetEntry
     @Environment(\.widgetFamily) private var family
 
-    private let redColor = Color(red: 225/255, green: 29/255, blue: 72/255)
-
     var body: some View {
-        if let snapshot = entry.snapshot {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("Gastos del mes")
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Image(systemName: "arrow.down.right.circle.fill")
-                        .font(.caption)
-                        .foregroundColor(redColor)
-                }
-
-                Text(formatWidgetAmount(snapshot.monthlyExpensesCents, currency: snapshot.currency))
-                    .font(family == .systemSmall ? .headline.weight(.bold) : .title3.weight(.bold))
-                    .foregroundColor(redColor)
-                    .minimumScaleFactor(0.7)
-                    .lineLimit(1)
-
-                if family != .systemSmall {
-                    Divider()
-                    ForEach(snapshot.recentExpenses.prefix(3)) { item in
-                        HStack {
-                            Text(item.name)
-                                .font(.caption2)
-                                .lineLimit(1)
+        Group {
+            if let snapshot = entry.snapshot {
+                if family == .systemMedium {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text("GASTOS MES")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .tracking(0.8)
+                                    .foregroundColor(WidgetTheme.textMuted)
+                                Spacer()
+                                Image(systemName: "arrow.down.right.circle.fill")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(WidgetTheme.coralDanger)
+                            }
                             Spacer()
-                            Text(formatWidgetAmount(abs(item.amountCents), currency: item.currency))
-                                .font(.caption2.weight(.semibold))
-                                .foregroundColor(.primary)
+                            Text(formatWidgetAmount(snapshot.monthlyExpensesCents, currency: snapshot.currency))
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .monospacedDigit()
+                                .foregroundColor(WidgetTheme.coralDanger)
+                                .minimumScaleFactor(0.72)
+                                .lineLimit(1)
+                            Text("\(snapshot.recentExpenses.count) movimientos recientes")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(WidgetTheme.textMuted)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("MOVIMIENTOS")
+                                .font(.system(size: 9, weight: .semibold))
+                                .tracking(0.8)
+                                .foregroundColor(WidgetTheme.textMuted)
+
+                            ForEach(snapshot.recentExpenses.prefix(3)) { item in
+                                HStack(spacing: 6) {
+                                    Text(item.name)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(WidgetTheme.textPrimary)
+                                        .lineLimit(1)
+                                    Spacer()
+                                    Text("-\(formatWidgetAmount(abs(item.amountCents), currency: item.currency))")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .monospacedDigit()
+                                        .foregroundColor(WidgetTheme.textMuted)
+                                        .lineLimit(1)
+                                }
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(10)
+                        .frame(maxWidth: .infinity)
+                        .background(WidgetTheme.cardSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("GASTOS MES")
+                                .font(.system(size: 10, weight: .semibold))
+                                .tracking(0.8)
+                                .foregroundColor(WidgetTheme.textMuted)
+                            Spacer()
+                            Image(systemName: "arrow.down.right.circle.fill")
+                                .font(.system(size: 13))
+                                .foregroundColor(WidgetTheme.coralDanger)
+                        }
+                        Spacer()
+                        Text(formatWidgetAmount(snapshot.monthlyExpensesCents, currency: snapshot.currency))
+                            .font(.system(size: 19, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundColor(WidgetTheme.coralDanger)
+                            .minimumScaleFactor(0.72)
+                            .lineLimit(1)
+                        if let latest = snapshot.recentExpenses.first {
+                            Text("Último: \(latest.name)")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(WidgetTheme.textMuted)
                                 .lineLimit(1)
                         }
                     }
-                } else if let latest = snapshot.recentExpenses.first {
-                    Text("Último: \(latest.name)")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("GASTOS MES")
+                        .font(.system(size: 10, weight: .semibold))
+                        .tracking(0.8)
+                        .foregroundColor(WidgetTheme.textMuted)
+                    Text("Abrí FinancePY para sincronizar")
+                        .font(.caption)
+                        .foregroundColor(WidgetTheme.textMuted)
                 }
             }
-            .padding()
-            .containerBackground(.background, for: .widget)
-        } else {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Gastos del mes")
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(.secondary)
-                Text("Abrí FinancePY para sincronizar")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .padding()
-            .containerBackground(.background, for: .widget)
+        }
+        .padding(14)
+        .widgetURL(URL(string: "financespy://widgets/recent_expenses"))
+        .containerBackground(for: .widget) {
+            WidgetTheme.obsidianBg
         }
     }
 }

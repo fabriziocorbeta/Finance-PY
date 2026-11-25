@@ -19,19 +19,22 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:ellipsize="end"
+            android:letterSpacing="0.06"
             android:maxLines="1"
-            android:text="Líquido disponible"
-            android:textColor="#111827"
-            android:textSize="13sp"
+            android:text="LÍQUIDO DISPONIBLE"
+            android:textAllCaps="true"
+            android:textColor="#9CA3AF"
+            android:textSize="11sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/widget_balance_amount"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:fontFeatureSettings="tnum"
             android:text="₲ 0"
-            android:textColor="#111827"
-            android:textSize="15sp"
+            android:textColor="#F9FAFB"
+            android:textSize="16sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -40,7 +43,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:text="Cuentas líquidas"
-        android:textColor="#6B7280"
+        android:textColor="#9CA3AF"
         android:textSize="11sp" />
 
     <LinearLayout
@@ -54,7 +57,7 @@
             android:id="@+id/widget_balance_liquid_bar"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="0dp"
-            android:layout_height="9dp"
+            android:layout_height="8dp"
             android:layout_weight="1"
             android:max="100"
             android:progress="100"
@@ -65,8 +68,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
+            android:fontFeatureSettings="tnum"
             android:text="₲ 0"
-            android:textColor="#16A34A"
+            android:textColor="#10B981"
             android:textSize="11sp"
             android:textStyle="bold" />
     </LinearLayout>
@@ -76,7 +80,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:text="Pasivos / Tarjetas"
-        android:textColor="#6B7280"
+        android:textColor="#9CA3AF"
         android:textSize="11sp" />
 
     <LinearLayout
@@ -90,7 +94,7 @@
             android:id="@+id/widget_balance_liabilities_bar"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="0dp"
-            android:layout_height="9dp"
+            android:layout_height="8dp"
             android:layout_weight="1"
             android:max="100"
             android:progress="0"
@@ -101,8 +105,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
+            android:fontFeatureSettings="tnum"
             android:text="₲ 0"
-            android:textColor="#E11D48"
+            android:textColor="#EF4444"
             android:textSize="11sp"
             android:textStyle="bold" />
     </LinearLayout>
@@ -120,16 +125,17 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:ellipsize="end"
+            android:fontFeatureSettings="tnum"
             android:maxLines="1"
-            android:text="FinancePY"
-            android:textColor="#9CA3AF"
+            android:text="FINANCE-PY"
+            android:textColor="#6B7280"
             android:textSize="10sp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="₲"
-            android:textColor="#4F46E5"
+            android:textColor="#10B981"
             android:textSize="13sp"
             android:textStyle="bold" />
     </LinearLayout>
