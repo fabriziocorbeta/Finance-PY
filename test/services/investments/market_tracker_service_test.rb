@@ -7,6 +7,7 @@ class Investments::MarketTrackerServiceTest < ActiveSupport::TestCase
   end
 
   test "valid_range returns valid range or falls back to 1mo" do
+    assert_equal "1d", Investments::MarketTrackerService.valid_range("1d")
     assert_equal "5d", Investments::MarketTrackerService.valid_range("5d")
     assert_equal "1y", Investments::MarketTrackerService.valid_range("1y")
     assert_equal "1mo", Investments::MarketTrackerService.valid_range("invalid")

@@ -5,7 +5,46 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class MarketPointDto(
     val date: String,
-    val value: Double
+    val value: Double,
+    val open: Double? = null,
+    val high: Double? = null,
+    val low: Double? = null,
+    val volume: Long? = null
+)
+
+@Serializable
+data class MarketFundamentalsDto(
+    val market_cap: Double? = null,
+    val pe_ratio: Double? = null,
+    val forward_pe: Double? = null,
+    val eps: Double? = null,
+    val dividend_yield: Double? = null,
+    val beta: Double? = null,
+    val avg_volume: Long? = null,
+    val open_price: Double? = null,
+    val bid: Double? = null,
+    val ask: Double? = null,
+    val target_mean_price: Double? = null,
+    val recommendation_key: String? = null,
+    val sector: String? = null,
+    val industry: String? = null,
+    val website: String? = null,
+    val description: String? = null,
+    val earnings_date: String? = null,
+    val ex_dividend_date: String? = null,
+    val market_state: String? = null,
+    val pre_market_price: Double? = null,
+    val pre_market_change_percent: Double? = null,
+    val post_market_price: Double? = null,
+    val post_market_change_percent: Double? = null
+)
+
+@Serializable
+data class MarketNewsItemDto(
+    val title: String,
+    val publisher: String = "Yahoo Finance",
+    val link: String,
+    val published_at: String? = null
 )
 
 @Serializable
@@ -28,7 +67,9 @@ data class MarketQuoteDto(
     val volume: Long? = null,
     val watchlist_item_id: String? = null,
     val security_id: String? = null,
-    val points: List<MarketPointDto> = emptyList()
+    val points: List<MarketPointDto> = emptyList(),
+    val fundamentals: MarketFundamentalsDto? = null,
+    val news: List<MarketNewsItemDto> = emptyList()
 )
 
 @Serializable

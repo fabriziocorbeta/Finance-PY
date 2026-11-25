@@ -7,6 +7,7 @@
     <% period_positive = quote.period_positive? %>
     <% period_color = period_positive ? "text-green-600" : "text-red-600" %>
 
+    <% f = quote.fundamentals %>
     <%# Header: Ticker, Name, Category Badge, Price, Change, Watchlist Action %>
     <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
       <div class="space-y-2">
@@ -20,6 +21,17 @@
           </span>
           <% if quote.exchange_name.present? %>
             <span class="text-xs text-subdued"><%= quote.exchange_name %></span>
+          <% end %>
+          <% if f&.market_state.present? %>
+            <% state_label, state_cls = case f.market_state
+               when "REGULAR" then [ t("investments.quote_detail.market_open"), "bg-green-500/10 text-green-600" ]
+               when "PRE", "PREPRE" then [ t("investments.quote_detail.pre_market"), "bg-amber-500/10 text-amber-600" ]
+               when "POST", "POSTPOST" then [ t("investments.quote_detail.after_hours"), "bg-indigo-500/10 text-indigo-600" ]
+               else [ t("investments.quote_detail.market_closed"), "bg-container-inset text-secondary" ]
+               end %>
+            <span class="px-2 py-0.5 text-[11px] font-medium rounded-md <%= state_cls %>">
+              <%= state_label %>
+            </span>
           <% end %>
         </div>
 
@@ -49,6 +61,33 @@
             </span>
           <% end %>
         </div>
+
+        <% if f&.pre_market_price.present? || f&.post_market_price.present? %>
+          <div class="flex flex-wrap items-center gap-4 text-xs text-secondary tabular-nums">
+            <% if f.pre_market_price.present? %>
+              <span>
+                <%= t("investments.quote_detail.pre_market") %>:
+                <strong class="text-primary"><%= number_with_delimiter(number_with_precision(f.pre_market_price, precision: 2)) %></strong>
+                <% if f.pre_market_change_percent.present? %>
+                  <span class="<%= f.pre_market_change_percent >= 0 ? 'text-green-600' : 'text-red-600' %>">
+                    (<%= f.pre_market_change_percent >= 0 ? "+" : "" %><%= number_with_precision(f.pre_market_change_percent, precision: 2) %>%)
+                  </span>
+                <% end %>
+              </span>
+            <% end %>
+            <% if f.post_market_price.present? %>
+              <span>
+                <%= t("investments.quote_detail.after_hours") %>:
+                <strong class="text-primary"><%= number_with_delimiter(number_with_precision(f.post_market_price, precision: 2)) %></strong>
+                <% if f.post_market_change_percent.present? %>
+                  <span class="<%= f.post_market_change_percent >= 0 ? 'text-green-600' : 'text-red-600' %>">
+                    (<%= f.post_market_change_percent >= 0 ? "+" : "" %><%= number_with_precision(f.post_market_change_percent, precision: 2) %>%)
+                  </span>
+                <% end %>
+              </span>
+            <% end %>
+          </div>
+        <% end %>
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
@@ -101,12 +140,19 @@
       </div>
     <% end %>
 
-    <%# Key Market Stats %>
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-tertiary">
+    <%# Key Market Stats (Yahoo / Google Finance style) %>
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 pt-2 border-t border-tertiary">
       <div class="bg-container-inset rounded-lg p-3">
         <p class="text-xs text-secondary"><%= t("investments.quote_detail.previous_close") %></p>
         <p class="text-sm font-medium text-primary tabular-nums mt-0.5">
           <%= quote.previous_close ? number_with_delimiter(number_with_precision(quote.previous_close, precision: 2)) : "—" %>
+        </p>
+      </div>
+
+      <div class="bg-container-inset rounded-lg p-3">
+        <p class="text-xs text-secondary"><%= t("investments.quote_detail.open_price") %></p>
+        <p class="text-sm font-medium text-primary tabular-nums mt-0.5">
+          <%= f&.open_price ? number_with_delimiter(number_with_precision(f.open_price, precision: 2)) : "—" %>
         </p>
       </div>
 
@@ -135,10 +181,110 @@
       <div class="bg-container-inset rounded-lg p-3">
         <p class="text-xs text-secondary"><%= t("investments.quote_detail.volume") %></p>
         <p class="text-sm font-medium text-primary tabular-nums mt-0.5">
-          <%= quote.volume&.positive? ? number_with_delimiter(quote.volume) : "—" %>
+          <%= quote.volume&.positive? ? number_to_human(quote.volume, precision: 2, significant: false, format: "%n%u", units: { thousand: "K", million: "M", billion: "B" }) : "—" %>
         </p>
       </div>
+
+      <div class="bg-container-inset rounded-lg p-3">
+        <p class="text-xs text-secondary"><%= t("investments.quote_detail.avg_volume") %></p>
+        <p class="text-sm font-medium text-primary tabular-nums mt-0.5">
+          <%= f&.avg_volume&.positive? ? number_to_human(f.avg_volume, precision: 2, significant: false, format: "%n%u", units: { thousand: "K", million: "M", billion: "B" }) : "—" %>
+        </p>
+      </div>
+
+      <% if f %>
+        <div class="bg-container-inset rounded-lg p-3">
+          <p class="text-xs text-secondary"><%= t("investments.quote_detail.market_cap") %></p>
+          <p class="text-sm font-medium text-primary tabular-nums mt-0.5">
+            <%= f.market_cap&.positive? ? number_to_human(f.market_cap, precision: 2, significant: false, format: "%n%u", units: { million: "M", billion: "B", trillion: "T" }) : "—" %>
+          </p>
+        </div>
+
+        <div class="bg-container-inset rounded-lg p-3">
+          <p class="text-xs text-secondary"><%= t("investments.quote_detail.pe_ratio") %></p>
+          <p class="text-sm font-medium text-primary tabular-nums mt-0.5">
+            <%= f.pe_ratio ? number_with_precision(f.pe_ratio, precision: 2) : "—" %>
+          </p>
+        </div>
+
+        <div class="bg-container-inset rounded-lg p-3">
+          <p class="text-xs text-secondary"><%= t("investments.quote_detail.eps") %></p>
+          <p class="text-sm font-medium text-primary tabular-nums mt-0.5">
+            <%= f.eps ? number_with_precision(f.eps, precision: 2) : "—" %>
+          </p>
+        </div>
+
+        <div class="bg-container-inset rounded-lg p-3">
+          <p class="text-xs text-secondary"><%= t("investments.quote_detail.dividend_yield") %></p>
+          <p class="text-sm font-medium text-primary tabular-nums mt-0.5">
+            <%= f.dividend_yield ? "#{number_with_precision(f.dividend_yield * 100, precision: 2)}%" : "—" %>
+          </p>
+        </div>
+
+        <div class="bg-container-inset rounded-lg p-3">
+          <p class="text-xs text-secondary"><%= t("investments.quote_detail.beta") %></p>
+          <p class="text-sm font-medium text-primary tabular-nums mt-0.5">
+            <%= f.beta ? number_with_precision(f.beta, precision: 2) : "—" %>
+          </p>
+        </div>
+
+        <div class="bg-container-inset rounded-lg p-3">
+          <p class="text-xs text-secondary"><%= t("investments.quote_detail.target_price") %></p>
+          <p class="text-sm font-medium text-primary tabular-nums mt-0.5">
+            <%= f.target_mean_price ? number_with_delimiter(number_with_precision(f.target_mean_price, precision: 2)) : "—" %>
+          </p>
+        </div>
+      <% end %>
     </div>
+
+    <%# About / Company Profile & Events %>
+    <% if f&.description.present? || f&.sector.present? || f&.earnings_date.present? %>
+      <div class="pt-3 border-t border-tertiary space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h3 class="text-sm font-medium text-primary">
+            <%= t("investments.quote_detail.about") %> <%= quote.name %>
+          </h3>
+          <div class="flex flex-wrap items-center gap-2 text-xs text-secondary">
+            <% if f.sector.present? %>
+              <span class="px-2 py-0.5 rounded bg-container-inset"><%= f.sector %></span>
+            <% end %>
+            <% if f.industry.present? %>
+              <span class="px-2 py-0.5 rounded bg-container-inset"><%= f.industry %></span>
+            <% end %>
+            <% if f.earnings_date.present? %>
+              <span><%= t("investments.quote_detail.earnings_date") %>: <strong class="text-primary"><%= f.earnings_date %></strong></span>
+            <% end %>
+            <% if f.ex_dividend_date.present? %>
+              <span><%= t("investments.quote_detail.ex_dividend_date") %>: <strong class="text-primary"><%= f.ex_dividend_date %></strong></span>
+            <% end %>
+          </div>
+        </div>
+        <% if f.description.present? %>
+          <p class="text-xs text-secondary leading-relaxed line-clamp-3"><%= f.description %></p>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%# Related News %>
+    <% if quote.news.present? %>
+      <div class="pt-3 border-t border-tertiary space-y-2.5">
+        <h3 class="text-sm font-medium text-primary"><%= t("investments.quote_detail.news_title") %></h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+          <% quote.news.first(4).each do |article| %>
+            <%= link_to article.link, target: "_blank", rel: "noopener noreferrer",
+                        class: "block rounded-lg bg-container-inset p-3 hover:bg-surface-hover transition-colors" do %>
+              <p class="text-xs font-medium text-primary line-clamp-2"><%= article.title %></p>
+              <p class="text-[11px] text-secondary mt-1">
+                <%= article.publisher %>
+                <% if article.published_at.present? %>
+                  · <%= Time.zone.parse(article.published_at)&.strftime("%d %b %H:%M") rescue nil %>
+                <% end %>
+              </p>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
   <% else %>
     <div class="py-12 text-center text-sm text-secondary">
       <%= t("investments.quote_detail.unavailable") %>

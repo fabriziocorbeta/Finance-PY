@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_market_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_market_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="Mercados"
+            android:textColor="#111827"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Y!"
+            android:textColor="#6D28D9"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_market_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="Abre Inversiones para sincronizar"
+        android:textColor="#6B7280"
+        android:textSize="11sp"
+        android:visibility="gone" />
+
+    <!-- Row 1 -->
+    <LinearLayout
+        android:id="@+id/widget_market_row_1"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_market_symbol_1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="^GSPC"
+            android:textColor="#111827"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_market_price_1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:text="—"
+            android:textColor="#374151"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_market_pill_1"
+            android:layout_width="54dp"
+            android:layout_height="wrap_content"
+            android:background="@drawable/widget_pill_green"
+            android:gravity="center"
+            android:paddingHorizontal="5dp"
+            android:paddingVertical="2dp"
+            android:text="+0.00%"
+            android:textColor="#FFFFFF"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Row 2 -->
+    <LinearLayout
+        android:id="@+id/widget_market_row_2"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_market_symbol_2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="^IXIC"
+            android:textColor="#111827"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_market_price_2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:text="—"
+            android:textColor="#374151"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_market_pill_2"
+            android:layout_width="54dp"
+            android:layout_height="wrap_content"
+            android:background="@drawable/widget_pill_green"
+            android:gravity="center"
+            android:paddingHorizontal="5dp"
+            android:paddingVertical="2dp"
+            android:text="+0.00%"
+            android:textColor="#FFFFFF"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Row 3 -->
+    <LinearLayout
+        android:id="@+id/widget_market_row_3"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_market_symbol_3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="^DJI"
+            android:textColor="#111827"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_market_price_3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:text="—"
+            android:textColor="#374151"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_market_pill_3"
+            android:layout_width="54dp"
+            android:layout_height="wrap_content"
+            android:background="@drawable/widget_pill_green"
+            android:gravity="center"
+            android:paddingHorizontal="5dp"
+            android:paddingVertical="2dp"
+            android:text="+0.00%"
+            android:textColor="#FFFFFF"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+</LinearLayout>

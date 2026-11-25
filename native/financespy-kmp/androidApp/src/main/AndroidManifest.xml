@@ -21,6 +21,7 @@
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:allowBackup="false"
         android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:networkSecurityConfig="@xml/network_security_config">
         <meta-data
             android:name="com.google.android.geo.API_KEY"
@@ -59,5 +60,53 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
+        <receiver
+            android:name="py.com.cdco.financespy.widgets.BalanceWidgetProvider"
+            android:exported="true"
+            android:label="Balance FinancePY">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_balance_info" />
+        </receiver>
+
+        <receiver
+            android:name="py.com.cdco.financespy.widgets.ExpensesWidgetProvider"
+            android:exported="true"
+            android:label="Gastos FinancePY">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_expenses_info" />
+        </receiver>
+
+        <receiver
+            android:name="py.com.cdco.financespy.widgets.MarketWidgetProvider"
+            android:exported="true"
+            android:label="Mercados FinancePY">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_market_info" />
+        </receiver>
+
+        <receiver
+            android:name="py.com.cdco.financespy.widgets.PortfolioWidgetProvider"
+            android:exported="true"
+            android:label="Portafolio FinancePY">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_portfolio_info" />
+        </receiver>
     </application>
 </manifest>

@@ -13,6 +13,7 @@ object OfflineCacheKeys {
     const val HOLDINGS_LIST = "cache_holdings_list"
     const val ACCOUNTS_LIST = "cache_accounts_list"
     const val DASHBOARD_DTO = "cache_dashboard_dto"
+    const val MARKET_TRACKER = "cache_market_tracker"
     const val FAMILY_SETTINGS = "cache_family_settings"
 
     fun saleDetail(id: String) = "cache_sale_detail_$id"
