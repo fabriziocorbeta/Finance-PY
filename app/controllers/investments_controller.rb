@@ -25,17 +25,14 @@ class InvestmentsController < ApplicationController
     @holding_quotes = tracker.holding_quotes(@holdings, force_refresh: force_refresh)
 
     selected_security, selected_watchlist = resolve_selected_context(@selected_ticker, @selected_mic)
-    @featured_quote = if @range == "1mo" && !force_refresh
-      find_preloaded_quote(@selected_ticker, @selected_mic)
-    end
-    @featured_quote ||= tracker.quote_for(
+    @featured_quote = tracker.quote_for(
       ticker: @selected_ticker,
       exchange_operating_mic: @selected_mic,
       range: @range,
       security: selected_security,
       watchlist_item: selected_watchlist,
       force_refresh: force_refresh
-    )
+    ) || find_preloaded_quote(@selected_ticker, @selected_mic)
 
     @portfolio_day_change = calculate_portfolio_day_change(@holdings, @holding_quotes)
   end

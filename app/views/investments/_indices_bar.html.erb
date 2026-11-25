@@ -7,7 +7,7 @@
     </h2>
   </div>
 
-  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+  <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-3">
     <% index_quotes.each do |idx| %>
       <% active = idx.ticker.casecmp?(selected_ticker.to_s) %>
       <% positive = idx.positive? %>

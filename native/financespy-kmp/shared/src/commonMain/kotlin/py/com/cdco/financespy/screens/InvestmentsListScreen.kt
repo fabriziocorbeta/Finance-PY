@@ -72,6 +72,7 @@ import py.com.cdco.financespy.utils.formatPercent
 import kotlin.math.roundToLong
 
 private val MARKET_RANGES = listOf(
+    "1d" to "1D",
     "5d" to "5D",
     "1mo" to "1M",
     "3mo" to "3M",
@@ -528,8 +529,89 @@ private fun FeaturedQuoteChartCard(
                         Modifier.weight(1f)
                     )
                 }
+
+                quote.fundamentals?.let { f ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        StatCell("Cap. Mkt", f.market_cap?.let { formatCompactNumber(it) } ?: "—", Modifier.weight(1f))
+                        StatCell("P/E", f.pe_ratio?.let { formatQuoteNumber(it) } ?: "—", Modifier.weight(1f))
+                        StatCell("Dividendo", f.dividend_yield?.let { "${formatQuoteNumber(it * 100)}%" } ?: "—", Modifier.weight(1f))
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        StatCell("EPS", f.eps?.let { formatQuoteNumber(it) } ?: "—", Modifier.weight(1f))
+                        StatCell("Beta", f.beta?.let { formatQuoteNumber(it) } ?: "—", Modifier.weight(1f))
+                        StatCell("Objetivo", f.target_mean_price?.let { formatQuoteNumber(it) } ?: "—", Modifier.weight(1f))
+                    }
+
+                    val profileText = f.description?.takeIf { it.isNotBlank() }
+                    if (profileText != null || f.sector != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        HorizontalDivider()
+                        Spacer(modifier = Modifier.height(8.dp))
+                        f.sector?.let { sec ->
+                            Text(
+                                text = listOfNotNull(sec, f.industry).joinToString(" · "),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = FinancePyColors.textSecondary()
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+                        if (profileText != null) {
+                            Text(
+                                text = profileText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = FinancePyColors.textSecondary(),
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+
+                if (quote.news.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Noticias relacionadas",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = FinancePyColors.textPrimary()
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    quote.news.take(3).forEach { article ->
+                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                            Text(
+                                text = article.title,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                color = FinancePyColors.textPrimary(),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = article.publisher,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = FinancePyColors.textSecondary()
+                            )
+                        }
+                    }
+                }
             }
         }
+    }
+}
+
+private fun formatCompactNumber(value: Double): String {
+    val abs = kotlin.math.abs(value)
+    return when {
+        abs >= 1_000_000_000_000.0 -> "${formatQuoteNumber(value / 1_000_000_000_000.0)}T"
+        abs >= 1_000_000_000.0 -> "${formatQuoteNumber(value / 1_000_000_000.0)}B"
+        abs >= 1_000_000.0 -> "${formatQuoteNumber(value / 1_000_000.0)}M"
+        abs >= 1_000.0 -> "${formatQuoteNumber(value / 1_000.0)}K"
+        else -> formatQuoteNumber(value)
     }
 }
 

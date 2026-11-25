@@ -3,6 +3,13 @@ import * as d3 from "d3";
 
 const parseLocalDate = d3.timeParse("%Y-%m-%d");
 
+function parseChartDate(raw) {
+  if (!raw) return null;
+  if (typeof raw === "string" && raw.length === 10) return parseLocalDate(raw);
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? parseLocalDate(raw) : parsed;
+}
+
 export default class extends Controller {
   static values = {
     data: Object,
@@ -53,7 +60,7 @@ export default class extends Controller {
 
   _normalizeDataPoints() {
     this._normalDataPoints = (this.dataValue.values || []).map((d) => ({
-      date: parseLocalDate(d.date),
+      date: parseChartDate(d.date),
       date_formatted: d.date_formatted,
       value: d.value,
       trend: d.trend,

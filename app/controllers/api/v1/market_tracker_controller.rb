@@ -20,22 +20,16 @@ class Api::V1::MarketTrackerController < Api::V1::BaseController
     watchlist_quotes = tracker.watchlist_quotes(watchlist_assets, force_refresh: force_refresh)
     holding_quotes = tracker.holding_quotes(holdings, force_refresh: force_refresh)
 
-    featured_quote = if range == "1mo" && !force_refresh
-      (index_quotes + watchlist_quotes + holding_quotes.values).find do |card|
-        card.ticker.casecmp?(selected_ticker) && (selected_mic.blank? || card.security&.exchange_operating_mic.to_s.casecmp?(selected_mic))
-      end
-    end
-
-    featured_quote ||= begin
-      selected_security, selected_watchlist = resolve_selected_context(selected_ticker, selected_mic, watchlist_items, holdings)
-      tracker.quote_for(
-        ticker: selected_ticker,
-        exchange_operating_mic: selected_mic,
-        range: range,
-        security: selected_security,
-        watchlist_item: selected_watchlist,
-        force_refresh: force_refresh
-      )
+    selected_security, selected_watchlist = resolve_selected_context(selected_ticker, selected_mic, watchlist_items, holdings)
+    featured_quote = tracker.quote_for(
+      ticker: selected_ticker,
+      exchange_operating_mic: selected_mic,
+      range: range,
+      security: selected_security,
+      watchlist_item: selected_watchlist,
+      force_refresh: force_refresh
+    ) || (index_quotes + watchlist_quotes + holding_quotes.values).find do |card|
+      card.ticker.casecmp?(selected_ticker) && (selected_mic.blank? || card.security&.exchange_operating_mic.to_s.casecmp?(selected_mic))
     end
 
     render json: {
@@ -92,8 +86,60 @@ class Api::V1::MarketTrackerController < Api::V1::BaseController
     end
 
     def serialize_quote(card)
+      ohlc_by_date = (card.ohlc_points || []).each_with_object({}) do |pt, hash|
+        key = pt[:date].respond_to?(:iso8601) ? pt[:date].iso8601 : pt[:date].to_s
+        hash[key] = pt
+      end
+
       points = (card.series&.values || []).map do |pt|
-        { date: pt.date.to_s, value: pt.value.to_f }
+        date_str = pt.date.respond_to?(:iso8601) ? pt.date.iso8601 : pt.date.to_s
+        ohlc = ohlc_by_date[date_str]
+        {
+          date: date_str,
+          value: pt.value.to_f,
+          open: ohlc&.dig(:open)&.to_f,
+          high: ohlc&.dig(:high)&.to_f,
+          low: ohlc&.dig(:low)&.to_f,
+          volume: ohlc&.dig(:volume)
+        }.compact
+      end
+
+      f = card.fundamentals
+      fundamentals_json = if f
+        {
+          market_cap: f.market_cap&.to_f,
+          pe_ratio: f.pe_ratio&.to_f,
+          forward_pe: f.forward_pe&.to_f,
+          eps: f.eps&.to_f,
+          dividend_yield: f.dividend_yield&.to_f,
+          beta: f.beta&.to_f,
+          avg_volume: f.avg_volume,
+          open_price: f.open_price&.to_f,
+          bid: f.bid&.to_f,
+          ask: f.ask&.to_f,
+          target_mean_price: f.target_mean_price&.to_f,
+          recommendation_key: f.recommendation_key,
+          sector: f.sector,
+          industry: f.industry,
+          website: f.website,
+          description: f.description,
+          earnings_date: f.earnings_date,
+          ex_dividend_date: f.ex_dividend_date,
+          market_state: f.market_state,
+          pre_market_price: f.pre_market_price&.to_f,
+          pre_market_change_percent: f.pre_market_change_percent&.to_f,
+          post_market_price: f.post_market_price&.to_f,
+          post_market_change_percent: f.post_market_change_percent&.to_f
+        }
+      end
+
+      news_json = (card.news || []).map do |item|
+        {
+          title: item.title,
+          publisher: item.publisher,
+          link: item.link,
+          published_at: item.published_at
+        }
       end
 
       {
@@ -115,7 +161,9 @@ class Api::V1::MarketTrackerController < Api::V1::BaseController
         volume: card.volume,
         watchlist_item_id: card.watchlist_item&.id,
         security_id: card.security&.id,
-        points: points
+        points: points,
+        fundamentals: fundamentals_json,
+        news: news_json
       }
     end
 end

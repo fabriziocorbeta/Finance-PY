@@ -7,6 +7,7 @@ import androidx.security.crypto.MasterKey
 import py.com.cdco.financespy.security.EncryptedPrefsFactory
 import py.com.cdco.financespy.security.OwnerScope
 import py.com.cdco.financespy.sync.OfflineStore
+import py.com.cdco.financespy.widgets.WidgetUpdater
 import java.io.File
 
 /**
@@ -48,6 +49,9 @@ class AndroidOfflineStore(
         ensureOwnerScope()
         synchronized(lock) { writeFile(key, value) }
         if (legacyPrefs.contains(key)) legacyPrefs.edit().remove(key).apply()
+        if (key == "cache_market_tracker" || key == "cache_holdings_list" || key == "cache_accounts_list") {
+            runCatching { WidgetUpdater.updateAll(appContext) }
+        }
     }
 
     override fun remove(key: String) {

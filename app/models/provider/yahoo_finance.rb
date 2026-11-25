@@ -31,6 +31,39 @@ class Provider::YahooFinance < Provider
     :prices
   )
 
+  QuoteFundamentals = Data.define(
+    :market_cap,
+    :pe_ratio,
+    :forward_pe,
+    :eps,
+    :dividend_yield,
+    :beta,
+    :avg_volume,
+    :open_price,
+    :bid,
+    :ask,
+    :target_mean_price,
+    :recommendation_key,
+    :sector,
+    :industry,
+    :website,
+    :description,
+    :earnings_date,
+    :ex_dividend_date,
+    :market_state,
+    :pre_market_price,
+    :pre_market_change_percent,
+    :post_market_price,
+    :post_market_change_percent
+  )
+
+  NewsItem = Data.define(
+    :title,
+    :publisher,
+    :link,
+    :published_at
+  )
+
   # Cache duration for repeated requests (5 minutes)
   CACHE_DURATION = 5.minutes
 
@@ -356,6 +389,7 @@ class Provider::YahooFinance < Provider
   def fetch_quote_and_series(symbol:, exchange_operating_mic: nil, range: "1mo", interval: "1d", clear_cache: false)
     with_provider_response do
       normalized_sym = normalize_symbol(symbol, exchange_operating_mic)
+      intraday = %w[1m 2m 5m 15m 30m 60m 90m 1h].include?(interval.to_s)
       cache_key = "quote_series_#{normalized_sym}_#{range}_#{interval}"
 
       if !clear_cache && (cached = get_cached_result(cache_key))
@@ -364,7 +398,7 @@ class Provider::YahooFinance < Provider
         data = fetch_chart_with_fallback(normalized_sym, {
           "range" => range,
           "interval" => interval,
-          "includePrePost" => false
+          "includePrePost" => intraday
         })
 
         if (err = data.dig("chart", "error"))
@@ -378,22 +412,38 @@ class Provider::YahooFinance < Provider
         timestamps = chart_data["timestamp"] || []
         quotes = chart_data.dig("indicators", "quote", 0) || {}
         closes = quotes["close"] || []
+        opens = quotes["open"] || []
+        highs = quotes["high"] || []
+        lows = quotes["low"] || []
+        volumes = quotes["volume"] || []
 
         meta_exchange = meta["exchangeName"] || ""
         raw_currency = meta["currency"] || default_currency_for_exchange(meta_exchange) || "USD"
 
-        daily_points = {}
+        series_points = {}
         timestamps.each_with_index do |ts, idx|
           close_val = closes[idx]
           next if close_val.nil? || close_val.to_f <= 0
 
-          date = Time.at(ts).utc.to_date
+          point_key = intraday ? Time.at(ts).utc : Time.at(ts).utc.to_date
           norm_curr, norm_price = normalize_currency_and_price(raw_currency, close_val.to_f)
           raw_currency = norm_curr
-          daily_points[date] = norm_price.round(4)
+
+          _, norm_open = opens[idx] ? normalize_currency_and_price(raw_currency, opens[idx].to_f) : [ norm_curr, nil ]
+          _, norm_high = highs[idx] ? normalize_currency_and_price(raw_currency, highs[idx].to_f) : [ norm_curr, nil ]
+          _, norm_low = lows[idx] ? normalize_currency_and_price(raw_currency, lows[idx].to_f) : [ norm_curr, nil ]
+
+          series_points[point_key] = {
+            date: point_key,
+            price: norm_price.round(4),
+            open: norm_open&.round(4),
+            high: norm_high&.round(4),
+            low: norm_low&.round(4),
+            volume: volumes[idx]&.to_i
+          }
         end
 
-        points = daily_points.sort_by { |d, _| d }.map { |d, p| { date: d, price: p } }
+        points = series_points.sort_by { |d, _| d }.map { |_, pt| pt }
 
         raw_regular = meta["regularMarketPrice"]&.to_f
         norm_curr, regular_price = raw_regular ? normalize_currency_and_price(raw_currency, raw_regular) : [ raw_currency, points.last&.dig(:price) ]
@@ -440,7 +490,128 @@ class Provider::YahooFinance < Provider
     end
   end
 
+  def fetch_quote_summary(symbol:, exchange_operating_mic: nil, clear_cache: false)
+    with_provider_response do
+      normalized_sym = normalize_symbol(symbol, exchange_operating_mic)
+      cache_key = "quote_summary_#{normalized_sym}"
+
+      if !clear_cache && (cached = get_cached_result(cache_key))
+        cached
+      else
+        check_rate_limit!
+        throttle_request
+        cookie, crumb = fetch_cookie_and_crumb
+
+        encoded_symbol = ERB::Util.url_encode(normalized_sym)
+        modules = "summaryDetail,defaultKeyStatistics,financialData,assetProfile,calendarEvents,price"
+        response = authenticated_client(cookie).get("#{base_url}/v10/finance/quoteSummary/#{encoded_symbol}") do |req|
+          req.params["modules"] = modules
+          req.params["crumb"] = crumb
+        end
+
+        data = JSON.parse(response.body)
+        if data.dig("quoteSummary", "error", "code") == "Unauthorized"
+          clear_crumb_cache
+          cookie, crumb = fetch_cookie_and_crumb
+          response = authenticated_client(cookie).get("#{base_url}/v10/finance/quoteSummary/#{encoded_symbol}") do |req|
+            req.params["modules"] = modules
+            req.params["crumb"] = crumb
+          end
+          data = JSON.parse(response.body)
+          raise AuthenticationError, "Yahoo Finance authentication failed" if data.dig("quoteSummary", "error", "code") == "Unauthorized"
+        end
+
+        result = data.dig("quoteSummary", "result", 0)
+        raise Error, "No quote summary found for #{normalized_sym}" unless result
+
+        summary = result["summaryDetail"] || {}
+        stats = result["defaultKeyStatistics"] || {}
+        financial = result["financialData"] || {}
+        profile = result["assetProfile"] || {}
+        calendar = result["calendarEvents"] || {}
+        price = result["price"] || {}
+
+        earnings_ts = yahoo_raw(calendar.dig("earnings", "earningsDate", 0))
+        ex_div_ts = yahoo_raw(summary["exDividendDate"]) || yahoo_raw(calendar["exDividendDate"])
+
+        fundamentals = QuoteFundamentals.new(
+          market_cap: yahoo_raw(price["marketCap"]) || yahoo_raw(summary["marketCap"]),
+          pe_ratio: yahoo_raw(summary["trailingPE"]),
+          forward_pe: yahoo_raw(summary["forwardPE"]) || yahoo_raw(stats["forwardPE"]),
+          eps: yahoo_raw(stats["trailingEps"]),
+          dividend_yield: yahoo_raw(summary["dividendYield"]) || yahoo_raw(summary["trailingAnnualDividendYield"]),
+          beta: yahoo_raw(summary["beta"]) || yahoo_raw(stats["beta"]),
+          avg_volume: yahoo_raw(summary["averageVolume"])&.to_i,
+          open_price: yahoo_raw(summary["open"]) || yahoo_raw(price["regularMarketOpen"]),
+          bid: yahoo_raw(summary["bid"]),
+          ask: yahoo_raw(summary["ask"]),
+          target_mean_price: yahoo_raw(financial["targetMeanPrice"]),
+          recommendation_key: financial["recommendationKey"],
+          sector: profile["sector"],
+          industry: profile["industry"],
+          website: profile["website"],
+          description: profile["longBusinessSummary"],
+          earnings_date: earnings_ts ? Time.at(earnings_ts.to_i).utc.to_date.to_s : nil,
+          ex_dividend_date: ex_div_ts ? Time.at(ex_div_ts.to_i).utc.to_date.to_s : nil,
+          market_state: price["marketState"],
+          pre_market_price: yahoo_raw(price["preMarketPrice"]),
+          pre_market_change_percent: yahoo_raw(price["preMarketChangePercent"])&.then { |v| (v * 100).round(2) },
+          post_market_price: yahoo_raw(price["postMarketPrice"]),
+          post_market_change_percent: yahoo_raw(price["postMarketChangePercent"])&.then { |v| (v * 100).round(2) }
+        )
+
+        cache_result(cache_key, fundamentals)
+        fundamentals
+      end
+    rescue JSON::ParserError => e
+      raise Error, "Invalid quoteSummary response format: #{e.message}"
+    end
+  end
+
+  def fetch_news(query: "^GSPC", count: 6, clear_cache: false)
+    with_provider_response do
+      clean_query = query.to_s.strip.presence || "^GSPC"
+      cache_key = "news_#{clean_query}_#{count}"
+
+      if !clear_cache && (cached = get_cached_result(cache_key))
+        cached
+      else
+        check_rate_limit!
+        throttle_request
+        response = client.get("#{base_url}/v1/finance/search") do |req|
+          req.params["q"] = clean_query
+          req.params["quotesCount"] = 0
+          req.params["newsCount"] = count
+        end
+
+        data = JSON.parse(response.body)
+        items = (data["news"] || []).filter_map do |item|
+          next if item["title"].blank? || item["link"].blank?
+
+          ts = item["providerPublishTime"]
+          NewsItem.new(
+            title: item["title"],
+            publisher: item["publisher"].presence || "Yahoo Finance",
+            link: item["link"],
+            published_at: ts ? Time.at(ts.to_i).utc.iso8601 : nil
+          )
+        end
+
+        cache_result(cache_key, items)
+        items
+      end
+    rescue JSON::ParserError => e
+      raise Error, "Invalid news response format: #{e.message}"
+    end
+  end
+
   private
+
+    def yahoo_raw(field)
+      return nil if field.nil?
+
+      field.is_a?(Hash) ? field["raw"] : field
+    end
 
     def base_url
       ENV["YAHOO_FINANCE_URL"] || "https://query1.finance.yahoo.com"

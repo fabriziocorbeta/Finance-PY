@@ -20,6 +20,7 @@ en:
       crypto: Crypto
       fund: Fund
     ranges:
+      1d: 1D
       5d: 5D
       1mo: 1M
       3mo: 3M
@@ -32,9 +33,25 @@ en:
       add_to_watchlist: Watch
       no_chart_data: No historical chart data available for this range
       previous_close: Previous close
+      open_price: Open
       day_range: Day range
       week52_range: 52-week range
       volume: Volume
+      avg_volume: Avg. volume
+      market_cap: Market cap
+      pe_ratio: P/E (TTM)
+      eps: EPS (TTM)
+      dividend_yield: Dividend yield
+      beta: Beta
+      target_price: Analyst target
+      pre_market: Pre-Market
+      after_hours: After-Hours
+      market_open: Market open
+      market_closed: Market closed
+      about: About
+      earnings_date: Earnings date
+      ex_dividend_date: Ex-dividend date
+      news_title: Related news
       unavailable: Market data is currently unavailable
     new_trade:
       title: Record buy / position

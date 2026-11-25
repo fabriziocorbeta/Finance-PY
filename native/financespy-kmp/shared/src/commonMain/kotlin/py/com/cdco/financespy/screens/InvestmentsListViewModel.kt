@@ -13,6 +13,7 @@ import py.com.cdco.financespy.api.dto.CreateTradeBody
 import py.com.cdco.financespy.api.dto.CreateTradeRequest
 import py.com.cdco.financespy.api.dto.DashboardDto
 import py.com.cdco.financespy.api.dto.MarketQuoteDto
+import py.com.cdco.financespy.api.dto.MarketTrackerResponseDto
 import py.com.cdco.financespy.api.dto.PortfolioHoldingDto
 import py.com.cdco.financespy.sync.OfflineCache
 import py.com.cdco.financespy.sync.OfflineCacheKeys
@@ -67,6 +68,9 @@ class InvestmentsListViewModel(
         val dashboard = cache.get(OfflineCacheKeys.DASHBOARD_DTO, DashboardDto.serializer())
         if (accounts != null || holdings != null) {
             applyHoldingsData(accounts ?: emptyList(), holdings ?: emptyList(), dashboard)
+        }
+        cache.get(OfflineCacheKeys.MARKET_TRACKER, MarketTrackerResponseDto.serializer())?.let { tracker ->
+            applyMarketTracker(tracker)
         }
     }
 
@@ -280,17 +284,8 @@ class InvestmentsListViewModel(
                 range = current.selectedRange,
                 refresh = forceRefresh
             )
-            _state.update {
-                it.copy(
-                    isLoadingMarket = false,
-                    indexQuotes = tracker.index_quotes,
-                    watchlistQuotes = tracker.watchlist_quotes,
-                    holdingQuotesBySecurity = tracker.holding_quotes
-                        .filter { q -> q.security_id != null }
-                        .associateBy { q -> q.security_id!! },
-                    featuredQuote = tracker.featured_quote ?: it.featuredQuote
-                )
-            }
+            cache.put(OfflineCacheKeys.MARKET_TRACKER, MarketTrackerResponseDto.serializer(), tracker)
+            applyMarketTracker(tracker)
         } catch (e: Exception) {
             _state.update {
                 it.copy(
@@ -298,6 +293,20 @@ class InvestmentsListViewModel(
                     marketError = e.message
                 )
             }
+        }
+    }
+
+    private fun applyMarketTracker(tracker: MarketTrackerResponseDto) {
+        _state.update {
+            it.copy(
+                isLoadingMarket = false,
+                indexQuotes = tracker.index_quotes,
+                watchlistQuotes = tracker.watchlist_quotes,
+                holdingQuotesBySecurity = tracker.holding_quotes
+                    .filter { q -> q.security_id != null }
+                    .associateBy { q -> q.security_id!! },
+                featuredQuote = tracker.featured_quote ?: it.featuredQuote
+            )
         }
     }
 }

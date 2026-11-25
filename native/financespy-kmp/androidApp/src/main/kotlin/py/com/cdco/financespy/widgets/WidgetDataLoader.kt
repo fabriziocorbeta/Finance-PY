@@ -4,8 +4,10 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import org.json.JSONArray
 import org.json.JSONObject
 import py.com.cdco.financespy.cache.AndroidDashboardCache
+import py.com.cdco.financespy.cache.AndroidOfflineStore
 
 internal data class WidgetCategoryItem(
     val name: String,
@@ -25,6 +27,55 @@ internal data class WidgetSnapshot(
     val outflowsTotal: Double,
     val outflowsCurrency: String,
     val topCategories: List<WidgetCategoryItem>
+)
+
+internal data class MarketQuoteItem(
+    val ticker: String,
+    val name: String,
+    val currency: String,
+    val currentPrice: Double?,
+    val change: Double?,
+    val changePercent: Double?
+)
+
+internal data class MarketWidgetSnapshot(
+    val indices: List<MarketQuoteItem>,
+    val watchlist: List<MarketQuoteItem>,
+    val holdings: List<MarketQuoteItem>
+) {
+    val combinedDisplayItems: List<MarketQuoteItem>
+        get() {
+            val seen = HashSet<String>()
+            val result = mutableListOf<MarketQuoteItem>()
+            // Prioritize user's watchlist first (Yahoo Finance style), then major indices
+            val ordered = watchlist + indices + holdings
+            for (item in ordered) {
+                val key = item.ticker.uppercase()
+                if (key !in seen) {
+                    seen.add(key)
+                    result.add(item)
+                }
+            }
+            return result
+        }
+}
+
+internal data class PortfolioHoldingItem(
+    val ticker: String,
+    val name: String,
+    val value: Double,
+    val currency: String,
+    val returnPercentFormatted: String?,
+    val isPositive: Boolean
+)
+
+internal data class PortfolioWidgetSnapshot(
+    val portfolioValue: Double,
+    val currency: String,
+    val unrealizedValue: Double?,
+    val unrealizedPercentFormatted: String?,
+    val isPositive: Boolean,
+    val topHoldings: List<PortfolioHoldingItem>
 )
 
 internal object WidgetDataLoader {
@@ -116,6 +167,112 @@ internal object WidgetDataLoader {
             null
         }
     }
+
+    fun loadMarketSnapshot(context: Context): MarketWidgetSnapshot? {
+        return try {
+            val raw = AndroidOfflineStore(context.applicationContext)
+                .get("cache_market_tracker")
+                ?.takeIf { it.isNotBlank() }
+                ?: return null
+            val root = JSONObject(raw)
+            MarketWidgetSnapshot(
+                indices = parseQuoteArray(root.optJSONArray("index_quotes")),
+                watchlist = parseQuoteArray(root.optJSONArray("watchlist_quotes")),
+                holdings = parseQuoteArray(root.optJSONArray("holding_quotes"))
+            )
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    fun loadPortfolioSnapshot(context: Context): PortfolioWidgetSnapshot? {
+        return try {
+            val cache = AndroidDashboardCache(context.applicationContext)
+            val raw = fallbackPeriods.firstNotNullOfOrNull { period ->
+                cache.load(period)?.takeIf { it.isNotBlank() }
+            } ?: return null
+
+            val root = JSONObject(raw)
+            val currency = root.optString("currency", "PYG").ifBlank { "PYG" }
+            val summary = root.optJSONObject("investment_summary") ?: return null
+            val invCurrency = summary.optString("currency", currency).ifBlank { currency }
+            val portfolioValue = summary.optDouble("portfolio_value", 0.0)
+
+            val gains = summary.optJSONObject("unrealized_gains")
+            val unrealizedValue = if (gains != null && gains.has("value") && !gains.isNull("value")) {
+                gains.optDouble("value")
+            } else {
+                null
+            }
+            val unrealizedPct = gains?.optString("percent_formatted", "")?.ifBlank { null }
+            val isPositive = (unrealizedValue ?: 0.0) >= 0.0
+
+            val holdingsList = mutableListOf<PortfolioHoldingItem>()
+            val arr = summary.optJSONArray("top_holdings")
+            if (arr != null) {
+                for (i in 0 until minOf(arr.length(), 4)) {
+                    val h = arr.optJSONObject(i) ?: continue
+                    val ticker = h.optString("ticker", "").trim()
+                    if (ticker.isEmpty()) continue
+                    val name = h.optString("name", ticker).ifBlank { ticker }
+                    val value = h.optDouble("value", 0.0)
+                    val hCurrency = h.optString("currency", invCurrency).ifBlank { invCurrency }
+                    val retPct = h.optString("return_percent_formatted", "").ifBlank { null }
+                    val retPositive = !(retPct?.trim()?.startsWith("-") ?: false)
+                    holdingsList.add(
+                        PortfolioHoldingItem(
+                            ticker = ticker,
+                            name = name,
+                            value = value,
+                            currency = hCurrency,
+                            returnPercentFormatted = retPct,
+                            isPositive = retPositive
+                        )
+                    )
+                }
+            }
+
+            PortfolioWidgetSnapshot(
+                portfolioValue = portfolioValue,
+                currency = invCurrency,
+                unrealizedValue = unrealizedValue,
+                unrealizedPercentFormatted = unrealizedPct,
+                isPositive = isPositive,
+                topHoldings = holdingsList
+            )
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    private fun parseQuoteArray(arr: JSONArray?): List<MarketQuoteItem> {
+        if (arr == null) return emptyList()
+        val list = mutableListOf<MarketQuoteItem>()
+        for (i in 0 until arr.length()) {
+            val obj = arr.optJSONObject(i) ?: continue
+            val ticker = obj.optString("ticker", "").trim()
+            if (ticker.isEmpty()) continue
+            val name = obj.optString("name", ticker).ifBlank { ticker }
+            val currency = obj.optString("currency", "USD").ifBlank { "USD" }
+            val currentPrice = if (obj.has("current_price") && !obj.isNull("current_price")) {
+                obj.optDouble("current_price")
+            } else {
+                null
+            }
+            val change = if (obj.has("change") && !obj.isNull("change")) {
+                obj.optDouble("change")
+            } else {
+                null
+            }
+            val changePct = if (obj.has("change_percent") && !obj.isNull("change_percent")) {
+                obj.optDouble("change_percent")
+            } else {
+                null
+            }
+            list.add(MarketQuoteItem(ticker, name, currency, currentPrice, change, changePct))
+        }
+        return list
+    }
 }
 
 object WidgetUpdater {
@@ -125,7 +282,9 @@ object WidgetUpdater {
 
         listOf(
             BalanceWidgetProvider::class.java,
-            ExpensesWidgetProvider::class.java
+            ExpensesWidgetProvider::class.java,
+            MarketWidgetProvider::class.java,
+            PortfolioWidgetProvider::class.java
         ).forEach { widgetClass ->
             val ids = manager.getAppWidgetIds(ComponentName(appContext, widgetClass))
             if (ids.isNotEmpty()) {

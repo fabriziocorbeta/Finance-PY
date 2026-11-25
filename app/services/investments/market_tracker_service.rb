@@ -4,12 +4,16 @@ module Investments
       { ticker: "^GSPC", name: "S&P 500", region: "US" },
       { ticker: "^IXIC", name: "Nasdaq Composite", region: "US" },
       { ticker: "^DJI", name: "Dow Jones", region: "US" },
-      { ticker: "^RUT", name: "Russell 2000", region: "US" },
-      { ticker: "^VIX", name: "VIX", region: "US" }
+      { ticker: "^VIX", name: "VIX", region: "US" },
+      { ticker: "GC=F", name: "Oro (Gold)", region: "CMDTY" },
+      { ticker: "CL=F", name: "Petróleo WTI", region: "CMDTY" },
+      { ticker: "BTC-USD", name: "Bitcoin", region: "CRYPTO" },
+      { ticker: "PYG=X", name: "USD / PYG", region: "FX" }
     ].freeze
 
     RANGE_CONFIG = {
-      "5d" => { range: "5d", interval: "1d" },
+      "1d" => { range: "1d", interval: "5m" },
+      "5d" => { range: "5d", interval: "15m" },
       "1mo" => { range: "1mo", interval: "1d" },
       "3mo" => { range: "3mo", interval: "1d" },
       "6mo" => { range: "6mo", interval: "1d" },
@@ -20,7 +24,7 @@ module Investments
 
     FETCH_TIMEOUT = 20.seconds
 
-    QuoteCard = Data.define(
+    QuoteCard = Struct.new(
       :ticker,
       :name,
       :category,
@@ -39,7 +43,11 @@ module Investments
       :volume,
       :series,
       :security,
-      :watchlist_item
+      :watchlist_item,
+      :fundamentals,
+      :news,
+      :ohlc_points,
+      keyword_init: true
     ) do
       def positive?
         change.to_f >= 0
@@ -115,8 +123,8 @@ module Investments
       end
     end
 
-    # Fetches detailed quote + historical Series for a single ticker and timeframe.
-    def quote_for(ticker:, exchange_operating_mic: nil, range: "1mo", security: nil, watchlist_item: nil, force_refresh: false)
+    # Fetches detailed quote + historical Series + fundamentals + news for a single ticker and timeframe.
+    def quote_for(ticker:, exchange_operating_mic: nil, range: "1mo", security: nil, watchlist_item: nil, force_refresh: false, include_details: true)
       range_key = self.class.valid_range(range)
       cfg = RANGE_CONFIG[range_key]
 
@@ -129,7 +137,8 @@ module Investments
         watchlist_item: watchlist_item,
         range: cfg[:range],
         interval: cfg[:interval],
-        force_refresh: force_refresh
+        force_refresh: force_refresh,
+        include_details: include_details
       )
     end
 
@@ -161,7 +170,25 @@ module Investments
         end
       end
 
-      def fetch_single(ticker:, fallback_name:, exchange_operating_mic: nil, category: "equity", security: nil, watchlist_item: nil, range: "1mo", interval: "1d", force_refresh: false)
+      def fetch_single(ticker:, fallback_name:, exchange_operating_mic: nil, category: "equity", security: nil, watchlist_item: nil, range: "1mo", interval: "1d", force_refresh: false, include_details: false)
+        fundamentals_future = if include_details && @provider.respond_to?(:fetch_quote_summary)
+          Concurrent::Promises.future do
+            resp = @provider.fetch_quote_summary(symbol: ticker, exchange_operating_mic: exchange_operating_mic, clear_cache: force_refresh)
+            resp.success? ? resp.data : nil
+          rescue
+            nil
+          end
+        end
+
+        news_future = if include_details && @provider.respond_to?(:fetch_news)
+          Concurrent::Promises.future do
+            resp = @provider.fetch_news(query: ticker, count: 6, clear_cache: force_refresh)
+            resp.success? ? (resp.data || []) : []
+          rescue
+            []
+          end
+        end
+
         response = @provider.fetch_quote_and_series(
           symbol: ticker,
           exchange_operating_mic: exchange_operating_mic,
@@ -170,13 +197,18 @@ module Investments
           clear_cache: force_refresh
         )
 
+        fundamentals = fundamentals_future&.value(6)
+        news = news_future&.value(6) || []
+
         if response.success? && response.data
           build_card_from_provider(
             response.data,
             fallback_name: fallback_name,
             category: category,
             security: security,
-            watchlist_item: watchlist_item
+            watchlist_item: watchlist_item,
+            fundamentals: fundamentals,
+            news: news
           )
         else
           fallback_card({
@@ -184,7 +216,9 @@ module Investments
             fallback_name: fallback_name,
             category: category,
             security: security,
-            watchlist_item: watchlist_item
+            watchlist_item: watchlist_item,
+            fundamentals: fundamentals,
+            news: news
           })
         end
       rescue => e
@@ -198,7 +232,7 @@ module Investments
         })
       end
 
-      def build_card_from_provider(data, fallback_name:, category:, security:, watchlist_item:)
+      def build_card_from_provider(data, fallback_name:, category:, security:, watchlist_item:, fundamentals: nil, news: [])
         points = data.prices || []
         series = build_series(points)
 
@@ -232,7 +266,10 @@ module Investments
           volume: data.volume,
           series: series,
           security: security,
-          watchlist_item: watchlist_item
+          watchlist_item: watchlist_item,
+          fundamentals: fundamentals,
+          news: news,
+          ohlc_points: points
         )
       end
 
@@ -268,7 +305,10 @@ module Investments
           volume: nil,
           series: build_series(db_prices),
           security: security,
-          watchlist_item: target[:watchlist_item]
+          watchlist_item: target[:watchlist_item],
+          fundamentals: target[:fundamentals],
+          news: target[:news] || [],
+          ohlc_points: db_prices
         )
       end
 
