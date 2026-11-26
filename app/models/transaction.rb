@@ -133,6 +133,18 @@ class Transaction < ApplicationRecord
   # Internal movement labels that should be excluded from budget (auto cash management)
   INTERNAL_MOVEMENT_LABELS = [ "Transfer", "Sweep In", "Sweep Out", "Exchange" ].freeze
 
+  # Activity labels excluded from income/expense budgets (internal movements + withdrawals back to cash)
+  BUDGET_EXCLUDED_LABELS = (INTERNAL_MOVEMENT_LABELS + [ "Withdrawal" ]).freeze
+
+  scope :budget_eligible, -> {
+    where.not(kind: BUDGET_EXCLUDED_KINDS)
+      .where("transactions.investment_activity_label IS NULL OR transactions.investment_activity_label NOT IN (?)", BUDGET_EXCLUDED_LABELS)
+  }
+
+  def self.budget_excluded_labels_sql
+    BUDGET_EXCLUDED_LABELS.map { |l| "'#{l}'" }.join(", ")
+  end
+
   # Providers that support pending transaction flags
   PENDING_PROVIDERS = %w[simplefin plaid lunchflow enable_banking].freeze
 

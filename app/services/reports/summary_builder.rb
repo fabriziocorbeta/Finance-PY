@@ -222,7 +222,7 @@ module Reports
           .joins(entry: :account)
           .where(accounts: { family_id: family.id, status: [ "draft", "active" ] })
           .where(entries: { entryable_type: "Transaction", excluded: false, date: period.date_range })
-          .where.not(kind: Transaction::BUDGET_EXCLUDED_KINDS)
+          .budget_eligible
           .includes(entry: :account, category: :parent)
 
         transactions = apply_user_finance_accounts_filter(transactions)

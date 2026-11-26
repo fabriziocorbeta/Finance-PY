@@ -374,7 +374,7 @@ class ReportsController < ApplicationController
         .joins(entry: :account)
         .where(accounts: { family_id: Current.family.id, status: [ "draft", "active" ] })
         .where(entries: { entryable_type: "Transaction", excluded: false, date: @period.date_range })
-        .where.not(kind: Transaction::BUDGET_EXCLUDED_KINDS)
+        .budget_eligible
         .includes(entry: :account, category: :parent)
 
       # Apply filters (includes finance account scoping)
@@ -678,7 +678,7 @@ class ReportsController < ApplicationController
         .joins(entry: :account)
         .where(accounts: { family_id: Current.family.id, status: [ "draft", "active" ] })
         .where(entries: { entryable_type: "Transaction", excluded: false, date: @period.date_range })
-        .where.not(kind: Transaction::BUDGET_EXCLUDED_KINDS)
+        .budget_eligible
         .includes(entry: :account, category: [])
 
       transactions = apply_transaction_filters(transactions)
@@ -715,7 +715,7 @@ class ReportsController < ApplicationController
         .joins(entry: :account)
         .where(accounts: { family_id: Current.family.id, status: [ "draft", "active" ] })
         .where(entries: { entryable_type: "Transaction", excluded: false, date: @period.date_range })
-        .where.not(kind: Transaction::BUDGET_EXCLUDED_KINDS)
+        .budget_eligible
         .includes(entry: :account, category: [])
 
       transactions = apply_transaction_filters(transactions)
