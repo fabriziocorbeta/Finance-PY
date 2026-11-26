@@ -74,6 +74,10 @@ class IncomeStatement::Totals
           er.to_currency = :target_currency
         )
         WHERE at.kind NOT IN (#{budget_excluded_kinds_sql})
+          AND (
+            at.investment_activity_label IS NULL
+            OR at.investment_activity_label NOT IN (#{budget_excluded_labels_sql})
+          )
           AND ae.excluded = false
           AND a.family_id = :family_id
           AND a.status IN ('draft', 'active')
@@ -104,7 +108,7 @@ class IncomeStatement::Totals
         WHERE at.kind NOT IN (#{budget_excluded_kinds_sql})
           AND (
             at.investment_activity_label IS NULL
-            OR at.investment_activity_label NOT IN ('Transfer', 'Sweep In', 'Sweep Out', 'Exchange', 'Withdrawal')
+            OR at.investment_activity_label NOT IN (#{budget_excluded_labels_sql})
           )
           AND ae.excluded = false
           AND a.family_id = :family_id
@@ -161,6 +165,10 @@ class IncomeStatement::Totals
 
     def budget_excluded_kinds_sql
       @budget_excluded_kinds_sql ||= Transaction::BUDGET_EXCLUDED_KINDS.map { |k| "'#{k}'" }.join(", ")
+    end
+
+    def budget_excluded_labels_sql
+      @budget_excluded_labels_sql ||= Transaction.budget_excluded_labels_sql
     end
 
     def validate_date_range!
