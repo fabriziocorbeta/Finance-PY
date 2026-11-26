@@ -334,6 +334,33 @@ class IncomeStatementTest < ActiveSupport::TestCase
     assert_equal Money.new(1400, @family.currency), totals.expense_money # 900 + 500 (abs of -500)
   end
 
+  test "excludes investment withdrawals from income statement expenses" do
+    investment_account = @family.accounts.create!(
+      name: "Mutual Fund",
+      currency: @family.currency,
+      balance: 10000,
+      accountable: Investment.new
+    )
+
+    # A transfer from an investment account to checking creates an outflow with
+    # kind: "investment_contribution" and investment_activity_label: "Withdrawal".
+    # Moving funds out of investments back to cash is not an expense.
+    create_transaction(
+      account: investment_account,
+      amount: 6200,
+      category: nil,
+      kind: "investment_contribution",
+      investment_activity_label: "Withdrawal"
+    )
+
+    income_statement = IncomeStatement.new(@family)
+    totals = income_statement.totals(date_range: Period.last_30_days.date_range)
+
+    assert_equal 4, totals.transactions_count
+    assert_equal Money.new(1000, @family.currency), totals.income_money
+    assert_equal Money.new(900, @family.currency), totals.expense_money
+  end
+
   # Tax-Advantaged Account Exclusion Tests
   test "excludes transactions from tax-advantaged Roth IRA accounts" do
     # Create a Roth IRA (tax-exempt) investment account

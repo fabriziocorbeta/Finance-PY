@@ -104,7 +104,7 @@ class IncomeStatement::Totals
         WHERE at.kind NOT IN (#{budget_excluded_kinds_sql})
           AND (
             at.investment_activity_label IS NULL
-            OR at.investment_activity_label NOT IN ('Transfer', 'Sweep In', 'Sweep Out', 'Exchange')
+            OR at.investment_activity_label NOT IN ('Transfer', 'Sweep In', 'Sweep Out', 'Exchange', 'Withdrawal')
           )
           AND ae.excluded = false
           AND a.family_id = :family_id
