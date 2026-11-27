@@ -48,6 +48,32 @@ class Security::PriceTest < ActiveSupport::TestCase
     assert_not @security.find_or_fetch_price(date: Date.current)
   end
 
+  test "refreshes today price from provider when stale" do
+    Security::Price.delete_all
+    stale_price = Security::Price.create!(
+      security: @security,
+      date: Date.current,
+      price: 150.0,
+      currency: "USD",
+      updated_at: 2.minutes.ago
+    )
+
+    fresh_price = Security::Price.new(
+      security: @security,
+      date: Date.current,
+      price: 155.25,
+      currency: "USD"
+    )
+
+    expect_provider_price(security: @security, price: fresh_price, date: Date.current)
+
+    assert_no_difference "Security::Price.count" do
+      result = @security.find_or_fetch_price(date: Date.current, cache: true)
+      assert_equal stale_price.id, result.id
+      assert_equal 155.25, result.price.to_f
+    end
+  end
+
   private
     def expect_provider_price(security:, price:, date:)
       @provider.expects(:fetch_security_price)

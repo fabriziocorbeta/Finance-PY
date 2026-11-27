@@ -192,32 +192,50 @@ module Security::Provided
     :ok
   end
 
-  def find_or_fetch_price(date: Date.current, cache: true)
-    price = prices.find_by(date: date)
+  REALTIME_PRICE_TTL = 30.seconds
 
-    return price if price.present?
+  def find_or_fetch_price(date: Date.current, cache: true)
+    existing_price = prices.find_by(date: date)
+
+    if existing_price.present? && (date != Date.current || existing_price.updated_at >= REALTIME_PRICE_TTL.ago)
+      return existing_price
+    end
 
     # Don't fetch prices for offline securities (e.g., custom tickers from SimpleFIN)
-    return nil if offline?
+    return existing_price if offline?
 
     # Make sure we have a data provider before fetching
-    return nil unless price_data_provider.present?
+    return existing_price unless price_data_provider.present?
+
     response = price_data_provider.fetch_security_price(
       symbol: ticker,
       exchange_operating_mic: exchange_operating_mic,
       date: date
     )
 
-    return nil unless response.success? # Provider error
+    return existing_price unless response.success? # Graceful fallback on provider error
 
-    price = response.data
-    Security::Price.find_or_create_by!(
+    fetched = response.data
+    return fetched unless cache
+
+    record = existing_price || Security::Price.find_or_initialize_by(
       security_id: self.id,
-      date: price.date,
-      price: price.price,
-      currency: price.currency
-    ) if cache
-    price
+      date: fetched.date,
+      currency: fetched.currency
+    )
+
+    if record.persisted?
+      if record.price != fetched.price
+        record.update!(price: fetched.price)
+      else
+        record.touch
+      end
+    else
+      record.price = fetched.price
+      record.save!
+    end
+
+    record
   end
 
   def import_provider_details(clear_cache: false)
