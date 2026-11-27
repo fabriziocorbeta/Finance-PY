@@ -144,7 +144,6 @@ class Provider::YahooFinance < Provider
         if cached_result = get_cached_result(cache_key)
           cached_result
         else
-          check_rate_limit!
           # For a single date, we'll fetch a range and find the closest match
           end_date = date
           start_date = date - 10.days # Extended range for better coverage
@@ -187,7 +186,6 @@ class Provider::YahooFinance < Provider
         if cached_result = get_cached_result(cache_key)
           cached_result
         else
-          check_rate_limit!
           # Try both direct and inverse currency pairs
           rates = fetch_currency_pair_data(from, to, start_date, end_date) ||
                   fetch_inverse_currency_pair_data(from, to, start_date, end_date)
@@ -207,6 +205,11 @@ class Provider::YahooFinance < Provider
   #           Securities
   # ================================
 
+  SEARCH_QUERY_ALIASES = {
+    "SP500" => "S&P 500",
+    "S&P500" => "S&P 500"
+  }.freeze
+
   def search_securities(symbol, country_code: nil, exchange_operating_mic: nil)
     with_provider_response do
       clean_symbol = symbol.to_s.strip.upcase
@@ -214,7 +217,8 @@ class Provider::YahooFinance < Provider
       if cached_result = get_cached_result(cache_key)
         cached_result
       else
-        quotes = fetch_search_quotes_with_fallback(clean_symbol)
+        search_query = SEARCH_QUERY_ALIASES.fetch(clean_symbol, clean_symbol)
+        quotes = fetch_search_quotes_with_fallback(search_query)
 
         securities = quotes.filter_map do |quote|
           next if quote["symbol"].blank?
@@ -229,15 +233,21 @@ class Provider::YahooFinance < Provider
         end
 
         if securities.empty? && clean_symbol.present?
-          chart = fetch_chart_with_fallback(clean_symbol, { "range" => "5d", "interval" => "1d" }) rescue nil
-          if (meta = chart&.dig("chart", "result", 0, "meta"))
+          chart_candidates = [ clean_symbol ]
+          chart_candidates << "#{clean_symbol}-USD" if clean_symbol.match?(/\A[A-Z0-9]+ON\z/)
+
+          chart_candidates.each do |candidate|
+            chart = fetch_chart_with_fallback(candidate, { "range" => "5d", "interval" => "1d" }) rescue nil
+            next unless (meta = chart&.dig("chart", "result", 0, "meta"))
+
             securities << Security.new(
-              symbol: meta["symbol"] || clean_symbol,
-              name: meta["longName"] || meta["shortName"] || clean_symbol,
+              symbol: meta["symbol"] || candidate,
+              name: meta["longName"] || meta["shortName"] || candidate,
               logo_url: nil,
               exchange_operating_mic: map_exchange_mic(meta["exchangeName"]),
               country_code: map_country_code(meta["fullExchangeName"] || meta["exchangeName"])
             )
+            break
           end
         end
 
@@ -352,13 +362,11 @@ class Provider::YahooFinance < Provider
     with_provider_response do
       symbol = normalize_symbol(symbol, exchange_operating_mic)
       validate_date_params!(start_date, end_date)
-      check_rate_limit!
       # Convert dates to Unix timestamps using UTC to ensure consistent epoch boundaries across timezones
       period1 = start_date.to_time.utc.to_i
       period2 = end_date.end_of_day.to_time.utc.to_i
 
-      throttle_request
-      data = fetch_authenticated_chart(symbol, {
+      data = fetch_chart_with_fallback(symbol, {
         "period1" => period1,
         "period2" => period2,
         "interval" => "1d",
@@ -594,13 +602,12 @@ class Provider::YahooFinance < Provider
       else
         news_raw = []
         [ "https://query2.finance.yahoo.com", base_url ].uniq.each do |host|
-          throttle_request
-          response = client.get("#{host}/v1/finance/search") do |req|
-            req.params["q"] = clean_query
-            req.params["quotesCount"] = 0
-            req.params["newsCount"] = count
-          end
-          next unless response.status == 200
+          response = query_with_cookie(host, "/v1/finance/search", {
+            "q" => clean_query,
+            "quotesCount" => 0,
+            "newsCount" => count
+          })
+          next unless response_status(response) == 200
 
           parsed = JSON.parse(response.body)
           if (arr = parsed["news"]).is_a?(Array) && arr.any?
@@ -635,13 +642,12 @@ class Provider::YahooFinance < Provider
 
     def fetch_search_quotes_with_fallback(query)
       [ "https://query2.finance.yahoo.com", base_url ].uniq.each do |host|
-        throttle_request
-        response = client.get("#{host}/v1/finance/search") do |req|
-          req.params["q"] = query
-          req.params["quotesCount"] = 25
-          req.params["newsCount"] = 0
-        end
-        next unless response.status == 200
+        response = query_with_cookie(host, "/v1/finance/search", {
+          "q" => query,
+          "quotesCount" => 25,
+          "newsCount" => 0
+        })
+        next unless response_status(response) == 200
 
         data = JSON.parse(response.body)
         quotes = data["quotes"]
@@ -662,17 +668,14 @@ class Provider::YahooFinance < Provider
       ENV["YAHOO_FINANCE_URL"] || "https://query1.finance.yahoo.com"
     end
 
-    # Fetches /v8/finance/chart/:symbol preferring query2 (which serves chart
-    # data without cookie/crumb and is far less prone to 429s), falling back
-    # to authenticated query1 if needed.
+    # Fetches /v8/finance/chart/:symbol preferring query2 with a cached Yahoo
+    # session cookie (cookieless query2 requests are aggressively rate-limited
+    # with 429s), falling back to authenticated query1 if needed.
     def fetch_chart_with_fallback(symbol, params)
       encoded_symbol = ERB::Util.url_encode(symbol)
       [ "https://query2.finance.yahoo.com", base_url ].uniq.each do |host|
-        throttle_request
-        response = client.get("#{host}/v8/finance/chart/#{encoded_symbol}") do |req|
-          params.each { |k, v| req.params[k] = v }
-        end
-        next if response.status == 429 || response.status == 401
+        response = query_with_cookie(host, "/v8/finance/chart/#{encoded_symbol}", params)
+        next if [ 429, 401 ].include?(response_status(response))
 
         parsed = JSON.parse(response.body)
         return parsed if parsed.dig("chart", "result", 0).present?
@@ -683,6 +686,38 @@ class Provider::YahooFinance < Provider
       check_rate_limit!
       throttle_request
       fetch_authenticated_chart(symbol, params)
+    end
+
+    def query_with_cookie(host, path, params)
+      cookie = fetch_session_cookie
+
+      2.times do |attempt|
+        throttle_request
+        response = client.get("#{host}#{path}") do |req|
+          params.each { |k, v| req.params[k] = v }
+          req.headers["Cookie"] = cookie if cookie.present?
+        end
+
+        status = response_status(response)
+        if (status == 429 || status == 401) && attempt.zero?
+          refreshed = refresh_session_cookie
+          if refreshed.present?
+            cookie = refreshed
+            next
+          end
+        end
+
+        return response
+      rescue Faraday::TooManyRequestsError, Faraday::UnauthorizedError
+        raise unless attempt.zero?
+
+        cookie = refresh_session_cookie
+        raise if cookie.blank?
+      end
+    end
+
+    def response_status(response)
+      response.respond_to?(:status) ? response.status : 200
     end
 
     # ================================
@@ -911,8 +946,7 @@ class Provider::YahooFinance < Provider
       period2 = end_date.end_of_day.to_time.utc.to_i
 
       begin
-        throttle_request
-        data = fetch_authenticated_chart(symbol, {
+        data = fetch_chart_with_fallback(symbol, {
           "period1" => period1,
           "period2" => period2,
           "interval" => "1d",
@@ -1001,6 +1035,38 @@ class Provider::YahooFinance < Provider
     #    Cookie/Crumb Authentication
     # ================================
 
+    def session_cookie_cache_key
+      "#{@cache_prefix}_auth_cookie"
+    end
+
+    # Fetches and caches a lightweight Yahoo session cookie from fc.yahoo.com
+    # (no query1 getcrumb call needed). Sending this cookie on query2 requests
+    # prevents Yahoo's aggressive cookieless IP 429 throttling.
+    def fetch_session_cookie
+      cached_cookie = Rails.cache.read(session_cookie_cache_key)
+      return cached_cookie if cached_cookie.present?
+
+      if (cached_pair = Rails.cache.read("#{@cache_prefix}_auth_crumb")).is_a?(Array) && cached_pair.first.present?
+        return cached_pair.first
+      end
+
+      refresh_session_cookie
+    end
+
+    def refresh_session_cookie
+      Rails.cache.delete(session_cookie_cache_key)
+      cookie_response = auth_client.get("https://fc.yahoo.com")
+      cookie = extract_cookie(cookie_response)
+      return nil if cookie.blank?
+
+      cookie_max_age = extract_cookie_max_age(cookie_response)
+      cache_duration = [ cookie_max_age || MAX_CRUMB_CACHE_DURATION, MAX_CRUMB_CACHE_DURATION ].min
+      Rails.cache.write(session_cookie_cache_key, cookie, expires_in: cache_duration)
+      cookie
+    rescue StandardError
+      nil
+    end
+
     # Fetches and caches the Yahoo Finance cookie and crumb for authenticated endpoints
     # The crumb is a CSRF token required by some Yahoo Finance endpoints (e.g., quoteSummary)
     def fetch_cookie_and_crumb
@@ -1028,6 +1094,7 @@ class Provider::YahooFinance < Provider
       cache_duration = [ cookie_max_age || MAX_CRUMB_CACHE_DURATION, MAX_CRUMB_CACHE_DURATION ].min
       result = [ cookie, crumb ]
       Rails.cache.write(cache_key, result, expires_in: cache_duration)
+      Rails.cache.write(session_cookie_cache_key, cookie, expires_in: cache_duration)
       result
     rescue Faraday::Error => e
       raise AuthenticationError, "Failed to authenticate with Yahoo Finance: #{e.message}"
@@ -1035,6 +1102,7 @@ class Provider::YahooFinance < Provider
 
     def clear_crumb_cache
       Rails.cache.delete("#{@cache_prefix}_auth_crumb")
+      Rails.cache.delete(session_cookie_cache_key)
     end
 
     # Extract the authentication cookie from Yahoo Finance response

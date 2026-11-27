@@ -8,7 +8,7 @@ class Api::V1::MarketTrackerController < Api::V1::BaseController
     range = Investments::MarketTrackerService.valid_range(params[:range])
     selected_ticker = params[:ticker].presence || "^GSPC"
     selected_mic = params[:mic].presence
-    force_refresh = params[:refresh] == "1" || params[:refresh] == "true"
+    force_refresh = resolve_force_refresh
 
     holdings = InvestmentStatement.new(current_family, user: current_resource_owner).current_holdings.to_a
     watchlist_items = current_family.watchlist_items.includes(:security).ordered
@@ -47,7 +47,7 @@ class Api::V1::MarketTrackerController < Api::V1::BaseController
     range = Investments::MarketTrackerService.valid_range(params[:range])
     selected_ticker = params[:ticker].presence || "^GSPC"
     selected_mic = params[:mic].presence
-    force_refresh = params[:refresh] == "1" || params[:refresh] == "true"
+    force_refresh = resolve_force_refresh(scope: "quote:#{selected_ticker.upcase}")
 
     watchlist_items = current_family.watchlist_items.includes(:security)
     holdings = InvestmentStatement.new(current_family, user: current_resource_owner).current_holdings.to_a
@@ -70,6 +70,18 @@ class Api::V1::MarketTrackerController < Api::V1::BaseController
   private
     def ensure_read_scope
       authorize_scope!(:read)
+    end
+
+    # Cooldown manual refreshes to prevent Android/widget polling from triggering
+    # upstream Yahoo Finance 429 rate limits on repeated refresh=1 requests.
+    def resolve_force_refresh(scope: "all")
+      return false unless params[:refresh] == "1" || params[:refresh] == "true"
+
+      cooldown_key = "market_tracker_refresh_cooldown:#{current_family.id}:#{scope}"
+      return false if Rails.cache.read(cooldown_key).present?
+
+      Rails.cache.write(cooldown_key, true, expires_in: 30.seconds)
+      true
     end
 
     def resolve_selected_context(ticker, mic, watchlist_items, holdings)

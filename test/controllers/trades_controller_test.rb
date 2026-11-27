@@ -410,4 +410,49 @@ class TradesControllerTest < ActionDispatch::IntegrationTest
     assert @entry.trade.locked_attributes.key?("investment_activity_label"), "investment_activity_label should be locked"
     assert @entry.protected_from_sync?, "Entry should be protected from sync"
   end
+
+  test "creates buy trade from total debited amount and price" do
+    assert_difference [ "Entry.count", "Trade.count" ], 1 do
+      post trades_url(account_id: @entry.account_id), params: {
+        model: {
+          type: "buy",
+          manual_ticker: "SPY",
+          date: Date.current,
+          price: 500,
+          fee: 0,
+          amount: 100,
+          currency: "USD"
+        }
+      }
+    end
+
+    created_entry = Entry.order(created_at: :desc).first
+    assert_equal 100, created_entry.amount
+    assert_equal 0.2, created_entry.trade.qty
+    assert_equal 500, created_entry.trade.price
+    assert_redirected_to @entry.account
+  end
+
+  test "creates buy trade preserving exact total debited amount when qty and price are given" do
+    assert_difference [ "Entry.count", "Trade.count" ], 1 do
+      post trades_url(account_id: @entry.account_id), params: {
+        model: {
+          type: "buy",
+          manual_ticker: "SOXXON-USD",
+          date: Date.current,
+          qty: 0.0113,
+          price: 435.14,
+          fee: 0,
+          amount: 5.00,
+          currency: "USD"
+        }
+      }
+    end
+
+    created_entry = Entry.order(created_at: :desc).first
+    assert_equal 5.00, created_entry.amount
+    assert_equal 0.0113, created_entry.trade.qty
+    assert_equal 435.14, created_entry.trade.price
+    assert_redirected_to @entry.account
+  end
 end

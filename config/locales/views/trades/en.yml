@@ -12,6 +12,8 @@ en:
       qty: Quantity
       submit: Add transaction
       ticker_placeholder: AAPL
+      total_amount_buy: Total amount debited
+      total_amount_sell: Total amount credited
       type: Type
       type_buy: Buy
       type_sell: Sell
