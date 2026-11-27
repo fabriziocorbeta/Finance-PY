@@ -76,6 +76,12 @@ class Provider::YahooFinance < Provider
   # background thread refreshes Yahoo Finance asynchronously.
   STALE_QUOTE_CACHE_DURATION = 15.minutes
 
+  # Short circuit-breaker when Yahoo's chart endpoint returns 429 so concurrent
+  # and subsequent cold requests immediately use fallback providers (CNBC /
+  # CoinGecko / Nasdaq) instead of burning 5-8s retrying blocked Yahoo hosts.
+  CHART_RATE_LIMIT_COOLDOWN = 90.seconds
+  NEGATIVE_QUOTE_CACHE_DURATION = 60.seconds
+
   NEGATIVE_CACHE_SENTINEL = :__yahoo_empty__
 
   @inflight_refreshes = Concurrent::Map.new
@@ -408,6 +414,8 @@ class Provider::YahooFinance < Provider
       stale_cache_key = "#{cache_key}_stale"
 
       if !clear_cache && (cached = get_cached_result(cache_key))
+        raise Error, "Cached unavailable quote series for #{normalized_sym}" if cached == NEGATIVE_CACHE_SENTINEL
+
         cached
       elsif !clear_cache && !Rails.env.test? && (stale = get_cached_result(stale_cache_key))
         self.class.refresh_in_background(cache_key) do
@@ -426,14 +434,19 @@ class Provider::YahooFinance < Provider
         end
         stale
       else
-        quote_series = resolve_quote_and_series_or_fallback(
-          normalized_sym,
-          exchange_operating_mic: exchange_operating_mic,
-          range: range,
-          interval: interval,
-          intraday: intraday,
-          interactive: true
-        )
+        begin
+          quote_series = resolve_quote_and_series_or_fallback(
+            normalized_sym,
+            exchange_operating_mic: exchange_operating_mic,
+            range: range,
+            interval: interval,
+            intraday: intraday,
+            interactive: true
+          )
+        rescue => e
+          cache_result(cache_key, NEGATIVE_CACHE_SENTINEL, expires_in: NEGATIVE_QUOTE_CACHE_DURATION) unless Rails.env.test?
+          raise e
+        end
         cache_result(cache_key, quote_series, expires_in: LIVE_QUOTE_CACHE_DURATION)
         cache_result(stale_cache_key, quote_series, expires_in: STALE_QUOTE_CACHE_DURATION)
         quote_series
@@ -540,6 +553,9 @@ class Provider::YahooFinance < Provider
 
       if !clear_cache && !(cached = get_cached_result(cache_key)).nil?
         cached
+      elsif !Rails.env.test? && chart_rate_limited?
+        cache_result(cache_key, [], expires_in: LIVE_QUOTE_CACHE_DURATION)
+        []
       else
         news_raw = []
         [ "https://query2.finance.yahoo.com", base_url ].uniq.each do |host|
@@ -548,13 +564,17 @@ class Provider::YahooFinance < Provider
             "quotesCount" => 0,
             "newsCount" => count
           }, interactive: true)
-          next unless response_status(response) == 200
+          status = response_status(response)
+          break if status == 429
+          next unless status == 200
 
           parsed = JSON.parse(response.body)
           if (arr = parsed["news"]).is_a?(Array) && arr.any?
             news_raw = arr
             break
           end
+        rescue Faraday::TooManyRequestsError
+          break
         rescue Faraday::Error, JSON::ParserError
           next
         end
@@ -781,6 +801,8 @@ class Provider::YahooFinance < Provider
     # session cookie (cookieless query2 requests are aggressively rate-limited
     # with 429s), falling back to authenticated query1 if needed.
     def fetch_chart_with_fallback(symbol, params, interactive: false)
+      raise RateLimitError, "Yahoo Finance chart cooldown active" if !Rails.env.test? && chart_rate_limited?
+
       encoded_symbol = ERB::Util.url_encode(symbol)
       saw_rate_limit = false
 
@@ -789,7 +811,7 @@ class Provider::YahooFinance < Provider
         status = response_status(response)
         if status == 429
           saw_rate_limit = true
-          next
+          break
         end
         next if status == 401
 
@@ -797,12 +819,15 @@ class Provider::YahooFinance < Provider
         return parsed if parsed.dig("chart", "result", 0).present?
       rescue Faraday::TooManyRequestsError
         saw_rate_limit = true
-        next
+        break
       rescue Faraday::Error, JSON::ParserError
         next
       end
 
-      raise RateLimitError, "Yahoo Finance rate limit exceeded on chart fallback" if saw_rate_limit
+      if saw_rate_limit
+        mark_chart_rate_limited! unless Rails.env.test?
+        raise RateLimitError, "Yahoo Finance rate limit exceeded on chart fallback"
+      end
 
       check_rate_limit!
       throttle_request unless interactive
@@ -990,6 +1015,18 @@ class Provider::YahooFinance < Provider
 
     def mark_rate_limited!
       Rails.cache.write(rate_limit_cache_key, true, expires_in: RATE_LIMIT_COOLDOWN)
+    end
+
+    def chart_rate_limit_cache_key
+      "#{@cache_prefix}_query2_chart_429_until"
+    end
+
+    def chart_rate_limited?
+      Rails.cache.read(chart_rate_limit_cache_key).present?
+    end
+
+    def mark_chart_rate_limited!
+      Rails.cache.write(chart_rate_limit_cache_key, true, expires_in: CHART_RATE_LIMIT_COOLDOWN)
     end
 
     def get_cached_result(key)

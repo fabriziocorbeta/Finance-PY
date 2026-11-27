@@ -39,9 +39,12 @@ class Api::V1::MarketTrackerControllerTest < ActionDispatch::IntegrationTest
       watchlist_item: nil
     )
 
-    Investments::MarketTrackerService.any_instance.stubs(:index_quotes).returns([ stub_card ])
-    Investments::MarketTrackerService.any_instance.stubs(:watchlist_quotes).returns([])
-    Investments::MarketTrackerService.any_instance.stubs(:holding_quotes).returns({})
+    Investments::MarketTrackerService.any_instance.stubs(:market_overview).returns(
+      index_quotes: [ stub_card ],
+      watchlist_quotes: [],
+      holding_quotes: {},
+      featured_quote: stub_card
+    )
 
     get api_v1_market_tracker_url, headers: api_headers(@api_key)
 

@@ -267,7 +267,7 @@ class AccountsController < ApplicationController
 
     def family_has_linked_provider_items?
       subqueries = PROVIDER_ITEM_TABLES.map do |tbl|
-        "SELECT 1 FROM #{tbl} WHERE family_id = :fid LIMIT 1"
+        "(SELECT 1 FROM #{tbl} WHERE family_id = :fid LIMIT 1)"
       end.join(" UNION ALL ")
       sql = ActiveRecord::Base.sanitize_sql_array([ "SELECT EXISTS (#{subqueries})", { fid: family.id } ])
       ActiveRecord::Base.connection.select_value(sql) == true

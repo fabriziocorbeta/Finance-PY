@@ -22,8 +22,8 @@ module Investments
       "5y" => { range: "5y", interval: "1wk" }
     }.freeze
 
-    FETCH_TIMEOUT = 8.seconds
-    DETAILS_TIMEOUT = 3.5.seconds
+    FETCH_TIMEOUT = 5.seconds
+    DETAILS_TIMEOUT = 2.seconds
 
     QuoteCard = Struct.new(
       :ticker,
@@ -90,6 +90,8 @@ module Investments
       # Deduplicate provider fetch futures by (ticker, mic, range, interval)
       unique_requests = {}
       register_request = ->(target, r_str, i_str) {
+        return if target[:security]&.offline?
+
         key = [ target[:ticker].to_s.upcase, target[:exchange_operating_mic].to_s.upcase, r_str, i_str ]
         unique_requests[key] ||= Concurrent::Promises.future(target[:ticker], target[:exchange_operating_mic], r_str, i_str) do |sym, mic, rng, intv|
           resp = @provider.fetch_quote_and_series(

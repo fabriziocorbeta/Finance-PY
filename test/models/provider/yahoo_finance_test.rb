@@ -273,6 +273,62 @@ class Provider::YahooFinanceTest < ActiveSupport::TestCase
     assert_equal 649.86, response.data.current_price
   end
 
+  test "fetch_quote_and_series falls back to CNBC for indices when Yahoo hits 429" do
+    @provider.stubs(:throttle_request)
+    @provider.stubs(:fetch_session_cookie_and_ua).returns([ "A3=ok", "Mozilla/5.0" ])
+    @provider.stubs(:refresh_session_cookie_and_ua).returns([ nil, nil ])
+
+    rate_limited_resp = Struct.new(:status, :body).new(429, "Too Many Requests")
+    fake_client = mock("client")
+    fake_client.stubs(:get).returns(rate_limited_resp)
+    @provider.stubs(:client).returns(fake_client)
+
+    cnbc_quote_resp = Struct.new(:status, :body).new(200, {
+      "FormattedQuoteResult" => {
+        "FormattedQuote" => [
+          {
+            "symbol" => ".SPX",
+            "name" => "S&P 500 Index",
+            "shortName" => "S&P 500",
+            "currencyCode" => "USD",
+            "exchange" => "SNP",
+            "last" => "7,182.78",
+            "previous_day_closing" => "7,100.00",
+            "change" => "+82.78",
+            "change_pct" => "+1.17%"
+          }
+        ]
+      }
+    }.to_json)
+    cnbc_bars_resp = Struct.new(:status, :body).new(200, {
+      "barData" => {
+        "priceBars" => [
+          { "open" => "7060.33", "high" => "7199.31", "low" => "6970.11", "close" => "7100.00", "volume" => 0, "tradeTime" => "#{(Date.current - 1.day).strftime('%Y%m%d')}000000" },
+          { "open" => "7110.00", "high" => "7200.00", "low" => "7090.00", "close" => "7182.78", "volume" => 0, "tradeTime" => "#{Date.current.strftime('%Y%m%d')}000000" }
+        ]
+      }
+    }.to_json)
+
+    fake_fallback_http = Object.new
+    fake_fallback_http.define_singleton_method(:get) do |url, &blk|
+      if url.include?("quote.cnbc.com")
+        req = OpenStruct.new(params: {}, headers: {})
+        blk&.call(req)
+        cnbc_quote_resp
+      else
+        cnbc_bars_resp
+      end
+    end
+    @provider.stubs(:fallback_http_client).returns(fake_fallback_http)
+
+    response = @provider.fetch_quote_and_series(symbol: "^GSPC", range: "1mo", interval: "1d")
+
+    assert response.success?
+    assert_equal 7182.78, response.data.current_price
+    assert_equal "S&P 500", response.data.short_name
+    assert_equal 2, response.data.prices.size
+  end
+
   # ================================
   #     Security Price Tests
   # ================================
