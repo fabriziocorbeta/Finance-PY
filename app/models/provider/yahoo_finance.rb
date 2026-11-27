@@ -67,6 +67,10 @@ class Provider::YahooFinance < Provider
   # Cache duration for repeated requests (5 minutes)
   CACHE_DURATION = 5.minutes
 
+  # Short cache for intraday/live quotes so ETF prices stay near real-time
+  # while still coalescing burst requests to avoid Yahoo 429 rate limits.
+  LIVE_QUOTE_CACHE_DURATION = 30.seconds
+
   # Once Yahoo returns a 429, further requests fail fast for this long instead
   # of each burning a full 5-retry exponential backoff against an endpoint
   # we already know is blocked. Without this, a nightly import over many
@@ -334,7 +338,11 @@ class Provider::YahooFinance < Provider
           raise Error, "No price found for #{symbol} on or before #{date}" unless target_price
         end
 
-        cache_result(cache_key, target_price)
+        cache_result(
+          cache_key,
+          target_price,
+          expires_in: date == Date.current ? LIVE_QUOTE_CACHE_DURATION : CACHE_DURATION
+        )
         target_price
       end
     end
@@ -490,7 +498,7 @@ class Provider::YahooFinance < Provider
           prices: points
         )
 
-        cache_result(cache_key, quote_series)
+        cache_result(cache_key, quote_series, expires_in: LIVE_QUOTE_CACHE_DURATION)
         quote_series
       end
     rescue JSON::ParserError => e
@@ -827,9 +835,9 @@ class Provider::YahooFinance < Provider
       data
     end
 
-    def cache_result(key, data)
+    def cache_result(key, data, expires_in: CACHE_DURATION)
       full_key = "#{@cache_prefix}_#{key}"
-      Rails.cache.write(full_key, data, expires_in: CACHE_DURATION)
+      Rails.cache.write(full_key, data, expires_in: expires_in)
     end
 
 
