@@ -380,6 +380,7 @@ class Api::V1::AccountsControllerTest < ActionDispatch::IntegrationTest
     assert_instance_of Depository, account.accountable
     assert_equal @user.family, account.family
     assert_equal @user, account.owner
+    assert_equal Time.zone.today, account.opening_balance_date
   end
 
   test "should create a CreditCard account with type-specific attributes" do
