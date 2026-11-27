@@ -38,7 +38,7 @@ class Api::V1::AccountsController < Api::V1::BaseController
       create_params[:opening_balance_date].presence&.to_date
     rescue Date::Error
       nil
-    end || (Time.zone.today - 2.years)
+    end || Time.zone.today
 
     account = current_family.accounts.create_and_sync(
       create_params.except(:opening_balance_date).merge(accountable_type: accountable_type, owner: current_resource_owner),
