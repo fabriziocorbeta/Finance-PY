@@ -120,7 +120,7 @@ module Security::Provided
 
         Rails.cache.fetch(cache_key, expires_in: SEARCH_CACHE_TTL, skip_nil: true) do
           response = prov.search_securities(symbol, **params)
-          next nil unless response.success?
+          next nil unless response.success? && response.data.present?
 
           response.data.map do |ps|
             { symbol: ps.symbol, name: ps.name, logo_url: ps.logo_url,

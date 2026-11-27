@@ -37,18 +37,40 @@ class Trade::CreateForm
     end
 
     def create_trade
-      signed_qty = type == "sell" ? -qty.to_d : qty.to_d
-      signed_amount = signed_qty * price.to_d + fee.to_d
+      fee_val = fee.to_d
+      total_val = amount.present? ? amount.to_d.abs : nil
+
+      effective_qty = qty.present? ? qty.to_d : nil
+      effective_price = price.present? ? price.to_d : nil
+
+      if total_val.present? && total_val.positive?
+        principal = type == "sell" ? (total_val + fee_val) : [ total_val - fee_val, 0.to_d ].max
+        if effective_qty.nil? && effective_price&.positive?
+          effective_qty = (principal / effective_price).round(10)
+        elsif effective_price.nil? && effective_qty&.positive?
+          effective_price = (principal / effective_qty).round(10)
+        end
+      end
+
+      effective_qty ||= 0.to_d
+      effective_price ||= 0.to_d
+
+      signed_qty = type == "sell" ? -effective_qty : effective_qty
+      signed_amount = if total_val.present? && total_val.positive?
+        type == "sell" ? -total_val : total_val
+      else
+        signed_qty * effective_price + fee_val
+      end
 
       trade_entry = account.entries.new(
-        name: Trade.build_name(type, qty, security.ticker),
+        name: Trade.build_name(type, effective_qty, security.ticker),
         date: date,
         amount: signed_amount,
         currency: currency,
         entryable: Trade.new(
           qty: signed_qty,
-          price: price,
-          fee: fee.to_d,
+          price: effective_price,
+          fee: fee_val,
           currency: currency,
           security: security,
           investment_activity_label: type.capitalize # "buy" → "Buy", "sell" → "Sell"

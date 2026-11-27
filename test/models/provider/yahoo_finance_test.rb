@@ -125,14 +125,66 @@ class Provider::YahooFinanceTest < ActiveSupport::TestCase
   test "search_securities returns empty array for no results with short symbol" do
     # Mock empty results response
     mock_response = mock
+    mock_response.stubs(:status).returns(200)
     mock_response.stubs(:body).returns('{"quotes":[]}')
 
+    @provider.stubs(:fetch_session_cookie).returns(nil)
     @provider.stubs(:client).returns(mock_client = mock)
     mock_client.stubs(:get).returns(mock_response)
 
     response = @provider.search_securities("XYZ")
     assert response.success?
     assert_equal [], response.data
+  end
+
+  test "search_securities attaches session cookie and refreshes once on 429" do
+    @provider.stubs(:throttle_request)
+    @provider.stubs(:fetch_session_cookie).returns("A3=stale")
+    @provider.expects(:refresh_session_cookie).once.returns("A3=fresh")
+
+    rate_limited_resp = Struct.new(:status, :body).new(429, "Too Many Requests")
+    success_payload = {
+      "quotes" => [
+        { "symbol" => "SPYON-USD", "longname" => "SPDR S&P 500 Tokenized ETF (Ondo) USD", "exchange" => "CCC", "exchDisp" => "CCC" }
+      ]
+    }
+    ok_resp = Struct.new(:status, :body).new(200, success_payload.to_json)
+
+    fake_client = mock("client")
+    fake_client.expects(:get).with("https://query2.finance.yahoo.com/v1/finance/search").twice.returns(rate_limited_resp, ok_resp)
+    @provider.stubs(:client).returns(fake_client)
+
+    response = @provider.search_securities("SPYON")
+
+    assert response.success?
+    assert_equal "SPYON-USD", response.data.first.symbol
+  end
+
+  test "search_securities normalizes SP500 alias to S&P 500" do
+    @provider.stubs(:throttle_request)
+    @provider.stubs(:fetch_session_cookie).returns("A3=ok")
+
+    captured_q = nil
+    ok_resp = Struct.new(:status, :body).new(200, {
+      "quotes" => [
+        { "symbol" => "SPY", "longname" => "State Street SPDR S&P 500 ETF Trust", "exchange" => "PCX", "exchDisp" => "NYSEArca" }
+      ]
+    }.to_json)
+
+    fake_client = Object.new
+    fake_client.define_singleton_method(:get) do |_url, &blk|
+      req = OpenStruct.new(params: {}, headers: {})
+      blk.call(req)
+      captured_q = req.params["q"]
+      ok_resp
+    end
+    @provider.stubs(:client).returns(fake_client)
+
+    response = @provider.search_securities("SP500")
+
+    assert response.success?
+    assert_equal "S&P 500", captured_q
+    assert_equal "SPY", response.data.first.symbol
   end
 
   # ================================
@@ -191,14 +243,41 @@ class Provider::YahooFinanceTest < ActiveSupport::TestCase
     assert_instance_of Provider::YahooFinance::RateLimitError, result.error
   end
 
-  test "fails fast without making a request while rate-limited" do
+  test "authenticated endpoints fail fast without making a request while rate-limited" do
     @provider.stubs(:rate_limited?).returns(true)
     @provider.expects(:throttle_request).never
 
-    response = @provider.fetch_security_prices(symbol: "AAPL", start_date: Date.current - 1, end_date: Date.current)
+    response = @provider.fetch_security_info(symbol: "AAPL", exchange_operating_mic: "XNAS")
 
     assert_not response.success?
     assert_instance_of Provider::YahooFinance::RateLimitError, response.error
+  end
+
+  test "fetch_security_prices succeeds via query2 even while rate-limited" do
+    @provider.stubs(:rate_limited?).returns(true)
+    @provider.stubs(:fetch_session_cookie).returns(nil)
+
+    chart_payload = {
+      "chart" => {
+        "result" => [
+          {
+            "meta" => { "currency" => "USD", "exchangeName" => "CCC" },
+            "timestamp" => [ Date.current.to_time.utc.to_i ],
+            "indicators" => { "quote" => [ { "close" => [ 647.73 ] } ] }
+          }
+        ]
+      }
+    }
+    fake_response = Struct.new(:status, :body).new(200, chart_payload.to_json)
+    fake_client = mock("client")
+    fake_client.expects(:get).with("https://query2.finance.yahoo.com/v8/finance/chart/QQQON-USD").returns(fake_response)
+    @provider.stubs(:client).returns(fake_client)
+    @provider.stubs(:throttle_request)
+
+    response = @provider.fetch_security_prices(symbol: "QQQON-USD", start_date: Date.current - 1, end_date: Date.current)
+
+    assert response.success?
+    assert_equal 647.73, response.data.last.price
   end
 
   test "handles 401 unauthorized as authentication error" do

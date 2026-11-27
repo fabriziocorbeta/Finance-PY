@@ -13,6 +13,8 @@ es:
       qty: Cantidad
       submit: Añadir transacción
       ticker_placeholder: AAPL
+      total_amount_buy: Monto total debitado
+      total_amount_sell: Monto total acreditado
       type: Tipo
       type_buy: Comprar
       type_deposit: Depósito

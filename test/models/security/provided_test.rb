@@ -292,4 +292,26 @@ class Security::ProvidedTest < ActiveSupport::TestCase
     assert_equal "TSLA", ranked[0].ticker
     assert_equal "US", ranked[0].country_code, "US Tesla should rank first for US user"
   end
+
+  test "search_provider does not cache empty results" do
+    provider = mock("provider")
+    provider.stubs(:class).returns(Provider::YahooFinance)
+
+    result = Provider::SecurityConcept::Security.new(
+      symbol: "SPY", name: "SPDR S&P 500 ETF Trust", logo_url: nil,
+      exchange_operating_mic: "ARCX", country_code: "US", currency: "USD"
+    )
+
+    provider.expects(:search_securities).with("SPY").twice.returns(
+      provider_success_response([]),
+      provider_success_response([ result ])
+    )
+
+    Security.stubs(:providers).returns([ provider ])
+
+    assert_equal [], Security.search_provider("SPY")
+    results = Security.search_provider("SPY")
+    assert_equal 1, results.size
+    assert_equal "SPY", results.first.ticker
+  end
 end
