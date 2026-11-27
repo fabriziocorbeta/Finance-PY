@@ -128,7 +128,8 @@ class Provider::YahooFinanceTest < ActiveSupport::TestCase
     mock_response.stubs(:status).returns(200)
     mock_response.stubs(:body).returns('{"quotes":[]}')
 
-    @provider.stubs(:fetch_session_cookie).returns(nil)
+    @provider.stubs(:fetch_session_cookie_and_ua).returns([ nil, nil ])
+    @provider.stubs(:fallback_search_securities).returns([])
     @provider.stubs(:client).returns(mock_client = mock)
     mock_client.stubs(:get).returns(mock_response)
 
@@ -139,8 +140,8 @@ class Provider::YahooFinanceTest < ActiveSupport::TestCase
 
   test "search_securities attaches session cookie and refreshes once on 429" do
     @provider.stubs(:throttle_request)
-    @provider.stubs(:fetch_session_cookie).returns("A3=stale")
-    @provider.expects(:refresh_session_cookie).once.returns("A3=fresh")
+    @provider.stubs(:fetch_session_cookie_and_ua).returns([ "A3=stale", "Mozilla/5.0" ])
+    @provider.expects(:refresh_session_cookie_and_ua).once.returns([ "A3=fresh", "Mozilla/5.0" ])
 
     rate_limited_resp = Struct.new(:status, :body).new(429, "Too Many Requests")
     success_payload = {
@@ -162,7 +163,7 @@ class Provider::YahooFinanceTest < ActiveSupport::TestCase
 
   test "search_securities normalizes SP500 alias to S&P 500" do
     @provider.stubs(:throttle_request)
-    @provider.stubs(:fetch_session_cookie).returns("A3=ok")
+    @provider.stubs(:fetch_session_cookie_and_ua).returns([ "A3=ok", "Mozilla/5.0" ])
 
     captured_q = nil
     ok_resp = Struct.new(:status, :body).new(200, {
@@ -185,6 +186,68 @@ class Provider::YahooFinanceTest < ActiveSupport::TestCase
     assert response.success?
     assert_equal "S&P 500", captured_q
     assert_equal "SPY", response.data.first.symbol
+  end
+
+  test "search_securities falls back to CoinGecko/SP500 when Yahoo returns 429" do
+    @provider.stubs(:throttle_request)
+    @provider.stubs(:fetch_session_cookie_and_ua).returns([ "A3=ok", "Mozilla/5.0" ])
+    @provider.stubs(:refresh_session_cookie_and_ua).returns([ nil, nil ])
+
+    rate_limited_resp = Struct.new(:status, :body).new(429, "Too Many Requests")
+    fake_client = mock("client")
+    fake_client.stubs(:get).returns(rate_limited_resp)
+    @provider.stubs(:client).returns(fake_client)
+
+    cg_search = Struct.new(:status, :body).new(200, {
+      "coins" => [
+        { "id" => "spdr-s-p-500-etf-ondo-tokenized-etf", "symbol" => "SPYON", "name" => "SPDR S&P 500 ETF (Ondo Tokenized ETF)", "large" => "https://example.com/spyon.png" }
+      ]
+    }.to_json)
+    fake_fallback_http = mock("fallback_http")
+    fake_fallback_http.stubs(:get).returns(cg_search)
+    @provider.stubs(:fallback_http_client).returns(fake_fallback_http)
+
+    spyon_resp = @provider.search_securities("SPYON")
+    assert spyon_resp.success?
+    assert_equal "SPYON-USD", spyon_resp.data.first.symbol
+
+    sp500_resp = @provider.search_securities("SP500")
+    assert sp500_resp.success?
+    assert_includes sp500_resp.data.map(&:symbol), "SPY"
+    assert_includes sp500_resp.data.map(&:symbol), "SPYON-USD"
+  end
+
+  test "fetch_security_prices falls back to CoinGecko for *-USD symbols when Yahoo hits 429" do
+    @provider.stubs(:throttle_request)
+    @provider.stubs(:fetch_session_cookie_and_ua).returns([ "A3=ok", "Mozilla/5.0" ])
+    @provider.stubs(:refresh_session_cookie_and_ua).returns([ nil, nil ])
+
+    rate_limited_resp = Struct.new(:status, :body).new(429, "Too Many Requests")
+    fake_client = mock("client")
+    fake_client.stubs(:get).returns(rate_limited_resp)
+    @provider.stubs(:client).returns(fake_client)
+
+    cg_search = Struct.new(:status, :body).new(200, {
+      "coins" => [ { "id" => "invesco-qqq-etf-ondo-tokenized-etf", "symbol" => "QQQON" } ]
+    }.to_json)
+    yesterday_ts = (Date.current - 1.day).to_time.utc.to_i * 1000
+    today_ts = Date.current.to_time.utc.to_i * 1000
+    cg_chart = Struct.new(:status, :body).new(200, {
+      "prices" => [ [ yesterday_ts, 645.10 ], [ today_ts, 648.20 ] ]
+    }.to_json)
+    cg_live = Struct.new(:status, :body).new(200, {
+      "invesco-qqq-etf-ondo-tokenized-etf" => { "usd" => 649.86 }
+    }.to_json)
+
+    fake_fallback_http = mock("fallback_http")
+    fake_fallback_http.stubs(:get).returns(cg_search, cg_chart, cg_live)
+    @provider.stubs(:fallback_http_client).returns(fake_fallback_http)
+
+    response = @provider.fetch_security_prices(symbol: "QQQON-USD", start_date: Date.current - 1.day, end_date: Date.current)
+
+    assert response.success?
+    assert_equal 649.86, response.data.last.price
+    assert_equal "USD", response.data.last.currency
   end
 
   # ================================
@@ -255,7 +318,7 @@ class Provider::YahooFinanceTest < ActiveSupport::TestCase
 
   test "fetch_security_prices succeeds via query2 even while rate-limited" do
     @provider.stubs(:rate_limited?).returns(true)
-    @provider.stubs(:fetch_session_cookie).returns(nil)
+    @provider.stubs(:fetch_session_cookie_and_ua).returns([ nil, nil ])
 
     chart_payload = {
       "chart" => {

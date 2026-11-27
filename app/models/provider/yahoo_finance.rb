@@ -1,7 +1,7 @@
 require "set"
 
 class Provider::YahooFinance < Provider
-  include ExchangeRateConcept, SecurityConcept
+  include ExchangeRateConcept, SecurityConcept, Fallbacks
   extend SslConfigurable
 
   # Subclass so errors caught in this provider are raised as Provider::YahooFinance::Error
@@ -213,7 +213,7 @@ class Provider::YahooFinance < Provider
   def search_securities(symbol, country_code: nil, exchange_operating_mic: nil)
     with_provider_response do
       clean_symbol = symbol.to_s.strip.upcase
-      cache_key = "search_#{clean_symbol}_#{country_code}_#{exchange_operating_mic}"
+      cache_key = "search_#{clean_symbol}_#{exchange_operating_mic}"
       if cached_result = get_cached_result(cache_key)
         cached_result
       else
@@ -249,6 +249,10 @@ class Provider::YahooFinance < Provider
             )
             break
           end
+        end
+
+        if securities.empty? && clean_symbol.present?
+          securities = fallback_search_securities(clean_symbol)
         end
 
         securities = deduplicate_dual_listings(securities) unless exchange_operating_mic.present?
@@ -366,16 +370,26 @@ class Provider::YahooFinance < Provider
       period1 = start_date.to_time.utc.to_i
       period2 = end_date.end_of_day.to_time.utc.to_i
 
-      data = fetch_chart_with_fallback(symbol, {
-        "period1" => period1,
-        "period2" => period2,
-        "interval" => "1d",
-        "includeAdjustedClose" => true
-      })
+      data = begin
+        fetch_chart_with_fallback(symbol, {
+          "period1" => period1,
+          "period2" => period2,
+          "interval" => "1d",
+          "includeAdjustedClose" => true
+        })
+      rescue Faraday::Error, RateLimitError, AuthenticationError, Error => e
+        fallback = fallback_security_prices(symbol, exchange_operating_mic, start_date, end_date)
+        return fallback if fallback.any?
+        raise e
+      end
 
       chart_data = data.dig("chart", "result", 0)
 
-      raise Error, "No chart data found for #{symbol}" unless chart_data
+      if chart_data.nil?
+        fallback = fallback_security_prices(symbol, exchange_operating_mic, start_date, end_date)
+        return fallback if fallback.any?
+        raise Error, "No chart data found for #{symbol}"
+      end
 
       timestamps = chart_data.dig("timestamp") || []
       quotes = chart_data.dig("indicators", "quote", 0) || {}
@@ -419,11 +433,19 @@ class Provider::YahooFinance < Provider
       if !clear_cache && (cached = get_cached_result(cache_key))
         cached
       else
-        data = fetch_chart_with_fallback(normalized_sym, {
-          "range" => range,
-          "interval" => interval,
-          "includePrePost" => intraday
-        })
+        begin
+          data = fetch_chart_with_fallback(normalized_sym, {
+            "range" => range,
+            "interval" => interval,
+            "includePrePost" => intraday
+          })
+        rescue Faraday::Error, RateLimitError, AuthenticationError, Error => e
+          if (fallback_quote = fallback_quote_and_series(normalized_sym, exchange_operating_mic, range))
+            cache_result(cache_key, fallback_quote, expires_in: LIVE_QUOTE_CACHE_DURATION)
+            return fallback_quote
+          end
+          raise e
+        end
 
         if (err = data.dig("chart", "error"))
           raise Error, err["description"] || err["code"] || "Chart error for #{normalized_sym}"
@@ -673,15 +695,27 @@ class Provider::YahooFinance < Provider
     # with 429s), falling back to authenticated query1 if needed.
     def fetch_chart_with_fallback(symbol, params)
       encoded_symbol = ERB::Util.url_encode(symbol)
+      saw_rate_limit = false
+
       [ "https://query2.finance.yahoo.com", base_url ].uniq.each do |host|
         response = query_with_cookie(host, "/v8/finance/chart/#{encoded_symbol}", params)
-        next if [ 429, 401 ].include?(response_status(response))
+        status = response_status(response)
+        if status == 429
+          saw_rate_limit = true
+          next
+        end
+        next if status == 401
 
         parsed = JSON.parse(response.body)
         return parsed if parsed.dig("chart", "result", 0).present?
+      rescue Faraday::TooManyRequestsError
+        saw_rate_limit = true
+        next
       rescue Faraday::Error, JSON::ParserError
         next
       end
+
+      raise RateLimitError, "Yahoo Finance rate limit exceeded on chart fallback" if saw_rate_limit
 
       check_rate_limit!
       throttle_request
@@ -689,20 +723,22 @@ class Provider::YahooFinance < Provider
     end
 
     def query_with_cookie(host, path, params)
-      cookie = fetch_session_cookie
+      cookie, ua = fetch_session_cookie_and_ua
 
       2.times do |attempt|
         throttle_request
         response = client.get("#{host}#{path}") do |req|
           params.each { |k, v| req.params[k] = v }
+          req.headers["User-Agent"] = ua if ua.present?
           req.headers["Cookie"] = cookie if cookie.present?
         end
 
         status = response_status(response)
         if (status == 429 || status == 401) && attempt.zero?
-          refreshed = refresh_session_cookie
-          if refreshed.present?
-            cookie = refreshed
+          refreshed_cookie, refreshed_ua = refresh_session_cookie_and_ua
+          if refreshed_cookie.present?
+            cookie = refreshed_cookie
+            ua = refreshed_ua
             next
           end
         end
@@ -711,7 +747,7 @@ class Provider::YahooFinance < Provider
       rescue Faraday::TooManyRequestsError, Faraday::UnauthorizedError
         raise unless attempt.zero?
 
-        cookie = refresh_session_cookie
+        cookie, ua = refresh_session_cookie_and_ua
         raise if cookie.blank?
       end
     end
@@ -982,11 +1018,9 @@ class Provider::YahooFinance < Provider
     def client
       @client ||= Faraday.new(url: base_url, ssl: self.class.faraday_ssl_options) do |faraday|
         faraday.request(:retry, {
-          max: max_retries,
-          interval: retry_interval,
-          interval_randomness: 0.5,
+          max: 1,
+          interval: 0.5,
           backoff_factor: 2,
-          retry_statuses: [ 429 ],
           exceptions: [ Faraday::ConnectionFailed, Faraday::TimeoutError ]
         })
 
@@ -994,16 +1028,15 @@ class Provider::YahooFinance < Provider
         faraday.response :raise_error
 
         # Yahoo Finance requires common browser headers to avoid blocking
-        # Rotate user-agents to reduce rate limiting (based on yfinance PR #2277)
-        faraday.headers["User-Agent"] = random_user_agent
+        faraday.headers["User-Agent"] = USER_AGENTS.first
         faraday.headers["Accept"] = "application/json"
         faraday.headers["Accept-Language"] = "en-US,en;q=0.9"
         faraday.headers["Cache-Control"] = "no-cache"
         faraday.headers["Pragma"] = "no-cache"
 
         # Set reasonable timeouts
-        faraday.options.timeout = 10
-        faraday.options.open_timeout = 5
+        faraday.options.timeout = 8
+        faraday.options.open_timeout = 4
       end
     end
 
@@ -1040,31 +1073,47 @@ class Provider::YahooFinance < Provider
     end
 
     # Fetches and caches a lightweight Yahoo session cookie from fc.yahoo.com
-    # (no query1 getcrumb call needed). Sending this cookie on query2 requests
-    # prevents Yahoo's aggressive cookieless IP 429 throttling.
-    def fetch_session_cookie
-      cached_cookie = Rails.cache.read(session_cookie_cache_key)
-      return cached_cookie if cached_cookie.present?
-
-      if (cached_pair = Rails.cache.read("#{@cache_prefix}_auth_crumb")).is_a?(Array) && cached_pair.first.present?
-        return cached_pair.first
+    # alongside the exact User-Agent used to obtain it. Sending a consistent
+    # cookie+UA pair on query2 avoids Yahoo's cookieless IP 429 throttling.
+    def fetch_session_cookie_and_ua
+      cached = Rails.cache.read(session_cookie_cache_key)
+      if cached.is_a?(Array) && cached.first.present?
+        return cached
+      elsif cached.is_a?(String) && cached.present?
+        return [ cached, USER_AGENTS.first ]
       end
 
-      refresh_session_cookie
+      if (cached_pair = Rails.cache.read("#{@cache_prefix}_auth_crumb")).is_a?(Array) && cached_pair.first.present?
+        return [ cached_pair.first, USER_AGENTS.first ]
+      end
+
+      refresh_session_cookie_and_ua
     end
 
-    def refresh_session_cookie
+    def fetch_session_cookie
+      fetch_session_cookie_and_ua&.first
+    end
+
+    def refresh_session_cookie_and_ua
       Rails.cache.delete(session_cookie_cache_key)
-      cookie_response = auth_client.get("https://fc.yahoo.com")
+      ua = USER_AGENTS.first
+      cookie_response = auth_client.get("https://fc.yahoo.com") do |req|
+        req.headers["User-Agent"] = ua
+      end
       cookie = extract_cookie(cookie_response)
-      return nil if cookie.blank?
+      return [ nil, nil ] if cookie.blank?
 
       cookie_max_age = extract_cookie_max_age(cookie_response)
       cache_duration = [ cookie_max_age || MAX_CRUMB_CACHE_DURATION, MAX_CRUMB_CACHE_DURATION ].min
-      Rails.cache.write(session_cookie_cache_key, cookie, expires_in: cache_duration)
-      cookie
+      pair = [ cookie, ua ]
+      Rails.cache.write(session_cookie_cache_key, pair, expires_in: cache_duration)
+      pair
     rescue StandardError
-      nil
+      [ nil, nil ]
+    end
+
+    def refresh_session_cookie
+      refresh_session_cookie_and_ua&.first
     end
 
     # Fetches and caches the Yahoo Finance cookie and crumb for authenticated endpoints
@@ -1075,7 +1124,10 @@ class Provider::YahooFinance < Provider
       return cached if cached.present?
 
       # Step 1: Get cookie from Yahoo Finance
-      cookie_response = auth_client.get("https://fc.yahoo.com")
+      ua = USER_AGENTS.first
+      cookie_response = auth_client.get("https://fc.yahoo.com") do |req|
+        req.headers["User-Agent"] = ua
+      end
       cookie = extract_cookie(cookie_response)
       cookie_max_age = extract_cookie_max_age(cookie_response)
 
@@ -1083,6 +1135,7 @@ class Provider::YahooFinance < Provider
 
       # Step 2: Get crumb using the cookie
       crumb_response = auth_client.get("#{base_url}/v1/test/getcrumb") do |req|
+        req.headers["User-Agent"] = ua
         req.headers["Cookie"] = cookie
       end
 
@@ -1094,7 +1147,7 @@ class Provider::YahooFinance < Provider
       cache_duration = [ cookie_max_age || MAX_CRUMB_CACHE_DURATION, MAX_CRUMB_CACHE_DURATION ].min
       result = [ cookie, crumb ]
       Rails.cache.write(cache_key, result, expires_in: cache_duration)
-      Rails.cache.write(session_cookie_cache_key, cookie, expires_in: cache_duration)
+      Rails.cache.write(session_cookie_cache_key, [ cookie, ua ], expires_in: cache_duration)
       result
     rescue Faraday::Error => e
       raise AuthenticationError, "Failed to authenticate with Yahoo Finance: #{e.message}"
@@ -1142,18 +1195,16 @@ class Provider::YahooFinance < Provider
     def authenticated_client(cookie)
       Faraday.new(url: base_url, ssl: self.class.faraday_ssl_options) do |faraday|
         faraday.request(:retry, {
-          max: max_retries,
-          interval: retry_interval,
-          interval_randomness: 0.5,
+          max: 1,
+          interval: 0.5,
           backoff_factor: 2,
-          retry_statuses: [ 429 ],
           exceptions: [ Faraday::ConnectionFailed, Faraday::TimeoutError ]
         })
 
         faraday.request :json
         faraday.response :raise_error
 
-        faraday.headers["User-Agent"] = random_user_agent
+        faraday.headers["User-Agent"] = USER_AGENTS.first
         faraday.headers["Accept"] = "application/json"
         faraday.headers["Accept-Language"] = "en-US,en;q=0.9"
         faraday.headers["Cache-Control"] = "no-cache"
