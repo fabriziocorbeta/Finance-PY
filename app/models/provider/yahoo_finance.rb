@@ -218,7 +218,7 @@ class Provider::YahooFinance < Provider
         cached_result
       else
         search_query = SEARCH_QUERY_ALIASES.fetch(clean_symbol, clean_symbol)
-        quotes = fetch_search_quotes_with_fallback(search_query)
+        quotes, rate_limited = fetch_search_quotes_with_fallback(search_query)
 
         securities = quotes.filter_map do |quote|
           next if quote["symbol"].blank?
@@ -232,7 +232,7 @@ class Provider::YahooFinance < Provider
           )
         end
 
-        if securities.empty? && clean_symbol.present?
+        if securities.empty? && clean_symbol.present? && !rate_limited
           chart_candidates = [ clean_symbol ]
           chart_candidates << "#{clean_symbol}-USD" if clean_symbol.match?(/\A[A-Z0-9]+ON\z/)
 
@@ -366,59 +366,7 @@ class Provider::YahooFinance < Provider
     with_provider_response do
       symbol = normalize_symbol(symbol, exchange_operating_mic)
       validate_date_params!(start_date, end_date)
-      # Convert dates to Unix timestamps using UTC to ensure consistent epoch boundaries across timezones
-      period1 = start_date.to_time.utc.to_i
-      period2 = end_date.end_of_day.to_time.utc.to_i
-
-      data = begin
-        fetch_chart_with_fallback(symbol, {
-          "period1" => period1,
-          "period2" => period2,
-          "interval" => "1d",
-          "includeAdjustedClose" => true
-        })
-      rescue Faraday::Error, RateLimitError, AuthenticationError, Error => e
-        fallback = fallback_security_prices(symbol, exchange_operating_mic, start_date, end_date)
-        return fallback if fallback.any?
-        raise e
-      end
-
-      chart_data = data.dig("chart", "result", 0)
-
-      if chart_data.nil?
-        fallback = fallback_security_prices(symbol, exchange_operating_mic, start_date, end_date)
-        return fallback if fallback.any?
-        raise Error, "No chart data found for #{symbol}"
-      end
-
-      timestamps = chart_data.dig("timestamp") || []
-      quotes = chart_data.dig("indicators", "quote", 0) || {}
-      closes = quotes["close"] || []
-
-      # Get currency from metadata
-      meta_exchange = chart_data.dig("meta", "exchangeName") || ""
-      raw_currency = chart_data.dig("meta", "currency")
-      raw_currency ||= default_currency_for_exchange(meta_exchange) || "USD"
-
-      prices = []
-      timestamps.each_with_index do |timestamp, index|
-        close_price = closes[index]
-        next if close_price.nil? # Skip days with no data (weekends, holidays)
-
-        # Normalize currency and price to handle minor units
-        normalized_currency, normalized_price = normalize_currency_and_price(raw_currency, close_price.to_f)
-
-        prices << Price.new(
-          symbol: symbol,
-          date: Time.at(timestamp).utc.to_date,
-          price: normalized_price,
-          currency: normalized_currency,
-          exchange_operating_mic: exchange_operating_mic
-        )
-      end
-
-      sorted_prices = prices.sort_by(&:date)
-      sorted_prices
+      resolve_security_prices_or_fallback(symbol, exchange_operating_mic, start_date, end_date)
     rescue JSON::ParserError => e
       raise Error, "Invalid response format: #{e.message}"
     end
@@ -433,101 +381,13 @@ class Provider::YahooFinance < Provider
       if !clear_cache && (cached = get_cached_result(cache_key))
         cached
       else
-        begin
-          data = fetch_chart_with_fallback(normalized_sym, {
-            "range" => range,
-            "interval" => interval,
-            "includePrePost" => intraday
-          })
-        rescue Faraday::Error, RateLimitError, AuthenticationError, Error => e
-          if (fallback_quote = fallback_quote_and_series(normalized_sym, exchange_operating_mic, range))
-            cache_result(cache_key, fallback_quote, expires_in: LIVE_QUOTE_CACHE_DURATION)
-            return fallback_quote
-          end
-          raise e
-        end
-
-        if (err = data.dig("chart", "error"))
-          raise Error, err["description"] || err["code"] || "Chart error for #{normalized_sym}"
-        end
-
-        chart_data = data.dig("chart", "result", 0)
-        raise Error, "No chart data found for #{normalized_sym}" unless chart_data
-
-        meta = chart_data["meta"] || {}
-        timestamps = chart_data["timestamp"] || []
-        quotes = chart_data.dig("indicators", "quote", 0) || {}
-        closes = quotes["close"] || []
-        opens = quotes["open"] || []
-        highs = quotes["high"] || []
-        lows = quotes["low"] || []
-        volumes = quotes["volume"] || []
-
-        meta_exchange = meta["exchangeName"] || ""
-        raw_currency = meta["currency"] || default_currency_for_exchange(meta_exchange) || "USD"
-
-        series_points = {}
-        timestamps.each_with_index do |ts, idx|
-          close_val = closes[idx]
-          next if close_val.nil? || close_val.to_f <= 0
-
-          point_key = intraday ? Time.at(ts).utc : Time.at(ts).utc.to_date
-          norm_curr, norm_price = normalize_currency_and_price(raw_currency, close_val.to_f)
-          raw_currency = norm_curr
-
-          _, norm_open = opens[idx] ? normalize_currency_and_price(raw_currency, opens[idx].to_f) : [ norm_curr, nil ]
-          _, norm_high = highs[idx] ? normalize_currency_and_price(raw_currency, highs[idx].to_f) : [ norm_curr, nil ]
-          _, norm_low = lows[idx] ? normalize_currency_and_price(raw_currency, lows[idx].to_f) : [ norm_curr, nil ]
-
-          series_points[point_key] = {
-            date: point_key,
-            price: norm_price.round(4),
-            open: norm_open&.round(4),
-            high: norm_high&.round(4),
-            low: norm_low&.round(4),
-            volume: volumes[idx]&.to_i
-          }
-        end
-
-        points = series_points.sort_by { |d, _| d }.map { |_, pt| pt }
-
-        raw_regular = meta["regularMarketPrice"]&.to_f
-        norm_curr, regular_price = raw_regular ? normalize_currency_and_price(raw_currency, raw_regular) : [ raw_currency, points.last&.dig(:price) ]
-        raw_prev = (meta["previousClose"] || meta["chartPreviousClose"])&.to_f
-        _, prev_close = raw_prev ? normalize_currency_and_price(raw_currency, raw_prev) : [ norm_curr, nil ]
-
-        # Fallback to second-to-last close when Yahoo omits previousClose on multi-day ranges
-        if prev_close.nil? && points.size >= 2
-          prev_close = points[-2][:price]
-        end
-
-        change = (regular_price && prev_close) ? (regular_price - prev_close).round(4) : nil
-        change_pct = (change && prev_close&.nonzero?) ? ((change / prev_close) * 100).round(2) : nil
-
-        _, day_high = meta["regularMarketDayHigh"] ? normalize_currency_and_price(raw_currency, meta["regularMarketDayHigh"].to_f) : [ norm_curr, nil ]
-        _, day_low = meta["regularMarketDayLow"] ? normalize_currency_and_price(raw_currency, meta["regularMarketDayLow"].to_f) : [ norm_curr, nil ]
-        _, week52_high = meta["fiftyTwoWeekHigh"] ? normalize_currency_and_price(raw_currency, meta["fiftyTwoWeekHigh"].to_f) : [ norm_curr, nil ]
-        _, week52_low = meta["fiftyTwoWeekLow"] ? normalize_currency_and_price(raw_currency, meta["fiftyTwoWeekLow"].to_f) : [ norm_curr, nil ]
-
-        quote_series = QuoteSeries.new(
-          symbol: normalized_sym,
-          name: meta["longName"] || meta["shortName"] || normalized_sym,
-          short_name: meta["shortName"] || meta["longName"] || normalized_sym,
-          currency: norm_curr,
-          exchange_name: meta["fullExchangeName"] || meta["exchangeName"],
-          instrument_type: meta["instrumentType"],
-          current_price: regular_price&.round(4),
-          previous_close: prev_close&.round(4),
-          change: change,
-          change_percent: change_pct,
-          day_high: day_high&.round(4),
-          day_low: day_low&.round(4),
-          fifty_two_week_high: week52_high&.round(4),
-          fifty_two_week_low: week52_low&.round(4),
-          volume: meta["regularMarketVolume"]&.to_i,
-          prices: points
+        quote_series = resolve_quote_and_series_or_fallback(
+          normalized_sym,
+          exchange_operating_mic: exchange_operating_mic,
+          range: range,
+          interval: interval,
+          intraday: intraday
         )
-
         cache_result(cache_key, quote_series, expires_in: LIVE_QUOTE_CACHE_DURATION)
         quote_series
       end
@@ -662,22 +522,185 @@ class Provider::YahooFinance < Provider
 
   private
 
+    def resolve_security_prices_or_fallback(symbol, exchange_operating_mic, start_date, end_date)
+      period1 = start_date.to_time.utc.to_i
+      period2 = end_date.end_of_day.to_time.utc.to_i
+
+      data = begin
+        fetch_chart_with_fallback(symbol, {
+          "period1" => period1,
+          "period2" => period2,
+          "interval" => "1d",
+          "includeAdjustedClose" => true
+        })
+      rescue Faraday::Error, RateLimitError, AuthenticationError, Error => e
+        fallback = fallback_security_prices(symbol, exchange_operating_mic, start_date, end_date)
+        return fallback if fallback.any?
+
+        raise e
+      end
+
+      chart_data = data.dig("chart", "result", 0)
+      if chart_data.nil?
+        fallback = fallback_security_prices(symbol, exchange_operating_mic, start_date, end_date)
+        return fallback if fallback.any?
+
+        raise Error, "No chart data found for #{symbol}"
+      end
+
+      timestamps = chart_data.dig("timestamp") || []
+      quotes = chart_data.dig("indicators", "quote", 0) || {}
+      closes = quotes["close"] || []
+
+      meta_exchange = chart_data.dig("meta", "exchangeName") || ""
+      raw_currency = chart_data.dig("meta", "currency")
+      raw_currency ||= default_currency_for_exchange(meta_exchange) || "USD"
+
+      prices = []
+      timestamps.each_with_index do |timestamp, index|
+        close_price = closes[index]
+        next if close_price.nil?
+
+        normalized_currency, normalized_price = normalize_currency_and_price(raw_currency, close_price.to_f)
+
+        prices << Price.new(
+          symbol: symbol,
+          date: Time.at(timestamp).utc.to_date,
+          price: normalized_price,
+          currency: normalized_currency,
+          exchange_operating_mic: exchange_operating_mic
+        )
+      end
+
+      prices.sort_by(&:date)
+    end
+
+    def resolve_quote_and_series_or_fallback(normalized_sym, exchange_operating_mic:, range:, interval:, intraday:)
+      data = begin
+        fetch_chart_with_fallback(normalized_sym, {
+          "range" => range,
+          "interval" => interval,
+          "includePrePost" => intraday
+        })
+      rescue Faraday::Error, RateLimitError, AuthenticationError, Error => e
+        fallback_quote = fallback_quote_and_series(normalized_sym, exchange_operating_mic, range)
+        return fallback_quote if fallback_quote
+
+        raise e
+      end
+
+      if (err = data.dig("chart", "error"))
+        raise Error, err["description"] || err["code"] || "Chart error for #{normalized_sym}"
+      end
+
+      chart_data = data.dig("chart", "result", 0)
+      if chart_data.nil?
+        fallback_quote = fallback_quote_and_series(normalized_sym, exchange_operating_mic, range)
+        return fallback_quote if fallback_quote
+
+        raise Error, "No chart data found for #{normalized_sym}"
+      end
+
+      meta = chart_data["meta"] || {}
+      timestamps = chart_data["timestamp"] || []
+      quotes = chart_data.dig("indicators", "quote", 0) || {}
+      closes = quotes["close"] || []
+      opens = quotes["open"] || []
+      highs = quotes["high"] || []
+      lows = quotes["low"] || []
+      volumes = quotes["volume"] || []
+
+      meta_exchange = meta["exchangeName"] || ""
+      raw_currency = meta["currency"] || default_currency_for_exchange(meta_exchange) || "USD"
+
+      series_points = {}
+      timestamps.each_with_index do |ts, idx|
+        close_val = closes[idx]
+        next if close_val.nil? || close_val.to_f <= 0
+
+        point_key = intraday ? Time.at(ts).utc : Time.at(ts).utc.to_date
+        norm_curr, norm_price = normalize_currency_and_price(raw_currency, close_val.to_f)
+        raw_currency = norm_curr
+
+        _, norm_open = opens[idx] ? normalize_currency_and_price(raw_currency, opens[idx].to_f) : [ norm_curr, nil ]
+        _, norm_high = highs[idx] ? normalize_currency_and_price(raw_currency, highs[idx].to_f) : [ norm_curr, nil ]
+        _, norm_low = lows[idx] ? normalize_currency_and_price(raw_currency, lows[idx].to_f) : [ norm_curr, nil ]
+
+        series_points[point_key] = {
+          date: point_key,
+          price: norm_price.round(4),
+          open: norm_open&.round(4),
+          high: norm_high&.round(4),
+          low: norm_low&.round(4),
+          volume: volumes[idx]&.to_i
+        }
+      end
+
+      points = series_points.sort_by { |d, _| d }.map { |_, pt| pt }
+
+      raw_regular = meta["regularMarketPrice"]&.to_f
+      norm_curr, regular_price = raw_regular ? normalize_currency_and_price(raw_currency, raw_regular) : [ raw_currency, points.last&.dig(:price) ]
+      raw_prev = (meta["previousClose"] || meta["chartPreviousClose"])&.to_f
+      _, prev_close = raw_prev ? normalize_currency_and_price(raw_currency, raw_prev) : [ norm_curr, nil ]
+
+      if prev_close.nil? && points.size >= 2
+        prev_close = points[-2][:price]
+      end
+
+      change = (regular_price && prev_close) ? (regular_price - prev_close).round(4) : nil
+      change_pct = (change && prev_close&.nonzero?) ? ((change / prev_close) * 100).round(2) : nil
+
+      _, day_high = meta["regularMarketDayHigh"] ? normalize_currency_and_price(raw_currency, meta["regularMarketDayHigh"].to_f) : [ norm_curr, nil ]
+      _, day_low = meta["regularMarketDayLow"] ? normalize_currency_and_price(raw_currency, meta["regularMarketDayLow"].to_f) : [ norm_curr, nil ]
+      _, week52_high = meta["fiftyTwoWeekHigh"] ? normalize_currency_and_price(raw_currency, meta["fiftyTwoWeekHigh"].to_f) : [ norm_curr, nil ]
+      _, week52_low = meta["fiftyTwoWeekLow"] ? normalize_currency_and_price(raw_currency, meta["fiftyTwoWeekLow"].to_f) : [ norm_curr, nil ]
+
+      QuoteSeries.new(
+        symbol: normalized_sym,
+        name: meta["longName"] || meta["shortName"] || normalized_sym,
+        short_name: meta["shortName"] || meta["longName"] || normalized_sym,
+        currency: norm_curr,
+        exchange_name: meta["fullExchangeName"] || meta["exchangeName"],
+        instrument_type: meta["instrumentType"],
+        current_price: regular_price&.round(4),
+        previous_close: prev_close&.round(4),
+        change: change,
+        change_percent: change_pct,
+        day_high: day_high&.round(4),
+        day_low: day_low&.round(4),
+        fifty_two_week_high: week52_high&.round(4),
+        fifty_two_week_low: week52_low&.round(4),
+        volume: meta["regularMarketVolume"]&.to_i,
+        prices: points
+      )
+    end
+
     def fetch_search_quotes_with_fallback(query)
+      rate_limited = false
+
       [ "https://query2.finance.yahoo.com", base_url ].uniq.each do |host|
         response = query_with_cookie(host, "/v1/finance/search", {
           "q" => query,
           "quotesCount" => 25,
           "newsCount" => 0
         })
-        next unless response_status(response) == 200
+        status = response_status(response)
+        if status == 429
+          rate_limited = true
+          break
+        end
+        next unless status == 200
 
         data = JSON.parse(response.body)
         quotes = data["quotes"]
-        return quotes if quotes.is_a?(Array) && quotes.any?
+        return [ quotes, false ] if quotes.is_a?(Array) && quotes.any?
+      rescue Faraday::TooManyRequestsError
+        rate_limited = true
+        break
       rescue Faraday::Error, JSON::ParserError
         next
       end
-      []
+      [ [], rate_limited ]
     end
 
     def yahoo_raw(field)
@@ -734,7 +757,7 @@ class Provider::YahooFinance < Provider
         end
 
         status = response_status(response)
-        if (status == 429 || status == 401) && attempt.zero?
+        if (status == 429 || status == 401) && attempt.zero? && can_refresh_session_cookie?
           refreshed_cookie, refreshed_ua = refresh_session_cookie_and_ua
           if refreshed_cookie.present?
             cookie = refreshed_cookie
@@ -745,11 +768,15 @@ class Provider::YahooFinance < Provider
 
         return response
       rescue Faraday::TooManyRequestsError, Faraday::UnauthorizedError
-        raise unless attempt.zero?
+        raise unless attempt.zero? && can_refresh_session_cookie?
 
         cookie, ua = refresh_session_cookie_and_ua
         raise if cookie.blank?
       end
+    end
+
+    def can_refresh_session_cookie?
+      Rails.cache.read("#{@cache_prefix}_cookie_refresh_cooldown").blank?
     end
 
     def response_status(response)
@@ -1095,6 +1122,7 @@ class Provider::YahooFinance < Provider
     end
 
     def refresh_session_cookie_and_ua
+      Rails.cache.write("#{@cache_prefix}_cookie_refresh_cooldown", true, expires_in: 15.seconds)
       Rails.cache.delete(session_cookie_cache_key)
       ua = USER_AGENTS.first
       cookie_response = auth_client.get("https://fc.yahoo.com") do |req|

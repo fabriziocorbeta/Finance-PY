@@ -140,6 +140,7 @@ class Provider::YahooFinanceTest < ActiveSupport::TestCase
 
   test "search_securities attaches session cookie and refreshes once on 429" do
     @provider.stubs(:throttle_request)
+    @provider.stubs(:can_refresh_session_cookie?).returns(true)
     @provider.stubs(:fetch_session_cookie_and_ua).returns([ "A3=stale", "Mozilla/5.0" ])
     @provider.expects(:refresh_session_cookie_and_ua).once.returns([ "A3=fresh", "Mozilla/5.0" ])
 
@@ -227,27 +228,49 @@ class Provider::YahooFinanceTest < ActiveSupport::TestCase
     fake_client.stubs(:get).returns(rate_limited_resp)
     @provider.stubs(:client).returns(fake_client)
 
-    cg_search = Struct.new(:status, :body).new(200, {
-      "coins" => [ { "id" => "invesco-qqq-etf-ondo-tokenized-etf", "symbol" => "QQQON" } ]
-    }.to_json)
     yesterday_ts = (Date.current - 1.day).to_time.utc.to_i * 1000
     today_ts = Date.current.to_time.utc.to_i * 1000
     cg_chart = Struct.new(:status, :body).new(200, {
-      "prices" => [ [ yesterday_ts, 645.10 ], [ today_ts, 648.20 ] ]
-    }.to_json)
-    cg_live = Struct.new(:status, :body).new(200, {
-      "invesco-qqq-etf-ondo-tokenized-etf" => { "usd" => 649.86 }
+      "prices" => [ [ yesterday_ts, 645.10 ], [ today_ts, 649.86 ] ]
     }.to_json)
 
     fake_fallback_http = mock("fallback_http")
-    fake_fallback_http.stubs(:get).returns(cg_search, cg_chart, cg_live)
+    fake_fallback_http.stubs(:get).returns(cg_chart)
     @provider.stubs(:fallback_http_client).returns(fake_fallback_http)
 
     response = @provider.fetch_security_prices(symbol: "QQQON-USD", start_date: Date.current - 1.day, end_date: Date.current)
 
+    assert_kind_of Provider::Response, response
     assert response.success?
     assert_equal 649.86, response.data.last.price
     assert_equal "USD", response.data.last.currency
+  end
+
+  test "fetch_quote_and_series returns Provider::Response via CoinGecko fallback when Yahoo hits 429" do
+    @provider.stubs(:throttle_request)
+    @provider.stubs(:fetch_session_cookie_and_ua).returns([ "A3=ok", "Mozilla/5.0" ])
+    @provider.stubs(:refresh_session_cookie_and_ua).returns([ nil, nil ])
+
+    rate_limited_resp = Struct.new(:status, :body).new(429, "Too Many Requests")
+    fake_client = mock("client")
+    fake_client.stubs(:get).returns(rate_limited_resp)
+    @provider.stubs(:client).returns(fake_client)
+
+    yesterday_ts = (Date.current - 1.day).to_time.utc.to_i * 1000
+    today_ts = Date.current.to_time.utc.to_i * 1000
+    cg_chart = Struct.new(:status, :body).new(200, {
+      "prices" => [ [ yesterday_ts, 645.10 ], [ today_ts, 649.86 ] ]
+    }.to_json)
+
+    fake_fallback_http = mock("fallback_http")
+    fake_fallback_http.stubs(:get).returns(cg_chart)
+    @provider.stubs(:fallback_http_client).returns(fake_fallback_http)
+
+    response = @provider.fetch_quote_and_series(symbol: "QQQON-USD", range: "1mo", interval: "1d")
+
+    assert_kind_of Provider::Response, response
+    assert response.success?
+    assert_equal 649.86, response.data.current_price
   end
 
   # ================================

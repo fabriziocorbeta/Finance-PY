@@ -5,6 +5,14 @@ module Provider::YahooFinance::Fallbacks
   NASDAQ_BASE_URL = "https://api.nasdaq.com/api".freeze
   US_MICS = %w[XNAS XNYS ARCX XASE BATS IEX].freeze
 
+  COINGECKO_KNOWN_IDS = {
+    "SPYON" => "spdr-s-p-500-etf-ondo-tokenized-etf",
+    "QQQON" => "invesco-qqq-etf-ondo-tokenized-etf",
+    "SOXXON" => "ishares-semiconductor-etf-ondo-tokenized",
+    "BTC" => "bitcoin",
+    "ETH" => "ethereum"
+  }.freeze
+
   SP500_FALLBACK_SECURITIES = [
     { symbol: "SPY", name: "State Street SPDR S&P 500 ETF Trust", mic: "ARCX", country: "US" },
     { symbol: "VOO", name: "Vanguard S&P 500 ETF", mic: "ARCX", country: "US" },
@@ -35,9 +43,7 @@ module Provider::YahooFinance::Fallbacks
     end
 
     def fallback_sp500_securities
-      coingecko_spyon = coingecko_search_securities("SPYON")
-      seen = {}
-      (SP500_FALLBACK_SECURITIES.map do |item|
+      SP500_FALLBACK_SECURITIES.map do |item|
         Provider::SecurityConcept::Security.new(
           symbol: item[:symbol],
           name: item[:name],
@@ -45,11 +51,6 @@ module Provider::YahooFinance::Fallbacks
           exchange_operating_mic: item[:mic],
           country_code: item[:country]
         )
-      end + coingecko_spyon).select do |sec|
-        key = sec.symbol.upcase
-        next false if seen[key]
-
-        seen[key] = true
       end
     end
 
@@ -134,7 +135,10 @@ module Provider::YahooFinance::Fallbacks
     end
 
     def coingecko_coin_id(base_symbol)
-      cache_key = "coingecko_coin_id:#{base_symbol.upcase}"
+      upper = base_symbol.upcase
+      return COINGECKO_KNOWN_IDS[upper] if COINGECKO_KNOWN_IDS.key?(upper)
+
+      cache_key = "coingecko_coin_id:#{upper}"
       cached = Rails.cache.read(cache_key)
       return cached if cached.present?
 
@@ -144,7 +148,7 @@ module Provider::YahooFinance::Fallbacks
       return nil unless resp.status == 200
 
       coins = JSON.parse(resp.body)["coins"] || []
-      match = coins.find { |c| c["symbol"].to_s.upcase == base_symbol.upcase }
+      match = coins.find { |c| c["symbol"].to_s.upcase == upper }
       coin_id = match&.dig("id")
       Rails.cache.write(cache_key, coin_id, expires_in: 24.hours) if coin_id.present?
       coin_id
@@ -158,14 +162,21 @@ module Provider::YahooFinance::Fallbacks
       return [] if coin_id.blank?
 
       days = [ (Date.current - start_date).to_i + 2, 2 ].max
-      resp = fallback_http_client.get("#{COINGECKO_BASE_URL}/coins/#{ERB::Util.url_encode(coin_id)}/market_chart") do |req|
-        req.params["vs_currency"] = "usd"
-        req.params["days"] = days
-        req.params["interval"] = "daily"
-      end
-      return [] unless resp.status == 200
+      cache_key = "coingecko_market_chart:#{coin_id}:#{days}"
+      raw_prices = Rails.cache.read(cache_key)
 
-      raw_prices = JSON.parse(resp.body)["prices"] || []
+      if raw_prices.nil?
+        resp = fallback_http_client.get("#{COINGECKO_BASE_URL}/coins/#{ERB::Util.url_encode(coin_id)}/market_chart") do |req|
+          req.params["vs_currency"] = "usd"
+          req.params["days"] = days
+          req.params["interval"] = "daily"
+        end
+        return [] unless resp.status == 200
+
+        raw_prices = JSON.parse(resp.body)["prices"] || []
+        Rails.cache.write(cache_key, raw_prices, expires_in: Provider::YahooFinance::LIVE_QUOTE_CACHE_DURATION) if raw_prices.any?
+      end
+
       by_date = {}
       raw_prices.each do |ts_ms, val|
         next if val.nil? || val.to_f <= 0
@@ -176,7 +187,7 @@ module Provider::YahooFinance::Fallbacks
         by_date[d] = val.to_f
       end
 
-      if end_date >= Date.current
+      if end_date >= Date.current && !by_date.key?(Date.current)
         live = coingecko_live_price(coin_id)
         by_date[Date.current] = live if live&.positive?
       end
