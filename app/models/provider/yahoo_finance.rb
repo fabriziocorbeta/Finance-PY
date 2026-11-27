@@ -71,6 +71,32 @@ class Provider::YahooFinance < Provider
   # while still coalescing burst requests to avoid Yahoo 429 rate limits.
   LIVE_QUOTE_CACHE_DURATION = 30.seconds
 
+  # Stale-while-revalidate backup TTL: after LIVE_QUOTE_CACHE_DURATION expires,
+  # callers still get an instant response from the stale cache while a single
+  # background thread refreshes Yahoo Finance asynchronously.
+  STALE_QUOTE_CACHE_DURATION = 15.minutes
+
+  NEGATIVE_CACHE_SENTINEL = :__yahoo_empty__
+
+  @inflight_refreshes = Concurrent::Map.new
+  @cookie_mutex = Mutex.new
+
+  class << self
+    attr_reader :cookie_mutex
+
+    def refresh_in_background(lock_key)
+      return unless @inflight_refreshes.put_if_absent(lock_key, true).nil?
+
+      Concurrent::Promises.future do
+        yield
+      rescue => e
+        Rails.logger.debug("YahooFinance background refresh failed for #{lock_key}: #{e.message}")
+      ensure
+        @inflight_refreshes.delete(lock_key)
+      end
+    end
+  end
+
   # Once Yahoo returns a 429, further requests fail fast for this long instead
   # of each burning a full 5-retry exponential backoff against an endpoint
   # we already know is blocked. Without this, a nightly import over many
@@ -106,6 +132,8 @@ class Provider::YahooFinance < Provider
   def initialize
     # Yahoo Finance doesn't require an API key but we may want to add proxy support later
     @cache_prefix = "yahoo_finance"
+    @ssl_options = self.class.faraday_ssl_options
+    @client_mutex = Mutex.new
   end
 
   def healthy?
@@ -377,18 +405,37 @@ class Provider::YahooFinance < Provider
       normalized_sym = normalize_symbol(symbol, exchange_operating_mic)
       intraday = %w[1m 2m 5m 15m 30m 60m 90m 1h].include?(interval.to_s)
       cache_key = "quote_series_#{normalized_sym}_#{range}_#{interval}"
+      stale_cache_key = "#{cache_key}_stale"
 
       if !clear_cache && (cached = get_cached_result(cache_key))
         cached
+      elsif !clear_cache && !Rails.env.test? && (stale = get_cached_result(stale_cache_key))
+        self.class.refresh_in_background(cache_key) do
+          yf = Provider::YahooFinance.new
+          fresh = yf.send(
+            :resolve_quote_and_series_or_fallback,
+            normalized_sym,
+            exchange_operating_mic: exchange_operating_mic,
+            range: range,
+            interval: interval,
+            intraday: intraday,
+            interactive: true
+          )
+          yf.send(:cache_result, cache_key, fresh, expires_in: LIVE_QUOTE_CACHE_DURATION)
+          yf.send(:cache_result, stale_cache_key, fresh, expires_in: STALE_QUOTE_CACHE_DURATION)
+        end
+        stale
       else
         quote_series = resolve_quote_and_series_or_fallback(
           normalized_sym,
           exchange_operating_mic: exchange_operating_mic,
           range: range,
           interval: interval,
-          intraday: intraday
+          intraday: intraday,
+          interactive: true
         )
         cache_result(cache_key, quote_series, expires_in: LIVE_QUOTE_CACHE_DURATION)
+        cache_result(stale_cache_key, quote_series, expires_in: STALE_QUOTE_CACHE_DURATION)
         quote_series
       end
     rescue JSON::ParserError => e
@@ -399,36 +446,48 @@ class Provider::YahooFinance < Provider
   def fetch_quote_summary(symbol:, exchange_operating_mic: nil, clear_cache: false)
     with_provider_response do
       normalized_sym = normalize_symbol(symbol, exchange_operating_mic)
+      if non_corporate_symbol?(normalized_sym)
+        raise Error, "Quote summary not applicable for non-corporate symbol #{normalized_sym}"
+      end
+
       cache_key = "quote_summary_#{normalized_sym}"
 
       if !clear_cache && (cached = get_cached_result(cache_key))
+        raise Error, "Cached unavailable quote summary for #{normalized_sym}" if cached == NEGATIVE_CACHE_SENTINEL
+
         cached
       else
-        check_rate_limit!
-        throttle_request
-        cookie, crumb = fetch_cookie_and_crumb
-
-        encoded_symbol = ERB::Util.url_encode(normalized_sym)
-        modules = "summaryDetail,defaultKeyStatistics,financialData,assetProfile,calendarEvents,price"
-        response = authenticated_client(cookie).get("#{base_url}/v10/finance/quoteSummary/#{encoded_symbol}") do |req|
-          req.params["modules"] = modules
-          req.params["crumb"] = crumb
-        end
-
-        data = JSON.parse(response.body)
-        if data.dig("quoteSummary", "error", "code") == "Unauthorized"
-          clear_crumb_cache
+        begin
+          check_rate_limit!
           cookie, crumb = fetch_cookie_and_crumb
-          response = authenticated_client(cookie).get("#{base_url}/v10/finance/quoteSummary/#{encoded_symbol}") do |req|
+
+          encoded_symbol = ERB::Util.url_encode(normalized_sym)
+          modules = "summaryDetail,defaultKeyStatistics,financialData,assetProfile,calendarEvents,price"
+          http = Rails.env.test? ? authenticated_client(cookie) : interactive_authenticated_client(cookie)
+          response = http.get("#{base_url}/v10/finance/quoteSummary/#{encoded_symbol}") do |req|
             req.params["modules"] = modules
             req.params["crumb"] = crumb
           end
-          data = JSON.parse(response.body)
-          raise AuthenticationError, "Yahoo Finance authentication failed" if data.dig("quoteSummary", "error", "code") == "Unauthorized"
-        end
 
-        result = data.dig("quoteSummary", "result", 0)
-        raise Error, "No quote summary found for #{normalized_sym}" unless result
+          data = JSON.parse(response.body)
+          if data.dig("quoteSummary", "error", "code") == "Unauthorized"
+            clear_crumb_cache
+            cookie, crumb = fetch_cookie_and_crumb
+            http = Rails.env.test? ? authenticated_client(cookie) : interactive_authenticated_client(cookie)
+            response = http.get("#{base_url}/v10/finance/quoteSummary/#{encoded_symbol}") do |req|
+              req.params["modules"] = modules
+              req.params["crumb"] = crumb
+            end
+            data = JSON.parse(response.body)
+            raise AuthenticationError, "Yahoo Finance authentication failed" if data.dig("quoteSummary", "error", "code") == "Unauthorized"
+          end
+
+          result = data.dig("quoteSummary", "result", 0)
+          raise Error, "No quote summary found for #{normalized_sym}" unless result
+        rescue => e
+          cache_result(cache_key, NEGATIVE_CACHE_SENTINEL, expires_in: CACHE_DURATION)
+          raise e
+        end
 
         summary = result["summaryDetail"] || {}
         stats = result["defaultKeyStatistics"] || {}
@@ -479,7 +538,7 @@ class Provider::YahooFinance < Provider
       clean_query = query.to_s.strip.presence || "^GSPC"
       cache_key = "news_#{clean_query}_#{count}"
 
-      if !clear_cache && (cached = get_cached_result(cache_key))
+      if !clear_cache && !(cached = get_cached_result(cache_key)).nil?
         cached
       else
         news_raw = []
@@ -488,7 +547,7 @@ class Provider::YahooFinance < Provider
             "q" => clean_query,
             "quotesCount" => 0,
             "newsCount" => count
-          })
+          }, interactive: true)
           next unless response_status(response) == 200
 
           parsed = JSON.parse(response.body)
@@ -512,7 +571,7 @@ class Provider::YahooFinance < Provider
           )
         end
 
-        cache_result(cache_key, items) if items.any?
+        cache_result(cache_key, items)
         items
       end
     rescue JSON::ParserError => e
@@ -575,13 +634,18 @@ class Provider::YahooFinance < Provider
       prices.sort_by(&:date)
     end
 
-    def resolve_quote_and_series_or_fallback(normalized_sym, exchange_operating_mic:, range:, interval:, intraday:)
+    def non_corporate_symbol?(symbol)
+      sym = symbol.to_s.upcase
+      sym.start_with?("^") || sym.end_with?("=X", "=F") || sym.match?(/-(USD|EUR|GBP|USDT|BTC|ETH)\z/)
+    end
+
+    def resolve_quote_and_series_or_fallback(normalized_sym, exchange_operating_mic:, range:, interval:, intraday:, interactive: false)
       data = begin
         fetch_chart_with_fallback(normalized_sym, {
           "range" => range,
           "interval" => interval,
           "includePrePost" => intraday
-        })
+        }, interactive: interactive)
       rescue Faraday::Error, RateLimitError, AuthenticationError, Error => e
         fallback_quote = fallback_quote_and_series(normalized_sym, exchange_operating_mic, range)
         return fallback_quote if fallback_quote
@@ -683,7 +747,7 @@ class Provider::YahooFinance < Provider
           "q" => query,
           "quotesCount" => 25,
           "newsCount" => 0
-        })
+        }, interactive: true)
         status = response_status(response)
         if status == 429
           rate_limited = true
@@ -716,12 +780,12 @@ class Provider::YahooFinance < Provider
     # Fetches /v8/finance/chart/:symbol preferring query2 with a cached Yahoo
     # session cookie (cookieless query2 requests are aggressively rate-limited
     # with 429s), falling back to authenticated query1 if needed.
-    def fetch_chart_with_fallback(symbol, params)
+    def fetch_chart_with_fallback(symbol, params, interactive: false)
       encoded_symbol = ERB::Util.url_encode(symbol)
       saw_rate_limit = false
 
       [ "https://query2.finance.yahoo.com", base_url ].uniq.each do |host|
-        response = query_with_cookie(host, "/v8/finance/chart/#{encoded_symbol}", params)
+        response = query_with_cookie(host, "/v8/finance/chart/#{encoded_symbol}", params, interactive: interactive)
         status = response_status(response)
         if status == 429
           saw_rate_limit = true
@@ -741,16 +805,17 @@ class Provider::YahooFinance < Provider
       raise RateLimitError, "Yahoo Finance rate limit exceeded on chart fallback" if saw_rate_limit
 
       check_rate_limit!
-      throttle_request
-      fetch_authenticated_chart(symbol, params)
+      throttle_request unless interactive
+      fetch_authenticated_chart(symbol, params, interactive: interactive)
     end
 
-    def query_with_cookie(host, path, params)
+    def query_with_cookie(host, path, params, interactive: false)
       cookie, ua = fetch_session_cookie_and_ua
+      http = (interactive && !Rails.env.test?) ? interactive_client : client
 
       2.times do |attempt|
-        throttle_request
-        response = client.get("#{host}#{path}") do |req|
+        throttle_request unless interactive
+        response = http.get("#{host}#{path}") do |req|
           params.each { |k, v| req.params[k] = v }
           req.headers["User-Agent"] = ua if ua.present?
           req.headers["Cookie"] = cookie if cookie.present?
@@ -979,10 +1044,11 @@ class Provider::YahooFinance < Provider
     # Makes a single authenticated GET to /v8/finance/chart/:symbol.
     # If Yahoo returns a stale-crumb error (200 OK with Unauthorized body),
     # clears the crumb cache and retries once with fresh credentials.
-    def fetch_authenticated_chart(symbol, params)
+    def fetch_authenticated_chart(symbol, params, interactive: false)
       encoded_symbol = ERB::Util.url_encode(symbol)
       cookie, crumb = fetch_cookie_and_crumb
-      response = authenticated_client(cookie).get("#{base_url}/v8/finance/chart/#{encoded_symbol}") do |req|
+      http = (interactive && !Rails.env.test?) ? interactive_authenticated_client(cookie) : authenticated_client(cookie)
+      response = http.get("#{base_url}/v8/finance/chart/#{encoded_symbol}") do |req|
         params.each { |k, v| req.params[k] = v }
         req.params["crumb"] = crumb
       end
@@ -991,7 +1057,8 @@ class Provider::YahooFinance < Provider
       if data.dig("chart", "error", "code") == "Unauthorized"
         clear_crumb_cache
         cookie, crumb = fetch_cookie_and_crumb
-        response = authenticated_client(cookie).get("#{base_url}/v8/finance/chart/#{encoded_symbol}") do |req|
+        http = (interactive && !Rails.env.test?) ? interactive_authenticated_client(cookie) : authenticated_client(cookie)
+        response = http.get("#{base_url}/v8/finance/chart/#{encoded_symbol}") do |req|
           params.each { |k, v| req.params[k] = v }
           req.params["crumb"] = crumb
         end
@@ -1039,6 +1106,43 @@ class Provider::YahooFinance < Provider
         results.sort_by(&:date)
       rescue Faraday::Error, JSON::ParserError => e
         nil
+      end
+    end
+
+    def interactive_client
+      return @interactive_client if @interactive_client
+
+      (@client_mutex || Mutex.new).synchronize do
+        @interactive_client ||= Faraday.new(url: base_url, ssl: @ssl_options || self.class.faraday_ssl_options) do |faraday|
+          faraday.request :json
+          faraday.response :raise_error
+
+          faraday.headers["User-Agent"] = USER_AGENTS.first
+          faraday.headers["Accept"] = "application/json"
+          faraday.headers["Accept-Language"] = "en-US,en;q=0.9"
+          faraday.headers["Cache-Control"] = "no-cache"
+          faraday.headers["Pragma"] = "no-cache"
+
+          faraday.options.timeout = 4
+          faraday.options.open_timeout = 3
+        end
+      end
+    end
+
+    def interactive_authenticated_client(cookie)
+      Faraday.new(url: base_url, ssl: @ssl_options || self.class.faraday_ssl_options) do |faraday|
+        faraday.request :json
+        faraday.response :raise_error
+
+        faraday.headers["User-Agent"] = USER_AGENTS.first
+        faraday.headers["Accept"] = "application/json"
+        faraday.headers["Accept-Language"] = "en-US,en;q=0.9"
+        faraday.headers["Cache-Control"] = "no-cache"
+        faraday.headers["Pragma"] = "no-cache"
+        faraday.headers["Cookie"] = cookie
+
+        faraday.options.timeout = 4
+        faraday.options.open_timeout = 3
       end
     end
 
@@ -1102,7 +1206,7 @@ class Provider::YahooFinance < Provider
     # Fetches and caches a lightweight Yahoo session cookie from fc.yahoo.com
     # alongside the exact User-Agent used to obtain it. Sending a consistent
     # cookie+UA pair on query2 avoids Yahoo's cookieless IP 429 throttling.
-    def fetch_session_cookie_and_ua
+    def read_cached_session_cookie_and_ua
       cached = Rails.cache.read(session_cookie_cache_key)
       if cached.is_a?(Array) && cached.first.present?
         return cached
@@ -1114,7 +1218,20 @@ class Provider::YahooFinance < Provider
         return [ cached_pair.first, USER_AGENTS.first ]
       end
 
-      refresh_session_cookie_and_ua
+      nil
+    end
+
+    # Coalesces cold-cache cookie fetches across concurrent MarketTracker threads
+    # so 15 parallel requests don't simultaneously hit https://fc.yahoo.com.
+    def fetch_session_cookie_and_ua
+      pair = read_cached_session_cookie_and_ua
+      return pair if pair
+
+      return refresh_session_cookie_and_ua if Rails.env.test?
+
+      self.class.cookie_mutex.synchronize do
+        read_cached_session_cookie_and_ua || refresh_session_cookie_and_ua
+      end
     end
 
     def fetch_session_cookie

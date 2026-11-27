@@ -61,4 +61,42 @@ class Investments::MarketTrackerServiceTest < ActiveSupport::TestCase
     assert_equal "equity", card.category
     assert_nil card.current_price
   end
+
+  test "market_overview deduplicates repeated ticker requests across indices and featured quote" do
+    quote_series = Provider::YahooFinance::QuoteSeries.new(
+      symbol: "^GSPC",
+      name: "S&P 500",
+      short_name: "S&P 500",
+      currency: "USD",
+      exchange_name: "SNP",
+      instrument_type: "INDEX",
+      current_price: 6000.0,
+      previous_close: 5950.0,
+      change: 50.0,
+      change_percent: 0.84,
+      day_high: 6010.0,
+      day_low: 5940.0,
+      fifty_two_week_high: 6100.0,
+      fifty_two_week_low: 4900.0,
+      volume: 3_000_000_000,
+      prices: [
+        { date: 1.day.ago.to_date, price: 5950.0 },
+        { date: Date.current, price: 6000.0 }
+      ]
+    )
+
+    provider_resp = Provider::Response.new(data: quote_series, error: nil)
+    @mock_provider.expects(:fetch_quote_and_series).times(Investments::MarketTrackerService::DEFAULT_INDICES.size).returns(provider_resp)
+
+    overview = @service.market_overview(
+      watchlist_indices: [],
+      watchlist_assets: [],
+      holdings: [],
+      selected_ticker: "^GSPC",
+      range: "1mo"
+    )
+
+    assert_equal Investments::MarketTrackerService::DEFAULT_INDICES.size, overview[:index_quotes].size
+    assert_equal 6000.0, overview[:featured_quote].current_price
+  end
 end

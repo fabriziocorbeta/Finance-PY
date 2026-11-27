@@ -10,19 +10,32 @@ class AccountsController < ApplicationController
     @manual_accounts = family.accounts
           .listable_manual
           .where(id: @accessible_account_ids)
-          .includes(:visible_syncs, :account_providers, :accountable)
+          .includes(:visible_syncs, :account_providers, :accountable, :owner, :account_shares)
           .with_attached_logo
           .order(:name)
-    @plaid_items = visible_provider_items(family.plaid_items.ordered.includes(:syncs, :plaid_accounts))
-    @simplefin_items = visible_provider_items(family.simplefin_items.ordered.includes(:syncs))
-    @lunchflow_items = visible_provider_items(family.lunchflow_items.ordered.includes(:syncs, :lunchflow_accounts))
-    @enable_banking_items = visible_provider_items(family.enable_banking_items.ordered.includes(:syncs))
-    @coinstats_items = visible_provider_items(family.coinstats_items.ordered.includes(:coinstats_accounts, :accounts, :syncs))
-    @mercury_items = visible_provider_items(family.mercury_items.ordered.includes(:syncs, :mercury_accounts))
-    @coinbase_items = visible_provider_items(family.coinbase_items.ordered.includes(:coinbase_accounts, :accounts, :syncs))
-    @snaptrade_items = visible_provider_items(family.snaptrade_items.ordered.includes(:syncs, :snaptrade_accounts))
-    @indexa_capital_items = visible_provider_items(family.indexa_capital_items.ordered.includes(:syncs, :indexa_capital_accounts))
-    @sophtron_items = visible_provider_items(family.sophtron_items.ordered.includes(:syncs, :sophtron_accounts))
+    if family_has_linked_provider_items?
+      @plaid_items = visible_provider_items(family.plaid_items.ordered.includes(:syncs, :plaid_accounts))
+      @simplefin_items = visible_provider_items(family.simplefin_items.ordered.includes(:syncs))
+      @lunchflow_items = visible_provider_items(family.lunchflow_items.ordered.includes(:syncs, :lunchflow_accounts))
+      @enable_banking_items = visible_provider_items(family.enable_banking_items.ordered.includes(:syncs))
+      @coinstats_items = visible_provider_items(family.coinstats_items.ordered.includes(:coinstats_accounts, :accounts, :syncs))
+      @mercury_items = visible_provider_items(family.mercury_items.ordered.includes(:syncs, :mercury_accounts))
+      @coinbase_items = visible_provider_items(family.coinbase_items.ordered.includes(:coinbase_accounts, :accounts, :syncs))
+      @snaptrade_items = visible_provider_items(family.snaptrade_items.ordered.includes(:syncs, :snaptrade_accounts))
+      @indexa_capital_items = visible_provider_items(family.indexa_capital_items.ordered.includes(:syncs, :indexa_capital_accounts))
+      @sophtron_items = visible_provider_items(family.sophtron_items.ordered.includes(:syncs, :sophtron_accounts))
+    else
+      @plaid_items = []
+      @simplefin_items = []
+      @lunchflow_items = []
+      @enable_banking_items = []
+      @coinstats_items = []
+      @mercury_items = []
+      @coinbase_items = []
+      @snaptrade_items = []
+      @indexa_capital_items = []
+      @sophtron_items = []
+    end
 
     # Build sync stats maps for all providers
     build_sync_stats_maps
@@ -244,6 +257,20 @@ class AccountsController < ApplicationController
         Current.user.admin? ||
           (item.respond_to?(:accounts) && (item.accounts.map(&:id) & @accessible_account_ids).any?)
       end
+    end
+
+    PROVIDER_ITEM_TABLES = %w[
+      plaid_items simplefin_items lunchflow_items enable_banking_items
+      coinstats_items mercury_items coinbase_items snaptrade_items
+      indexa_capital_items sophtron_items
+    ].freeze
+
+    def family_has_linked_provider_items?
+      subqueries = PROVIDER_ITEM_TABLES.map do |tbl|
+        "SELECT 1 FROM #{tbl} WHERE family_id = :fid LIMIT 1"
+      end.join(" UNION ALL ")
+      sql = ActiveRecord::Base.sanitize_sql_array([ "SELECT EXISTS (#{subqueries})", { fid: family.id } ])
+      ActiveRecord::Base.connection.select_value(sql) == true
     end
 
     # Builds sync stats maps for all provider types to avoid N+1 queries in views

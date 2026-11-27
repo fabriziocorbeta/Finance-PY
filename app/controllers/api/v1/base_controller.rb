@@ -123,7 +123,9 @@ class Api::V1::BaseController < ApplicationController
       # no auth_bypass, so it needs app.current_family_id already set or the
       # policy silently matches zero rows (update_column doesn't check
       # rowcount) and last_used_at never advances.
-      @api_key.update_last_used!
+      if @api_key.last_used_at.nil? || @api_key.last_used_at < 1.minute.ago
+        @api_key.update_last_used!
+      end
       true
     end
 

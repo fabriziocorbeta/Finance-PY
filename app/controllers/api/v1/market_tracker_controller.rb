@@ -15,20 +15,23 @@ class Api::V1::MarketTrackerController < Api::V1::BaseController
     watchlist_indices = watchlist_items.select { |item| item.category == "index" }
     watchlist_assets = watchlist_items.reject { |item| item.category == "index" }
 
-    tracker = Investments::MarketTrackerService.new
-    index_quotes = tracker.index_quotes(watchlist_indices: watchlist_indices, force_refresh: force_refresh)
-    watchlist_quotes = tracker.watchlist_quotes(watchlist_assets, force_refresh: force_refresh)
-    holding_quotes = tracker.holding_quotes(holdings, force_refresh: force_refresh)
-
     selected_security, selected_watchlist = resolve_selected_context(selected_ticker, selected_mic, watchlist_items, holdings)
-    featured_quote = tracker.quote_for(
-      ticker: selected_ticker,
-      exchange_operating_mic: selected_mic,
+    overview = Investments::MarketTrackerService.new.market_overview(
+      watchlist_indices: watchlist_indices,
+      watchlist_assets: watchlist_assets,
+      holdings: holdings,
+      selected_ticker: selected_ticker,
+      selected_mic: selected_mic,
       range: range,
-      security: selected_security,
-      watchlist_item: selected_watchlist,
+      selected_security: selected_security,
+      selected_watchlist: selected_watchlist,
       force_refresh: force_refresh
-    ) || (index_quotes + watchlist_quotes + holding_quotes.values).find do |card|
+    )
+
+    index_quotes = overview[:index_quotes]
+    watchlist_quotes = overview[:watchlist_quotes]
+    holding_quotes = overview[:holding_quotes]
+    featured_quote = overview[:featured_quote] || (index_quotes + watchlist_quotes + holding_quotes.values).find do |card|
       card.ticker.casecmp?(selected_ticker) && (selected_mic.blank? || card.security&.exchange_operating_mic.to_s.casecmp?(selected_mic))
     end
 

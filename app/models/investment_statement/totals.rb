@@ -16,6 +16,19 @@ class InvestmentStatement::Totals
     }
   end
 
+  def call_grouped_by_account
+    sql = ActiveRecord::Base.sanitize_sql_array([ grouped_aggregation_sql, sql_params ])
+    ActiveRecord::Base.connection.select_all(sql).each_with_object({}) do |row, hash|
+      hash[row["account_id"]] = {
+        contributions: row["contributions"]&.to_d || 0,
+        withdrawals: row["withdrawals"]&.to_d || 0,
+        dividends: row["dividends"]&.to_d || 0,
+        interest: row["interest"]&.to_d || 0,
+        trades_count: row["trades_count"]&.to_i || 0
+      }
+    end
+  end
+
   private
     def query_sql
       ActiveRecord::Base.sanitize_sql_array([
@@ -56,6 +69,26 @@ class InvestmentStatement::Totals
         WHERE a.family_id = :family_id
           AND a.status IN ('draft', 'active')
           AND ae.excluded = false
+      SQL
+    end
+
+    def grouped_aggregation_sql
+      <<~SQL
+        SELECT
+          ae.account_id as account_id,
+          COALESCE(SUM(CASE WHEN t.qty > 0 AND #{plain_trade_sql} THEN ABS(ae.amount * COALESCE(er.rate, 1)) ELSE 0 END), 0) as contributions,
+          COALESCE(SUM(CASE WHEN t.qty < 0 AND #{plain_trade_sql} THEN ABS(ae.amount * COALESCE(er.rate, 1)) ELSE 0 END), 0) as withdrawals,
+          COALESCE(SUM(CASE WHEN t.investment_activity_label = 'Interest' THEN ABS(ae.amount * COALESCE(er.rate, 1)) ELSE 0 END), 0) as interest,
+          COALESCE(SUM(CASE WHEN t.investment_activity_label = 'Dividend' THEN ABS(ae.amount * COALESCE(er.rate, 1)) ELSE 0 END), 0) as dividends,
+          COUNT(t.id) as trades_count
+        FROM (#{@trades_scope.to_sql}) t
+        JOIN entries ae ON ae.entryable_id = t.id AND ae.entryable_type = 'Trade'
+        JOIN accounts a ON a.id = ae.account_id
+        #{nearest_rate_join_sql}
+        WHERE a.family_id = :family_id
+          AND a.status IN ('draft', 'active')
+          AND ae.excluded = false
+        GROUP BY ae.account_id
       SQL
     end
 

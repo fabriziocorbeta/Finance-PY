@@ -75,12 +75,20 @@ if rails_env == "production"
   # visitor's.
   on_booted do
     Thread.new do
+      warmup_session = nil
       begin
         require "net/http"
 
-        session_record = Session.order(created_at: :desc).first
-        unless session_record
-          Rails.logger.info "[warmup] skipped: no session in DB to render as"
+        Rails.application.executor.wrap do
+          warmup_session = RlsContext.with_auth_bypass(reason: "puma_boot_warmup") do
+            uid = Account.group(:owner_id).count.max_by { |_, c| c }&.first
+            user = (uid && User.find_by(id: uid)) || User.order(:created_at).first
+            user&.sessions&.create!
+          end
+        end
+
+        unless warmup_session
+          Rails.logger.info "[warmup] skipped: no user in DB to render as"
           next
         end
 
@@ -89,26 +97,20 @@ if rails_env == "production"
         )
         setup_request = ActionDispatch::Request.new(env)
         jar = ActionDispatch::Cookies::CookieJar.build(setup_request, {})
-        jar.signed[:session_token] = session_record.id
+        jar.signed[:session_token] = warmup_session.id
         cookie_header = jar.to_header
 
         port = ENV.fetch("PORT") { 3000 }
-        # Every item in the main sidebar nav (layouts/application.html.erb's
-        # desktop_nav_items), so the FIRST real visitor to click any tab
-        # after a deploy never pays the one-time ActionView compile cost --
-        # /reports alone was measured at 33s+ in production for exactly this
-        # reason (compile cost stacked with several tabs' worth of Safari
-        # link-prefetch requests all queuing behind Puma's small thread pool
-        # right after a restart, before anything but the 4 originally-listed
-        # paths here had ever been rendered).
         paths = [
           "/",
-          "/transactions",
-          "/reports",
+          "/accounts/sidebar",
+          "/transactions?page=1&per_page=50",
+          "/investments",
           "/budgets/#{Budget.date_to_param(Date.current)}",
+          "/reports",
+          "/accounts",
           "/goals",
           "/receivables",
-          "/accounts",
           "/sales",
           "/purchase_orders",
           "/products",
@@ -116,21 +118,39 @@ if rails_env == "production"
         ]
 
         total_t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        paths.each do |path|
-          uri = URI("http://127.0.0.1:#{port}#{path}")
-          request = Net::HTTP::Get.new(uri)
-          request["Cookie"] = cookie_header
-          request["Host"] = "finance.cd-co.com.py"
+        Net::HTTP.start("127.0.0.1", port) do |http|
+          paths.each do |path|
+            request = Net::HTTP::Get.new(path)
+            request["Cookie"] = cookie_header
+            request["Host"] = "finance.cd-co.com.py"
+            request["X-Forwarded-Proto"] = "https"
 
-          page_t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          response = Net::HTTP.start(uri.host, uri.port) { |http| http.request(request) }
-          page_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - page_t0) * 1000).round
-          Rails.logger.info "[warmup] #{path} -> #{response.code} in #{page_ms}ms"
+            page_t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            response = http.request(request)
+            if response.code == "302" && response["location"].present?
+              loc_uri = URI.parse(response["location"])
+              follow_req = Net::HTTP::Get.new(loc_uri.request_uri)
+              follow_req["Cookie"] = cookie_header
+              follow_req["Host"] = "finance.cd-co.com.py"
+              follow_req["X-Forwarded-Proto"] = "https"
+              response = http.request(follow_req)
+            end
+            page_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - page_t0) * 1000).round
+            Rails.logger.info "[warmup] #{path} -> #{response.code} in #{page_ms}ms"
+          end
         end
         total_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - total_t0) * 1000).round
         Rails.logger.info "[warmup] done in #{total_ms}ms"
       rescue => e
         Rails.logger.error "[warmup] failed: #{e.class}: #{e.message}"
+      ensure
+        if warmup_session
+          Rails.application.executor.wrap do
+            RlsContext.with_auth_bypass(reason: "puma_boot_warmup_cleanup") do
+              warmup_session.destroy rescue nil
+            end
+          end
+        end
       end
     end
   end

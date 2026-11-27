@@ -1,4 +1,5 @@
-<% cache [budget.family_id, Current.user&.id, budget.id, budget.updated_at, budget.budget_categories.maximum(:updated_at), budget.family.entries_cache_version(date_range: budget.period.date_range)] do %>
+<% categories_max_updated_at = budget.budget_categories.loaded? ? budget.budget_categories.filter_map(&:updated_at).max : budget.budget_categories.maximum(:updated_at) %>
+<% cache [budget.family_id, Current.user&.id, budget.id, budget.updated_at, categories_max_updated_at, Sure.commit_sha, I18n.locale, budget.family.entries_cache_version(date_range: budget.period.date_range)], skip_digest: true do %>
   <%= tag.div data: { controller: "donut-chart", donut_chart_segments_value: budget.to_donut_segments_json }, class: "relative h-full" do %>
     <div data-donut-chart-target="chartContainer" class="absolute inset-0 pointer-events-none"></div>
 

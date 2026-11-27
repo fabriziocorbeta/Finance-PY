@@ -54,32 +54,30 @@ module Reports
       end
 
       def historical_series
-        @historical_series ||= begin
-          series = []
+        @historical_series ||= Rails.cache.fetch([
+          "reports", "cashflow_historical_series", "v2",
+          family.id, user&.id, reference_date, I18n.locale, family.entries_cache_version
+        ]) do
           start_month = (reference_date.beginning_of_month - (HISTORICAL_LOOKBACK_MONTHS - 1).months).to_date
-          current_month = start_month
           end_month = reference_date.beginning_of_month.to_date
+          monthly_totals = fetch_monthly_operating_totals(start_month..end_month.end_of_month)
 
+          series = []
+          current_month = start_month
           while current_month <= end_month
-            month_start = current_month
-            month_end = current_month.end_of_month
-            is_current = (month_start.year == reference_date.year && month_start.month == reference_date.month)
+            month_key = current_month.strftime("%Y-%m")
+            is_current = (current_month.year == reference_date.year && current_month.month == reference_date.month)
+            totals = monthly_totals[month_key] || { income: 0.to_d, expenses: 0.to_d }
 
-            period = Period.custom(start_date: month_start, end_date: month_end)
-            scope_totals = income_statement.totals(
-              transactions_scope: operating_transactions_scope.in_period(period),
-              date_range: period.date_range
-            )
-
-            inc = ensure_numeric(scope_totals.income_money)
-            exp = ensure_numeric(scope_totals.expense_money)
+            inc = totals[:income].to_f
+            exp = totals[:expenses].to_f
             net = inc - exp
             savings_rate = inc > 0 ? ((net / inc) * 100.0).round(1) : 0.0
 
             series << {
-              month: month_start.strftime("%Y-%m"),
-              month_label: I18n.l(month_start, format: "%b %Y"),
-              date: month_start.strftime("%Y-%m-%d"),
+              month: month_key,
+              month_label: I18n.l(current_month, format: "%b %Y"),
+              date: current_month.strftime("%Y-%m-%d"),
               kind: "actual",
               is_current_month: is_current,
               income: inc.round(2),
@@ -92,6 +90,76 @@ module Reports
           end
 
           series
+        end
+      end
+
+      # Single-query 12-month aggregation (replaces 12 sequential monthly SQL queries on cold cache)
+      def fetch_monthly_operating_totals(date_range)
+        included_ids = user ? user.finance_accounts.pluck(:id) : nil
+        return {} if included_ids&.empty?
+
+        tx_sql = operating_transactions_scope.where(entries: { date: date_range }).to_sql
+        tax_ids = family.tax_advantaged_account_ids
+        tax_clause = tax_ids.present? ? "AND a.id NOT IN (:tax_advantaged_account_ids)" : ""
+        inc_clause = included_ids ? "AND a.id IN (:included_account_ids)" : ""
+        excluded_kinds_sql = Transaction::BUDGET_EXCLUDED_KINDS.map { |k| ActiveRecord::Base.connection.quote(k) }.join(", ")
+        excluded_labels_sql = Transaction::BUDGET_EXCLUDED_LABELS.map { |l| ActiveRecord::Base.connection.quote(l) }.join(", ")
+
+        sql = ActiveRecord::Base.sanitize_sql_array([
+          <<~SQL,
+            WITH classified AS (
+              SELECT
+                TO_CHAR(DATE_TRUNC('month', ae.date), 'YYYY-MM') AS month_key,
+                c.id AS category_id,
+                CASE WHEN at.kind IN ('investment_contribution', 'loan_payment') THEN 'expense'
+                     WHEN ae.amount < 0 THEN 'income'
+                     ELSE 'expense' END AS classification,
+                ABS(SUM(
+                  CASE WHEN at.kind IN ('investment_contribution', 'loan_payment')
+                       THEN ABS(ae.amount * COALESCE(er.rate, 1))
+                       ELSE ae.amount * COALESCE(er.rate, 1) END
+                )) AS total
+              FROM (#{tx_sql}) at
+              JOIN entries ae ON ae.entryable_id = at.id AND ae.entryable_type = 'Transaction'
+              JOIN accounts a ON a.id = ae.account_id
+              LEFT JOIN categories c ON c.id = at.category_id
+              LEFT JOIN exchange_rates er ON (
+                er.date = ae.date AND
+                er.from_currency = ae.currency AND
+                er.to_currency = :target_currency
+              )
+              WHERE at.kind NOT IN (#{excluded_kinds_sql})
+                AND (at.investment_activity_label IS NULL OR at.investment_activity_label NOT IN (#{excluded_labels_sql}))
+                AND ae.excluded = false
+                AND a.family_id = :family_id
+                AND a.status IN ('draft', 'active')
+                #{tax_clause}
+                #{inc_clause}
+              GROUP BY month_key, c.id,
+                CASE WHEN at.kind IN ('investment_contribution', 'loan_payment') THEN 'expense'
+                     WHEN ae.amount < 0 THEN 'income'
+                     ELSE 'expense' END
+            )
+            SELECT
+              month_key,
+              COALESCE(SUM(CASE WHEN classification = 'income' THEN total ELSE 0 END), 0) AS income,
+              COALESCE(SUM(CASE WHEN classification = 'expense' THEN total ELSE 0 END), 0) AS expenses
+            FROM classified
+            GROUP BY month_key
+          SQL
+          {
+            target_currency: family.currency,
+            family_id: family.id,
+            tax_advantaged_account_ids: tax_ids.presence,
+            included_account_ids: included_ids
+          }.compact
+        ])
+
+        ActiveRecord::Base.connection.select_all(sql).each_with_object({}) do |row, hash|
+          hash[row["month_key"]] = {
+            income: row["income"].to_d,
+            expenses: row["expenses"].to_d
+          }
         end
       end
 

@@ -80,4 +80,34 @@ class InvestmentFlowStatementTest < ActiveSupport::TestCase
 
     assert_equal Money.new(330, @family.currency), totals.withdrawals
   end
+
+  test "period_totals_by_account groups contributions and withdrawals per account" do
+    second_investment = @family.accounts.create! name: "Retirement", currency: @family.currency, balance: 5000, accountable: Investment.new
+
+    Transfer::Creator.new(
+      family: @family,
+      source_account_id: @depository.id,
+      destination_account_id: @investment.id,
+      date: Date.current,
+      amount: 400
+    ).create
+
+    Transfer::Creator.new(
+      family: @family,
+      source_account_id: second_investment.id,
+      destination_account_id: @depository.id,
+      date: Date.current,
+      amount: 150
+    ).create
+
+    by_account = InvestmentFlowStatement.new(@family).period_totals_by_account(
+      period: Period.current_month,
+      account_ids: [ @investment.id, second_investment.id ]
+    )
+
+    assert_equal Money.new(400, @family.currency), by_account[@investment.id].contributions
+    assert_equal Money.new(0, @family.currency), by_account[@investment.id].withdrawals
+    assert_equal Money.new(0, @family.currency), by_account[second_investment.id].contributions
+    assert_equal Money.new(150, @family.currency), by_account[second_investment.id].withdrawals
+  end
 end

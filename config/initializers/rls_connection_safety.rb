@@ -52,8 +52,12 @@ Rails.application.config.to_prepare do
   # log loudly since this should never happen given (a).
   adapter_class.set_callback :checkout, :after do
     begin
-      leaked_family = select_value("SELECT current_setting('app.current_family_id', true)")
-      leaked_auth = select_value("SELECT current_setting('app.rls_auth_bypass', true)")
+      row = select_one(
+        "SELECT current_setting('app.current_family_id', true) AS family_id, " \
+        "current_setting('app.rls_auth_bypass', true) AS auth_bypass"
+      )
+      leaked_family = row && row["family_id"]
+      leaked_auth = row && row["auth_bypass"]
       if leaked_family.present? || leaked_auth.present?
         Rails.logger.error(
           "[RlsContext] connection checked out of the pool with a leaked app.current_family_id=#{leaked_family.inspect} or app.rls_auth_bypass=#{leaked_auth.inspect}; " \

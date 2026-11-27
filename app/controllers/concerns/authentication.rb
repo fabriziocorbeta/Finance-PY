@@ -3,6 +3,7 @@ module Authentication
 
   INACTIVITY_TIMEOUT = Session::INACTIVITY_TIMEOUT
   ABSOLUTE_TIMEOUT = Session::ABSOLUTE_TIMEOUT
+  SESSION_TOUCH_INTERVAL = 2.minutes
 
   def self.session_cookie_options(env: Rails.env)
     {
@@ -45,7 +46,9 @@ module Authentication
         # nil and the RLS context never established for the whole request.
         # user.family_id is the raw FK column: no query, no chicken-and-egg.
         RlsContext.set_family(Current.user&.family_id)
-        session_record.touch
+        if session_record.updated_at.nil? || session_record.updated_at < SESSION_TOUCH_INTERVAL.ago
+          session_record.touch
+        end
       else
         if self_hosted_first_login?
           redirect_to new_registration_url
@@ -64,7 +67,7 @@ module Authentication
 
       if cookie_value.present?
         RlsContext.with_auth_bypass(reason: "find_session_by_cookie") do
-          Session.includes(:user).find_by(id: cookie_value)
+          Session.eager_load(:user).find_by(id: cookie_value)
         end
       else
         nil
