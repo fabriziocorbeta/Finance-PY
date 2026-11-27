@@ -22,7 +22,8 @@ module Investments
       "5y" => { range: "5y", interval: "1wk" }
     }.freeze
 
-    FETCH_TIMEOUT = 20.seconds
+    FETCH_TIMEOUT = 8.seconds
+    DETAILS_TIMEOUT = 3.5.seconds
 
     QuoteCard = Struct.new(
       :ticker,
@@ -66,58 +67,133 @@ module Investments
       RANGE_CONFIG.key?(range.to_s) ? range.to_s : "1mo"
     end
 
+    # Fetches index_quotes, watchlist_quotes, holding_quotes, and featured_quote
+    # concurrently in a single deduplicated wave instead of 4 sequential stages.
+    def market_overview(watchlist_indices:, watchlist_assets:, holdings:, selected_ticker:, selected_mic: nil, range: "1mo", selected_security: nil, selected_watchlist: nil, force_refresh: false)
+      index_targets = build_index_targets(watchlist_indices)
+      watchlist_targets = build_watchlist_targets(watchlist_assets)
+      holding_targets = build_holding_targets(holdings)
+
+      range_key = self.class.valid_range(range)
+      featured_cfg = RANGE_CONFIG[range_key]
+      featured_target = {
+        ticker: selected_ticker,
+        fallback_name: selected_security&.name || selected_ticker,
+        exchange_operating_mic: selected_mic || selected_security&.exchange_operating_mic,
+        category: selected_watchlist&.category || WatchlistItem.infer_category(ticker: selected_ticker),
+        security: selected_security,
+        watchlist_item: selected_watchlist,
+        range: featured_cfg[:range],
+        interval: featured_cfg[:interval]
+      }
+
+      # Deduplicate provider fetch futures by (ticker, mic, range, interval)
+      unique_requests = {}
+      register_request = ->(target, r_str, i_str) {
+        key = [ target[:ticker].to_s.upcase, target[:exchange_operating_mic].to_s.upcase, r_str, i_str ]
+        unique_requests[key] ||= Concurrent::Promises.future(target[:ticker], target[:exchange_operating_mic], r_str, i_str) do |sym, mic, rng, intv|
+          resp = @provider.fetch_quote_and_series(
+            symbol: sym,
+            exchange_operating_mic: mic,
+            range: rng,
+            interval: intv,
+            clear_cache: force_refresh
+          )
+          resp.success? ? resp.data : nil
+        rescue => e
+          Rails.logger.warn("MarketTrackerService quote failed for #{sym}: #{e.message}")
+          nil
+        end
+      }
+
+      default_cfg = RANGE_CONFIG["1mo"]
+      (index_targets + watchlist_targets + holding_targets).each do |t|
+        register_request.call(t, default_cfg[:range], default_cfg[:interval])
+      end
+      register_request.call(featured_target, featured_cfg[:range], featured_cfg[:interval])
+
+      fundamentals_future = spawn_fundamentals_future(
+        ticker: featured_target[:ticker],
+        exchange_operating_mic: featured_target[:exchange_operating_mic],
+        category: featured_target[:category],
+        force_refresh: force_refresh
+      )
+      news_future = spawn_news_future(ticker: featured_target[:ticker], force_refresh: force_refresh)
+
+      deadline = Time.current + FETCH_TIMEOUT
+      resolved_data = {}
+      unique_requests.each do |key, future|
+        remaining = [ (deadline - Time.current), 0 ].max
+        resolved_data[key] = future.value(remaining)
+      end
+
+      details_deadline = Time.current + DETAILS_TIMEOUT
+      fundamentals = fundamentals_future&.value([ (details_deadline - Time.current), 0 ].max)
+      news = news_future&.value([ (details_deadline - Time.current), 0 ].max) || []
+
+      # Batch-preload DB fallback prices on the main thread (RLS-safe, single query)
+      all_targets = index_targets + watchlist_targets + holding_targets + [ featured_target ]
+      missing_sec_ids = all_targets.filter_map do |t|
+        r_str = t.equal?(featured_target) ? featured_cfg[:range] : default_cfg[:range]
+        i_str = t.equal?(featured_target) ? featured_cfg[:interval] : default_cfg[:interval]
+        key = [ t[:ticker].to_s.upcase, t[:exchange_operating_mic].to_s.upcase, r_str, i_str ]
+        t[:security]&.id if resolved_data[key].nil?
+      end.uniq
+      preloaded_prices = preload_security_prices(missing_sec_ids)
+
+      materialize = ->(t, r_str = default_cfg[:range], i_str = default_cfg[:interval], fund: nil, nws: []) {
+        key = [ t[:ticker].to_s.upcase, t[:exchange_operating_mic].to_s.upcase, r_str, i_str ]
+        data = resolved_data[key]
+        if data
+          build_card_from_provider(
+            data,
+            fallback_name: t[:fallback_name],
+            category: t[:category],
+            security: t[:security],
+            watchlist_item: t[:watchlist_item],
+            fundamentals: fund,
+            news: nws
+          )
+        else
+          fallback_card(t.merge(fundamentals: fund, news: nws), preloaded_prices: preloaded_prices)
+        end
+      }
+
+      idx_cards = index_targets.map { |t| materialize.call(t) }
+      wl_cards = watchlist_targets.map { |t| materialize.call(t) }
+      h_cards_list = holding_targets.map { |t| materialize.call(t) }
+      h_cards = h_cards_list.each_with_object({}) do |card, hash|
+        hash[card.security.id] = card if card.security
+      end
+      feat_card = materialize.call(
+        featured_target,
+        featured_cfg[:range],
+        featured_cfg[:interval],
+        fund: fundamentals,
+        nws: news
+      )
+
+      {
+        index_quotes: idx_cards,
+        watchlist_quotes: wl_cards,
+        holding_quotes: h_cards,
+        featured_quote: feat_card
+      }
+    end
+
     # Returns QuoteCard objects for major market indices plus any family-watched indices.
     def index_quotes(watchlist_indices: [], force_refresh: false)
-      targets = DEFAULT_INDICES.map do |idx|
-        watched = watchlist_indices.find { |w| w.ticker.casecmp?(idx[:ticker]) }
-        { ticker: idx[:ticker], fallback_name: idx[:name], category: "index", watchlist_item: watched, security: watched&.security }
-      end
-
-      watchlist_indices.each do |item|
-        next if targets.any? { |t| t[:ticker].casecmp?(item.ticker) }
-
-        targets << {
-          ticker: item.ticker,
-          fallback_name: item.name || item.ticker,
-          category: "index",
-          watchlist_item: item,
-          security: item.security
-        }
-      end
-
-      fetch_batch(targets, range: "1mo", force_refresh: force_refresh)
+      fetch_batch(build_index_targets(watchlist_indices), range: "1mo", force_refresh: force_refresh)
     end
 
     # Returns QuoteCard objects for non-index watchlist items (ETFs, stocks, crypto, funds).
     def watchlist_quotes(watchlist_items, force_refresh: false)
-      targets = watchlist_items.map do |item|
-        {
-          ticker: item.ticker,
-          fallback_name: item.name || item.ticker,
-          exchange_operating_mic: item.exchange_operating_mic,
-          category: item.category,
-          watchlist_item: item,
-          security: item.security
-        }
-      end
-
-      fetch_batch(targets, range: "1mo", force_refresh: force_refresh)
+      fetch_batch(build_watchlist_targets(watchlist_items), range: "1mo", force_refresh: force_refresh)
     end
 
     # Returns a Hash of security_id => QuoteCard for the family's current holdings.
     def holding_quotes(holdings, force_refresh: false)
-      securities = holdings.map(&:security).compact.uniq(&:id)
-      targets = securities.map do |sec|
-        {
-          ticker: sec.ticker,
-          fallback_name: sec.name || sec.ticker,
-          exchange_operating_mic: sec.exchange_operating_mic,
-          category: WatchlistItem.infer_category(ticker: sec.ticker),
-          security: sec
-        }
-      end
-
-      cards = fetch_batch(targets, range: "1mo", force_refresh: force_refresh)
+      cards = fetch_batch(build_holding_targets(holdings), range: "1mo", force_refresh: force_refresh)
       cards.each_with_object({}) do |card, hash|
         hash[card.security.id] = card if card.security
       end
@@ -143,51 +219,140 @@ module Investments
     end
 
     private
+      def build_index_targets(watchlist_indices)
+        targets = DEFAULT_INDICES.map do |idx|
+          watched = watchlist_indices.find { |w| w.ticker.casecmp?(idx[:ticker]) }
+          { ticker: idx[:ticker], fallback_name: idx[:name], category: "index", watchlist_item: watched, security: watched&.security }
+        end
+
+        watchlist_indices.each do |item|
+          next if targets.any? { |t| t[:ticker].casecmp?(item.ticker) }
+
+          targets << {
+            ticker: item.ticker,
+            fallback_name: item.name || item.ticker,
+            category: "index",
+            watchlist_item: item,
+            security: item.security
+          }
+        end
+        targets
+      end
+
+      def build_watchlist_targets(watchlist_items)
+        watchlist_items.map do |item|
+          {
+            ticker: item.ticker,
+            fallback_name: item.name || item.ticker,
+            exchange_operating_mic: item.exchange_operating_mic,
+            category: item.category,
+            watchlist_item: item,
+            security: item.security
+          }
+        end
+      end
+
+      def build_holding_targets(holdings)
+        securities = holdings.map(&:security).compact.uniq(&:id)
+        securities.map do |sec|
+          {
+            ticker: sec.ticker,
+            fallback_name: sec.name || sec.ticker,
+            exchange_operating_mic: sec.exchange_operating_mic,
+            category: WatchlistItem.infer_category(ticker: sec.ticker),
+            security: sec
+          }
+        end
+      end
+
+      def supports_fundamentals?(ticker, category)
+        return false if %w[index crypto].include?(category.to_s)
+
+        sym = ticker.to_s.upcase
+        !sym.start_with?("^") && !sym.end_with?("=X", "=F")
+      end
+
+      def spawn_fundamentals_future(ticker:, exchange_operating_mic:, category:, force_refresh:)
+        return nil unless @provider.respond_to?(:fetch_quote_summary) && supports_fundamentals?(ticker, category)
+
+        Concurrent::Promises.future do
+          resp = @provider.fetch_quote_summary(symbol: ticker, exchange_operating_mic: exchange_operating_mic, clear_cache: force_refresh)
+          resp.success? ? resp.data : nil
+        rescue
+          nil
+        end
+      end
+
+      def spawn_news_future(ticker:, force_refresh:)
+        return nil unless @provider.respond_to?(:fetch_news)
+
+        Concurrent::Promises.future do
+          resp = @provider.fetch_news(query: ticker, count: 6, clear_cache: force_refresh)
+          resp.success? ? (resp.data || []) : []
+        rescue
+          []
+        end
+      end
+
+      def preload_security_prices(security_ids)
+        return {} if security_ids.empty?
+
+        Security::Price
+          .where(security_id: security_ids, date: 31.days.ago.to_date..Date.current)
+          .order(:date)
+          .group_by(&:security_id)
+      end
+
       def fetch_batch(targets, range: "1mo", force_refresh: false)
         return [] if targets.empty?
 
         cfg = RANGE_CONFIG[self.class.valid_range(range)]
         futures = targets.map do |target|
           Concurrent::Promises.future(target) do |t|
-            fetch_single(
-              ticker: t[:ticker],
-              fallback_name: t[:fallback_name],
+            resp = @provider.fetch_quote_and_series(
+              symbol: t[:ticker],
               exchange_operating_mic: t[:exchange_operating_mic],
-              category: t[:category],
-              security: t[:security],
-              watchlist_item: t[:watchlist_item],
               range: cfg[:range],
               interval: cfg[:interval],
-              force_refresh: force_refresh
+              clear_cache: force_refresh
             )
-          end
-        end
-
-        deadline = Time.current + FETCH_TIMEOUT
-        futures.map.with_index do |future, idx|
-          remaining = [ (deadline - Time.current), 0 ].max
-          future.value(remaining) || fallback_card(targets[idx])
-        end
-      end
-
-      def fetch_single(ticker:, fallback_name:, exchange_operating_mic: nil, category: "equity", security: nil, watchlist_item: nil, range: "1mo", interval: "1d", force_refresh: false, include_details: false)
-        fundamentals_future = if include_details && @provider.respond_to?(:fetch_quote_summary)
-          Concurrent::Promises.future do
-            resp = @provider.fetch_quote_summary(symbol: ticker, exchange_operating_mic: exchange_operating_mic, clear_cache: force_refresh)
             resp.success? ? resp.data : nil
-          rescue
+          rescue => e
+            Rails.logger.warn("MarketTrackerService failed for #{t[:ticker]}: #{e.message}")
             nil
           end
         end
 
-        news_future = if include_details && @provider.respond_to?(:fetch_news)
-          Concurrent::Promises.future do
-            resp = @provider.fetch_news(query: ticker, count: 6, clear_cache: force_refresh)
-            resp.success? ? (resp.data || []) : []
-          rescue
-            []
+        deadline = Time.current + FETCH_TIMEOUT
+        raw_results = futures.map do |future|
+          remaining = [ (deadline - Time.current), 0 ].max
+          future.value(remaining)
+        end
+
+        missing_sec_ids = targets.each_with_index.filter_map do |t, idx|
+          t[:security]&.id if raw_results[idx].nil?
+        end.uniq
+        preloaded_prices = preload_security_prices(missing_sec_ids)
+
+        targets.each_with_index.map do |t, idx|
+          data = raw_results[idx]
+          if data
+            build_card_from_provider(
+              data,
+              fallback_name: t[:fallback_name],
+              category: t[:category],
+              security: t[:security],
+              watchlist_item: t[:watchlist_item]
+            )
+          else
+            fallback_card(t, preloaded_prices: preloaded_prices)
           end
         end
+      end
+
+      def fetch_single(ticker:, fallback_name:, exchange_operating_mic: nil, category: "equity", security: nil, watchlist_item: nil, range: "1mo", interval: "1d", force_refresh: false, include_details: false)
+        fundamentals_future = include_details ? spawn_fundamentals_future(ticker: ticker, exchange_operating_mic: exchange_operating_mic, category: category, force_refresh: force_refresh) : nil
+        news_future = include_details ? spawn_news_future(ticker: ticker, force_refresh: force_refresh) : nil
 
         response = @provider.fetch_quote_and_series(
           symbol: ticker,
@@ -197,8 +362,8 @@ module Investments
           clear_cache: force_refresh
         )
 
-        fundamentals = fundamentals_future&.value(6)
-        news = news_future&.value(6) || []
+        fundamentals = fundamentals_future&.value(DETAILS_TIMEOUT)
+        news = news_future&.value(DETAILS_TIMEOUT) || []
 
         if response.success? && response.data
           build_card_from_provider(
@@ -335,13 +500,18 @@ module Investments
         end
       end
 
-      def fallback_card(target)
+      def fallback_card(target, preloaded_prices: nil)
         security = target[:security]
-        db_prices = if security
-          security.prices.where(date: 31.days.ago.to_date..Date.current).order(:date).map { |p| { date: p.date, price: p.price.to_f } }
+        price_records = if security
+          if preloaded_prices
+            preloaded_prices[security.id] || []
+          else
+            security.prices.where(date: 31.days.ago.to_date..Date.current).order(:date).to_a
+          end
         else
           []
         end
+        db_prices = price_records.map { |p| { date: p.date, price: p.price.to_f } }
 
         current = db_prices.last&.dig(:price)
         prev = db_prices.size >= 2 ? db_prices[-2][:price] : nil
@@ -352,7 +522,7 @@ module Investments
           ticker: target[:ticker],
           name: target[:fallback_name] || target[:ticker],
           category: target[:category] || "equity",
-          currency: security&.prices&.last&.currency || "USD",
+          currency: price_records.last&.currency || "USD",
           exchange_name: security&.exchange_name,
           current_price: current,
           previous_close: prev,

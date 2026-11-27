@@ -80,6 +80,10 @@ class BudgetsController < ApplicationController
       # set (see Family#preload_cache_versions_async) -- it would silently
       # come back empty instead of raising.
       @budget.budget_categories.load
+      ActiveRecord::Associations::Preloader.new(
+        records: @budget.budget_categories,
+        associations: { category: :parent }
+      ).call
     end
 
     def redirect_to_current_month_budget

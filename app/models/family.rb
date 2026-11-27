@@ -353,17 +353,24 @@ class Family < ApplicationRecord
       @entries_cache_version_by_range ||= {}
       @entries_cache_version_by_range[date_range] ||= begin
         scope = entries.where(date: date_range)
-        ts = if defined?(@async_entries_range_max) && @async_entries_range_max && @async_entries_range_max[date_range]
-          @async_entries_range_max[date_range].first&.updated_at
+        if defined?(@async_entries_range_max) && @async_entries_range_max && @async_entries_range_max[date_range]
+          ts = @async_entries_range_max[date_range].first&.updated_at
+          "#{ts.present? ? ts.to_i : 0}-#{scope.count}"
         else
-          scope.maximum(:updated_at)
+          ts, cnt = scope.pick(Arel.sql("MAX(entries.updated_at), COUNT(*)"))
+          "#{ts.present? ? ts.to_i : 0}-#{cnt.to_i}"
         end
-        "#{ts.present? ? ts.to_i : 0}-#{scope.count}"
       end
     else
       @entries_cache_version ||= begin
-        ts = entries_max_updated_at
-        "#{ts.present? ? ts.to_i : 0}-#{entries.count}"
+        if defined?(@entries_max_updated_at) || (defined?(@async_entries_max) && @async_entries_max)
+          ts = entries_max_updated_at
+          "#{ts.present? ? ts.to_i : 0}-#{entries.count}"
+        else
+          ts, cnt = entries.pick(Arel.sql("MAX(entries.updated_at), COUNT(*)"))
+          @entries_max_updated_at = ts
+          "#{ts.present? ? ts.to_i : 0}-#{cnt.to_i}"
+        end
       end
     end
   end

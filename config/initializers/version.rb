@@ -1,17 +1,19 @@
 module Sure
   class << self
     def version
-      Semver.new(semver)
+      @version ||= Semver.new(semver)
     end
 
     def commit_sha
-      if Rails.env.production?
+      return @commit_sha if defined?(@commit_sha)
+
+      @commit_sha = if Rails.env.production?
         ENV["BUILD_COMMIT_SHA"]
       else
         `git rev-parse HEAD`.chomp
       end
     rescue Errno::ENOENT
-      nil
+      @commit_sha = nil
     end
 
     private

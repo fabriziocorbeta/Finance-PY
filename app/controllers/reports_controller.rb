@@ -399,6 +399,14 @@ class ReportsController < ApplicationController
       grouped_data = {}
       family_currency = Current.family.currency
 
+      transactions = transactions.to_a
+      trades = trades.to_a
+
+      # Batch-fetch today's FX rates once instead of firing an ExchangeRate query per entry via Money#exchange_to
+      foreign_currencies = (transactions.map { |t| t.entry.currency } + trades.map { |t| t.entry.currency })
+        .compact.uniq.reject { |c| c == family_currency }
+      fx_rates = ExchangeRate.rates_for(foreign_currencies, to: family_currency, date: Date.current)
+
       # Helper to initialize a category group hash
       init_category_group = ->(id, name, color, icon, type) do
         { category_id: id, category_name: name, category_color: color, category_icon: icon, type: type, total: 0, count: 0, subcategories: {} }
@@ -412,10 +420,13 @@ class ReportsController < ApplicationController
       # Helper to process an entry (transaction or trade)
       process_entry = ->(category, entry, is_trade) do
         type = entry.amount > 0 ? "expense" : "income"
-        begin
-          converted_amount = Money.new(entry.amount.abs, entry.currency).exchange_to(family_currency).amount
-        rescue Money::ConversionError
-          converted_amount = entry.amount.abs
+        raw_abs = entry.amount.abs
+        converted_amount = if entry.currency == family_currency
+          raw_abs
+        elsif (rate = fx_rates[entry.currency])
+          raw_abs * rate
+        else
+          raw_abs
         end
 
         if category.nil?

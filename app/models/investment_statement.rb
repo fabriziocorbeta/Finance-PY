@@ -189,8 +189,11 @@ class InvestmentStatement
     remaining_interest = 0
     contributed = 0
 
+    by_account = totals_by_account(period: Period.all_time)
     investment_accounts.each do |account|
-      account_totals = totals(period: Period.all_time, account: account)
+      account_totals = by_account[account.id]
+      next unless account_totals
+
       remaining_interest += [ (account_totals.interest&.amount || 0) - (account_totals.withdrawals&.amount || 0), 0 ].max
       contributed += (account_totals.contributions&.amount || 0) unless priced_account_ids.include?(account.id)
     end
@@ -295,6 +298,38 @@ class InvestmentStatement
       Rails.cache.fetch([
         "investment_statement", "totals_query", family.id, user&.id, sql_hash, family.entries_cache_version
       ]) { Totals.new(family, trades_scope: trades_scope).call }
+    end
+
+    def totals_by_account(period:)
+      return {} if investment_account_ids.empty?
+
+      trades_scope = family.trades
+        .joins(:entry)
+        .where(entries: { date: period.date_range, account_id: investment_account_ids })
+      sql_hash = Digest::MD5.hexdigest(trades_scope.to_sql)
+
+      trades_by_account = Rails.cache.fetch([
+        "investment_statement", "totals_by_account", "v1", family.id, user&.id, sql_hash, family.entries_cache_version
+      ]) { Totals.new(family, trades_scope: trades_scope).call_grouped_by_account }
+
+      flows_by_account = InvestmentFlowStatement.new(family, user: user)
+        .period_totals_by_account(period: period, account_ids: investment_account_ids)
+
+      investment_account_ids.index_with do |acc_id|
+        t_row = trades_by_account[acc_id] || { contributions: 0, withdrawals: 0, dividends: 0, interest: 0, trades_count: 0 }
+        f_row = flows_by_account[acc_id]
+        f_contrib = f_row ? f_row.contributions : Money.new(0, family.currency)
+        f_withdr = f_row ? f_row.withdrawals : Money.new(0, family.currency)
+
+        PeriodTotals.new(
+          contributions: Money.new(t_row[:contributions], family.currency) + f_contrib,
+          withdrawals: Money.new(t_row[:withdrawals], family.currency) + f_withdr,
+          dividends: Money.new(t_row[:dividends], family.currency),
+          interest: Money.new(t_row[:interest], family.currency),
+          trades_count: t_row[:trades_count],
+          currency: family.currency
+        )
+      end
     end
 
     def monetizable_currency
